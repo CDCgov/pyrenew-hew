@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "pyrenew-covid-wastewater"
+version = "0.1.0"
+description = ""
+authors = ["Damon Bayer <xum8@cdc.gov>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyrenew = {git = "https://github.com/CDCgov/PyRenew"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
