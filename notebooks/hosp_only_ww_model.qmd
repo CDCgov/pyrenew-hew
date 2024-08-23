@@ -42,9 +42,7 @@ We begin by loading the stan_data and converting it to priors used in our model.
 # | label: Load data and create priors
 # | code-fold: true
 def convert_to_logmean_log_sd(mean, sd):
-    logmean = np.log(
-        np.power(mean, 2) / np.sqrt(np.power(sd, 2) + np.power(mean, 2))
-    )
+    logmean = np.log(np.power(mean, 2) / np.sqrt(np.power(sd, 2) + np.power(mean, 2)))
     logsd = np.sqrt(np.log(1 + (np.power(sd, 2) / np.power(mean, 2))))
     return logmean, logsd
 
@@ -86,15 +84,11 @@ log_r_mu_intercept_rv = DistributionalRV(
 
 
 eta_sd_sd = stan_data["eta_sd_sd"][0]
-eta_sd_rv = DistributionalRV(
-    "eta_sd", dist.TruncatedNormal(0, eta_sd_sd, low=0)
-)
+eta_sd_rv = DistributionalRV("eta_sd", dist.TruncatedNormal(0, eta_sd_sd, low=0))
 
 autoreg_rt_a = stan_data["autoreg_rt_a"][0]
 autoreg_rt_b = stan_data["autoreg_rt_b"][0]
-autoreg_rt_rv = DistributionalRV(
-    "autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b)
-)
+autoreg_rt_rv = DistributionalRV("autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b))
 
 
 generation_interval_pmf_rv = DeterministicVariable(
@@ -144,7 +138,7 @@ autoreg_p_hosp_rv = DistributionalRV(
 hosp_wday_effect_rv = TransformedRandomVariable(
     "hosp_wday_effect",
     DistributionalRV(
-        "hosp_wday_effect_raw", dist.Dirichlet(concentration=jnp.ones(7))
+        "hosp_wday_effect_raw", dist.Dirichlet(concentration=jnp.repeat(5, 7))
     ),
     transforms.AffineTransform(loc=0, scale=7),
 )
