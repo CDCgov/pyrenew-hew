@@ -10,12 +10,10 @@ from pyrenew.latent import (
     InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
-from pyrenew.metaclass import (  # TransformedRandomVariable,
-    DistributionalRV,
-    Model,
-)
+from pyrenew.randomvariable import DistributionalVariable
+from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
-from pyrenew.process import ARProcess, RtWeeklyDiffProcess
+from pyrenew.process import ARProcess, RtWeeklyDiffARProcess
 
 
 class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
@@ -81,10 +79,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
                 "Either n_datapoints or data_observed_hosp_admissions "
                 "must be passed."
             )
-        elif (
-            n_datapoints is not None
-            and data_observed_hospital_admissions is not None
-        ):
+        elif n_datapoints is not None and data_observed_hospital_admissions is not None:
             raise ValueError(
                 "Cannot pass both n_datapoints and data_observed_hospital_admissions."
             )
@@ -169,9 +164,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         )
         p_hosp_ar_init = p_hosp_ar_init_rv()[0].value
 
-        p_hosp_ar = p_hosp_ar_proc.sample(
-            duration=n_weeks, inits=p_hosp_ar_init
-        )
+        p_hosp_ar = p_hosp_ar_proc.sample(duration=n_weeks, inits=p_hosp_ar_init)
 
         ihr = jnp.repeat(
             transformation.SigmoidTransform()(p_hosp_ar[0].value), repeats=7

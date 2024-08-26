@@ -15,8 +15,8 @@ import numpyro
 import numpyro.distributions as dist
 import numpyro.distributions.transforms as transforms
 from pyrenew.deterministic import DeterministicVariable
-from pyrenew.metaclass import DistributionalRV, TransformedRandomVariable
-from pyrenew.model import hosp_only_ww_model
+from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
+from pyrenew_covid_wastewater import hosp_only_ww_model
 
 numpyro.set_host_device_count(1)
 # model crashes if run in parallel
@@ -51,7 +51,7 @@ def convert_to_logmean_log_sd(mean, sd):
 import builtins
 
 with builtins.open(
-    "../../../scratch/stan_data_hosp_only.json",
+    "data/fit_hosp_only/stan_data.json",
     "r",
 ) as file:
     stan_data = json.load(file)
