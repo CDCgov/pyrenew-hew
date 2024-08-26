@@ -414,12 +414,12 @@ dir_create(fit_hosp_only_dir)
 file_copy(
   path = fit$raw_fit_obj$data_file(),
   new_path = path(fit_dir, "stan_data", ext = "json"),
-  overwrite = T
+  overwrite = TRUE
 )
 file_copy(
   path = fit_hosp_only$raw_fit_obj$data_file(),
   new_path = path(fit_hosp_only_dir, "stan_data", ext = "json"),
-  overwrite = T
+  overwrite = TRUE
 )
 
 fit$raw_fit_obj$save_output_files(fit_dir)
