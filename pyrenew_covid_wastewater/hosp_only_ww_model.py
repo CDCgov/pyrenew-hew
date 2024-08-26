@@ -99,14 +99,14 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
         log_r_mu_intercept = self.log_r_mu_intercept_rv()[0].value
 
-        init_rate_of_change_rv = DistributionalRV(
+        init_rate_of_change_rv = DistributionalVariable(
             "init_rate_of_change",
             dist.Normal(0, eta_sd / jnp.sqrt(1 - jnp.pow(autoreg_rt, 2))),
         )
 
         init_rate_of_change = init_rate_of_change_rv()[0].value
 
-        rt_proc = RtWeeklyDiffProcess(
+        rt_proc = RtWeeklyDiffARProcess(
             name="rtu_weekly_diff",
             offset=0,
             log_rt_rv=DeterministicVariable(
@@ -155,7 +155,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             noise_sd=p_hosp_w_sd,
         )
 
-        p_hosp_ar_init_rv = DistributionalRV(
+        p_hosp_ar_init_rv = DistributionalVariable(
             "p_hosp_ar_init",
             dist.Normal(
                 p_hosp_mean,
