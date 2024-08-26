@@ -134,7 +134,7 @@ autoreg_p_hosp_rv = DistributionalVariable(
 
 hosp_wday_effect_rv = TransformedRandomVariable(
     "hosp_wday_effect",
-    jnp.array(stan_data["hosp_wday_effect_prior_alpha"]),
+    dist.Dirichlet(jnp.array(stan_data["hosp_wday_effect_prior_alpha"])),
     transforms.AffineTransform(loc=0, scale=7),
 )
 
