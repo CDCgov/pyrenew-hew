@@ -4,7 +4,6 @@ import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from pyrenew.arrayutils import tile_until_n
-from pyrenew.convolve import compute_delay_ascertained_incidence
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
@@ -128,6 +127,8 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             ),
         )
 
+        # Should implement my own Rt Weekly Diff since this one seems broken.
+
         rtu = rt_proc.sample(duration=n_datapoints)
         generation_interval_pmf = self.generation_interval_pmf_rv()
 
@@ -172,7 +173,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             transformation.SigmoidTransform()(p_hosp_ar[0].value), repeats=7
         )[
             :n_datapoints
-        ]  # this is only applied after the hospital_admissions are generated, not to all the latent infectios (but should be changed in the stan model too)
+        ]  # this is only applied after the hospital_admissions are generated, not to all the latent infectios
 
         numpyro.deterministic("ihr", ihr)
 
@@ -180,14 +181,12 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         hosp_wday_effect = tile_until_n(hosp_wday_effect_raw, n_datapoints)
 
         inf_to_hosp = self.inf_to_hosp_rv()[0].value
-
-        potential_latent_hospital_admissions = (
-            compute_delay_ascertained_incidence(
-                p_observed_given_incident=1,
-                latent_incidence=latent_infections,
-                delay_incidence_to_observation_pmf=inf_to_hosp,
-            )[-n_datapoints:]
-        )
+        potential_latent_hospital_admissions = jnp.convolve(
+            latent_infections,
+            inf_to_hosp,
+            mode="valid",
+        )[-n_datapoints:]
+        # This may need to be fixed elsewhere
 
         latent_hospital_admissions = (
             potential_latent_hospital_admissions
