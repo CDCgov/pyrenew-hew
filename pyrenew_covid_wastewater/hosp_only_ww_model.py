@@ -4,17 +4,17 @@ import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from pyrenew.arrayutils import tile_until_n
+from pyrenew.convolve import compute_delay_ascertained_incidence
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
-from pyrenew.randomvariable import DistributionalVariable
 from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, RtWeeklyDiffARProcess
-from pyrenew.convolve import compute_delay_ascertained_incidence
+from pyrenew.randomvariable import DistributionalVariable
 
 
 class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
@@ -80,7 +80,10 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
                 "Either n_datapoints or data_observed_hosp_admissions "
                 "must be passed."
             )
-        elif n_datapoints is not None and data_observed_hospital_admissions is not None:
+        elif (
+            n_datapoints is not None
+            and data_observed_hospital_admissions is not None
+        ):
             raise ValueError(
                 "Cannot pass both n_datapoints and data_observed_hospital_admissions."
             )
@@ -178,11 +181,13 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
         inf_to_hosp = self.inf_to_hosp_rv()[0].value
 
-        potential_latent_hospital_admissions = compute_delay_ascertained_incidence(
-            p_observed_given_incident=1,
-            latent_incidence=latent_infections,
-            delay_incidence_to_observation_pmf=inf_to_hosp,
-        )[-n_datapoints:]
+        potential_latent_hospital_admissions = (
+            compute_delay_ascertained_incidence(
+                p_observed_given_incident=1,
+                latent_incidence=latent_infections,
+                delay_incidence_to_observation_pmf=inf_to_hosp,
+            )[-n_datapoints:]
+        )
 
         latent_hospital_admissions = (
             potential_latent_hospital_admissions
