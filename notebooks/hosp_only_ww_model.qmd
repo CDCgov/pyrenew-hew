@@ -223,25 +223,14 @@ my_model.run(
 )
 ```
 
-Check the posterior predictive:
+Check the posterior predictive and forecast:
 
 ```{python}
 # | label: posterior predictive
 posterior_predictive = my_model.posterior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions)
+    n_datapoints=len(data_observed_hospital_admissions) + 28
 )
 ```
-
-Forecasting is broken (dependent on https://github.com/CDCgov/multisignal-epi-inference/issues/328)
-
-```{python}
-# | label: posterior forecast
-# | eval: false
-my_model.posterior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions) + 2
-)
-```
-
 
 ## Prepare for plotting
 ```{python}
