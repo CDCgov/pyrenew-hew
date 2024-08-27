@@ -376,15 +376,3 @@ axes.set_xlabel("Time", fontsize=10)
 axes.set_ylabel("Hospital Admissions", fontsize=10)
 plt.show()
 ```
-
-
-
-```{python}
-idata.posterior["log_r_mu_intercept_rv"]
-az.summary(
-    idata,
-    var_names=["log_rt", "periodic_diff_sd", "autoreg_rt_det", "rtu"],
-    stat_focus="median",
-)
-```
-Why is log_rt 2 dimensional?
