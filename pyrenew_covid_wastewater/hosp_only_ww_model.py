@@ -14,6 +14,7 @@ from pyrenew.randomvariable import DistributionalVariable
 from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, RtWeeklyDiffARProcess
+from pyrenew.convolve import compute_delay_ascertained_incidence
 
 
 class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
@@ -124,8 +125,6 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             ),
         )
 
-        # Should implement my own Rt Weekly Diff since this one seems broken.
-
         rtu = rt_proc.sample(duration=n_datapoints)
         generation_interval_pmf = self.generation_interval_pmf_rv()
 
@@ -148,12 +147,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         p_hosp_w_sd = self.p_hosp_w_sd_rv()[0].value
         autoreg_p_hosp = self.autoreg_p_hosp_rv()[0].value
 
-        p_hosp_ar_proc = ARProcess(
-            "p_hosp",
-            mean=p_hosp_mean,
-            autoreg=autoreg_p_hosp,
-            noise_sd=p_hosp_w_sd,
-        )
+        p_hosp_ar_proc = ARProcess("p_hosp")
 
         p_hosp_ar_init_rv = DistributionalVariable(
             "p_hosp_ar_init",
@@ -164,13 +158,18 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         )
         p_hosp_ar_init = p_hosp_ar_init_rv()[0].value
 
-        p_hosp_ar = p_hosp_ar_proc.sample(duration=n_weeks, inits=p_hosp_ar_init)
+        p_hosp_ar = p_hosp_ar_proc.sample(
+            n=n_weeks,
+            autoreg=autoreg_p_hosp,
+            init_vals=p_hosp_ar_init,
+            noise_sd=p_hosp_w_sd,
+        )
 
         ihr = jnp.repeat(
             transformation.SigmoidTransform()(p_hosp_ar[0].value), repeats=7
         )[
             :n_datapoints
-        ]  # this is only applied after the hospital_admissions are generated, not to all the latent infectios
+        ]  # this is only applied after the hospital_admissions are generated, not to all the latent infectios (but should be changed in the stan model too)
 
         numpyro.deterministic("ihr", ihr)
 
@@ -178,12 +177,12 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         hosp_wday_effect = tile_until_n(hosp_wday_effect_raw, n_datapoints)
 
         inf_to_hosp = self.inf_to_hosp_rv()[0].value
-        potential_latent_hospital_admissions = jnp.convolve(
-            latent_infections,
-            inf_to_hosp,
-            mode="valid",
+
+        potential_latent_hospital_admissions = compute_delay_ascertained_incidence(
+            p_observed_given_incident=1,
+            latent_incidence=latent_infections,
+            delay_incidence_to_observation_pmf=inf_to_hosp,
         )[-n_datapoints:]
-        # This may need to be fixed elsewhere
 
         latent_hospital_admissions = (
             potential_latent_hospital_admissions

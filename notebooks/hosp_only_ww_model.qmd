@@ -16,7 +16,7 @@ import numpyro.distributions as dist
 import numpyro.distributions.transforms as transforms
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
-from pyrenew_covid_wastewater import hosp_only_ww_model
+from pyrenew_covid_wastewater.hosp_only_ww_model import hosp_only_ww_model
 
 numpyro.set_host_device_count(1)
 # model crashes if run in parallel
@@ -51,7 +51,8 @@ def convert_to_logmean_log_sd(mean, sd):
 import builtins
 
 with builtins.open(
-    "data/fit_hosp_only/stan_data.json",
+    # "data/fit_hosp_only/stan_data.json",
+    "data/fit_hosp_only/standata-37d0659112b0.json",
     "r",
 ) as file:
     stan_data = json.load(file)
@@ -132,9 +133,20 @@ autoreg_p_hosp_rv = DistributionalVariable(
     "autoreg_p_hosp", dist.Beta(autoreg_p_hosp_a, autoreg_p_hosp_b)
 )
 
+# hosp_wday_effect_rv = TransformedVariable(
+#     "hosp_wday_effect",
+#     DistributionalVariable(
+#         "hosp_wday_effect_raw",
+#         dist.Dirichlet(jnp.array(stan_data["hosp_wday_effect_prior_alpha"])),
+#     ),
+#     transforms.AffineTransform(loc=0, scale=7),
+# )
 hosp_wday_effect_rv = TransformedVariable(
     "hosp_wday_effect",
-    dist.Dirichlet(jnp.array(stan_data["hosp_wday_effect_prior_alpha"])),
+    DistributionalVariable(
+        "hosp_wday_effect_raw",
+        dist.Dirichlet(jnp.repeat(5.0, 7)),
+    ),
     transforms.AffineTransform(loc=0, scale=7),
 )
 
@@ -158,6 +170,8 @@ phi_rv = TransformedVariable(
     ),
     transforms=transforms.PowerTransform(-2),
 )
+
+phi_rv = DeterministicVariable("phi", 100)
 
 uot = stan_data["uot"]
 state_pop = stan_data["state_pop"]
