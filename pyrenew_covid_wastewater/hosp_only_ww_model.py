@@ -127,8 +127,6 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             ),
         )
 
-        # Should implement my own Rt Weekly Diff since this one seems broken.
-
         rtu = rt_proc.sample(duration=n_datapoints)
         generation_interval_pmf = self.generation_interval_pmf_rv()
 
@@ -156,7 +154,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         p_hosp_ar_init_rv = DistributionalVariable(
             "p_hosp_ar_init",
             dist.Normal(
-                p_hosp_mean,
+                0,
                 p_hosp_w_sd / jnp.sqrt(1 - jnp.pow(autoreg_p_hosp, 2)),
             ),
         )
@@ -170,7 +168,10 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         )
 
         ihr = jnp.repeat(
-            transformation.SigmoidTransform()(p_hosp_ar[0].value), repeats=7
+            transformation.SigmoidTransform()(
+                p_hosp_ar[0].value + p_hosp_mean
+            ),
+            repeats=7,
         )[
             :n_datapoints
         ]  # this is only applied after the hospital_admissions are generated, not to all the latent infectios
@@ -181,12 +182,12 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         hosp_wday_effect = tile_until_n(hosp_wday_effect_raw, n_datapoints)
 
         inf_to_hosp = self.inf_to_hosp_rv()[0].value
+
         potential_latent_hospital_admissions = jnp.convolve(
             latent_infections,
             inf_to_hosp,
             mode="valid",
         )[-n_datapoints:]
-        # This may need to be fixed elsewhere
 
         latent_hospital_admissions = (
             potential_latent_hospital_admissions
@@ -203,6 +204,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             mu=latent_hospital_admissions,
             obs=data_observed_hospital_admissions,
         )
+
         # These are returned only for debugging purposes
         # We should record more deterministic variables for plotting and diagnostics
         return (
