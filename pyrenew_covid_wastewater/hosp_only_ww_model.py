@@ -6,6 +6,7 @@ import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from pyrenew.arrayutils import repeat_until_n, tile_until_n
+from pyrenew.convolve import compute_delay_ascertained_incidence
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
@@ -142,7 +143,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             ]
         )
         numpyro.deterministic("rtu", rtu)
-        numpyro.deterministic("rt", inf_with_feedback_proc_sample.Rt.value)
+        numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt.value)
         numpyro.deterministic("latent_infections", latent_infections)
 
         p_hosp_mean = self.p_hosp_mean_rv()[0].value
@@ -179,11 +180,13 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
         inf_to_hosp = self.inf_to_hosp_rv()[0].value
 
-        potential_latent_hospital_admissions = jnp.convolve(
-            latent_infections,
-            inf_to_hosp,
-            mode="valid",
-        )[-n_datapoints:]
+        potential_latent_hospital_admissions = (
+            compute_delay_ascertained_incidence(
+                p_observed_given_incident=1,
+                latent_incidence=latent_infections,
+                delay_incidence_to_observation_pmf=inf_to_hosp,
+            )[-n_datapoints:]
+        )
 
         latent_hospital_admissions = (
             potential_latent_hospital_admissions
@@ -203,17 +206,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
         # These are returned only for debugging purposes
         # We should record more deterministic variables for plotting and diagnostics
-        return (
-            i0,
-            rtu,
-            inf_with_feedback_proc_sample,
-            p_hosp_ar,
-            ihr,
-            hosp_wday_effect,
-            potential_latent_hospital_admissions,
-            latent_hospital_admissions,
-            observed_hospital_admissions,
-        )
+        return observed_hospital_admissions
 
 
 def fit_hosp_only_ww_model_from_stan_data(stan_data_file):
