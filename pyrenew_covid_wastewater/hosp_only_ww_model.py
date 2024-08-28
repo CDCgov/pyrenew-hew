@@ -2,11 +2,14 @@
 import json
 
 import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+import numpyro.distributions.transforms as transforms
 import pyrenew.transformation as transformation
 from pyrenew.arrayutils import repeat_until_n, tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
+from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
@@ -15,7 +18,7 @@ from pyrenew.latent import (
 from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
-from pyrenew.randomvariable import DistributionalVariable
+from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 
 class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
@@ -209,10 +212,154 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         return observed_hospital_admissions
 
 
-def fit_hosp_only_ww_model_from_stan_data(stan_data_file):
+def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     with open(
         stan_data_file,
         "r",
     ) as file:
         stan_data = json.load(file)
-    return stan_data
+
+    def convert_to_logmean_log_sd(mean, sd):
+        logmean = np.log(
+            np.power(mean, 2) / np.sqrt(np.power(sd, 2) + np.power(mean, 2))
+        )
+        logsd = np.sqrt(np.log(1 + (np.power(sd, 2) / np.power(mean, 2))))
+        return logmean, logsd
+
+    i0_over_n_prior_a = stan_data["i0_over_n_prior_a"]
+    i0_over_n_prior_b = stan_data["i0_over_n_prior_b"]
+    i0_over_n_rv = DistributionalVariable(
+        "i0_over_n_rv", dist.Beta(i0_over_n_prior_a, i0_over_n_prior_b)
+    )
+
+    initial_growth_prior_mean = stan_data["initial_growth_prior_mean"]
+    initial_growth_prior_sd = stan_data["initial_growth_prior_sd"]
+    initialization_rate_rv = DistributionalVariable(
+        "rate",
+        dist.TruncatedNormal(
+            loc=initial_growth_prior_mean,
+            scale=initial_growth_prior_sd,
+            low=-1,
+            high=1,
+        ),
+    )
+    # could reasonably switch to non-Truncated
+
+    r_prior_mean = stan_data["r_prior_mean"]
+    r_prior_sd = stan_data["r_prior_sd"]
+    r_logmean, r_logsd = convert_to_logmean_log_sd(r_prior_mean, r_prior_sd)
+    log_r_mu_intercept_rv = DistributionalVariable(
+        "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
+    )
+
+    eta_sd_sd = stan_data["eta_sd_sd"]
+    eta_sd_rv = DistributionalVariable(
+        "eta_sd", dist.TruncatedNormal(0, eta_sd_sd, low=0)
+    )
+
+    autoreg_rt_a = stan_data["autoreg_rt_a"]
+    autoreg_rt_b = stan_data["autoreg_rt_b"]
+    autoreg_rt_rv = DistributionalVariable(
+        "autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b)
+    )
+
+    generation_interval_pmf_rv = DeterministicVariable(
+        "generation_interval_pmf", jnp.array(stan_data["generation_interval"])
+    )
+
+    infection_feedback_pmf_rv = DeterministicVariable(
+        "infection_feedback_pmf",
+        jnp.array(stan_data["infection_feedback_pmf"]),
+    )
+
+    inf_feedback_prior_logmean = stan_data["inf_feedback_prior_logmean"]
+    inf_feedback_prior_logsd = stan_data["inf_feedback_prior_logsd"]
+    inf_feedback_strength_rv = TransformedVariable(
+        "inf_feedback",
+        DistributionalVariable(
+            "inf_feedback_raw",
+            dist.LogNormal(
+                inf_feedback_prior_logmean, inf_feedback_prior_logsd
+            ),
+        ),
+        transforms=transforms.AffineTransform(loc=0, scale=-1),
+    )
+    # Could be reparameterized?
+
+    p_hosp_prior_mean = stan_data["p_hosp_prior_mean"]
+    p_hosp_sd_logit = stan_data["p_hosp_sd_logit"]
+
+    p_hosp_mean_rv = DistributionalVariable(
+        "p_hosp_mean",
+        dist.Normal(transforms.logit(p_hosp_prior_mean), p_hosp_sd_logit),
+    )  # logit scale
+
+    p_hosp_w_sd_sd = stan_data["p_hosp_w_sd_sd"]
+    p_hosp_w_sd_rv = DistributionalVariable(
+        "p_hosp_w_sd_sd", dist.TruncatedNormal(0, p_hosp_w_sd_sd, low=0)
+    )
+
+    autoreg_p_hosp_a = stan_data["autoreg_p_hosp_a"]
+    autoreg_p_hosp_b = stan_data["autoreg_p_hosp_b"]
+    autoreg_p_hosp_rv = DistributionalVariable(
+        "autoreg_p_hosp", dist.Beta(autoreg_p_hosp_a, autoreg_p_hosp_b)
+    )
+
+    hosp_wday_effect_rv = TransformedVariable(
+        "hosp_wday_effect",
+        DistributionalVariable(
+            "hosp_wday_effect_raw",
+            dist.Dirichlet(
+                jnp.array(stan_data["hosp_wday_effect_prior_alpha"])
+            ),
+        ),
+        transforms.AffineTransform(loc=0, scale=7),
+    )
+
+    inf_to_hosp_rv = DeterministicVariable(
+        "inf_to_hosp", jnp.array(stan_data["inf_to_hosp"])
+    )
+
+    inv_sqrt_phi_prior_mean = stan_data["inv_sqrt_phi_prior_mean"]
+    inv_sqrt_phi_prior_sd = stan_data["inv_sqrt_phi_prior_sd"]
+
+    phi_rv = TransformedVariable(
+        "phi",
+        DistributionalVariable(
+            "inv_sqrt_phi",
+            dist.TruncatedNormal(
+                loc=inv_sqrt_phi_prior_mean,
+                scale=inv_sqrt_phi_prior_sd,
+                low=1 / jnp.sqrt(5000),
+            ),
+        ),
+        transforms=transforms.PowerTransform(-2),
+    )
+
+    uot = stan_data["uot"]
+    uot = len(jnp.array(stan_data["inf_to_hosp"]))
+    state_pop = stan_data["state_pop"]
+
+    data_observed_hospital_admissions = jnp.array(stan_data["hosp"])
+
+    my_model = hosp_only_ww_model(
+        state_pop=state_pop,
+        i0_over_n_rv=i0_over_n_rv,
+        initialization_rate_rv=initialization_rate_rv,
+        log_r_mu_intercept_rv=log_r_mu_intercept_rv,
+        autoreg_rt_rv=autoreg_rt_rv,  # ar process
+        eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
+        generation_interval_pmf_rv=generation_interval_pmf_rv,
+        infection_feedback_pmf_rv=infection_feedback_pmf_rv,
+        infection_feedback_strength_rv=inf_feedback_strength_rv,
+        p_hosp_mean_rv=p_hosp_mean_rv,
+        p_hosp_w_sd_rv=p_hosp_w_sd_rv,
+        autoreg_p_hosp_rv=autoreg_p_hosp_rv,
+        hosp_wday_effect_rv=hosp_wday_effect_rv,
+        phi_rv=phi_rv,
+        inf_to_hosp_rv=inf_to_hosp_rv,
+        n_initialization_points=uot,
+        i0_t_offset=0,  # a better way of parameterizing
+    )
+
+    return my_model, data_observed_hospital_admissions
