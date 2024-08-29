@@ -9,13 +9,9 @@ def compute_eti(dataset, eti_prob):
     return eti_bdry.values.T
 
 
-def plot_posterior(idata, name, predictive=False):
-    if predictive:
-        posterior_object = idata.posterior_predictive
-    else:
-        posterior_object = idata.posterior
-    x_data = posterior_object[f"{name}_dim_0"]
-    y_data = posterior_object[name]
+def plot_posterior(idata, name):
+    x_data = idata.posterior[f"{name}_dim_0"]
+    y_data = idata.posterior[name]
     fig, axes = plt.subplots(figsize=(6, 5))
     az.plot_hdi(
         x_data,

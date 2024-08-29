@@ -103,8 +103,7 @@ plotting.plot_predictive(idata)
 ```{python}
 for key in list(idata.posterior.keys()):
     try:
-        fig = plotting.plot_posterior(idata, key)
-        fig.show()
+        plotting.plot_posterior(idata, key)
     except Exception as e:
         print(f"An error occurred while plotting {key}: {e}")
 ```
