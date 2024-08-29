@@ -6,21 +6,13 @@ engine: jupyter
 
 ```{python}
 # | label: setup
-import json
-
 import jax
-import jax.numpy as jnp
-import numpy as np
 import numpyro
-import numpyro.distributions as dist
-import numpyro.distributions.transforms as transforms
-from pyrenew.deterministic import DeterministicVariable
-from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
+import arviz as az
+import pyrenew_covid_wastewater.plotting as plotting
 from pyrenew_covid_wastewater.hosp_only_ww_model import (
-    hosp_only_ww_model,
     create_hosp_only_ww_model_from_stan_data,
 )
-import pyrenew_covid_wastewater.plotting as plotting
 
 numpyro.set_host_device_count(4)
 ```
