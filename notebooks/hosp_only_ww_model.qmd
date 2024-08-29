@@ -54,12 +54,11 @@ my_hosp_only_ww_model, data_observed_hospital_admissions = (
 We check that we can simulate from the prior predictive
 ```{python}
 # | label: prior predictive
+n_forecast_days = 28
 prior_predictive = my_hosp_only_ww_model.prior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions),
+    n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days,
     numpyro_predictive_args={"num_samples": 200},
 )
-
-# MAKE A PLOT HERE
 ```
 
 # Fit the model
@@ -82,7 +81,7 @@ Check the posterior predictive and forecast:
 ```{python}
 # | label: posterior predictive
 posterior_predictive = my_hosp_only_ww_model.posterior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions) + 28
+    n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days
 )
 ```
 
@@ -91,12 +90,24 @@ posterior_predictive = my_hosp_only_ww_model.posterior_predictive(
 import arviz as az
 
 idata = az.from_numpyro(
-    my_hosp_only_ww_model.mcmc, posterior_predictive=posterior_predictive
+    my_hosp_only_ww_model.mcmc,
+    posterior_predictive=posterior_predictive,
+    prior=prior_predictive,
 )
 ```
 
+## Plot Predictive Distributions
+
+```{python}
+plotting.plot_predictive(idata, prior=True)
+```
+
+```{python}
+plotting.plot_predictive(idata)
+```
+
 ## Plot all posteriors
-# Do we know why some univariate sites have a dimension and others do not?
+
 ```{python}
 for key in list(idata.posterior.keys()):
     try:
@@ -104,9 +115,4 @@ for key in list(idata.posterior.keys()):
         fig.show()
     except Exception as e:
         print(f"An error occurred while plotting {key}: {e}")
-```
-
-## Posterior predictive hospital admissions
-```{python}
-plotting.plot_posterior_predictive(idata)
 ```

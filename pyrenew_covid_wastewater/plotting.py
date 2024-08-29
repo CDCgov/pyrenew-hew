@@ -52,10 +52,15 @@ def plot_posterior(idata, name, predictive=False):
     return fig
 
 
-def plot_posterior_predictive(idata):
-    x_data = idata.posterior_predictive["observed_hospital_admissions_dim_0"]
+def plot_predictive(idata, prior=False):
+    prior_or_post_text = "Prior" if prior else "Posterior"
+    predictive_obj = (
+        idata.prior_predictive if prior else idata.posterior_predictive
+    )
 
-    y_data = idata.posterior_predictive["observed_hospital_admissions"]
+    x_data = predictive_obj["observed_hospital_admissions_dim_0"]
+    y_data = predictive_obj["observed_hospital_admissions"]
+
     fig, axes = plt.subplots(figsize=(6, 5))
     az.plot_hdi(
         x_data,
@@ -90,7 +95,6 @@ def plot_posterior_predictive(idata):
         color="black",
     )
     axes.legend()
-    axes.set_title("Posterior Predictive Admissions", fontsize=10)
+    axes.set_title(f"{prior_or_post_text} Predictive Admissions", fontsize=10)
     axes.set_xlabel("Time", fontsize=10)
     axes.set_ylabel("Hospital Admissions", fontsize=10)
-    return fig
