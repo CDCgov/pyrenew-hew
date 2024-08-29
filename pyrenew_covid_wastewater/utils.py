@@ -19,7 +19,9 @@ def get_vl_trajectory(tpeak, viral_peak, duration_shedding, n):
     t = jnp.arange(n)
     s = jnp.where(t <= tpeak, jnp.power(10, growth * t), s)
 
-    s = jnp.where(t > tpeak, jnp.maximum(0, viral_peak + wane * tpeak - wane * t), s)
+    s = jnp.where(
+        t > tpeak, jnp.maximum(0, viral_peak + wane * tpeak - wane * t), s
+    )
     s = jnp.where(t > tpeak, jnp.power(10, s), s)
 
     s = s / jnp.sum(s)
