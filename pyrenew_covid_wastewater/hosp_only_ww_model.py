@@ -171,9 +171,9 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         ihr = jnp.repeat(
             transformation.SigmoidTransform()(p_hosp_ar + p_hosp_mean),
             repeats=7,
-        )[
-            :n_datapoints
-        ]  # this is only applied after the hospital_admissions are generated, not to all the latent infections. This is why we cannot apply the ihr in compute_delay_ascertained_incidence
+        )[:n_datapoints]
+        # this is only applied after the hospital_admissions are generated, not to all the latent infections. This is why we cannot apply the ihr in compute_delay_ascertained_incidence
+        # see https://github.com/CDCgov/ww-inference-model/issues/43
 
         numpyro.deterministic("ihr", ihr)
 
@@ -206,8 +206,6 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             obs=data_observed_hospital_admissions,
         )
 
-        # These are returned only for debugging purposes
-        # We should record more deterministic variables for plotting and diagnostics
         return observed_hospital_admissions
 
 
@@ -349,7 +347,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
         i0_over_n_rv=i0_over_n_rv,
         initialization_rate_rv=initialization_rate_rv,
         log_r_mu_intercept_rv=log_r_mu_intercept_rv,
-        autoreg_rt_rv=autoreg_rt_rv,  # ar process
+        autoreg_rt_rv=autoreg_rt_rv,
         eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
         generation_interval_pmf_rv=generation_interval_pmf_rv,
         infection_feedback_pmf_rv=infection_feedback_pmf_rv,
@@ -361,7 +359,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
         phi_rv=phi_rv,
         inf_to_hosp_rv=inf_to_hosp_rv,
         n_initialization_points=uot,
-        i0_t_offset=0,  # a better way of parameterizing
+        i0_t_offset=0,
     )
 
     return my_model, data_observed_hospital_admissions
