@@ -5,7 +5,6 @@ import jax.numpy as jnp
 import numpy as np
 import numpyro
 import numpyro.distributions as dist
-import numpyro.distributions.transforms as transforms
 import pyrenew.transformation as transformation
 from pyrenew.arrayutils import repeat_until_n, tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
@@ -110,18 +109,18 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         eta_sd = self.eta_sd_rv()[0].value
         autoreg_rt = self.autoreg_rt_rv()[0].value
         log_r_mu_intercept = self.log_r_mu_intercept_rv()[0].value
-        init_rate_of_change_rv = DistributionalVariable(
-            "init_rate_of_change",
+        rt_init_rate_of_change_rv = DistributionalVariable(
+            "rt_init_rate_of_change",
             dist.Normal(0, eta_sd / jnp.sqrt(1 - jnp.pow(autoreg_rt, 2))),
         )
-        init_rate_of_change = init_rate_of_change_rv()[0].value
+        rt_init_rate_of_change = rt_init_rate_of_change_rv()[0].value
 
         log_rtu_weekly = self.ar_diff(
             n=n_weeks_post_init,
             init_vals=jnp.array(log_r_mu_intercept),
             autoreg=jnp.array(autoreg_rt),
             noise_sd=jnp.array(eta_sd),
-            fundamental_process_init_vals=jnp.array(init_rate_of_change),
+            fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
         )[0].value
 
         rtu = repeat_until_n(
@@ -282,7 +281,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
                 inf_feedback_prior_logmean, inf_feedback_prior_logsd
             ),
         ),
-        transforms=transforms.AffineTransform(loc=0, scale=-1),
+        transforms=transformation.AffineTransform(loc=0, scale=-1),
     )
     # Could be reparameterized?
 
@@ -291,7 +290,10 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
 
     p_hosp_mean_rv = DistributionalVariable(
         "p_hosp_mean",
-        dist.Normal(transforms.logit(p_hosp_prior_mean), p_hosp_sd_logit),
+        dist.Normal(
+            transformation.SigmoidTransform().inv(p_hosp_prior_mean),
+            p_hosp_sd_logit,
+        ),
     )  # logit scale
 
     p_hosp_w_sd_sd = stan_data["p_hosp_w_sd_sd"]
@@ -313,7 +315,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
                 jnp.array(stan_data["hosp_wday_effect_prior_alpha"])
             ),
         ),
-        transforms.AffineTransform(loc=0, scale=7),
+        transformation.AffineTransform(loc=0, scale=7),
     )
 
     inf_to_hosp_rv = DeterministicVariable(
@@ -333,7 +335,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
                 low=1 / jnp.sqrt(5000),
             ),
         ),
-        transforms=transforms.PowerTransform(-2),
+        transforms=transformation.PowerTransform(-2),
     )
 
     uot = stan_data["uot"]
