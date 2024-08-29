@@ -23,8 +23,6 @@ from pyrenew_covid_wastewater.hosp_only_ww_model import (
 import pyrenew_covid_wastewater.plotting as plotting
 
 numpyro.set_host_device_count(4)
-# model crashes if run in parallel
-# see https://github.com/pyro-ppl/numpyro/issues/1836
 ```
 
 ## Background
