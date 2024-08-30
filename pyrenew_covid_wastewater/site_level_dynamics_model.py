@@ -14,11 +14,11 @@ from pyrenew.latent import (
 from pyrenew.metaclass import Model
 from pyrenew.process import ARProcess, RtWeeklyDiffARProcess
 from pyrenew.randomvariable import DistributionalVariable
-
+from pyrenew.observation import NegativeBinomialObservation
 from pyrenew_covid_wastewater.utils import get_vl_trajectory
 
 
-class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
+class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
     def __init__(
         self,
         state_pop,
@@ -54,7 +54,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         eta_log_sigma_ww_site_rv,
         ww_site_mod_raw_rv,
         ww_site_mod_sd_rv,
-        hospital_admission_obs_rv,
+        phi_rv,
         ww_ml_produced_per_day,
         pop_fraction_reshaped,
         ww_uncensored,
@@ -65,7 +65,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         ww_log_lod,
     ):  # numpydoc ignore=GL08
         self.state_pop = state_pop
-        self.n_subpops = (n_subpops,)
+        self.n_subpops = n_subpops
         self.n_initialization_points = n_initialization_points
         self.gt_max = gt_max
         self.i0_t_offset = i0_t_offset
@@ -95,7 +95,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         self.eta_log_sigma_ww_site_rv = eta_log_sigma_ww_site_rv
         self.ww_site_mod_raw_rv = ww_site_mod_raw_rv
         self.ww_site_mod_sd_rv = ww_site_mod_sd_rv
-        self.hospital_admission_obs_rv = hospital_admission_obs_rv
+        self.phi_rv = phi_rv
         self.ww_ml_produced_per_day = ww_ml_produced_per_day
         self.pop_fraction_reshaped = pop_fraction_reshaped
         self.ww_uncensored = ww_uncensored
@@ -104,6 +104,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         self.ww_sampled_sites = ww_sampled_sites
         self.ww_sampled_times = ww_sampled_times
         self.ww_log_lod = ww_log_lod
+
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
             infection_feedback_pmf=infection_feedback_pmf_rv,
@@ -124,10 +125,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
                 "Either n_datapoints or data_observed_hosp_admissions "
                 "must be passed."
             )
-        elif (
-            n_datapoints is not None
-            and data_observed_hospital_admissions is not None
-        ):
+        elif n_datapoints is not None and data_observed_hospital_admissions is not None:
             raise ValueError(
                 "Cannot pass both n_datapoints and data_observed_hospital_admissions."
             )
@@ -193,8 +191,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
                 "rtu_site_ar_init",
                 dist.Normal(
                     0,
-                    sigma_rt[0].value
-                    / jnp.sqrt(1 - jnp.pow(autoreg_rt_site[0].value, 2)),
+                    sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_site, 2)),
                 ),
             )
 
@@ -222,7 +219,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             i0_over_n = self.i0_over_n_rv()
             sigma_i0 = self.sigma_i0_rv()
             eta_i0 = self.eta_i0_rv()
-            initial_growth = self.initialization_rate_rv()
+            initial_growth = self.initial_growth_rv()
             eta_growth = self.eta_growth_rv()
             sigma_growth = self.sigma_growth_rv()
 
@@ -231,8 +228,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
             #  site level growth rate
             growth_site = (
-                initial_growth[0].value
-                + eta_growth[0].value * sigma_growth[0].value
+                initial_growth[0].value + eta_growth[0].value * sigma_growth[0].value
             )
 
             growth_site_rv = DeterministicVariable(
@@ -275,15 +271,11 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
                     inf_with_feedback_proc_sample.post_initialization_infections.value,
                 ]
             )
-            r_site_t = r_site_t.at[i, :].set(
-                inf_with_feedback_proc_sample.rt.value
-            )
+            r_site_t = r_site_t.at[i, :].set(inf_with_feedback_proc_sample.rt.value)
             new_i_site_matrix = new_i_site_matrix.at[i, :].set(new_i_site)
 
             # number of net infected individuals shedding on each day (sum of individuals in dift stages of infection)
-            model_net_i = jnp.convolve(new_i_site, s, mode="valid")[
-                -n_datapoints:
-            ]
+            model_net_i = jnp.convolve(new_i_site, s, mode="valid")[-n_datapoints:]
 
             log10_g = self.log10_g_rv()
 
@@ -368,13 +360,10 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
         # LHS log transformed obs genomes per person-day, RHS multiplies the expected observed
         # genomes by the site-specific multiplier at that sampling time
-        exp_obs_log_v = (
-            exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
-        )
+        exp_obs_log_v = exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
 
         sigma_ww_site = jnp.exp(
-            jnp.log(mode_sigma_ww_site)
-            + sd_log_sigma_ww_site * eta_log_sigma_ww_site
+            jnp.log(mode_sigma_ww_site) + sd_log_sigma_ww_site * eta_log_sigma_ww_site
         )
 
         # g = jnp.power(
@@ -385,9 +374,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             "log_conc",
             dist.Normal(
                 loc=exp_obs_log_v[self.ww_uncensored],
-                scale=sigma_ww_site[
-                    self.ww_sampled_lab_sites[self.ww_uncensored]
-                ],
+                scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_uncensored]],
             ),
             obs=data_observed_log_conc[self.ww_uncensored],
         )
@@ -395,14 +382,16 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         if self.ww_censored.shape[0] != 0:
             log_cdf_values = dist.Normal(
                 loc=exp_obs_log_v[self.ww_censored],
-                scale=sigma_ww_site[
-                    self.ww_sampled_lab_sites[self.ww_censored]
-                ],
+                scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_censored]],
             ).log_cdf(self.ww_log_lod[self.ww_censored])
 
             numpyro.factor("log_prob_censored", log_cdf_values.sum())
 
-        observed_hospital_admissions = self.hospital_admission_obs_rv(
+        hospital_admission_obs_rv = NegativeBinomialObservation(
+            "observed_hospital_admissions", concentration_rv=self.phi_rv
+        )
+
+        observed_hospital_admissions = hospital_admission_obs_rv(
             mu=latent_hospital_admissions,
             obs=data_observed_hospital_admissions,
         )
