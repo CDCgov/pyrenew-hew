@@ -376,7 +376,11 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 loc=exp_obs_log_v[self.ww_uncensored],
                 scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_uncensored]],
             ),
-            obs=data_observed_log_conc[self.ww_uncensored],
+            obs=(
+                data_observed_log_conc[self.ww_uncensored]
+                if data_observed_log_conc is not None
+                else None
+            ),
         )
 
         if self.ww_censored.shape[0] != 0:
