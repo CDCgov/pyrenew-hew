@@ -2,7 +2,6 @@
 import json
 
 import jax.numpy as jnp
-import numpy as np
 import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
@@ -18,6 +17,8 @@ from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
+
+from pyrenew_covid_wastewater.utils import convert_to_logmean_log_sd
 
 
 class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
@@ -215,13 +216,6 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
         "r",
     ) as file:
         stan_data = json.load(file)
-
-    def convert_to_logmean_log_sd(mean, sd):
-        logmean = np.log(
-            np.power(mean, 2) / np.sqrt(np.power(sd, 2) + np.power(mean, 2))
-        )
-        logsd = np.sqrt(np.log(1 + (np.power(sd, 2) / np.power(mean, 2))))
-        return logmean, logsd
 
     i0_over_n_prior_a = stan_data["i0_over_n_prior_a"]
     i0_over_n_prior_b = stan_data["i0_over_n_prior_b"]
