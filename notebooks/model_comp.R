@@ -17,6 +17,18 @@ hosp_data <- tibble(value = path(
   unlist()) |>
   mutate(time = row_number())
 
+stan_files <-
+  dir_ls(path("notebooks", "data", "fit_hosp_only"), glob = "*wwinference*") |>
+  enframe(name = NULL, value = "file_path") |>
+  mutate(file_details = path_ext_remove(path_file(file_path))) |>
+  separate_wider_delim(file_details,
+    delim = "-",
+    names = c("model", "date", "chain", "hash")
+  ) |>
+  mutate(date = ymd_hm(date)) |>
+  filter(date == max(date)) |>
+  pull(file_path)
+
 stan_output <-
   dir_ls(path("notebooks", "data", "fit_hosp_only"), glob = "*wwinference*") |>
   read_cmdstan_csv()

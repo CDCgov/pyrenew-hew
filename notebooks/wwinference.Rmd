@@ -108,6 +108,7 @@ params <- get_params(
     package = "wwinference"
   )
 )
+params$sigma_rt_prior <- 0.0001
 ```
 
 ## Wastewater data pre-processing
