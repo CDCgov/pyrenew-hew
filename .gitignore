@@ -383,3 +383,7 @@ docs/site/
 
 .DS_Store
 poetry.lock
+
+
+notebooks/*_files/
+notebooks/*.md
