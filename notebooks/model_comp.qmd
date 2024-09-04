@@ -153,3 +153,5 @@ combined_ci_for_plotting |>
   scale_x_continuous("Time") +
   theme(legend.position = "bottom")
 ```
+
+IHR lengths are different (Stan model generates an unnecessarily long version, see https://github.com/CDCgov/ww-inference-model/issues/43#issuecomment-2330269879)
