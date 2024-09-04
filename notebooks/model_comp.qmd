@@ -4,6 +4,7 @@ format: gfm
 editor: visual
 ---
 
+This document shows graphical comparisons for key variables in the PyRenew model fit to example data (notebooks/hosp_only_ww_model.qmd) and Stan model notebooks/wwinference.Rmd (notebooks/wwinference.Rmd).
 
 ```{r}
 #| output: false
