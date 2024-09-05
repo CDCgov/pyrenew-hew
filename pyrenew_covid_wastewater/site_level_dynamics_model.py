@@ -371,7 +371,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         # )  # Estimated genomes shed per infected individual
 
         log_conc_obs = numpyro.sample(
-            "log_conc",
+            "log_conc_uncensored",
             dist.Normal(
                 loc=exp_obs_log_v[self.ww_uncensored],
                 scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_uncensored]],
@@ -389,7 +389,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_censored]],
             ).log_cdf(self.ww_log_lod[self.ww_censored])
 
-            numpyro.factor("log_prob_censored", log_cdf_values.sum())
+            numpyro.factor("prob_conc_censored", log_cdf_values.sum())
 
         hospital_admission_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions", concentration_rv=self.phi_rv
