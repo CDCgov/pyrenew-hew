@@ -47,7 +47,8 @@ my_hosp_only_ww_model, data_observed_hospital_admissions = (
 We check that we can simulate from the prior predictive
 ```{python}
 # | label: prior predictive
-n_forecast_days = 28
+n_forecast_days = 35
+
 prior_predictive = my_hosp_only_ww_model.prior_predictive(
     n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days,
     numpyro_predictive_args={"num_samples": 200},
@@ -117,5 +118,7 @@ for key in list(idata.posterior.keys()):
 ## Save for Post-Processing
 
 ```{python}
-idata.to_dataframe().to_csv("data/fit_hosp_only/pyrenew_inference_data.csv")
+idata.to_dataframe().to_csv(
+    "data/fit_hosp_only/pyrenew_inference_data.csv", index=False
+)
 ```

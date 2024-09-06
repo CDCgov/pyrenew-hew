@@ -1,0 +1,159 @@
+---
+title: "PyRenew and wwinference Fit and Forecast Comparison"
+format: gfm
+editor: visual
+---
+
+This document shows graphical comparisons for key variables in the PyRenew model fit to example data (notebooks/hosp_only_ww_model.qmd) and Stan model fit to example data (notebooks/wwinference.Rmd).
+In order to render this document, those notebooks must be rendered first.
+
+```{r}
+#| output: false
+library(tidyverse)
+library(tidybayes)
+library(fs)
+library(cmdstanr)
+library(posterior)
+library(jsonlite)
+library(scales)
+library(here)
+ci_width <- c(0.5, 0.8, 0.95)
+```
+
+## Load Data
+
+```{r}
+hosp_data <- tibble(.value = here(path("notebooks",
+  "data", "fit_hosp_only", "stan_data",
+  ext = "json"
+)) |>
+  jsonlite::read_json() |>
+  pluck("hosp") |>
+  unlist()) |>
+  mutate(time = row_number())
+
+stan_files <-
+  dir_ls(here(path("notebooks", "data", "fit_hosp_only")), glob = "*wwinference*") |>
+  enframe(name = NULL, value = "file_path") |>
+  mutate(file_details = path_ext_remove(path_file(file_path))) |>
+  separate_wider_delim(file_details,
+    delim = "-",
+    names = c("model", "date", "chain", "hash")
+  ) |>
+  mutate(date = ymd_hm(date)) |>
+  filter(date == max(date)) |>
+  pull(file_path)
+
+
+stan_tidy_draws <- read_cmdstan_csv(stan_files)$post_warmup_draws |> tidy_draws()
+
+pyrenew_tidy_draws <- read_csv(here(path("notebooks",
+  "data", "fit_hosp_only", "pyrenew_inference_data",
+  ext = "csv"
+))) |>
+  rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
+  rename(
+    .chain = chain,
+    .iteration = draw
+  ) |>
+  mutate(across(c(.chain, .iteration), \(x) as.integer(x + 1))) |>
+  mutate(
+    .draw = tidybayes:::draw_from_chain_and_iteration_(.chain, .iteration),
+    .after = .iteration
+  ) |>
+  pivot_longer(-starts_with("."),
+    names_sep = ", ",
+    names_to = c("distribution", "name")
+  ) |>
+  {
+    \(x) split(x |> select(-distribution), f = as.factor(x$distribution))
+  }() |>
+  map(\(x) pivot_wider(x, names_from = name) |> tidy_draws())
+```
+
+## Calculate Credible Intervals for Plotting
+
+```{r}
+combined_ci_for_plotting <-
+  bind_rows(
+    pyrenew_tidy_draws$posterior_predictive |>
+      gather_draws(observed_hospital_admissions[time], rt[time], ihr[time]) |>
+      median_qi(.width = ci_width) |>
+      mutate(model = "pyrenew"),
+    stan_tidy_draws |>
+      gather_draws(pred_hosp[time], rt[time], p_hosp[time]) |>
+      mutate(.variable = case_when(
+        .variable == "pred_hosp" ~ "observed_hospital_admissions",
+        .variable == "p_hosp" ~ "ihr",
+        TRUE ~ .variable
+      )) |>
+      median_qi(.width = ci_width) |>
+      mutate(model = "stan")
+  )
+```
+
+
+
+## Hospital Admission Comparison
+
+```{r}
+combined_ci_for_plotting |>
+  filter(.variable == "observed_hospital_admissions") |>
+  ggplot(aes(time, .value)) +
+  facet_wrap(~model) +
+  geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
+  scale_fill_brewer(
+    name = "Credible Interval Width",
+    labels = ~ percent(as.numeric(.))
+  ) +
+  geom_point(data = hosp_data) +
+  cowplot::theme_cowplot() +
+  ggtitle("Vignette Data Model Comparison") +
+  scale_y_continuous("Hospital Admissions") +
+  scale_x_continuous("Time") +
+  theme(legend.position = "bottom")
+```
+
+
+
+## Rt Comparions
+
+```{r}
+combined_ci_for_plotting |>
+  filter(.variable == "rt") |>
+  ggplot(aes(time, .value)) +
+  facet_wrap(~model) +
+  geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
+  scale_fill_brewer(
+    name = "Credible Interval Width",
+    labels = ~ percent(as.numeric(.))
+  ) +
+  cowplot::theme_cowplot() +
+  ggtitle("Vignette Data Model Comparison") +
+  scale_y_log10("Rt", breaks = scales::log_breaks(n = 6)) +
+  scale_x_continuous("Time") +
+  theme(legend.position = "bottom") +
+  geom_hline(yintercept = 1, linetype = "dashed")
+```
+
+
+## IHR Comparison
+
+```{r}
+combined_ci_for_plotting |>
+  filter(.variable == "ihr") |>
+  ggplot(aes(time, .value)) +
+  facet_wrap(~model) +
+  geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
+  scale_fill_brewer(
+    name = "Credible Interval Width",
+    labels = ~ percent(as.numeric(.))
+  ) +
+  cowplot::theme_cowplot() +
+  ggtitle("Vignette Data Model Comparison") +
+  scale_y_log10("IHR (p_hosp)", breaks = scales::log_breaks(n = 6)) +
+  scale_x_continuous("Time") +
+  theme(legend.position = "bottom")
+```
+
+IHR lengths are different (Stan model generates an unnecessarily long version, see https://github.com/CDCgov/ww-inference-model/issues/43#issuecomment-2330269879)
