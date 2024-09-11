@@ -25,7 +25,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
     def __init__(
         self,
         state_pop,
-        i0_over_n_rv,
+        i0_first_obs_n_rv,
         initialization_rate_rv,
         log_r_mu_intercept_rv,
         autoreg_rt_rv,  # ar process
@@ -44,7 +44,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
     ):  # numpydoc ignore=GL08
         self.infection_initialization_process = InfectionInitializationProcess(
             "I0_initialization",
-            i0_over_n_rv,
+            i0_first_obs_n_rv,
             InitializeInfectionsExponentialGrowth(
                 n_initialization_points,
                 initialization_rate_rv,
@@ -217,19 +217,24 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     ) as file:
         stan_data = json.load(file)
 
-    i0_over_n_prior_a = stan_data["i0_over_n_prior_a"]
-    i0_over_n_prior_b = stan_data["i0_over_n_prior_b"]
-    i0_over_n_rv = DistributionalVariable(
-        "i0_over_n_rv", dist.Beta(i0_over_n_prior_a, i0_over_n_prior_b)
+    i_first_obs_over_n_prior_a = stan_data["i_first_obs_over_n_prior_a"]
+    i_first_obs_over_n_prior_b = stan_data["i_first_obs_over_n_prior_b"]
+    i0_first_obs_n_rv = DistributionalVariable(
+        "i0_first_obs_n_rv",
+        dist.Beta(i_first_obs_over_n_prior_a, i_first_obs_over_n_prior_b),
     )
 
-    initial_growth_prior_mean = stan_data["initial_growth_prior_mean"]
-    initial_growth_prior_sd = stan_data["initial_growth_prior_sd"]
+    mean_initial_exp_growth_rate_prior_mean = stan_data[
+        "mean_initial_exp_growth_rate_prior_mean"
+    ]
+    mean_initial_exp_growth_rate_prior_sd = stan_data[
+        "mean_initial_exp_growth_rate_prior_sd"
+    ]
     initialization_rate_rv = DistributionalVariable(
         "rate",
         dist.TruncatedNormal(
-            loc=initial_growth_prior_mean,
-            scale=initial_growth_prior_sd,
+            loc=mean_initial_exp_growth_rate_prior_mean,
+            scale=mean_initial_exp_growth_rate_prior_sd,
             low=-1,
             high=1,
         ),
@@ -338,7 +343,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
 
     my_model = hosp_only_ww_model(
         state_pop=state_pop,
-        i0_over_n_rv=i0_over_n_rv,
+        i0_first_obs_n_rv=i0_first_obs_n_rv,
         initialization_rate_rv=initialization_rate_rv,
         log_r_mu_intercept_rv=log_r_mu_intercept_rv,
         autoreg_rt_rv=autoreg_rt_rv,
