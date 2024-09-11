@@ -539,17 +539,18 @@ fit_hosp_only_dir <- path(base_dir, "fit_hosp_only")
 dir_create(fit_dir)
 dir_create(fit_hosp_only_dir)
 
+
 file_copy(
-  path = fit$raw_fit_obj$data_file(),
+  path = ww_fit$fit$result$data_file(),
   new_path = path(fit_dir, "stan_data", ext = "json"),
   overwrite = TRUE
 )
 file_copy(
-  path = fit_hosp_only$raw_fit_obj$data_file(),
+  path = fit_hosp_only$fit$result$data_file(),
   new_path = path(fit_hosp_only_dir, "stan_data", ext = "json"),
   overwrite = TRUE
 )
 
-fit$raw_fit_obj$save_output_files(fit_dir)
-fit_hosp_only$raw_fit_obj$save_output_files(fit_hosp_only_dir)
+ww_fit$fit$result$save_output_files(fit_dir)
+fit_hosp_only$fit$result$save_output_files(fit_hosp_only_dir)
 ```
