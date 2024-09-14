@@ -36,7 +36,7 @@ prep_data <- function(report_date = today(),
     filter(abb == state_abb) %>%
     pull(population)
 
-  generation_interval_pmf <-
+  inf_to_hosp_pmf <-
     read_csv(here(path("nssp_demo", "private_data", "latest", ext = "csv"))) %>%
     filter(geo_value == str_to_lower(state_abb)) %>%
     arrange(delay) %>%
@@ -46,7 +46,7 @@ prep_data <- function(report_date = today(),
   list(
     prepped_date = prepped_data,
     data_for_model_fit = list(
-      generation_interval_pmf = generation_interval_pmf,
+      inf_to_hosp_pmf = inf_to_hosp_pmf,
       data_observed_hospital_admissions = train_ed_admissions,
       state_pop = state_pop
     )
