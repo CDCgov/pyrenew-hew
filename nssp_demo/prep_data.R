@@ -29,6 +29,10 @@ prep_data <- function(report_date = today(),
     filter(data_type == "train") %>%
     pull(COVID_ED_admissions)
 
+  test_ed_admissions <- prepped_data %>%
+    filter(data_type == "test") %>%
+    pull(COVID_ED_admissions)
+
 
   state_pop <-
     usa::facts %>%
@@ -48,6 +52,7 @@ prep_data <- function(report_date = today(),
     data_for_model_fit = list(
       generation_interval_pmf = generation_interval_pmf,
       data_observed_hospital_admissions = train_ed_admissions,
+      test_ed_admissions = test_ed_admissions,
       state_pop = state_pop
     )
   )
