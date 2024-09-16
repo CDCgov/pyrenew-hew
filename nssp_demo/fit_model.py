@@ -1,3 +1,4 @@
+import argparse
 import json
 from pathlib import Path
 
@@ -31,10 +32,18 @@ from priors import (  # noqa: E402
     uot,
 )
 
-# read this from cli
-model_dir = Path(
-    "private_data/r_2024-09-10_f_2024-03-13_l_2024-09-09_t_2024-08-14/CA"
+parser = argparse.ArgumentParser(
+    description="Fit the hospital-only wastewater model."
 )
+parser.add_argument(
+    "--model_dir",
+    type=str,
+    required=True,
+    help="Path to the model directory containing the data.",
+)
+args = parser.parse_args()
+
+model_dir = Path(args.model_dir)
 data_path = model_dir / "data_for_model_fit.json"
 
 with open(
