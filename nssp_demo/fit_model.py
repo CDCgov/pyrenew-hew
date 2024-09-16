@@ -13,11 +13,9 @@ from priors import (
     autoreg_p_hosp_rv,
     autoreg_rt_rv,
     eta_sd_rv,
-    generation_interval_pmf_rv,
     hosp_wday_effect_rv,
     i0_first_obs_n_rv,
     inf_feedback_strength_rv,
-    infection_feedback_pmf_rv,
     initialization_rate_rv,
     log_r_mu_intercept_rv,
     p_hosp_mean_rv,
@@ -30,15 +28,13 @@ from pyrenew.deterministic import DeterministicVariable
 import pyrenew_covid_wastewater.plotting as plotting
 from pyrenew_covid_wastewater.hosp_only_ww_model import hosp_only_ww_model
 
+n_chains = 4
+numpyro.set_host_device_count(n_chains)
+
 # read this from cli
 model_dir = Path(
     "private_data/r_2024-09-10_f_2024-03-13_l_2024-09-09_t_2024-08-14/CA"
 )
-
-n_chains = 4
-numpyro.set_host_device_count(n_chains)
-
-
 data_path = model_dir / "data_for_model_fit.json"
 
 with open(
@@ -50,7 +46,15 @@ with open(
 
 inf_to_hosp_rv = DeterministicVariable(
     "inf_to_hosp", jnp.array(model_data["inf_to_hosp_pmf"])
-)
+)  # check if off by 1 or reversed
+
+generation_interval_pmf_rv = DeterministicVariable(
+    "generation_interval_pmf", jnp.array(model_data["generation_interval_pmf"])
+)  # check if off by 1 or reversed
+
+infection_feedback_pmf_rv = DeterministicVariable(
+    "infection_feedback_pmf", jnp.array(model_data["generation_interval_pmf"])
+)  # check if off by 1 or reversed
 
 data_observed_hospital_admissions = jnp.array(
     model_data["data_observed_hospital_admissions"]

@@ -1,7 +1,6 @@
 import jax.numpy as jnp
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
-from pyrenew.deterministic import DeterministicVariable
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 from pyrenew_covid_wastewater.utils import convert_to_logmean_log_sd
@@ -35,53 +34,6 @@ eta_sd_rv = DistributionalVariable(
 
 autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(2, 40))
 
-
-generation_interval_pmf_rv = DeterministicVariable(
-    "generation_interval_pmf",
-    jnp.array(
-        [
-            0.161701189933765,
-            0.320525743089203,
-            0.242198071982593,
-            0.134825252524032,
-            0.0689141939998525,
-            0.0346219683116734,
-            0.017497710736154,
-            0.00908172017279556,
-            0.00483656086299504,
-            0.00260732346885217,
-            0.00143298046642562,
-            0.00082002579123121,
-            0.0004729600977183,
-            0.000284420637980485,
-            0.000179877924728358,
-        ]
-    ),
-)
-
-
-infection_feedback_pmf_rv = DeterministicVariable(
-    "infection_feedback_pmf",
-    jnp.array(
-        [
-            0.161701189933765,
-            0.320525743089203,
-            0.242198071982593,
-            0.134825252524032,
-            0.0689141939998525,
-            0.0346219683116734,
-            0.017497710736154,
-            0.00908172017279556,
-            0.00483656086299504,
-            0.00260732346885217,
-            0.00143298046642562,
-            0.00082002579123121,
-            0.0004729600977183,
-            0.000284420637980485,
-            0.000179877924728358,
-        ]
-    ),
-)
 
 inf_feedback_strength_rv = TransformedVariable(
     "inf_feedback",
@@ -135,6 +87,3 @@ phi_rv = TransformedVariable(
 
 
 uot = 55
-
-# state_pop
-# depends on state

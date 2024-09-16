@@ -3,6 +3,7 @@ library(tidyverse)
 library(CFAEpiNow2Pipeline)
 library(usa)
 library(fs)
+library(arrow)
 library(here)
 
 
@@ -40,17 +41,52 @@ prep_data <- function(report_date = today(),
     filter(abb == state_abb) %>%
     pull(population)
 
-  inf_to_hosp_pmf <-
-    read_csv(here(path("nssp_demo", "private_data", "latest", ext = "csv"))) %>%
-    filter(geo_value == str_to_lower(state_abb)) %>%
-    arrange(delay) %>%
-    pull(p)
+  nnh_estimates <- read_parquet(
+    here(path("nssp_demo",
+      "private_data",
+      "prod",
+      ext = "parquet"
+    ))
+  )
+
+  generation_interval_pmf <-
+    nnh_estimates %>%
+    filter(
+      is.na(geo_value),
+      disease == "COVID-19",
+      parameter == "generation_interval"
+    ) %>%
+    pull(value) %>%
+    pluck(1)
+
+
+  delay_pmf <-
+    nnh_estimates %>%
+    filter(
+      is.na(geo_value),
+      disease == "COVID-19",
+      parameter == "delay"
+    ) %>%
+    pull(value) %>%
+    pluck(1)
+
+  right_truncation_pmf <-
+    nnh_estimates %>%
+    filter(
+      geo_value == state_abb,
+      disease == "COVID-19",
+      parameter == "right_truncation"
+    ) %>%
+    pull(value) %>%
+    pluck(1)
 
 
   list(
     prepped_date = prepped_data,
     data_for_model_fit = list(
-      inf_to_hosp_pmf = inf_to_hosp_pmf,
+      inf_to_hosp_pmf = delay_pmf,
+      generation_interval_pmf = generation_interval_pmf,
+      right_truncation_pmf = right_truncation_pmf,
       data_observed_hospital_admissions = train_ed_admissions,
       test_ed_admissions = test_ed_admissions,
       state_pop = state_pop
