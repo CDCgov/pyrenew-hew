@@ -6,10 +6,17 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import numpyro
+from pyrenew.deterministic import DeterministicVariable
+
+import pyrenew_covid_wastewater.plotting as plotting
+from pyrenew_covid_wastewater.hosp_only_ww_model import hosp_only_ww_model
+
+n_chains = 4
+numpyro.set_host_device_count(n_chains)
 
 # load priors
 # have to run this from the right directory
-from priors import (
+from priors import (  # noqa: E402
     autoreg_p_hosp_rv,
     autoreg_rt_rv,
     eta_sd_rv,
@@ -23,13 +30,6 @@ from priors import (
     phi_rv,
     uot,
 )
-from pyrenew.deterministic import DeterministicVariable
-
-import pyrenew_covid_wastewater.plotting as plotting
-from pyrenew_covid_wastewater.hosp_only_ww_model import hosp_only_ww_model
-
-n_chains = 4
-numpyro.set_host_device_count(n_chains)
 
 # read this from cli
 model_dir = Path(
