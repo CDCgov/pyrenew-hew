@@ -25,7 +25,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
     def __init__(
         self,
         state_pop,
-        i0_over_n_rv,
+        i0_first_obs_n_rv,
         initialization_rate_rv,
         log_r_mu_intercept_rv,
         autoreg_rt_rv,  # ar process
@@ -44,13 +44,12 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
     ):  # numpydoc ignore=GL08
         self.infection_initialization_process = InfectionInitializationProcess(
             "I0_initialization",
-            i0_over_n_rv,
+            i0_first_obs_n_rv,
             InitializeInfectionsExponentialGrowth(
                 n_initialization_points,
                 initialization_rate_rv,
                 t_pre_init=i0_t_offset,
             ),
-            t_unit=1,
         )
 
         self.inf_with_feedback_proc = InfectionsWithFeedback(
@@ -105,16 +104,16 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             n_datapoints = n_datapoints
 
         n_weeks_post_init = n_datapoints // 7 + 1
-        i0 = self.infection_initialization_process()[0].value
+        i0 = self.infection_initialization_process()
 
-        eta_sd = self.eta_sd_rv()[0].value
-        autoreg_rt = self.autoreg_rt_rv()[0].value
-        log_r_mu_intercept = self.log_r_mu_intercept_rv()[0].value
+        eta_sd = self.eta_sd_rv()
+        autoreg_rt = self.autoreg_rt_rv()
+        log_r_mu_intercept = self.log_r_mu_intercept_rv()
         rt_init_rate_of_change_rv = DistributionalVariable(
             "rt_init_rate_of_change",
             dist.Normal(0, eta_sd / jnp.sqrt(1 - jnp.pow(autoreg_rt, 2))),
         )
-        rt_init_rate_of_change = rt_init_rate_of_change_rv()[0].value
+        rt_init_rate_of_change = rt_init_rate_of_change_rv()
 
         log_rtu_weekly = self.ar_diff(
             n=n_weeks_post_init,
@@ -122,7 +121,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             autoreg=jnp.array(autoreg_rt),
             noise_sd=jnp.array(eta_sd),
             fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
-        )[0].value
+        )
 
         rtu = repeat_until_n(
             data=jnp.exp(log_rtu_weekly),
@@ -131,7 +130,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             period_size=7,
         )
 
-        generation_interval_pmf = self.generation_interval_pmf_rv()[0].value
+        generation_interval_pmf = self.generation_interval_pmf_rv()
 
         inf_with_feedback_proc_sample = self.inf_with_feedback_proc(
             Rt=rtu,
@@ -142,16 +141,16 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         latent_infections = jnp.concat(
             [
                 i0,
-                inf_with_feedback_proc_sample.post_initialization_infections.value,
+                inf_with_feedback_proc_sample.post_initialization_infections,
             ]
         )
         numpyro.deterministic("rtu", rtu)
-        numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt.value)
+        numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
-        p_hosp_mean = self.p_hosp_mean_rv()[0].value
-        p_hosp_w_sd = self.p_hosp_w_sd_rv()[0].value
-        autoreg_p_hosp = self.autoreg_p_hosp_rv()[0].value
+        p_hosp_mean = self.p_hosp_mean_rv()
+        p_hosp_w_sd = self.p_hosp_w_sd_rv()
+        autoreg_p_hosp = self.autoreg_p_hosp_rv()
 
         p_hosp_ar_init_rv = DistributionalVariable(
             "p_hosp_ar_init",
@@ -160,14 +159,14 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
                 p_hosp_w_sd / jnp.sqrt(1 - jnp.pow(autoreg_p_hosp, 2)),
             ),
         )
-        p_hosp_ar_init = p_hosp_ar_init_rv()[0].value
+        p_hosp_ar_init = p_hosp_ar_init_rv()
 
         p_hosp_ar = self.p_hosp_ar_proc(
             n=n_weeks_post_init,
             autoreg=autoreg_p_hosp,
             init_vals=p_hosp_ar_init,
             noise_sd=p_hosp_w_sd,
-        )[0].value
+        )
 
         ihr = jnp.repeat(
             transformation.SigmoidTransform()(p_hosp_ar + p_hosp_mean),
@@ -178,10 +177,10 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
         numpyro.deterministic("ihr", ihr)
 
-        hosp_wday_effect_raw = self.hosp_wday_effect_rv()[0].value
+        hosp_wday_effect_raw = self.hosp_wday_effect_rv()
         hosp_wday_effect = tile_until_n(hosp_wday_effect_raw, n_datapoints)
 
-        inf_to_hosp = self.inf_to_hosp_rv()[0].value
+        inf_to_hosp = self.inf_to_hosp_rv()
 
         potential_latent_hospital_admissions = (
             compute_delay_ascertained_incidence(
@@ -217,19 +216,24 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     ) as file:
         stan_data = json.load(file)
 
-    i0_over_n_prior_a = stan_data["i0_over_n_prior_a"]
-    i0_over_n_prior_b = stan_data["i0_over_n_prior_b"]
-    i0_over_n_rv = DistributionalVariable(
-        "i0_over_n_rv", dist.Beta(i0_over_n_prior_a, i0_over_n_prior_b)
+    i_first_obs_over_n_prior_a = stan_data["i_first_obs_over_n_prior_a"]
+    i_first_obs_over_n_prior_b = stan_data["i_first_obs_over_n_prior_b"]
+    i0_first_obs_n_rv = DistributionalVariable(
+        "i0_first_obs_n_rv",
+        dist.Beta(i_first_obs_over_n_prior_a, i_first_obs_over_n_prior_b),
     )
 
-    initial_growth_prior_mean = stan_data["initial_growth_prior_mean"]
-    initial_growth_prior_sd = stan_data["initial_growth_prior_sd"]
+    mean_initial_exp_growth_rate_prior_mean = stan_data[
+        "mean_initial_exp_growth_rate_prior_mean"
+    ]
+    mean_initial_exp_growth_rate_prior_sd = stan_data[
+        "mean_initial_exp_growth_rate_prior_sd"
+    ]
     initialization_rate_rv = DistributionalVariable(
         "rate",
         dist.TruncatedNormal(
-            loc=initial_growth_prior_mean,
-            scale=initial_growth_prior_sd,
+            loc=mean_initial_exp_growth_rate_prior_mean,
+            scale=mean_initial_exp_growth_rate_prior_sd,
             low=-1,
             high=1,
         ),
@@ -338,7 +342,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
 
     my_model = hosp_only_ww_model(
         state_pop=state_pop,
-        i0_over_n_rv=i0_over_n_rv,
+        i0_first_obs_n_rv=i0_first_obs_n_rv,
         initialization_rate_rv=initialization_rate_rv,
         log_r_mu_intercept_rv=log_r_mu_intercept_rv,
         autoreg_rt_rv=autoreg_rt_rv,
