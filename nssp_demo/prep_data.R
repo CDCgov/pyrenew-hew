@@ -5,6 +5,8 @@ library(usa)
 library(fs)
 library(arrow)
 library(here)
+library(glue)
+library(jsonlite)
 
 
 prep_data <- function(report_date = today(),
@@ -94,50 +96,60 @@ prep_data <- function(report_date = today(),
   )
 }
 
-# read cli
-report_date <- "2024-09-10"
-min_reference_date <- "2000-01-01"
-max_reference_date <- "3000-01-01"
-last_training_date <- "2024-08-14"
-state_abb <- "CA"
+
+prep_and_save_data <- function(report_date,
+                               min_reference_date,
+                               max_reference_date,
+                               last_training_date,
+                               state_abb) {
+  # prep data
+  dat <- prep_data(
+    report_date = report_date,
+    min_reference_date = min_reference_date,
+    max_reference_date = max_reference_date,
+    last_training_date = last_training_date,
+    state_abb = state_abb
+  )
+
+  actual_first_date <- min(dat$prepped_date$date)
+  actual_last_date <- max(dat$prepped_date$date)
 
 
-# prep data
-dat <- prep_data(
-  report_date = report_date,
-  min_reference_date = min_reference_date,
-  max_reference_date = max_reference_date,
-  last_training_date = last_training_date,
-  state_abb = state_abb
+
+  # Create folders
+  model_folder_name <- glue(paste0(
+    "r_{report_date}_",
+    "f_{actual_first_date}_",
+    "l_{actual_last_date}_",
+    "t_{last_training_date}"
+  ))
+  model_folder <- here("nssp_demo", "private_data", model_folder_name)
+  dir_create(model_folder)
+
+  data_folder <- path(model_folder, state_abb)
+  dir_create(data_folder)
+
+
+  # save state_pop and ed_visits in a single json
+  write_json(
+    x = dat$data_for_model_fit,
+    path = path(data_folder, "data_for_model_fit", ext = "json"),
+    auto_unbox = TRUE
+  )
+
+  # save whole dataset with forecast indicators as a csv
+  write_csv(dat$prepped_date, file = path(data_folder, "data", ext = "csv"))
+}
+
+walk(
+  usa::state.abb,
+  \(x) {
+    prep_and_save_data(
+      report_date = "2024-09-10",
+      min_reference_date = "2000-01-01",
+      max_reference_date = "3000-01-01",
+      last_training_date = "2024-08-14",
+      state_abb = x
+    )
+  }
 )
-
-actual_first_date <- min(dat$prepped_date$date)
-actual_last_date <- max(dat$prepped_date$date)
-
-
-
-# Create folders
-library(glue)
-model_folder_name <- glue(paste0(
-  "r_{report_date}_",
-  "f_{actual_first_date}_",
-  "l_{actual_last_date}_",
-  "t_{last_training_date}"
-))
-model_folder <- here("nssp_demo", "private_data", model_folder_name)
-dir_create(model_folder)
-
-data_folder <- path(model_folder, state_abb)
-dir_create(data_folder)
-
-
-# save state_pop and ed_visits in a single json
-library(jsonlite)
-write_json(
-  x = dat$data_for_model_fit,
-  path = path(data_folder, "data_for_model_fit", ext = "json"),
-  auto_unbox = TRUE
-)
-
-# save whole dataset with forecast indicators as a csv
-write_csv(dat$prepped_date, file = path(data_folder, "data", ext = "csv"))
