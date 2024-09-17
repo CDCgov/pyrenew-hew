@@ -7,13 +7,6 @@ library(scales)
 
 theme_set(theme_minimal_grid())
 
-model_dir <- here(path(
-  "nssp_demo",
-  "private_data",
-  "r_2024-09-10_f_2024-03-13_l_2024-09-09_t_2024-08-14",
-  "CA"
-))
-
 make_forecast_fig <- function(model_dir) {
   state_abb <- model_dir %>%
     path_split() %>%
