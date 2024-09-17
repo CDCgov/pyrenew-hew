@@ -72,7 +72,7 @@ make_forecast_fig <- function(model_dir) {
     geom_lineribbon(
       data = hosp_ci,
       mapping = aes(ymin = .lower, ymax = .upper),
-      color = "#08519c", key_glyph = draw_key_rect
+      color = "#08519c", key_glyph = draw_key_rect, step = "mid"
     ) +
     geom_point(mapping = aes(shape = data_type), data = dat) +
     scale_y_continuous("Emergency Department Admissions") +
@@ -135,3 +135,5 @@ pwalk(
 str_c(forecast_fig_tbl$figure_path, collapse = " ") %>%
   str_c(path(base_dir, "all_forecasts", ext = "pdf"), sep = " ") %>%
   system2("pdfunite", args = .)
+
+setdiff(usa::state.abb, path_file(forecast_fig_tbl$base_model_dir))
