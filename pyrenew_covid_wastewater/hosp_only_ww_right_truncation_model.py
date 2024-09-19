@@ -34,8 +34,8 @@ class hosp_only_ww_right_truncation_model(Model):  # numpydoc ignore=GL08
         hosp_wday_effect_rv,
         inf_to_hosp_rv,
         phi_rv,
-        n_initialization_points,
         right_truncation_pmf_rv,
+        n_initialization_points,
     ):  # numpydoc ignore=GL08
         self.infection_initialization_process = InfectionInitializationProcess(
             "I0_initialization",

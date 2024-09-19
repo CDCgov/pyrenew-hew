@@ -106,11 +106,11 @@ make_forecast_fig <- function(model_dir) {
   forecast_plot
 }
 
-base_dir <- path(
+base_dir <- here(path(
   "nssp_demo",
   "private_data",
-  "r_2024-09-10_f_2024-03-13_l_2024-09-09_t_2024-08-14"
-)
+  "nssp_demo/private_data/r_2024-09-19_f_2024-03-22_l_2024-09-18_t_2024-09-15/"
+))
 
 forecast_fig_tbl <-
   tibble(base_model_dir = dir_ls(base_dir)) %>%

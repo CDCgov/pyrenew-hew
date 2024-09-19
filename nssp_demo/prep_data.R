@@ -113,8 +113,11 @@ prep_and_save_data <- function(report_date,
 
   actual_first_date <- min(dat$prepped_date$date)
   actual_last_date <- max(dat$prepped_date$date)
-
-
+  dat$data_for_model_fit$right_truncation_offset <- as.integer(
+    as_date(report_date) -
+      as_date(last_training_date)
+  )
+  # could be off by 1
 
   # Create folders
   model_folder_name <- glue(paste0(
@@ -142,13 +145,13 @@ prep_and_save_data <- function(report_date,
 }
 
 walk(
-  usa::state.abb,
+  setdiff(usa::state.abb, "PR"),
   \(x) {
     prep_and_save_data(
-      report_date = "2024-09-10",
+      report_date = "2024-09-19",
       min_reference_date = "2000-01-01",
       max_reference_date = "3000-01-01",
-      last_training_date = "2024-08-14",
+      last_training_date = "2024-09-15",
       state_abb = x
     )
   }
