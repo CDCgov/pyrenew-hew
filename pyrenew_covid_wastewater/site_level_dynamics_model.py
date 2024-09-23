@@ -6,15 +6,17 @@ import numpyro.distributions.transforms as transforms
 import pyrenew.transformation as transformation
 from pyrenew.arrayutils import tile_until_n
 from pyrenew.deterministic import DeterministicVariable
+from pyrenew.distributions import CensoredNormal
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.metaclass import Model
+from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable
-from pyrenew.observation import NegativeBinomialObservation
+
 from pyrenew_covid_wastewater.utils import get_vl_trajectory
 
 
@@ -23,6 +25,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self,
         state_pop,
         n_subpops,
+        unobs_time,
         n_initialization_points,
         gt_max,
         i0_t_offset,
@@ -34,12 +37,12 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         dur_shed_rv,
         autoreg_rt_site_rv,
         sigma_rt_rv,
-        i0_over_n_rv,
-        sigma_i0_rv,
-        eta_i0_rv,
-        initialization_rate_rv,
-        eta_growth_rv,
-        sigma_growth_rv,
+        i_first_obs_over_n_rv,
+        sigma_i_first_obs_rv,
+        eta_i_first_obs_rv,
+        sigma_initial_exp_growth_rate_rv,
+        eta_initial_exp_growth_rate_rv,
+        mean_initial_exp_growth_rate_rv,
         generation_interval_pmf_rv,
         infection_feedback_strength_rv,
         infection_feedback_pmf_rv,
@@ -56,16 +59,18 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         ww_site_mod_sd_rv,
         phi_rv,
         ww_ml_produced_per_day,
-        pop_fraction_reshaped,
+        pop_fraction,
         ww_uncensored,
         ww_censored,
         ww_sampled_lab_sites,
         ww_sampled_sites,
         ww_sampled_times,
         ww_log_lod,
+        lab_site_to_site_map,
     ):  # numpydoc ignore=GL08
         self.state_pop = state_pop
         self.n_subpops = n_subpops
+        self.unobs_time = unobs_time
         self.n_initialization_points = n_initialization_points
         self.gt_max = gt_max
         self.i0_t_offset = i0_t_offset
@@ -77,12 +82,14 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.dur_shed_rv = dur_shed_rv
         self.autoreg_rt_site_rv = autoreg_rt_site_rv
         self.sigma_rt_rv = sigma_rt_rv
-        self.i0_over_n_rv = i0_over_n_rv
-        self.sigma_i0_rv = sigma_i0_rv
-        self.eta_i0_rv = eta_i0_rv
-        self.initial_growth_rv = initialization_rate_rv
-        self.eta_growth_rv = eta_growth_rv
-        self.sigma_growth_rv = sigma_growth_rv
+        self.i_first_obs_over_n_rv = i_first_obs_over_n_rv
+        self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
+        self.eta_i_first_obs_rv = eta_i_first_obs_rv
+        self.sigma_initial_exp_growth_rate_rv = (
+            sigma_initial_exp_growth_rate_rv
+        )
+        self.eta_initial_exp_growth_rate_rv = eta_initial_exp_growth_rate_rv
+        self.mean_initial_exp_growth_rate_rv = mean_initial_exp_growth_rate_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
         self.p_hosp_mean_rv = p_hosp_mean_rv
         self.p_hosp_w_sd_rv = p_hosp_w_sd_rv
@@ -97,13 +104,14 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.ww_site_mod_sd_rv = ww_site_mod_sd_rv
         self.phi_rv = phi_rv
         self.ww_ml_produced_per_day = ww_ml_produced_per_day
-        self.pop_fraction_reshaped = pop_fraction_reshaped
+        self.pop_fraction = pop_fraction
         self.ww_uncensored = ww_uncensored
         self.ww_censored = ww_censored
         self.ww_sampled_lab_sites = ww_sampled_lab_sites
         self.ww_sampled_sites = ww_sampled_sites
         self.ww_sampled_times = ww_sampled_times
         self.ww_log_lod = ww_log_lod
+        self.lab_site_to_site_map = lab_site_to_site_map
 
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
@@ -111,9 +119,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         )
 
         self.ar_diff_rt = DifferencedProcess(
-            fundamental_process=ARProcess(
-                noise_rv_name="rtu_weekly_diff_first_diff_ar_process_noise"
-            ),
+            fundamental_process=ARProcess(),
             differencing_order=1,
         )
 
@@ -133,7 +139,10 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 "Either n_datapoints or data_observed_hosp_admissions "
                 "must be passed."
             )
-        elif n_datapoints is not None and data_observed_hospital_admissions is not None:
+        elif (
+            n_datapoints is not None
+            and data_observed_hospital_admissions is not None
+        ):
             raise ValueError(
                 "Cannot pass both n_datapoints and data_observed_hospital_admissions."
             )
@@ -156,6 +165,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         rt_init_rate_of_change = rt_init_rate_of_change_rv()
 
         log_rtu_weekly = self.ar_diff_rt(
+            noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
             n=n_weeks_post_init,
             init_vals=jnp.array(log_r_mu_intercept),
             autoreg=jnp.array(autoreg_rt),
@@ -169,17 +179,25 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         s = get_vl_trajectory(t_peak, viral_peak, dur_shed, self.gt_max)
 
-        # Site-level Rt, to be repeated for each site
-        r_site_t = jnp.zeros((self.n_subpops, n_datapoints))
-        new_i_site_matrix = jnp.zeros(
-            (self.n_subpops, n_datapoints + self.n_initialization_points)
-        )
-        model_log_v_ot = jnp.zeros((self.n_subpops, n_datapoints))
+        with numpyro.plate("n_subpops", self.n_subpops):
+            i_first_obs_over_n_site = jax.nn.sigmoid(
+                transforms.logit(self.i_first_obs_over_n_rv())
+                + self.sigma_i_first_obs_rv() * self.eta_i_first_obs_rv()
+            )
 
-        for i in range(self.n_subpops):
+            initial_exp_growth_rate_site = (
+                self.mean_initial_exp_growth_rate_rv()
+                + self.sigma_initial_exp_growth_rate_rv()
+                * self.eta_initial_exp_growth_rate_rv()
+            )
+
+            log_i0_site = (
+                jnp.log(i_first_obs_over_n_site)
+                - self.unobs_time * initial_exp_growth_rate_site
+            )
+
             autoreg_rt_site = self.autoreg_rt_site_rv()
             sigma_rt = self.sigma_rt_rv()
-
             rtu_site_ar_init_rv = DistributionalVariable(
                 "rtu_site_ar_init",
                 dist.Normal(
@@ -187,110 +205,81 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                     sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_site, 2)),
                 ),
             )
-
-            rtu_site_ar_proc = ARProcess(noise_rv_name="rtu_ar_proc")
-
             rtu_site_ar_init = rtu_site_ar_init_rv()
-            rtu_site_ar_weekly = rtu_site_ar_proc(
-                n=n_weeks_post_init,
-                init_vals=rtu_site_ar_init,
-                autoreg=autoreg_rt_site,
-                noise_sd=sigma_rt,
-            )
 
-            # need some changes here on combining the two vals
-            rtu_site_ar = jnp.repeat(
-                transformation.ExpTransform()(rtu_site_ar_weekly),
-                repeats=7,
-            )[:n_datapoints]
+        rtu_site_ar_proc = ARProcess()
+        rtu_site_ar_weekly = rtu_site_ar_proc(
+            noise_name="rtu_ar_proc",
+            n=n_weeks_post_init,
+            init_vals=rtu_site_ar_init[jnp.newaxis],
+            autoreg=autoreg_rt_site[jnp.newaxis],
+            noise_sd=sigma_rt,
+        )
 
-            rtu_site = (
-                rtu_site_ar + rtu.rt.value
-            )  # this reults in more sensible values but it should be as below?
-            # rtu_site = rtu_site_ar*rtu.rt.value
+        rtu_site = jnp.repeat(
+            jnp.exp(rtu_site_ar_weekly + log_rtu_weekly[:, jnp.newaxis]),
+            repeats=7,
+            axis=0,
+        )[:n_datapoints, :]
 
-            # Site level disease dynamic estimates!
-            i0_over_n = self.i0_over_n_rv()
-            sigma_i0 = self.sigma_i0_rv()
-            eta_i0 = self.eta_i0_rv()
-            initial_growth = self.initial_growth_rv()
-            eta_growth = self.eta_growth_rv()
-            sigma_growth = self.sigma_growth_rv()
+        i0_site_rv = DeterministicVariable("log_i0_site", jnp.exp(log_i0_site))
+        initial_exp_growth_rate_site_rv = DeterministicVariable(
+            "initial_exp_growth_rate_site", initial_exp_growth_rate_site
+        )
 
-            # Calculate infection and adjusted Rt for each sight using site-level i0 `i0_site_over_n` and initialization rate `growth_site`
-            # These are computed as a vector in stan code, but iid implementation is probably better for using numpyro.plate
+        infection_initialization_process = InfectionInitializationProcess(
+            "I0_initialization",
+            i0_site_rv,
+            InitializeInfectionsExponentialGrowth(
+                self.n_initialization_points,
+                initial_exp_growth_rate_site_rv,
+                t_pre_init=self.i0_t_offset,
+            ),
+        )
 
-            #  site level growth rate
-            growth_site = initial_growth + eta_growth * sigma_growth
+        generation_interval_pmf = self.generation_interval_pmf_rv()
+        i0 = infection_initialization_process()
 
-            growth_site_rv = DeterministicVariable(
-                "growth_site_rv", jnp.array(growth_site)
-            )
-
-            # site-level initial per capita infection incidence
-            i0_site_over_n = jax.nn.sigmoid(
-                transforms.logit(i0_over_n) + eta_i0 * sigma_i0
-            )
-
-            i0_site_over_n_rv = DeterministicVariable(
-                "i0_site_over_n_rv", jnp.array(i0_site_over_n)
-            )
-
-            infection_initialization_process = InfectionInitializationProcess(
-                "I0_initialization",
-                i0_site_over_n_rv,
-                InitializeInfectionsExponentialGrowth(
-                    self.n_initialization_points,
-                    growth_site_rv,
-                    t_pre_init=self.i0_t_offset,
-                ),
-                t_unit=1,
-            )
-
-            generation_interval_pmf = self.generation_interval_pmf_rv()
-            i0 = infection_initialization_process()
-
+        with numpyro.plate("n_subpops", self.n_subpops):
             inf_with_feedback_proc_sample = self.inf_with_feedback_proc.sample(
                 Rt=rtu_site,
                 I0=i0,
                 gen_int=generation_interval_pmf,
             )
 
-            new_i_site = jnp.concat(
-                [
-                    i0,
-                    inf_with_feedback_proc_sample.post_initialization_infections.value,
-                ]
-            )
-            r_site_t = r_site_t.at[i, :].set(inf_with_feedback_proc_sample.rt.value)
-            new_i_site_matrix = new_i_site_matrix.at[i, :].set(new_i_site)
-
-            # number of net infected individuals shedding on each day (sum of individuals in dift stages of infection)
-            model_net_i = jnp.convolve(new_i_site, s, mode="valid")[-n_datapoints:]
-
-            log10_g = self.log10_g_rv()
-
-            # expected observed viral genomes/mL at all observed and forecasted times
-            # [n_subpops, ot + ht] model_log_v_ot   aka do it for all subpop
-            model_log_v_ot_site = (
-                jnp.log(10) * log10_g
-                + jnp.log(model_net_i[:(n_datapoints)] + 1e-8)
-                - jnp.log(self.ww_ml_produced_per_day)
-            )
-            model_log_v_ot = model_log_v_ot.at[i, :].set(model_log_v_ot_site)
-
-        state_inf_per_capita = jnp.sum(
-            self.pop_fraction_reshaped * new_i_site_matrix, axis=0
+        new_i_site = jnp.concat(
+            [
+                i0,
+                inf_with_feedback_proc_sample.post_initialization_infections,
+            ]
         )
-        # Hospital admission component
+        r_site_t = inf_with_feedback_proc_sample.rt
 
-        # p_hosp_w is std_normal - weekly random walk for IHR
+        numpyro.deterministic("r_site_t", r_site_t)
+
+        state_inf_per_capita = jnp.sum(self.pop_fraction * new_i_site, axis=1)
+
+        # number of net infected individuals shedding on each day (sum of individuals in dift stages of infection)
+        batch_colvolve_fn = lambda m: jnp.convolve(m, s, mode="valid")
+        model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
+            new_i_site
+        )[-n_datapoints:, :]
+
+        log10_g = self.log10_g_rv()
+
+        # expected observed viral genomes/mL at all observed and forecasted times
+        # [n_subpops, ot + ht] model_log_v_ot   aka do it for all subpop
+        model_log_v_ot = (
+            jnp.log(10) * log10_g
+            + jnp.log(model_net_i[:n_datapoints, :] + 1e-8)
+            - jnp.log(self.ww_ml_produced_per_day)
+        )
+
+        # Hospital admission component
 
         p_hosp_mean = self.p_hosp_mean_rv()
         p_hosp_w_sd = self.p_hosp_w_sd_rv()
         autoreg_p_hosp = self.autoreg_p_hosp_rv()
-
-        p_hosp_ar_proc = ARProcess("p_hosp")
 
         p_hosp_ar_init_rv = DistributionalVariable(
             "p_hosp_ar_init",
@@ -301,8 +290,10 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         )
 
         p_hosp_ar_init = p_hosp_ar_init_rv()
+        p_hosp_ar_proc = ARProcess()
         p_hosp_ar = p_hosp_ar_proc.sample(
-            n=n_weeks,
+            noise_name="p_hosp",
+            n=n_weeks_post_init,
             autoreg=autoreg_p_hosp,
             init_vals=p_hosp_ar_init,
             noise_sd=p_hosp_w_sd,
@@ -337,6 +328,8 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         ww_site_mod_raw = self.ww_site_mod_raw_rv()
         ww_site_mod_sd = self.ww_site_mod_sd_rv()
 
+        # Observations at the site level (genomes/person/day) are:
+        # get a vector of genomes/person/day on the days WW was measured
         # These are the true expected genomes at the site level before observation error
         # (which is at the lab-site level)
         exp_obs_log_v_true = model_log_v_ot[
@@ -348,36 +341,18 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         # LHS log transformed obs genomes per person-day, RHS multiplies the expected observed
         # genomes by the site-specific multiplier at that sampling time
-        exp_obs_log_v = exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
+        exp_obs_log_v = (
+            exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
+        )
 
         sigma_ww_site = jnp.exp(
-            jnp.log(mode_sigma_ww_site) + sd_log_sigma_ww_site * eta_log_sigma_ww_site
+            jnp.log(mode_sigma_ww_site)
+            + sd_log_sigma_ww_site * eta_log_sigma_ww_site
         )
 
         # g = jnp.power(
-        #     log10_g[0].value, 10
+        #     log10_g, 10
         # )  # Estimated genomes shed per infected individual
-
-        log_conc_obs = numpyro.sample(
-            "log_conc_uncensored",
-            dist.Normal(
-                loc=exp_obs_log_v[self.ww_uncensored],
-                scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_uncensored]],
-            ),
-            obs=(
-                data_observed_log_conc[self.ww_uncensored]
-                if data_observed_log_conc is not None
-                else None
-            ),
-        )
-
-        if self.ww_censored.shape[0] != 0:
-            log_cdf_values = dist.Normal(
-                loc=exp_obs_log_v[self.ww_censored],
-                scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_censored]],
-            ).log_cdf(self.ww_log_lod[self.ww_censored])
-
-            numpyro.factor("prob_conc_censored", log_cdf_values.sum())
 
         hospital_admission_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions", concentration_rv=self.phi_rv
@@ -388,4 +363,55 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             obs=data_observed_hospital_admissions,
         )
 
-        return (observed_hospital_admissions, log_conc_obs)
+        log_conc_obs = numpyro.sample(
+            "log_conc_obs",
+            CensoredNormal(
+                loc=exp_obs_log_v,
+                scale=sigma_ww_site[self.ww_sampled_lab_sites],
+                lower_limit=self.ww_log_lod,
+            ),
+            obs=data_observed_log_conc,
+        )
+
+        ww_pred = numpyro.sample(
+            "site_ww_pred",
+            dist.Normal(
+                loc=model_log_v_ot[:, self.lab_site_to_site_map] + ww_site_mod,
+                scale=sigma_ww_site,
+            ),
+        )
+
+        state_model_net_i = jnp.convolve(
+            state_inf_per_capita, s, mode="valid"
+        )[-n_datapoints:]
+        state_log_c = (
+            jnp.log(10) * log10_g
+            + jnp.log(state_model_net_i[:n_datapoints] + 1e-8)
+            - jnp.log(self.ww_ml_produced_per_day)
+        )
+        exp_state_ww_conc = jnp.exp(state_log_c)
+
+        state_rt = (
+            state_inf_per_capita[-n_datapoints:]
+            / jnp.convolve(
+                state_inf_per_capita,
+                jnp.hstack(
+                    (jnp.array([0]), jnp.array(generation_interval_pmf))
+                ),
+                mode="valid",
+            )[-n_datapoints:]
+        )
+
+        numpyro.deterministic("ww_pred", ww_pred)
+        numpyro.deterministic("exp_state_ww_conc", exp_state_ww_conc)
+        numpyro.deterministic("state_rt", state_rt)
+
+        return (
+            latent_hospital_admissions,
+            observed_hospital_admissions,
+            ww_pred,
+            exp_state_ww_conc,
+            state_rt,
+            r_site_t,
+            rtu_site,
+        )
