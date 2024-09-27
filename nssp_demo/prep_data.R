@@ -119,6 +119,7 @@ prep_and_save_data <- function(report_date,
   )
   # could be off by 1
 
+
   # Create folders
   model_folder_name <- glue(paste0(
     "r_{report_date}_",
@@ -152,6 +153,7 @@ walk(
       min_reference_date = "2000-01-01",
       max_reference_date = "3000-01-01",
       last_training_date = "2024-09-15",
+
       state_abb = x
     )
   }
