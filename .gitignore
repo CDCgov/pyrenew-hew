@@ -389,3 +389,5 @@ poetry.lock
 notebooks/*_files/
 notebooks/*.md
 notebooks/*.quarto_ipynb
+
+nssp_demo/private_data/*
