@@ -184,18 +184,19 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             i_first_obs_over_n_site = jax.nn.sigmoid(
                 transforms.logit(self.i_first_obs_over_n_rv())
                 + self.sigma_i_first_obs_rv() * self.eta_i_first_obs_rv()
-            )
+            )  # per capita infection incidence at the first observed time
 
             initial_exp_growth_rate_site = (
                 self.mean_initial_exp_growth_rate_rv()
                 + self.sigma_initial_exp_growth_rate_rv()
                 * self.eta_initial_exp_growth_rate_rv()
-            )
+            )  # site level unobserved period growth rate
 
             log_i0_site = (
                 jnp.log(i_first_obs_over_n_site)
                 - self.unobs_time * initial_exp_growth_rate_site
             )
+            numpyro.deterministic("log_i0_site", log_i0_site)
 
             autoreg_rt_site = self.autoreg_rt_site_rv()
             sigma_rt = self.sigma_rt_rv()

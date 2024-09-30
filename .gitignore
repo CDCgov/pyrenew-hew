@@ -388,3 +388,4 @@ poetry.lock
 
 notebooks/*_files/
 notebooks/*.md
+notebooks/*.quarto_ipynb
