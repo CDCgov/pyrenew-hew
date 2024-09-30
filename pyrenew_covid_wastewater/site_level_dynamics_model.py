@@ -5,6 +5,7 @@ import numpyro.distributions as dist
 import numpyro.distributions.transforms as transforms
 import pyrenew.transformation as transformation
 from pyrenew.arrayutils import tile_until_n
+from pyrenew.convolve import compute_delay_ascertained_incidence
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.distributions import CensoredNormal
 from pyrenew.latent import (
@@ -16,8 +17,6 @@ from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable
-
-from pyrenew.convolve import compute_delay_ascertained_incidence
 
 from pyrenew_covid_wastewater.utils import get_vl_trajectory
 
@@ -87,7 +86,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.i_first_obs_over_n_rv = i_first_obs_over_n_rv
         self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
         self.eta_i_first_obs_rv = eta_i_first_obs_rv
-        self.sigma_initial_exp_growth_rate_rv = sigma_initial_exp_growth_rate_rv
+        self.sigma_initial_exp_growth_rate_rv = (
+            sigma_initial_exp_growth_rate_rv
+        )
         self.eta_initial_exp_growth_rate_rv = eta_initial_exp_growth_rate_rv
         self.mean_initial_exp_growth_rate_rv = mean_initial_exp_growth_rate_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
@@ -139,7 +140,10 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 "Either n_datapoints or data_observed_hosp_admissions "
                 "must be passed."
             )
-        elif n_datapoints is not None and data_observed_hospital_admissions is not None:
+        elif (
+            n_datapoints is not None
+            and data_observed_hospital_admissions is not None
+        ):
             raise ValueError(
                 "Cannot pass both n_datapoints and data_observed_hospital_admissions."
             )
@@ -259,10 +263,12 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("state_inf_per_capita", state_inf_per_capita)
 
         # number of net infected individuals shedding on each day (sum of individuals in dift stages of infection)
-        batch_colvolve_fn = lambda m: jnp.convolve(m, s, mode="valid")
-        model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(new_i_site)[
-            -n_datapoints:, :
-        ]
+        def batch_colvolve_fn(m):
+            return jnp.convolve(m, s, mode="valid")
+
+        model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
+            new_i_site
+        )[-n_datapoints:, :]
         numpyro.deterministic("model_net_i", model_net_i)
 
         log10_g = self.log10_g_rv()
@@ -308,11 +314,13 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         hosp_wday_effect = tile_until_n(hosp_wday_effect_raw, n_datapoints)
 
-        potential_latent_hospital_admissions = compute_delay_ascertained_incidence(
-            p_observed_given_incident=1,
-            latent_incidence=state_inf_per_capita,
-            delay_incidence_to_observation_pmf=inf_to_hosp,
-        )[-n_datapoints:]
+        potential_latent_hospital_admissions = (
+            compute_delay_ascertained_incidence(
+                p_observed_given_incident=1,
+                latent_incidence=state_inf_per_capita,
+                delay_incidence_to_observation_pmf=inf_to_hosp,
+            )[-n_datapoints:]
+        )
 
         latent_hospital_admissions = (
             potential_latent_hospital_admissions
@@ -340,10 +348,13 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         # LHS log transformed obs genomes per person-day, RHS multiplies the expected observed
         # genomes by the site-specific multiplier at that sampling time
-        exp_obs_log_v = exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
+        exp_obs_log_v = (
+            exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
+        )
 
         sigma_ww_site = jnp.exp(
-            jnp.log(mode_sigma_ww_site) + sd_log_sigma_ww_site * eta_log_sigma_ww_site
+            jnp.log(mode_sigma_ww_site)
+            + sd_log_sigma_ww_site * eta_log_sigma_ww_site
         )
 
         # g = jnp.power(
@@ -359,7 +370,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             obs=data_observed_hospital_admissions,
         )
 
-        log_conc_obs = numpyro.sample(
+        numpyro.sample(
             "log_conc_obs",
             CensoredNormal(
                 loc=exp_obs_log_v,
@@ -377,9 +388,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             ),
         )
 
-        state_model_net_i = jnp.convolve(state_inf_per_capita, s, mode="valid")[
-            -n_datapoints:
-        ]
+        state_model_net_i = jnp.convolve(
+            state_inf_per_capita, s, mode="valid"
+        )[-n_datapoints:]
         numpyro.deterministic("state_model_net_i", state_model_net_i)
 
         state_log_c = (
@@ -396,7 +407,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             state_inf_per_capita[-n_datapoints:]
             / jnp.convolve(
                 state_inf_per_capita,
-                jnp.hstack((jnp.array([0]), jnp.array(generation_interval_pmf))),
+                jnp.hstack(
+                    (jnp.array([0]), jnp.array(generation_interval_pmf))
+                ),
                 mode="valid",
             )[-n_datapoints:]
         )
