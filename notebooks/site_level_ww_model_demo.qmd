@@ -329,31 +329,21 @@ my_model = ww_site_level_dynamics_model(
 ```
 
 ```{python}
-with numpyro.handlers.seed(rng_seed=9):
-    test_model_sample = my_model.sample(n_datapoints=50)
+# with numpyro.handlers.seed(rng_seed=242):
+#     test_model_sample = my_model.sample(n_datapoints=50)
 ```
-
 ```{python}
-latent_hospital_admissions = test_model_sample[0]
-observed_hospital_admissions =test_model_sample[1]
-ww_pred = test_model_sample[2]
-exp_state_ww_conc=test_model_sample[3]
-state_rt = test_model_sample[4]
-r_site_t = test_model_sample[5]
-rtu_site = test_model_sample[6]
-state_inf_per_capita = test_model_sample[7]
-```
+n_runs = 10  # Number of times to run the sampling
+base_key = jax.random.PRNGKey(242)
+samples = []
+for i in range(n_runs):
+    key = jax.random.split(base_key, n_runs)[i]
+    with numpyro.handlers.seed(rng_seed=key):
+        sample = my_model.sample(n_datapoints=50)
+        samples.append(sample)
 
-```{python}
-state_rt
-```
-
-```{python}
-observed_hospital_admissions
-```
-
-```{python}
-state_inf_per_capita*state_pop
+# Only samples returned is I0
+print(samples)
 ```
 
 ```{python}

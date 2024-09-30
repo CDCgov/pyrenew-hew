@@ -417,12 +417,14 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("state_rt", state_rt)
 
         return (
-            latent_hospital_admissions,
-            observed_hospital_admissions,
-            ww_pred,
-            exp_state_ww_conc,
-            state_rt,
-            r_site_t,
-            rtu_site,
-            state_inf_per_capita,
+            # latent_hospital_admissions,
+            # observed_hospital_admissions,
+            # ww_pred,
+            # exp_state_ww_conc,
+            # state_rt,
+            # r_site_t,
+            # rtu_site,
+            # state_inf_per_capita,
+            # log_i0_site,
+            i0,
         )
