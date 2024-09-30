@@ -191,6 +191,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 + self.sigma_initial_exp_growth_rate_rv()
                 * self.eta_initial_exp_growth_rate_rv()
             )  # site level unobserved period growth rate
+            numpyro.deterministic(
+                "initial_exp_growth_rate_site", initial_exp_growth_rate_site
+            )
 
             log_i0_site = (
                 jnp.log(i_first_obs_over_n_site)
@@ -329,6 +332,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             * hosp_wday_effect
             * self.state_pop
         )
+        numpyro.deterministic(
+            "latent_hospital_admissions", latent_hospital_admissions
+        )
 
         mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
         sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
@@ -388,6 +394,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 scale=sigma_ww_site,
             ),
         )
+        numpyro.deterministic("ww_pred", ww_pred)
 
         state_model_net_i = jnp.convolve(
             state_inf_per_capita, s, mode="valid"
