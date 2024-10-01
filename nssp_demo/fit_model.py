@@ -75,7 +75,7 @@ right_truncation_pmf_rv = DeterministicVariable(
 )
 
 right_truncation_offset = model_data["right_truncation_offset"]
-n_forecast_points = len(model_data["test_ed_admissions"])
+n_forecast_points = 28
 my_model = hosp_only_ww_model(
     state_pop=state_pop,
     i0_first_obs_n_rv=i0_first_obs_n_rv,
