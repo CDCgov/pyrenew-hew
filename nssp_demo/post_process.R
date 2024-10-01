@@ -107,7 +107,7 @@ make_forecast_fig <- function(model_dir) {
 }
 
 
-base_dir <- here(path(
+base_dir <- path(here(
   "nssp_demo",
   "private_data",
   "r_2024-09-19_f_2024-03-22_l_2024-09-18_t_2024-09-15/"
@@ -135,7 +135,13 @@ pwalk(
 )
 
 str_c(forecast_fig_tbl$figure_path, collapse = " ") %>%
-  str_c(path(base_dir, "all_forecasts", ext = "pdf"), sep = " ") %>%
+  str_c(
+    path(base_dir,
+      glue("{path_file(base_dir)}_all_forecasts"),
+      ext = "pdf"
+    ),
+    sep = " "
+  ) %>%
   system2("pdfunite", args = .)
 
 setdiff(usa::state.abb, path_file(forecast_fig_tbl$base_model_dir))
