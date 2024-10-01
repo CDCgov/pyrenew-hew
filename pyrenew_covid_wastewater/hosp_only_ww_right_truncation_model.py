@@ -41,7 +41,7 @@ class hosp_only_ww_right_truncation_model(Model):  # numpydoc ignore=GL08
             "I0_initialization",
             i0_first_obs_n_rv,
             InitializeInfectionsExponentialGrowth(
-                n_initialization_points, initialization_rate_rv
+                n_initialization_points, initialization_rate_rv, t_pre_init=0
             ),
         )
 
