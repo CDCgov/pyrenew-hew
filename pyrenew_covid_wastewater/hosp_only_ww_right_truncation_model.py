@@ -108,11 +108,10 @@ class hosp_only_ww_right_truncation_model(Model):  # numpydoc ignore=GL08
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
         log_r_mu_intercept = self.log_r_mu_intercept_rv()
-        rt_init_rate_of_change_rv = DistributionalVariable(
+        rt_init_rate_of_change = DistributionalVariable(
             "rt_init_rate_of_change",
             dist.Normal(0, eta_sd / jnp.sqrt(1 - jnp.pow(autoreg_rt, 2))),
-        )
-        rt_init_rate_of_change = rt_init_rate_of_change_rv()
+        )()
 
         log_rtu_weekly = self.ar_diff(
             n=n_weeks_post_init,
