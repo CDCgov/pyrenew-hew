@@ -10,11 +10,7 @@ import numpyro
 from pyrenew.deterministic import DeterministicVariable
 
 import pyrenew_covid_wastewater.plotting as plotting
-
-from pyrenew_covid_wastewater.hosp_only_ww_right_truncation_model import (
-    hosp_only_ww_right_truncation_model,
-)
-
+from pyrenew_covid_wastewater.hosp_only_ww_model import hosp_only_ww_model
 
 n_chains = 4
 numpyro.set_host_device_count(n_chains)
@@ -80,7 +76,7 @@ right_truncation_pmf_rv = DeterministicVariable(
 
 right_truncation_offset = model_data["right_truncation_offset"]
 n_forecast_points = len(model_data["test_ed_admissions"])
-my_model = hosp_only_ww_right_truncation_model(
+my_model = hosp_only_ww_model(
     state_pop=state_pop,
     i0_first_obs_n_rv=i0_first_obs_n_rv,
     initialization_rate_rv=initialization_rate_rv,
@@ -88,16 +84,16 @@ my_model = hosp_only_ww_right_truncation_model(
     autoreg_rt_rv=autoreg_rt_rv,
     eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
     generation_interval_pmf_rv=generation_interval_pmf_rv,
-    infection_feedback_pmf_rv=infection_feedback_pmf_rv,
     infection_feedback_strength_rv=inf_feedback_strength_rv,
+    infection_feedback_pmf_rv=infection_feedback_pmf_rv,
     p_hosp_mean_rv=p_hosp_mean_rv,
     p_hosp_w_sd_rv=p_hosp_w_sd_rv,
     autoreg_p_hosp_rv=autoreg_p_hosp_rv,
     hosp_wday_effect_rv=hosp_wday_effect_rv,
-    phi_rv=phi_rv,
     inf_to_hosp_rv=inf_to_hosp_rv,
+    phi_rv=phi_rv,
     right_truncation_pmf_rv=right_truncation_pmf_rv,
-    n_initialization_points=uot
+    n_initialization_points=uot,
 )
 
 
