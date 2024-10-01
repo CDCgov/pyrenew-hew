@@ -188,36 +188,38 @@ class hosp_only_ww_right_truncation_model(Model):  # numpydoc ignore=GL08
             )[-n_datapoints:]
         )
 
-        if right_truncation_offset is not None:
-            right_truncation_multiplier_tail = jnp.flip(
-                self.right_truncation_cdf_rv()[right_truncation_offset:]
-            )
-            n_points_to_prepend = (
-                n_datapoints - right_truncation_multiplier_tail.shape[0]
-            )
-            right_truncation_multiplier = jnp.pad(
-                right_truncation_multiplier_tail,
-                (n_points_to_prepend, 0),
-                mode="constant",
-                constant_values=(1, 0),
-            )
-        else:
-            right_truncation_multiplier = 1
-
-        latent_hospital_admissions = (
+        latent_hospital_admissions_final = (
             potential_latent_hospital_admissions
             * ihr
             * hosp_wday_effect
             * self.state_pop
-            * right_truncation_multiplier
         )
+
+        if right_truncation_offset is not None:
+            prop_already_reported_tail = jnp.flip(
+                self.right_truncation_cdf_rv()[right_truncation_offset:]
+            )
+            n_points_to_prepend = (
+                n_datapoints - prop_already_reported_tail.shape[0]
+            )
+            prop_already_reported = jnp.pad(
+                prop_already_reported_tail,
+                (n_points_to_prepend, 0),
+                mode="constant",
+                constant_values=(1, 0),
+            )
+            latent_hospital_admissions_now = (
+                latent_hospital_admissions_final * prop_already_reported
+            )
+        else:
+            latent_hospital_admissions_now = latent_hospital_admissions_final
 
         hospital_admission_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions", concentration_rv=self.phi_rv
         )
 
         observed_hospital_admissions = hospital_admission_obs_rv(
-            mu=latent_hospital_admissions,
+            mu=latent_hospital_admissions_now,
             obs=data_observed_hospital_admissions,
         )
 
