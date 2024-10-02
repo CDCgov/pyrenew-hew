@@ -9,8 +9,8 @@ import numpy as np
 import numpyro
 from pyrenew.deterministic import DeterministicVariable
 
-import pyrenew_covid_wastewater.plotting as plotting
-from pyrenew_covid_wastewater.hosp_only_ww_model import hosp_only_ww_model
+import pyrenew_hue.plotting as plotting
+from pyrenew_hue.hosp_only_ww_model import hosp_only_ww_model
 
 n_chains = 4
 numpyro.set_host_device_count(n_chains)
