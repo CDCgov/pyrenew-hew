@@ -149,11 +149,10 @@ walk(
   setdiff(usa::state.abb, "PR"),
   \(x) {
     prep_and_save_data(
-      report_date = "2024-09-19",
+      report_date = "2024-10-01",
       min_reference_date = "2000-01-01",
       max_reference_date = "3000-01-01",
-      last_training_date = "2024-09-15",
-
+      last_training_date = "2024-09-25",
       state_abb = x
     )
   }
