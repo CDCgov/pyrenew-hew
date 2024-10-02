@@ -63,7 +63,7 @@ make_forecast_fig <- function(model_dir) {
     pyrenew_samples$posterior_predictive %>%
     gather_draws(observed_hospital_admissions[time]) %>%
     median_qi(.width = c(0.5, 0.8, 0.95)) %>%
-    mutate(date = dat$date[time + 1])
+    mutate(date = min(dat$date) + time)
 
 
 
@@ -110,7 +110,7 @@ make_forecast_fig <- function(model_dir) {
 base_dir <- path(here(
   "nssp_demo",
   "private_data",
-  "r_2024-09-19_f_2024-03-22_l_2024-09-18_t_2024-09-15/"
+  "r_2024-10-01_f_2024-04-03_l_2024-09-30_t_2024-09-25"
 ))
 
 
