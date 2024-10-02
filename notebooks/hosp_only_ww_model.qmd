@@ -9,8 +9,8 @@ engine: jupyter
 import jax
 import numpyro
 import arviz as az
-import pyrenew_hue.plotting as plotting
-from pyrenew_hue.hosp_only_ww_model import (
+import pyrenew_hew.plotting as plotting
+from pyrenew_hew.hosp_only_ww_model import (
     create_hosp_only_ww_model_from_stan_data,
 )
 

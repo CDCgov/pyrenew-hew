@@ -3,7 +3,7 @@ import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-from pyrenew_hue.utils import convert_to_logmean_log_sd
+from pyrenew_hew.utils import convert_to_logmean_log_sd
 
 # Note: this could be off by an order of magnitude because it has not been
 # updates from the regular hospitalization model.

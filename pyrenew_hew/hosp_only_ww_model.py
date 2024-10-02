@@ -18,7 +18,7 @@ from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-from pyrenew_hue.utils import convert_to_logmean_log_sd
+from pyrenew_hew.utils import convert_to_logmean_log_sd
 
 
 class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
