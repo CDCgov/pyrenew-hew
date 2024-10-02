@@ -9,7 +9,8 @@ library(glue)
 library(jsonlite)
 
 
-prep_data <- function(report_date = today(),
+prep_data <- function(disease = c("COVID-19", "Influenza", "test"),
+                      report_date = today(),
                       min_reference_date = "2000-01-01",
                       max_reference_date = "3000-01-01",
                       last_training_date = max_reference_date,
@@ -18,7 +19,7 @@ prep_data <- function(report_date = today(),
     data_path = here(
       path("nssp_demo", "private_data", report_date, ext = "parquet")
     ),
-    disease = "COVID-19",
+    disease = disease,
     state_abb = state_abb,
     report_date = report_date,
     max_reference_date = max_reference_date,
@@ -55,7 +56,7 @@ prep_data <- function(report_date = today(),
     nnh_estimates %>%
     filter(
       is.na(geo_value),
-      disease == "COVID-19",
+      disease == !!disease,
       parameter == "generation_interval"
     ) %>%
     pull(value) %>%
@@ -66,7 +67,7 @@ prep_data <- function(report_date = today(),
     nnh_estimates %>%
     filter(
       is.na(geo_value),
-      disease == "COVID-19",
+      disease == !!disease,
       parameter == "delay"
     ) %>%
     pull(value) %>%
@@ -76,7 +77,7 @@ prep_data <- function(report_date = today(),
     nnh_estimates %>%
     filter(
       geo_value == state_abb,
-      disease == "COVID-19",
+      disease == !!disease,
       parameter == "right_truncation"
     ) %>%
     pull(value) %>%
@@ -97,13 +98,15 @@ prep_data <- function(report_date = today(),
 }
 
 
-prep_and_save_data <- function(report_date,
+prep_and_save_data <- function(disease,
+                               report_date,
                                min_reference_date,
                                max_reference_date,
                                last_training_date,
                                state_abb) {
   # prep data
   dat <- prep_data(
+    disease = disease,
     report_date = report_date,
     min_reference_date = min_reference_date,
     max_reference_date = max_reference_date,
@@ -122,6 +125,7 @@ prep_and_save_data <- function(report_date,
 
   # Create folders
   model_folder_name <- glue(paste0(
+    "{str_to_lower(disease)}_",
     "r_{report_date}_",
     "f_{actual_first_date}_",
     "l_{actual_last_date}_",
@@ -149,6 +153,7 @@ walk(
   setdiff(usa::state.abb, "PR"),
   \(x) {
     prep_and_save_data(
+      disease = "Influenza",
       report_date = "2024-10-01",
       min_reference_date = "2000-01-01",
       max_reference_date = "3000-01-01",
