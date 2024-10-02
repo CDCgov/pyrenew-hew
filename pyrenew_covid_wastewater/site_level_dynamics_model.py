@@ -187,7 +187,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             dist.Normal(
                 mean_initial_exp_growth_rate, sigma_initial_exp_growth_rate
             ),
-            LocScaleReparam(),
+            reparam=LocScaleReparam(0),
         )
 
         i_first_obs_over_n = self.i_first_obs_over_n_rv()
@@ -199,7 +199,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 dist.Normal(
                     transforms.logit(i_first_obs_over_n), sigma_i_first_obs
                 ),
-                LocScaleReparam(),
+                reparam=LocScaleReparam(0),
             ),
             transforms=transforms.SigmoidTransform(),
         )
