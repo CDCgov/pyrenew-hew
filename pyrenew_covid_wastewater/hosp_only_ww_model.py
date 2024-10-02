@@ -39,16 +39,14 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         hosp_wday_effect_rv,
         inf_to_hosp_rv,
         phi_rv,
+        right_truncation_pmf_rv,  # when unnamed deterministic variables are allowed, we could default this to 1.
         n_initialization_points,
-        i0_t_offset,
     ):  # numpydoc ignore=GL08
         self.infection_initialization_process = InfectionInitializationProcess(
             "I0_initialization",
             i0_first_obs_n_rv,
             InitializeInfectionsExponentialGrowth(
-                n_initialization_points,
-                initialization_rate_rv,
-                t_pre_init=i0_t_offset,
+                n_initialization_points, initialization_rate_rv, t_pre_init=0
             ),
         )
 
@@ -65,6 +63,9 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             differencing_order=1,
         )
 
+        self.right_truncation_cdf_rv = TransformedVariable(
+            "right_truncation_cdf", right_truncation_pmf_rv, jnp.cumsum
+        )
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
         self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
@@ -84,7 +85,10 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         return None
 
     def sample(
-        self, n_datapoints=None, data_observed_hospital_admissions=None
+        self,
+        n_datapoints=None,
+        data_observed_hospital_admissions=None,
+        right_truncation_offset=None,
     ):  # numpydoc ignore=GL08
         if n_datapoints is None and data_observed_hospital_admissions is None:
             raise ValueError(
@@ -109,11 +113,10 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
         log_r_mu_intercept = self.log_r_mu_intercept_rv()
-        rt_init_rate_of_change_rv = DistributionalVariable(
+        rt_init_rate_of_change = DistributionalVariable(
             "rt_init_rate_of_change",
             dist.Normal(0, eta_sd / jnp.sqrt(1 - jnp.pow(autoreg_rt, 2))),
-        )
-        rt_init_rate_of_change = rt_init_rate_of_change_rv()
+        )()
 
         log_rtu_weekly = self.ar_diff(
             n=n_weeks_post_init,
@@ -190,19 +193,38 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             )[-n_datapoints:]
         )
 
-        latent_hospital_admissions = (
+        latent_hospital_admissions_final = (
             potential_latent_hospital_admissions
             * ihr
             * hosp_wday_effect
             * self.state_pop
         )
 
+        if right_truncation_offset is not None:
+            prop_already_reported_tail = jnp.flip(
+                self.right_truncation_cdf_rv()[right_truncation_offset:]
+            )
+            n_points_to_prepend = (
+                n_datapoints - prop_already_reported_tail.shape[0]
+            )
+            prop_already_reported = jnp.pad(
+                prop_already_reported_tail,
+                (n_points_to_prepend, 0),
+                mode="constant",
+                constant_values=(1, 0),
+            )
+            latent_hospital_admissions_now = (
+                latent_hospital_admissions_final * prop_already_reported
+            )
+        else:
+            latent_hospital_admissions_now = latent_hospital_admissions_final
+
         hospital_admission_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions", concentration_rv=self.phi_rv
         )
 
         observed_hospital_admissions = hospital_admission_obs_rv(
-            mu=latent_hospital_admissions,
+            mu=latent_hospital_admissions_now,
             obs=data_observed_hospital_admissions,
         )
 
@@ -339,7 +361,9 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     state_pop = stan_data["state_pop"]
 
     data_observed_hospital_admissions = jnp.array(stan_data["hosp"])
-
+    right_truncation_pmf_rv = DeterministicVariable(
+        "right_truncation_pmf", jnp.array(1)
+    )
     my_model = hosp_only_ww_model(
         state_pop=state_pop,
         i0_first_obs_n_rv=i0_first_obs_n_rv,
@@ -354,10 +378,10 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
         p_hosp_w_sd_rv=p_hosp_w_sd_rv,
         autoreg_p_hosp_rv=autoreg_p_hosp_rv,
         hosp_wday_effect_rv=hosp_wday_effect_rv,
-        phi_rv=phi_rv,
         inf_to_hosp_rv=inf_to_hosp_rv,
+        phi_rv=phi_rv,
+        right_truncation_pmf_rv=right_truncation_pmf_rv,
         n_initialization_points=uot,
-        i0_t_offset=0,
     )
 
     return my_model, data_observed_hospital_admissions

@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Base directory containing subdirectories
-BASE_DIR="private_data/r_2024-09-10_f_2024-03-13_l_2024-09-09_t_2024-08-14/"
+
+BASE_DIR="private_data/r_2024-10-01_f_2024-04-03_l_2024-09-30_t_2024-09-25/"
+
 
 # Iterate over each subdirectory in the base directory
 for SUBDIR in "$BASE_DIR"/*/; do

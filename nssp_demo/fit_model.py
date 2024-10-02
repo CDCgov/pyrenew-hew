@@ -69,8 +69,13 @@ data_observed_hospital_admissions = jnp.array(
     model_data["data_observed_hospital_admissions"]
 )
 state_pop = jnp.array(model_data["state_pop"])
-n_forecast_points = len(model_data["test_ed_admissions"])
 
+right_truncation_pmf_rv = DeterministicVariable(
+    "right_truncation_pmf", jnp.array(model_data["right_truncation_pmf"])
+)
+
+right_truncation_offset = model_data["right_truncation_offset"]
+n_forecast_points = 28
 my_model = hosp_only_ww_model(
     state_pop=state_pop,
     i0_first_obs_n_rv=i0_first_obs_n_rv,
@@ -79,16 +84,16 @@ my_model = hosp_only_ww_model(
     autoreg_rt_rv=autoreg_rt_rv,
     eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
     generation_interval_pmf_rv=generation_interval_pmf_rv,
-    infection_feedback_pmf_rv=infection_feedback_pmf_rv,
     infection_feedback_strength_rv=inf_feedback_strength_rv,
+    infection_feedback_pmf_rv=infection_feedback_pmf_rv,
     p_hosp_mean_rv=p_hosp_mean_rv,
     p_hosp_w_sd_rv=p_hosp_w_sd_rv,
     autoreg_p_hosp_rv=autoreg_p_hosp_rv,
     hosp_wday_effect_rv=hosp_wday_effect_rv,
-    phi_rv=phi_rv,
     inf_to_hosp_rv=inf_to_hosp_rv,
+    phi_rv=phi_rv,
+    right_truncation_pmf_rv=right_truncation_pmf_rv,
     n_initialization_points=uot,
-    i0_t_offset=0,
 )
 
 
@@ -97,6 +102,7 @@ my_model.run(
     num_samples=500,
     rng_key=jax.random.key(200),
     data_observed_hospital_admissions=data_observed_hospital_admissions,
+    right_truncation_offset=right_truncation_offset,
     mcmc_args=dict(num_chains=n_chains, progress_bar=True),
     nuts_args=dict(find_heuristic_step_size=True),
 )
@@ -125,7 +131,6 @@ chains_to_keep = np.arange(n_chains)[
 # would like to not have to run this
 
 idata = idata.sel(chain=chains_to_keep)
-
 
 plotting.plot_predictive(idata)
 

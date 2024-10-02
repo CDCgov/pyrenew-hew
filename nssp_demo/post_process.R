@@ -63,7 +63,7 @@ make_forecast_fig <- function(model_dir) {
     pyrenew_samples$posterior_predictive %>%
     gather_draws(observed_hospital_admissions[time]) %>%
     median_qi(.width = c(0.5, 0.8, 0.95)) %>%
-    mutate(date = dat$date[time + 1])
+    mutate(date = min(dat$date) + time)
 
 
 
@@ -106,11 +106,13 @@ make_forecast_fig <- function(model_dir) {
   forecast_plot
 }
 
-base_dir <- path(
+
+base_dir <- path(here(
   "nssp_demo",
   "private_data",
-  "r_2024-09-10_f_2024-03-13_l_2024-09-09_t_2024-08-14"
-)
+  "r_2024-10-01_f_2024-04-03_l_2024-09-30_t_2024-09-25"
+))
+
 
 forecast_fig_tbl <-
   tibble(base_model_dir = dir_ls(base_dir)) %>%
@@ -133,7 +135,13 @@ pwalk(
 )
 
 str_c(forecast_fig_tbl$figure_path, collapse = " ") %>%
-  str_c(path(base_dir, "all_forecasts", ext = "pdf"), sep = " ") %>%
+  str_c(
+    path(base_dir,
+      glue("{path_file(base_dir)}_all_forecasts"),
+      ext = "pdf"
+    ),
+    sep = " "
+  ) %>%
   system2("pdfunite", args = .)
 
 setdiff(usa::state.abb, path_file(forecast_fig_tbl$base_model_dir))
