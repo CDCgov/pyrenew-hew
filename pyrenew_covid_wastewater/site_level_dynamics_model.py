@@ -4,6 +4,7 @@ import numpyro
 import numpyro.distributions as dist
 import numpyro.distributions.transforms as transforms
 import pyrenew.transformation as transformation
+from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
 from pyrenew.deterministic import DeterministicVariable
@@ -16,7 +17,7 @@ from pyrenew.latent import (
 from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
-from pyrenew.randomvariable import DistributionalVariable
+from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 from pyrenew_covid_wastewater.utils import get_vl_trajectory
 
@@ -41,9 +42,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         sigma_rt_rv,
         i_first_obs_over_n_rv,
         sigma_i_first_obs_rv,
-        eta_i_first_obs_rv,
         sigma_initial_exp_growth_rate_rv,
-        eta_initial_exp_growth_rate_rv,
         mean_initial_exp_growth_rate_rv,
         generation_interval_pmf_rv,
         infection_feedback_strength_rv,
@@ -87,11 +86,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.sigma_rt_rv = sigma_rt_rv
         self.i_first_obs_over_n_rv = i_first_obs_over_n_rv
         self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
-        self.eta_i_first_obs_rv = eta_i_first_obs_rv
         self.sigma_initial_exp_growth_rate_rv = (
             sigma_initial_exp_growth_rate_rv
         )
-        self.eta_initial_exp_growth_rate_rv = eta_initial_exp_growth_rate_rv
         self.mean_initial_exp_growth_rate_rv = mean_initial_exp_growth_rate_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
         self.p_hosp_mean_rv = p_hosp_mean_rv
@@ -183,30 +180,33 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         s = get_vl_trajectory(t_peak, viral_peak, dur_shed, self.gt_max)
 
-        with numpyro.plate("n_subpops", self.n_subpops):
-            eta_i_first_obs = self.eta_i_first_obs_rv()
-            eta_initial_exp_growth_rate = self.eta_initial_exp_growth_rate_rv()
-
-        i_first_obs_over_n_site = jax.nn.sigmoid(
-            transforms.logit(self.i_first_obs_over_n_rv())
-            + self.sigma_i_first_obs_rv() * eta_i_first_obs
-        )  # per capita infection incidence at the first observed time
-        numpyro.deterministic(
-            "i_first_obs_over_n_site", i_first_obs_over_n_site
-        )
-
-        initial_exp_growth_rate_site = jnp.clip(
-            (
-                self.mean_initial_exp_growth_rate_rv()
-                + self.sigma_initial_exp_growth_rate_rv()
-                * eta_initial_exp_growth_rate
+        mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
+        sigma_initial_exp_growth_rate = self.sigma_initial_exp_growth_rate_rv()
+        initial_exp_growth_rate_site_rv = DistributionalVariable(
+            "initial_exp_growth_rate_site",
+            dist.Normal(
+                mean_initial_exp_growth_rate, sigma_initial_exp_growth_rate
             ),
-            a_min=-0.005,
-            a_max=0.005,
-        )  # site level unobserved period growth rate
-        numpyro.deterministic(
-            "initial_exp_growth_rate_site", initial_exp_growth_rate_site
+            reparam=LocScaleReparam(0),
         )
+
+        i_first_obs_over_n = self.i_first_obs_over_n_rv()
+        sigma_i_first_obs = self.sigma_i_first_obs_rv()
+        i_first_obs_over_n_site_rv = TransformedVariable(
+            "i_first_obs_over_n_site",
+            DistributionalVariable(
+                "i_first_obs_over_n_site_raw",
+                dist.Normal(
+                    transforms.logit(i_first_obs_over_n), sigma_i_first_obs
+                ),
+                reparam=LocScaleReparam(0),
+            ),
+            transforms=transforms.SigmoidTransform(),
+        )
+
+        with numpyro.plate("n_subpops", self.n_subpops):
+            initial_exp_growth_rate_site = initial_exp_growth_rate_site_rv()
+            i_first_obs_over_n_site = i_first_obs_over_n_site_rv()
 
         log_i0_site = (
             jnp.log(i_first_obs_over_n_site)
