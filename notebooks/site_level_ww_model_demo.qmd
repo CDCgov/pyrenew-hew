@@ -160,14 +160,6 @@ sigma_i_first_obs_rv = DistributionalVariable(
         )
 )
 
-eta_i_first_obs_rv = DistributionalVariable(
-    "eta_i_first_obs", dist.Normal(0,1)
-)
-
-eta_initial_exp_growth_rate_rv = DistributionalVariable(
-    "eta_initial_exp_growth_rate", dist.Normal(0,1)
-)
-
 sigma_initial_exp_growth_rate_prior_mode = stan_data["sigma_initial_exp_growth_rate_prior_mode"]
 sigma_initial_exp_growth_rate_prior_sd = stan_data["sigma_initial_exp_growth_rate_prior_sd"]
 sigma_initial_exp_growth_rate_rv = DistributionalVariable(
@@ -292,9 +284,7 @@ my_model = ww_site_level_dynamics_model(
     sigma_rt_rv,
     i_first_obs_over_n_rv,
     sigma_i_first_obs_rv,
-    eta_i_first_obs_rv,
     sigma_initial_exp_growth_rate_rv,
-    eta_initial_exp_growth_rate_rv,
     mean_initial_exp_growth_rate_rv,
     generation_interval_pmf_rv,
     infection_feedback_strength_rv,
@@ -338,20 +328,8 @@ with numpyro.handlers.seed(rng_seed=242):
 ```
 
 ```{python}
-from numpyro.infer.initialization import init_to_sample
-my_model.run(
-    num_warmup=100,
-    num_samples=100,
-    rng_key=jax.random.key(223),
-    data_observed_hospital_admissions=data_observed_hospital_admissions,
-    data_observed_log_conc=data_observed_log_conc,
-    mcmc_args=dict(num_chains=1),
-    nuts_args=dict(init_strategy=init_to_sample)
-)
-```
-
-```{python}
-with numpyro.handlers.trace() as tr:
+try:
+    from numpyro.infer.initialization import init_to_sample
     my_model.run(
         num_warmup=100,
         num_samples=100,
@@ -361,6 +339,24 @@ with numpyro.handlers.trace() as tr:
         mcmc_args=dict(num_chains=1),
         nuts_args=dict(init_strategy=init_to_sample)
     )
+except RuntimeError as e:
+    print(f"RuntimeError occurred: {e}")
+```
+
+```{python}
+try:
+    with numpyro.handlers.trace() as tr:
+        my_model.run(
+            num_warmup=100,
+            num_samples=100,
+            rng_key=jax.random.key(223),
+            data_observed_hospital_admissions=data_observed_hospital_admissions,
+            data_observed_log_conc=data_observed_log_conc,
+            mcmc_args=dict(num_chains=1),
+            nuts_args=dict(init_strategy=init_to_sample)
+        )
+except AssertionError as e:
+    print(f"AssertionError occurred: {e}")
 ```
 
 ```{python}
