@@ -178,12 +178,6 @@ sigma_initial_exp_growth_rate_rv = DistributionalVariable(
 
 mean_initial_exp_growth_rate_prior_mean = stan_data["mean_initial_exp_growth_rate_prior_mean"]
 mean_initial_exp_growth_rate_prior_sd = stan_data["mean_initial_exp_growth_rate_prior_sd"]
-# mean_initial_exp_growth_rate_rv = DistributionalVariable(
-#     "mean_initial_exp_growth_rate", dist.Normal(
-#         mean_initial_exp_growth_rate_prior_mean, mean_initial_exp_growth_rate_prior_sd
-#     )
-# )
-
 #stan code uses normal distribution but hosp_only model uses TruncatedNormal
 mean_initial_exp_growth_rate_rv = DistributionalVariable(
     "mean_initial_exp_growth_rate", dist.TruncatedNormal(
@@ -266,11 +260,11 @@ sd_log_sigma_ww_site_rv = DistributionalVariable(
 )
 
 eta_log_sigma_ww_site_rv = DistributionalVariable(
-    "eta_log_sigma_ww_site", dist.Normal(0,1).expand([n_ww_lab_sites])
+    "eta_log_sigma_ww_site", dist.Normal(0,1)
 )
 
 ww_site_mod_raw_rv = DistributionalVariable(
-    "ww_site_mod_raw", dist.Normal(0,1).expand([n_ww_lab_sites])
+    "ww_site_mod_raw", dist.Normal(0,1)
 )
 
 ww_site_mod_sd_sd = stan_data["ww_site_mod_sd_sd"]
@@ -283,6 +277,7 @@ ww_site_mod_sd_rv = DistributionalVariable(
 my_model = ww_site_level_dynamics_model(
     state_pop,
     n_subpops,
+    n_ww_lab_sites,
     unobs_time,
     n_initialization_points,
     gt_max,
@@ -329,21 +324,8 @@ my_model = ww_site_level_dynamics_model(
 ```
 
 ```{python}
-# with numpyro.handlers.seed(rng_seed=242):
-#     test_model_sample = my_model.sample(n_datapoints=50)
-```
-```{python}
-n_runs = 10  # Number of times to run the sampling
-base_key = jax.random.PRNGKey(242)
-samples = []
-for i in range(n_runs):
-    key = jax.random.split(base_key, n_runs)[i]
-    with numpyro.handlers.seed(rng_seed=key):
-        sample = my_model.sample(n_datapoints=50)
-        samples.append(sample)
-
-# Only samples returned is I0
-print(samples)
+with numpyro.handlers.seed(rng_seed=242):
+    test_model_sample = my_model.sample(n_datapoints=50)
 ```
 
 ```{python}
@@ -356,32 +338,33 @@ print(samples)
 ```
 
 ```{python}
+from numpyro.infer.initialization import init_to_sample
 my_model.run(
-    num_warmup=1000,
-    num_samples=500,
-    rng_key=jax.random.key(10),
+    num_warmup=100,
+    num_samples=100,
+    rng_key=jax.random.key(223),
     data_observed_hospital_admissions=data_observed_hospital_admissions,
     data_observed_log_conc=data_observed_log_conc,
-    mcmc_args=dict(num_chains=2, progress_bar=False),
+    mcmc_args=dict(num_chains=1),
+    nuts_args=dict(init_strategy=init_to_sample)
 )
 ```
 
 ```{python}
-import arviz as az
-
-idata = az.from_numpyro(
-    my_model.mcmc
-)
+with numpyro.handlers.trace() as tr:
+    my_model.run(
+        num_warmup=100,
+        num_samples=100,
+        rng_key=jax.random.key(223),
+        data_observed_hospital_admissions=data_observed_hospital_admissions,
+        data_observed_log_conc=data_observed_log_conc,
+        mcmc_args=dict(num_chains=1),
+        nuts_args=dict(init_strategy=init_to_sample)
+    )
 ```
 
 ```{python}
-idata.posterior.r_site_t
-```
-
-```{python}
-idata.posterior.log_i0_site
-```
-
-```{python}
-#summary = az.summary(idata)
+# Print trace of the random variables
+for site in tr.values():
+    print(site['name'], site['value'])
 ```

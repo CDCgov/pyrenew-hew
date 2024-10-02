@@ -26,6 +26,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self,
         state_pop,
         n_subpops,
+        n_ww_lab_sites,
         unobs_time,
         n_initialization_points,
         gt_max,
@@ -71,6 +72,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
     ):  # numpydoc ignore=GL08
         self.state_pop = state_pop
         self.n_subpops = n_subpops
+        self.n_ww_lab_sites = n_ww_lab_sites
         self.unobs_time = unobs_time
         self.n_initialization_points = n_initialization_points
         self.gt_max = gt_max
@@ -173,6 +175,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             noise_sd=jnp.array(eta_sd),
             fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
         )
+        numpyro.deterministic("log_rtu_weekly", log_rtu_weekly)
 
         t_peak = self.t_peak_rv()
         viral_peak = self.viral_peak_rv()
@@ -181,35 +184,46 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         s = get_vl_trajectory(t_peak, viral_peak, dur_shed, self.gt_max)
 
         with numpyro.plate("n_subpops", self.n_subpops):
-            i_first_obs_over_n_site = jax.nn.sigmoid(
-                transforms.logit(self.i_first_obs_over_n_rv())
-                + self.sigma_i_first_obs_rv() * self.eta_i_first_obs_rv()
-            )  # per capita infection incidence at the first observed time
+            eta_i_first_obs = self.eta_i_first_obs_rv()
+            eta_initial_exp_growth_rate = self.eta_initial_exp_growth_rate_rv()
 
-            initial_exp_growth_rate_site = (
+        i_first_obs_over_n_site = jax.nn.sigmoid(
+            transforms.logit(self.i_first_obs_over_n_rv())
+            + self.sigma_i_first_obs_rv() * eta_i_first_obs
+        )  # per capita infection incidence at the first observed time
+        numpyro.deterministic(
+            "i_first_obs_over_n_site", i_first_obs_over_n_site
+        )
+
+        initial_exp_growth_rate_site = jnp.clip(
+            (
                 self.mean_initial_exp_growth_rate_rv()
                 + self.sigma_initial_exp_growth_rate_rv()
-                * self.eta_initial_exp_growth_rate_rv()
-            )  # site level unobserved period growth rate
-            numpyro.deterministic(
-                "initial_exp_growth_rate_site", initial_exp_growth_rate_site
-            )
+                * eta_initial_exp_growth_rate
+            ),
+            a_min=-0.005,
+            a_max=0.005,
+        )  # site level unobserved period growth rate
+        numpyro.deterministic(
+            "initial_exp_growth_rate_site", initial_exp_growth_rate_site
+        )
 
-            log_i0_site = (
-                jnp.log(i_first_obs_over_n_site)
-                - self.unobs_time * initial_exp_growth_rate_site
-            )
-            numpyro.deterministic("log_i0_site", log_i0_site)
+        log_i0_site = (
+            jnp.log(i_first_obs_over_n_site)
+            - self.unobs_time * initial_exp_growth_rate_site
+        )
+        numpyro.deterministic("log_i0_site", log_i0_site)
 
-            autoreg_rt_site = self.autoreg_rt_site_rv()
-            sigma_rt = self.sigma_rt_rv()
-            rtu_site_ar_init_rv = DistributionalVariable(
-                "rtu_site_ar_init",
-                dist.Normal(
-                    0,
-                    sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_site, 2)),
-                ),
-            )
+        autoreg_rt_site = self.autoreg_rt_site_rv()
+        sigma_rt = self.sigma_rt_rv()
+        rtu_site_ar_init_rv = DistributionalVariable(
+            "rtu_site_ar_init",
+            dist.Normal(
+                0,
+                sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_site, 2)),
+            ),
+        )
+        with numpyro.plate("n_subpops", self.n_subpops):
             rtu_site_ar_init = rtu_site_ar_init_rv()
 
         rtu_site_ar_proc = ARProcess()
@@ -220,6 +234,8 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             autoreg=autoreg_rt_site[jnp.newaxis],
             noise_sd=sigma_rt,
         )
+
+        numpyro.deterministic("rtu_site_ar_weekly", rtu_site_ar_weekly)
 
         rtu_site = jnp.repeat(
             jnp.exp(rtu_site_ar_weekly + log_rtu_weekly[:, jnp.newaxis]),
@@ -246,6 +262,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         generation_interval_pmf = self.generation_interval_pmf_rv()
         i0 = infection_initialization_process()
+        numpyro.deterministic("i0", i0)
 
         with numpyro.plate("n_subpops", self.n_subpops):
             inf_with_feedback_proc_sample = self.inf_with_feedback_proc.sample(
@@ -301,7 +318,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         p_hosp_ar_init = p_hosp_ar_init_rv()
         p_hosp_ar_proc = ARProcess()
         p_hosp_ar = p_hosp_ar_proc.sample(
-            noise_name="p_hosp",
+            noise_name="p_hosp_noise",
             n=n_weeks_post_init,
             autoreg=autoreg_p_hosp,
             init_vals=p_hosp_ar_init,
@@ -312,6 +329,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             transformation.SigmoidTransform()(p_hosp_ar + p_hosp_mean),
             repeats=7,
         )[:n_datapoints]
+        numpyro.deterministic("ihr", ihr)
 
         hosp_wday_effect_raw = self.hosp_wday_effect_rv()
         inf_to_hosp = self.inf_to_hosp_rv()
@@ -338,8 +356,10 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
         sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
-        eta_log_sigma_ww_site = self.eta_log_sigma_ww_site_rv()
-        ww_site_mod_raw = self.ww_site_mod_raw_rv()
+
+        with numpyro.plate("n_ww_lab_sites", self.n_ww_lab_sites):
+            eta_log_sigma_ww_site = self.eta_log_sigma_ww_site_rv()
+            ww_site_mod_raw = self.ww_site_mod_raw_rv()
         ww_site_mod_sd = self.ww_site_mod_sd_rv()
 
         # Observations at the site level (genomes/person/day) are:
@@ -394,7 +414,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 scale=sigma_ww_site,
             ),
         )
-        numpyro.deterministic("ww_pred", ww_pred)
 
         state_model_net_i = jnp.convolve(
             state_inf_per_capita, s, mode="valid"
@@ -423,15 +442,4 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         )
         numpyro.deterministic("state_rt", state_rt)
 
-        return (
-            # latent_hospital_admissions,
-            # observed_hospital_admissions,
-            # ww_pred,
-            # exp_state_ww_conc,
-            # state_rt,
-            # r_site_t,
-            # rtu_site,
-            # state_inf_per_capita,
-            # log_i0_site,
-            i0,
-        )
+        return latent_hospital_admissions
