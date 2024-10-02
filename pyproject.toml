@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "pyrenew-covid-wastewater"
+name = "pyrenew-hew"
 version = "0.1.0"
 description = ""
 authors = ["Damon Bayer <xum8@cdc.gov>"]
