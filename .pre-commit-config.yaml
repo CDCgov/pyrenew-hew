@@ -1,39 +1,39 @@
 repos:
-#####
-# Basic file cleanliness
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  #####
+  # Basic file cleanliness
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-    -   id: check-added-large-files
-    -   id: check-yaml
-    -   id: check-toml
-    -   id: end-of-file-fixer
-    -   id: mixed-line-ending
-    -   id: trailing-whitespace
-#####
-# Python
+      - id: check-added-large-files
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  #####
+  # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.8
     hooks:
       # Sort imports
       - id: ruff
-        args: ['check', '--select', 'I', '--fix']
-      # Run the linter
+        args: ["check", "--select", "I", "--fix"]
+        # Run the linter
       - id: ruff
-      # Run the formatter
+        # Run the formatter
       - id: ruff-format
-        args: ['--line-length', '79']
-#####
-# R
--   repo: https://github.com/lorenzwalthert/precommit
+        args: ["--line-length", "79"]
+  #####
+  # R
+  - repo: https://github.com/lorenzwalthert/precommit
     rev: v0.4.3
     hooks:
-    -   id: style-files
-    -   id: lintr
-# Secrets
--   repo: https://github.com/Yelp/detect-secrets
+      - id: style-files
+      - id: lintr
+  # Secrets
+  - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:
-    -   id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
         exclude: package.lock.json
