@@ -18,13 +18,17 @@ library(jsonlite)
 library(scales)
 library(here)
 ci_width <- c(0.5, 0.8, 0.95)
+
+distribution_split <- function(x) {
+  split(select(x, -distribution), f = as.factor(x$distribution))
+}
 ```
 
 ## Load Data
 
 ```{r}
-hosp_data <- tibble(.value = here(path("notebooks",
-  "data", "fit_hosp_only", "stan_data",
+hosp_data <- tibble(.value = here(path("notebooks", "data", "fit_hosp_only",
+  "stan_data",
   ext = "json"
 )) |>
   jsonlite::read_json() |>
@@ -33,7 +37,9 @@ hosp_data <- tibble(.value = here(path("notebooks",
   mutate(time = row_number())
 
 stan_files <-
-  dir_ls(here(path("notebooks", "data", "fit_hosp_only")), glob = "*wwinference*") |>
+  dir_ls(here(path("notebooks", "data", "fit_hosp_only")),
+    glob = "*wwinference*"
+  ) |>
   enframe(name = NULL, value = "file_path") |>
   mutate(file_details = path_ext_remove(path_file(file_path))) |>
   separate_wider_delim(file_details,
@@ -45,12 +51,14 @@ stan_files <-
   pull(file_path)
 
 
-stan_tidy_draws <- read_cmdstan_csv(stan_files)$post_warmup_draws |> tidy_draws()
+stan_tidy_draws <- read_cmdstan_csv(stan_files)$post_warmup_draws |>
+  tidy_draws()
 
-pyrenew_tidy_draws <- read_csv(here(path("notebooks",
-  "data", "fit_hosp_only", "pyrenew_inference_data",
-  ext = "csv"
-))) |>
+pyrenew_tidy_draws <-
+  read_csv(here(path("notebooks", "data", "fit_hosp_only",
+    "pyrenew_inference_data",
+    ext = "csv"
+  ))) |>
   rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
   rename(
     .chain = chain,
@@ -65,9 +73,7 @@ pyrenew_tidy_draws <- read_csv(here(path("notebooks",
     names_sep = ", ",
     names_to = c("distribution", "name")
   ) |>
-  {
-    \(x) split(x |> select(-distribution), f = as.factor(x$distribution))
-  }() |>
+  distribution_split() |>
   map(\(x) pivot_wider(x, names_from = name) |> tidy_draws())
 ```
 
