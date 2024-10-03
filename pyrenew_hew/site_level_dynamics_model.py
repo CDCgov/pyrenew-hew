@@ -19,7 +19,7 @@ from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-from pyrenew_covid_wastewater.utils import get_vl_trajectory
+from pyrenew_hew.utils import get_vl_trajectory
 
 
 class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
@@ -178,12 +178,17 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
         sigma_initial_exp_growth_rate = self.sigma_initial_exp_growth_rate_rv()
-        initial_exp_growth_rate_site_rv = DistributionalVariable(
-            "initial_exp_growth_rate_site",
-            dist.Normal(
-                mean_initial_exp_growth_rate, sigma_initial_exp_growth_rate
+        initial_exp_growth_rate_site_rv = TransformedVariable(
+            "clipped_initial_exp_growth_rate_site",
+            DistributionalVariable(
+                "initial_exp_growth_rate_site_raw",
+                dist.Normal(
+                    mean_initial_exp_growth_rate,
+                    sigma_initial_exp_growth_rate,
+                ),
+                reparam=LocScaleReparam(0),
             ),
-            reparam=LocScaleReparam(0),
+            transforms=lambda x: jnp.clip(x, -0.01, 0.01),
         )
 
         i_first_obs_over_n = self.i_first_obs_over_n_rv()
@@ -203,6 +208,10 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         with numpyro.plate("n_subpops", self.n_subpops):
             initial_exp_growth_rate_site = initial_exp_growth_rate_site_rv()
             i_first_obs_over_n_site = i_first_obs_over_n_site_rv()
+
+        numpyro.deterministic(
+            "initial_exp_growth_rate_site", initial_exp_growth_rate_site
+        )
 
         log_i0_site = (
             jnp.log(i_first_obs_over_n_site)
