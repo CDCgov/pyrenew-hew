@@ -251,14 +251,6 @@ sd_log_sigma_ww_site_rv = DistributionalVariable(
     "sd_log_sigma_ww_site", dist.TruncatedNormal(sd_log_sigma_ww_site_prior_mode, sd_log_sigma_ww_site_prior_sd,low=0)
 )
 
-eta_log_sigma_ww_site_rv = DistributionalVariable(
-    "eta_log_sigma_ww_site", dist.Normal(0,1)
-)
-
-ww_site_mod_raw_rv = DistributionalVariable(
-    "ww_site_mod_raw", dist.Normal(0,1)
-)
-
 ww_site_mod_sd_sd = stan_data["ww_site_mod_sd_sd"]
 ww_site_mod_sd_rv = DistributionalVariable(
     "ww_site_mod_sd", dist.TruncatedNormal(0,ww_site_mod_sd_sd,low=0)
@@ -297,8 +289,6 @@ my_model = ww_site_level_dynamics_model(
     log10_g_rv,
     mode_sigma_ww_site_rv,
     sd_log_sigma_ww_site_rv,
-    eta_log_sigma_ww_site_rv,
-    ww_site_mod_raw_rv,
     ww_site_mod_sd_rv,
     phi_rv,
     ww_ml_produced_per_day,

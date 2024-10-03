@@ -55,8 +55,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         log10_g_rv,
         mode_sigma_ww_site_rv,
         sd_log_sigma_ww_site_rv,
-        eta_log_sigma_ww_site_rv,
-        ww_site_mod_raw_rv,
         ww_site_mod_sd_rv,
         phi_rv,
         ww_ml_produced_per_day,
@@ -99,8 +97,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.log10_g_rv = log10_g_rv
         self.mode_sigma_ww_site_rv = mode_sigma_ww_site_rv
         self.sd_log_sigma_ww_site_rv = sd_log_sigma_ww_site_rv
-        self.eta_log_sigma_ww_site_rv = eta_log_sigma_ww_site_rv
-        self.ww_site_mod_raw_rv = ww_site_mod_raw_rv
         self.ww_site_mod_sd_rv = ww_site_mod_sd_rv
         self.phi_rv = phi_rv
         self.ww_ml_produced_per_day = ww_ml_produced_per_day
@@ -283,7 +279,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         state_inf_per_capita = jnp.sum(self.pop_fraction * new_i_site, axis=1)
         numpyro.deterministic("state_inf_per_capita", state_inf_per_capita)
 
-        # number of net infected individuals shedding on each day (sum of individuals in dift stages of infection)
+        # number of net infected individuals shedding on each day (sum of individuals in diff stages of infection)
         def batch_colvolve_fn(m):
             return jnp.convolve(m, s, mode="valid")
 
@@ -356,11 +352,27 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
         sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
+        ww_site_mod_sd = self.ww_site_mod_sd_rv()
+
+        ww_site_mod_rv = DistributionalVariable(
+            "ww_site_mod",
+            dist.Normal(0, ww_site_mod_sd),
+            reparam=LocScaleReparam(0),
+        )  # lab-site specific variation
+
+        sigma_ww_site_rv = TransformedVariable(
+            "sigma_ww_site",
+            DistributionalVariable(
+                "log_sigma_ww_site",
+                dist.Normal(jnp.log(mode_sigma_ww_site), sd_log_sigma_ww_site),
+                reparam=LocScaleReparam(0),
+            ),
+            transforms=transforms.ExpTransform(),
+        )
 
         with numpyro.plate("n_ww_lab_sites", self.n_ww_lab_sites):
-            eta_log_sigma_ww_site = self.eta_log_sigma_ww_site_rv()
-            ww_site_mod_raw = self.ww_site_mod_raw_rv()
-        ww_site_mod_sd = self.ww_site_mod_sd_rv()
+            ww_site_mod = ww_site_mod_rv()
+            sigma_ww_site = sigma_ww_site_rv()
 
         # Observations at the site level (genomes/person/day) are:
         # get a vector of genomes/person/day on the days WW was measured
@@ -370,23 +382,11 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             self.ww_sampled_sites, self.ww_sampled_times
         ]
 
-        # modify by lab-site specific variation (multiplier!)
-        ww_site_mod = ww_site_mod_raw * ww_site_mod_sd
-
         # LHS log transformed obs genomes per person-day, RHS multiplies the expected observed
         # genomes by the site-specific multiplier at that sampling time
         exp_obs_log_v = (
             exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
         )
-
-        sigma_ww_site = jnp.exp(
-            jnp.log(mode_sigma_ww_site)
-            + sd_log_sigma_ww_site * eta_log_sigma_ww_site
-        )
-
-        # g = jnp.power(
-        #     log10_g, 10
-        # )  # Estimated genomes shed per infected individual
 
         hospital_admission_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions", concentration_rv=self.phi_rv
@@ -442,4 +442,8 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         )
         numpyro.deterministic("state_rt", state_rt)
 
-        return latent_hospital_admissions
+        return (
+            latent_hospital_admissions,
+            observed_hospital_admissions,
+            ww_pred,
+        )
