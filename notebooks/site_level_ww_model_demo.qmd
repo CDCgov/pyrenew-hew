@@ -22,7 +22,7 @@ with open("data/fit/stan_data.json","r") as file:
     stan_data = json.load(file)
 
 #helper function
-from pyrenew_covid_wastewater.utils import *
+from pyrenew_hew.utils import *
 ```
 
 ```{python}

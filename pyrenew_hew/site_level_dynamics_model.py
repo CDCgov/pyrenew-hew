@@ -269,12 +269,11 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         i0 = infection_initialization_process()
         numpyro.deterministic("i0", i0)
 
-        with numpyro.plate("n_subpops", self.n_subpops):
-            inf_with_feedback_proc_sample = self.inf_with_feedback_proc.sample(
-                Rt=rtu_site,
-                I0=i0,
-                gen_int=generation_interval_pmf,
-            )
+        inf_with_feedback_proc_sample = self.inf_with_feedback_proc.sample(
+            Rt=rtu_site,
+            I0=i0,
+            gen_int=generation_interval_pmf,
+        )
 
         new_i_site = jnp.concat(
             [
