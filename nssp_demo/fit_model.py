@@ -29,7 +29,6 @@ from priors import (  # noqa: E402
     p_hosp_mean_rv,
     p_hosp_w_sd_rv,
     phi_rv,
-    uot,
 )
 
 parser = argparse.ArgumentParser(
@@ -72,6 +71,14 @@ state_pop = jnp.array(model_data["state_pop"])
 
 right_truncation_pmf_rv = DeterministicVariable(
     "right_truncation_pmf", jnp.array(model_data["right_truncation_pmf"])
+)
+
+uot = (
+    max(
+        len(model_data["generation_interval_pmf"]),
+        len(model_data["inf_to_hosp_pmf"]),
+    )
+    - 1
 )
 
 right_truncation_offset = model_data["right_truncation_offset"]

@@ -84,6 +84,3 @@ phi_rv = TransformedVariable(
     ),
     transforms=transformation.PowerTransform(-2),
 )
-
-
-uot = 55
