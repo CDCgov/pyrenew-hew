@@ -11,7 +11,8 @@ import numpyro.distributions.transforms as transforms
 from pyrenew.deterministic import DeterministicVariable, DeterministicPMF
 
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
-from pyrenew_covid_wastewater.site_level_dynamics_model import ww_site_level_dynamics_model
+from pyrenew_hew.site_level_dynamics_model import ww_site_level_dynamics_model
+from pyrenew_hew.initialization import get_initialization
 import jax
 
 numpyro.set_host_device_count(4)
@@ -82,7 +83,7 @@ r_logmean, r_logsd = convert_to_logmean_log_sd(r_prior_mean, r_prior_sd)
 
 # log of state level mean R(t) in weeks
 log_r_mu_intercept_rv = DistributionalVariable(
-    "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
+    "log_r_mu_intercept", dist.Normal(r_logmean, r_logsd)
 )
 
 ```
@@ -192,7 +193,7 @@ p_hosp_mean_rv = DistributionalVariable(
 
 p_hosp_w_sd_sd = stan_data["p_hosp_w_sd_sd"]
 p_hosp_w_sd_rv = DistributionalVariable(
-    "p_hosp_w_sd_sd", dist.TruncatedNormal(0, p_hosp_w_sd_sd, low=0)
+    "p_hosp_w_sd", dist.TruncatedNormal(0, p_hosp_w_sd_sd, low=0)
 )
 
 autoreg_p_hosp_a = stan_data["autoreg_p_hosp_a"]
@@ -316,10 +317,13 @@ with numpyro.handlers.seed(rng_seed=242):
 #     numpyro_predictive_args={"num_samples": 200},
 # )
 ```
+```{python}
+init_vals = get_initialization(stan_data,stdev=0.01,rng_key=jax.random.PRNGKey(0))
+```
 
 ```{python}
+from numpyro.infer.initialization import init_to_sample, init_to_value
 try:
-    from numpyro.infer.initialization import init_to_sample
     my_model.run(
         num_warmup=100,
         num_samples=100,
@@ -327,7 +331,7 @@ try:
         data_observed_hospital_admissions=data_observed_hospital_admissions,
         data_observed_log_conc=data_observed_log_conc,
         mcmc_args=dict(num_chains=1),
-        nuts_args=dict(init_strategy=init_to_sample)
+        nuts_args=dict(init_strategy=init_to_value(values=init_vals))
     )
 except RuntimeError as e:
     print(f"RuntimeError occurred: {e}")
@@ -343,7 +347,7 @@ try:
             data_observed_hospital_admissions=data_observed_hospital_admissions,
             data_observed_log_conc=data_observed_log_conc,
             mcmc_args=dict(num_chains=1),
-            nuts_args=dict(init_strategy=init_to_sample)
+            nuts_args=dict(init_strategy=init_to_value(values=init_vals))
         )
 except AssertionError as e:
     print(f"AssertionError occurred: {e}")
