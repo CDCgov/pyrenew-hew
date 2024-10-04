@@ -5,8 +5,8 @@
 
 ### Now
 
-`prep_data.R` reads in a `private_data/report_date.parquet`
-and `private_data/prod.parquet` from disk (what's in these files?).
+`prep_data.R` reads in a `private_data/report_date.parquet` (nssp data)
+and `private_data/prod.parquet` (parameter estimates) from disk.
 It provides a function `prep_data`
 that takes the arguments: `disease`, `report_date`, `min_reference_date`,
 `max_reference_date`, `last_training_date`, `state_abb`.
@@ -30,7 +30,8 @@ arguments.
 The path to `report_date.parquet` and `prod.parquet` should be specified as
 command line arguments.
 
-Eventually, `report_date.parquet` and `prod.parquet` should be read from azure blob.
+Eventually, `report_date.parquet` and `prod.parquet` should be read from azure
+blob storage.
 
 ## 2. Fitting the model
 
