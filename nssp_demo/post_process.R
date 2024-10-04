@@ -106,7 +106,7 @@ make_forecast_fig <- function(model_dir) {
     ) +
     ggtitle(
       glue(
-        "{disease_name_formatter[disease_name_raw]}",
+        "{disease_name_formatter[disease_name_raw]} ",
         "NSSP-based forecast for {state_abb}"
       ),
       subtitle = glue("as of {last_data_date}")
