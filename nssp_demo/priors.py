@@ -6,6 +6,9 @@ from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 from pyrenew_hew.utils import convert_to_logmean_log_sd
 
+# many of these should probably be different depending on if we are modeling flu
+# or covid
+
 i0_first_obs_n_rv = DistributionalVariable(
     "i0_first_obs_n_rv",
     dist.Beta(1, 10),
