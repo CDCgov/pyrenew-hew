@@ -67,4 +67,5 @@ hosp_wday_effect_rv = TransformedVariable(
     transformation.AffineTransform(loc=0, scale=7),
 )
 
+# Based on looking at some historical posteriors.
 phi_rv = DistributionalVariable("phi", dist.LogNormal(6, 1))
