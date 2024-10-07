@@ -83,7 +83,7 @@ r_logmean, r_logsd = convert_to_logmean_log_sd(r_prior_mean, r_prior_sd)
 
 # log of state level mean R(t) in weeks
 log_r_mu_intercept_rv = DistributionalVariable(
-    "log_r_mu_intercept", dist.Normal(r_logmean, r_logsd)
+    "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
 )
 
 ```
@@ -107,9 +107,10 @@ viral_peak_rv = DistributionalVariable(
     "viral_peak", dist.Normal(viral_peak_mean, viral_peak_sd)
 )
 
-dur_shed_rv = DistributionalVariable(
-    "dur_shed", dist.TruncatedNormal(dur_shed_mean, dur_shed_sd, low=0)
+dur_shed_after_peak_rv = DistributionalVariable(
+    "dur_shed_after_peak", dist.TruncatedNormal(dur_shed_mean, dur_shed_sd, low=0)
 )
+max_shed_interval = dur_shed_mean + 3*dur_shed_sd
 ```
 
 ```{python}
@@ -265,7 +266,7 @@ my_model = ww_site_level_dynamics_model(
     n_ww_lab_sites,
     unobs_time,
     n_initialization_points,
-    gt_max,
+    max_shed_interval,
     i0_t_offset,
     log_r_mu_intercept_rv,
     autoreg_rt_rv,

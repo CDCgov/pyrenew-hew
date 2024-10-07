@@ -30,14 +30,14 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         n_ww_lab_sites,
         unobs_time,
         n_initialization_points,
-        gt_max,
+        max_shed_interval,
         i0_t_offset,
         log_r_mu_intercept_rv,
         autoreg_rt_rv,
         eta_sd_rv,
         t_peak_rv,
         viral_peak_rv,
-        dur_shed_rv,
+        dur_shed_after_peak_rv,
         autoreg_rt_site_rv,
         sigma_rt_rv,
         i_first_obs_over_n_rv,
@@ -72,14 +72,14 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.n_ww_lab_sites = n_ww_lab_sites
         self.unobs_time = unobs_time
         self.n_initialization_points = n_initialization_points
-        self.gt_max = gt_max
+        self.max_shed_interval = max_shed_interval
         self.i0_t_offset = i0_t_offset
         self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
         self.t_peak_rv = t_peak_rv
         self.viral_peak_rv = viral_peak_rv
-        self.dur_shed_rv = dur_shed_rv
+        self.dur_shed_after_peak_rv = dur_shed_after_peak_rv
         self.autoreg_rt_site_rv = autoreg_rt_site_rv
         self.sigma_rt_rv = sigma_rt_rv
         self.i_first_obs_over_n_rv = i_first_obs_over_n_rv
@@ -172,9 +172,11 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         t_peak = self.t_peak_rv()
         viral_peak = self.viral_peak_rv()
-        dur_shed = self.dur_shed_rv()
+        dur_shed = self.dur_shed_after_peak_rv()
 
-        s = get_vl_trajectory(t_peak, viral_peak, dur_shed, self.gt_max)
+        s = get_vl_trajectory(
+            t_peak, viral_peak, dur_shed, self.max_shed_interval
+        )
 
         mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
         sigma_initial_exp_growth_rate = self.sigma_initial_exp_growth_rate_rv()

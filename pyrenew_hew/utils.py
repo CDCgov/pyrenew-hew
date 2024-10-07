@@ -9,18 +9,11 @@ def convert_to_logmean_log_sd(mean, sd):
     return logmean, logsd
 
 
-def get_vl_trajectory(tpeak, viral_peak, duration_shedding, n):
-    s = jnp.zeros(n)
+def get_vl_trajectory(tpeak, viral_peak, duration_shedding_after_peak, n):
     growth = viral_peak / tpeak
-    wane = viral_peak / (duration_shedding - tpeak)
-
+    wane = viral_peak / duration_shedding_after_peak
     t = jnp.arange(n)
-    s = jnp.where(t <= tpeak, jnp.power(10, growth * t), s)
-
-    s = jnp.where(
-        t > tpeak, jnp.maximum(0, viral_peak + wane * tpeak - wane * t), s
+    s = 10 ** jnp.where(
+        t <= tpeak, growth * t, viral_peak + wane * (tpeak - t)
     )
-    s = jnp.where(t > tpeak, jnp.power(10, s), s)
-
-    s = s / jnp.sum(s)
-    return s
+    return s / jnp.sum(s)
