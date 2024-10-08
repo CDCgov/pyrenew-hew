@@ -36,7 +36,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         autoreg_rt_rv,
         eta_sd_rv,
         t_peak_rv,
-        viral_peak_rv,
         dur_shed_after_peak_rv,
         autoreg_rt_site_rv,
         sigma_rt_rv,
@@ -78,7 +77,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
         self.t_peak_rv = t_peak_rv
-        self.viral_peak_rv = viral_peak_rv
         self.dur_shed_after_peak_rv = dur_shed_after_peak_rv
         self.autoreg_rt_site_rv = autoreg_rt_site_rv
         self.sigma_rt_rv = sigma_rt_rv
@@ -171,12 +169,10 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("log_rtu_weekly", log_rtu_weekly)
 
         t_peak = self.t_peak_rv()
-        viral_peak = self.viral_peak_rv()
+        # viral_peak = self.viral_peak_rv()
         dur_shed = self.dur_shed_after_peak_rv()
 
-        s = get_vl_trajectory(
-            t_peak, viral_peak, dur_shed, self.max_shed_interval
-        )
+        s = get_vl_trajectory(t_peak, dur_shed, self.max_shed_interval)
 
         mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
         sigma_initial_exp_growth_rate = self.sigma_initial_exp_growth_rate_rv()
