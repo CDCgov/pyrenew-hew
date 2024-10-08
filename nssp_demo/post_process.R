@@ -7,7 +7,13 @@ library(scales)
 
 theme_set(theme_minimal_grid())
 
+disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
+
 make_forecast_fig <- function(model_dir) {
+  disease_name_raw <- base_dir %>%
+    path_file() %>%
+    str_extract("^.+(?=_r_)")
+
   state_abb <- model_dir %>%
     path_split() %>%
     pluck(1) %>%
@@ -98,7 +104,11 @@ make_forecast_fig <- function(model_dir) {
       hjust = "left",
       vjust = "bottom",
     ) +
-    ggtitle(glue("NSSP-based forecast for {state_abb}"),
+    ggtitle(
+      glue(
+        "{disease_name_formatter[disease_name_raw]} ",
+        "NSSP-based forecast for {state_abb}"
+      ),
       subtitle = glue("as of {last_data_date}")
     ) +
     theme(legend.position = "bottom")
@@ -110,7 +120,7 @@ make_forecast_fig <- function(model_dir) {
 base_dir <- path(here(
   "nssp_demo",
   "private_data",
-  "r_2024-10-01_f_2024-04-03_l_2024-09-30_t_2024-09-25"
+  "influenza_r_2024-10-01_f_2024-04-03_l_2024-09-30_t_2024-09-25"
 ))
 
 

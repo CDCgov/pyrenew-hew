@@ -1,27 +1,22 @@
 import jax.numpy as jnp
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
+from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 from pyrenew_hew.utils import convert_to_logmean_log_sd
 
-# Note: this could be off by an order of magnitude because it has not been
-# updates from the regular hospitalization model.
+# many of these should probably be different depending on if we are modeling flu
+# or covid
+
 i0_first_obs_n_rv = DistributionalVariable(
     "i0_first_obs_n_rv",
-    dist.Beta(1.0015, 5.9985),
+    dist.Beta(1, 10),
 )
 
 initialization_rate_rv = DistributionalVariable(
-    "rate",
-    dist.TruncatedNormal(
-        loc=0,
-        scale=0.01,
-        low=-1,
-        high=1,
-    ),
+    "rate", dist.Normal(0, 0.01), reparam=LocScaleReparam(0)
 )
-# could reasonably switch to non-Truncated
 
 r_logmean, r_logsd = convert_to_logmean_log_sd(1, 1)
 log_r_mu_intercept_rv = DistributionalVariable(
@@ -45,10 +40,12 @@ inf_feedback_strength_rv = TransformedVariable(
 )
 # Could be reparameterized?
 
+# Note: multiplied by 1/2 from hosp model
+# this actually represents ed admissions
 p_hosp_mean_rv = DistributionalVariable(
     "p_hosp_mean",
     dist.Normal(
-        transformation.SigmoidTransform().inv(0.01),
+        transformation.SigmoidTransform().inv(0.005),
         0.3,
     ),
 )  # logit scale
@@ -69,21 +66,6 @@ hosp_wday_effect_rv = TransformedVariable(
     ),
     transformation.AffineTransform(loc=0, scale=7),
 )
-# depends on the state
-# inf_to_hosp_rv
 
-phi_rv = TransformedVariable(
-    "phi",
-    DistributionalVariable(
-        "inv_sqrt_phi",
-        dist.TruncatedNormal(
-            loc=0.1,
-            scale=0.1414214,
-            low=1 / jnp.sqrt(5000),
-        ),
-    ),
-    transforms=transformation.PowerTransform(-2),
-)
-
-
-uot = 55
+# Based on looking at some historical posteriors.
+phi_rv = DistributionalVariable("phi", dist.LogNormal(6, 1))
