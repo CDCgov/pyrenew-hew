@@ -39,7 +39,7 @@ n_weeks = stan_data["n_weeks"]
 unobs_time = stan_data["uot"] #unobserved time before we observe hospital admissions/ WW
 #n_datapoints = obs_time+horizon_time
 
-n_subpops = stan_data["n_subpops"]  #number of WW sites
+n_subpops = stan_data["n_subpops"]  #number of modeled subpops
 state_pop = stan_data["state_pop"]
 subpop_size = stan_data["subpop_size"]
 norm_pop = stan_data["norm_pop"]
@@ -58,10 +58,12 @@ ww_uncensored = jnp.array(stan_data["ww_uncensored"])  #time that WW data is abo
 
 obs_ww_days = stan_data["owt"]  #number of days of observed WW (should be roughly ot/7)
 
-ww_sampled_sites = jnp.array(stan_data["ww_sampled_sites"])    # vector of unique sites in order of the sampled times
-ww_sampled_times = jnp.array(stan_data["ww_sampled_times"])   # a list of all of the days on which WW is sampled
+ww_sampled_subpop = jnp.array(stan_data["ww_sampled_subpop"])    # vector of unique sites in order of the sampled times
+ww_sampled_times = jnp.array(stan_data["ww_sampled_times"])   # a list of all of the days on which WW is sampled, mapped to corresponding subpops
 ww_sampled_lab_sites = jnp.array(stan_data["ww_sampled_lab_sites"])
+#vector mapping the subpops to lab-site combos
 
+#lab_site_to_subpop_map = stan_data["lab_site_to_subpop_map"]
 data_observed_log_conc = jnp.array(stan_data["log_conc"])
 data_observed_hospital_admissions = jnp.array(stan_data["hosp"])
 
@@ -75,17 +77,44 @@ eta_sd_rv = DistributionalVariable("eta_sd", dist.TruncatedNormal(0, eta_sd_sd, 
 
 autoreg_rt_a = stan_data["autoreg_rt_a"]
 autoreg_rt_b = stan_data["autoreg_rt_b"]
-autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b))
+autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b)) #autoregressive coefficient for AR process on first differences in log R(t)
 
 r_prior_mean = stan_data["r_prior_mean"]
 r_prior_sd = stan_data["r_prior_sd"]
 r_logmean, r_logsd = convert_to_logmean_log_sd(r_prior_mean, r_prior_sd)
 
 # log of state level mean R(t) in weeks
-log_r_mu_intercept_rv = DistributionalVariable(
-    "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
+log_r_t_first_obs_rv = DistributionalVariable(
+    "log_r_t_first_obs", dist.Normal(r_logmean, r_logsd)
 )
 
+```
+
+```{python}
+
+offset_ref_log_r_t_prior_mean=stan_data["offset_ref_log_r_t_prior_mean"]
+offset_ref_log_r_t_prior_sd = stan_data["offset_ref_log_r_t_prior_sd"]
+offset_ref_log_r_t_rv = DistributionalVariable(
+    "offset_ref_log_r_t", dist.Normal(
+        offset_ref_log_r_t_prior_mean, offset_ref_log_r_t_prior_sd
+    )
+)
+
+offset_ref_logit_i_first_obs_prior_mean = stan_data["offset_ref_logit_i_first_obs_prior_mean"]
+offset_ref_logit_i_first_obs_prior_sd = stan_data["offset_ref_logit_i_first_obs_prior_sd"]
+offset_ref_logit_i_first_obs_rv = DistributionalVariable(
+    "offset_ref_logit_i_first_obs", dist.Normal(
+        offset_ref_logit_i_first_obs_prior_mean, offset_ref_logit_i_first_obs_prior_sd
+    )
+)
+
+offset_ref_initial_exp_growth_rate_prior_mean = stan_data["offset_ref_initial_exp_growth_rate_prior_mean"]
+offset_ref_initial_exp_growth_rate_prior_sd = stan_data["offset_ref_initial_exp_growth_rate_prior_sd"]
+offset_ref_initial_exp_growth_rate_rv = DistributionalVariable(
+    "offset_ref_initial_exp_growth_rate", dist.Normal(
+        offset_ref_initial_exp_growth_rate_prior_mean, offset_ref_initial_exp_growth_rate_prior_sd
+    )
+)
 ```
 
 ```{python}
@@ -137,16 +166,16 @@ generation_interval_pmf_rv = DeterministicPMF(
     "generation_interval_pmf", jnp.array(generation_interval)
 )
 
-autoreg_rt_site_a = stan_data["autoreg_rt_site_a"]
-autoreg_rt_site_b = stan_data["autoreg_rt_site_b"]
-autoreg_rt_site_rv = DistributionalVariable(
-    "autoreg_rt_site",dist.Beta(autoreg_rt_site_a, autoreg_rt_site_b)
+autoreg_rt_subpop_a = stan_data["autoreg_rt_subpop_a"]
+autoreg_rt_subpop_b = stan_data["autoreg_rt_subpop_b"]
+autoreg_rt_subpop_rv = DistributionalVariable(
+    "autoreg_rt_subpop",dist.Beta(autoreg_rt_subpop_a, autoreg_rt_subpop_b)
     )
 
 sigma_rt_prior = stan_data["sigma_rt_prior"]
 sigma_rt_rv = DistributionalVariable(
     "sigma_rt", dist.TruncatedNormal(0,sigma_rt_prior,low=0)
-)
+)# magnitude of subpopulation level R(t) heterogeneity
 
 i_first_obs_over_n_prior_a = stan_data["i_first_obs_over_n_prior_a"]
 i_first_obs_over_n_prior_b = stan_data["i_first_obs_over_n_prior_b"]
