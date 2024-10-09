@@ -416,7 +416,6 @@ visualize data that was below the LOD (even though the fit incorporated
 them via the censored observation process.)
 
 ```{r generating-figures,  out.width='100%'}
-
 plot_hosp <- get_plot_forecasted_counts(
   draws = draws$predicted_counts,
   count_data_eval = hosp_data_eval,

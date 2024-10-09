@@ -32,12 +32,12 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         n_initialization_points,
         max_shed_interval,
         i0_t_offset,
-        log_r_mu_intercept_rv,
+        log_r_t_first_obs_rv,
         autoreg_rt_rv,
         eta_sd_rv,
         t_peak_rv,
         dur_shed_after_peak_rv,
-        autoreg_rt_site_rv,
+        autoreg_rt_subpop_rv,
         sigma_rt_rv,
         i_first_obs_over_n_rv,
         sigma_i_first_obs_rv,
@@ -58,13 +58,11 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         phi_rv,
         ww_ml_produced_per_day,
         pop_fraction,
-        ww_uncensored,
-        ww_censored,
         ww_sampled_lab_sites,
-        ww_sampled_sites,
+        ww_sampled_subpops,
         ww_sampled_times,
         ww_log_lod,
-        lab_site_to_site_map,
+        lab_site_to_subpop_map,
     ):  # numpydoc ignore=GL08
         self.state_pop = state_pop
         self.n_subpops = n_subpops
@@ -73,12 +71,12 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.n_initialization_points = n_initialization_points
         self.max_shed_interval = max_shed_interval
         self.i0_t_offset = i0_t_offset
-        self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
+        self.log_r_mu_intercept_rv = (log_r_t_first_obs_rv,)
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
         self.t_peak_rv = t_peak_rv
         self.dur_shed_after_peak_rv = dur_shed_after_peak_rv
-        self.autoreg_rt_site_rv = autoreg_rt_site_rv
+        self.autoreg_rt_site_rv = autoreg_rt_subpop_rv
         self.sigma_rt_rv = sigma_rt_rv
         self.i_first_obs_over_n_rv = i_first_obs_over_n_rv
         self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
@@ -99,13 +97,11 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.phi_rv = phi_rv
         self.ww_ml_produced_per_day = ww_ml_produced_per_day
         self.pop_fraction = pop_fraction
-        self.ww_uncensored = ww_uncensored
-        self.ww_censored = ww_censored
         self.ww_sampled_lab_sites = ww_sampled_lab_sites
-        self.ww_sampled_sites = ww_sampled_sites
+        self.ww_sampled_sites = ww_sampled_subpops
         self.ww_sampled_times = ww_sampled_times
         self.ww_log_lod = ww_log_lod
-        self.lab_site_to_site_map = lab_site_to_site_map
+        self.lab_site_to_site_map = lab_site_to_subpop_map
 
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
@@ -149,7 +145,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
-        log_r_mu_intercept = self.log_r_mu_intercept_rv()
+        log_r_t_first_obs = self.log_r_t_first_obs_rv()
 
         rt_init_rate_of_change_rv = DistributionalVariable(
             "rt_init_rate_of_change",
@@ -158,15 +154,15 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         rt_init_rate_of_change = rt_init_rate_of_change_rv()
 
-        log_rtu_weekly = self.ar_diff_rt(
+        log_r_t_in_weeks = self.ar_diff_rt(
             noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
             n=n_weeks_post_init,
-            init_vals=jnp.array(log_r_mu_intercept),
+            init_vals=jnp.array(log_r_t_first_obs),
             autoreg=jnp.array(autoreg_rt),
             noise_sd=jnp.array(eta_sd),
             fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
         )
-        numpyro.deterministic("log_rtu_weekly", log_rtu_weekly)
+        numpyro.deterministic("log_r_t_in_weeks", log_r_t_in_weeks)
 
         t_peak = self.t_peak_rv()
         # viral_peak = self.viral_peak_rv()
@@ -174,91 +170,155 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         s = get_vl_trajectory(t_peak, dur_shed, self.max_shed_interval)
 
-        mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
-        sigma_initial_exp_growth_rate = self.sigma_initial_exp_growth_rate_rv()
-        initial_exp_growth_rate_site_rv = TransformedVariable(
-            "clipped_initial_exp_growth_rate_site",
-            DistributionalVariable(
-                "initial_exp_growth_rate_site_raw",
-                dist.Normal(
-                    mean_initial_exp_growth_rate,
-                    sigma_initial_exp_growth_rate,
-                ),
-                reparam=LocScaleReparam(0),
-            ),
-            transforms=lambda x: jnp.clip(x, -0.01, 0.01),
-        )
-
         i_first_obs_over_n = self.i_first_obs_over_n_rv()
-        sigma_i_first_obs = self.sigma_i_first_obs_rv()
-        i_first_obs_over_n_site_rv = TransformedVariable(
-            "i_first_obs_over_n_site",
-            DistributionalVariable(
-                "i_first_obs_over_n_site_raw",
-                dist.Normal(
-                    transforms.logit(i_first_obs_over_n), sigma_i_first_obs
-                ),
-                reparam=LocScaleReparam(0),
-            ),
-            transforms=transforms.SigmoidTransform(),
+        offset_ref_logit_i_first_obs = self.offset_ref_logit_i_first_obs_rv()
+
+        mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
+        offset_ref_initial_exp_growth_rate = (
+            self.offset_ref_initial_exp_growth_rate_rv()
         )
 
-        with numpyro.plate("n_subpops", self.n_subpops):
-            initial_exp_growth_rate_site = initial_exp_growth_rate_site_rv()
-            i_first_obs_over_n_site = i_first_obs_over_n_site_rv()
+        i_first_obs_over_n_ref_subpop = transforms.SigmoidTransform()(
+            transforms.logit(i_first_obs_over_n)
+            + jnp.where(self.n_subpops > 1, offset_ref_logit_i_first_obs, 0)
+        )
+        initial_exp_growth_rate_ref_subpop = (
+            mean_initial_exp_growth_rate
+            + jnp.where(
+                self.n_subpops > 1, offset_ref_initial_exp_growth_rate, 0
+            )
+        )
+
+        if self.n_subpops > 1:
+            sigma_i_first_obs = self.sigma_i_first_obs_rv()
+            i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
+                "i_first_obs_over_n_non_ref_subpop",
+                DistributionalVariable(
+                    "i_first_obs_over_n_non_ref_subpop_raw",
+                    dist.Normal(
+                        transforms.logit(i_first_obs_over_n), sigma_i_first_obs
+                    ),
+                    reparam=LocScaleReparam(0),
+                ),
+                transforms=transforms.SigmoidTransform(),
+            )
+            sigma_initial_exp_growth_rate = (
+                self.sigma_initial_exp_growth_rate_rv()
+            )
+            initial_exp_growth_rate_non_ref_subpop_rv = TransformedVariable(
+                "clipped_initial_exp_growth_rate_non_ref_subpop",
+                DistributionalVariable(
+                    "initial_exp_growth_rate_non_ref_subpop_raw",
+                    dist.Normal(
+                        mean_initial_exp_growth_rate,
+                        sigma_initial_exp_growth_rate,
+                    ),
+                    reparam=LocScaleReparam(0),
+                ),
+                transforms=lambda x: jnp.clip(x, -0.01, 0.01),
+            )
+
+            with numpyro.plate("n_subpops", self.n_subpops - 1):
+                initial_exp_growth_rate_non_ref_subpop = (
+                    initial_exp_growth_rate_non_ref_subpop_rv()
+                )
+                i_first_obs_over_n_non_ref_subpop = (
+                    i_first_obs_over_n_non_ref_subpop_rv()
+                )
+
+            i_first_obs_over_n_subpop = jnp.hstack(
+                [
+                    i_first_obs_over_n_ref_subpop,
+                    i_first_obs_over_n_non_ref_subpop,
+                ]
+            )
+            initial_exp_growth_rate_subpop = jnp.hstack(
+                [
+                    initial_exp_growth_rate_ref_subpop,
+                    initial_exp_growth_rate_non_ref_subpop,
+                ]
+            )
+        else:
+            i_first_obs_over_n_subpop = i_first_obs_over_n_ref_subpop
+            initial_exp_growth_rate_subpop = initial_exp_growth_rate_ref_subpop
 
         numpyro.deterministic(
-            "initial_exp_growth_rate_site", initial_exp_growth_rate_site
+            "i_first_obs_over_n_subpop", i_first_obs_over_n_subpop
+        )
+        numpyro.deterministic(
+            "initial_exp_growth_rate_subpop", initial_exp_growth_rate_subpop
         )
 
-        log_i0_site = (
-            jnp.log(i_first_obs_over_n_site)
-            - self.unobs_time * initial_exp_growth_rate_site
+        log_i0_subpop = (
+            jnp.log(i_first_obs_over_n_subpop)
+            - self.unobs_time * initial_exp_growth_rate_subpop
         )
-        numpyro.deterministic("log_i0_site", log_i0_site)
+        numpyro.deterministic("log_i0_subpop", log_i0_subpop)
 
-        autoreg_rt_site = self.autoreg_rt_site_rv()
-        sigma_rt = self.sigma_rt_rv()
-        rtu_site_ar_init_rv = DistributionalVariable(
-            "rtu_site_ar_init",
-            dist.Normal(
-                0,
-                sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_site, 2)),
-            ),
-        )
-        with numpyro.plate("n_subpops", self.n_subpops):
-            rtu_site_ar_init = rtu_site_ar_init_rv()
-
-        rtu_site_ar_proc = ARProcess()
-        rtu_site_ar_weekly = rtu_site_ar_proc(
-            noise_name="rtu_ar_proc",
-            n=n_weeks_post_init,
-            init_vals=rtu_site_ar_init[jnp.newaxis],
-            autoreg=autoreg_rt_site[jnp.newaxis],
-            noise_sd=sigma_rt,
+        offset_ref_log_r_t = self.offset_ref_log_r_t_rv()
+        log_rtu_ref_subpop_in_week = log_r_t_in_weeks + jnp.where(
+            self.n_subpops > 1, offset_ref_log_r_t, 0
         )
 
-        numpyro.deterministic("rtu_site_ar_weekly", rtu_site_ar_weekly)
+        if self.n_subpops > 1:
+            autoreg_rt_subpop = self.autoreg_rt_subpop_rv()
+            sigma_rt = self.sigma_rt_rv()
+            rtu_site_ar_init_rv = DistributionalVariable(
+                "rtu_site_ar_init",
+                dist.Normal(
+                    0,
+                    sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_subpop, 2)),
+                ),
+            )
+            with numpyro.plate("n_subpops", self.n_subpops - 1):
+                rtu_site_ar_init = rtu_site_ar_init_rv()
 
-        rtu_site = jnp.repeat(
-            jnp.exp(rtu_site_ar_weekly + log_rtu_weekly[:, jnp.newaxis]),
-            repeats=7,
-            axis=0,
-        )[:n_datapoints, :]
+            rtu_subpop_ar_proc = ARProcess()
+            rtu_subpop_ar_weekly = rtu_subpop_ar_proc(
+                noise_name="rtu_ar_proc",
+                n=n_weeks_post_init,
+                init_vals=rtu_site_ar_init[jnp.newaxis],
+                autoreg=autoreg_rt_subpop[jnp.newaxis],
+                noise_sd=sigma_rt,
+            )
 
-        numpyro.deterministic("rtu_site", rtu_site)
+            numpyro.deterministic("rtu_subpop_ar_weekly", rtu_subpop_ar_weekly)
+            log_rtu_non_ref_subpop_in_week = (
+                rtu_subpop_ar_weekly + log_r_t_in_weeks[:, jnp.newaxis]
+            )
+            log_rtu_subpop_in_week = jnp.concat(
+                [
+                    log_rtu_ref_subpop_in_week[:, jnp.newaxis],
+                    log_rtu_non_ref_subpop_in_week,
+                ],
+                axis=1,
+            )
+        else:
+            log_rtu_subpop_in_week = log_rtu_ref_subpop_in_week[:, jnp.newaxis]
 
-        i0_site_rv = DeterministicVariable("i0_site", jnp.exp(log_i0_site))
-        initial_exp_growth_rate_site_rv = DeterministicVariable(
-            "initial_exp_growth_rate_site", initial_exp_growth_rate_site
+        rtu_subpop = jnp.squeeze(
+            jnp.repeat(
+                jnp.exp(log_rtu_subpop_in_week),
+                repeats=7,
+                axis=0,
+            )[:n_datapoints, :]
+        )
+
+        numpyro.deterministic("rtu_subpop", rtu_subpop)
+
+        i0_subpop_rv = DeterministicVariable(
+            "i0_subpop", jnp.exp(log_i0_subpop)
+        )
+        initial_exp_growth_rate_subpop_rv = DeterministicVariable(
+            "initial_exp_growth_rate_subpop", initial_exp_growth_rate_subpop
         )
 
         infection_initialization_process = InfectionInitializationProcess(
             "I0_initialization",
-            i0_site_rv,
+            i0_subpop_rv,
             InitializeInfectionsExponentialGrowth(
                 self.n_initialization_points,
-                initial_exp_growth_rate_site_rv,
+                initial_exp_growth_rate_subpop_rv,
                 t_pre_init=self.i0_t_offset,
             ),
         )
@@ -268,21 +328,23 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("i0", i0)
 
         inf_with_feedback_proc_sample = self.inf_with_feedback_proc.sample(
-            Rt=rtu_site,
+            Rt=rtu_subpop,
             I0=i0,
             gen_int=generation_interval_pmf,
         )
 
-        new_i_site = jnp.concat(
+        new_i_subpop = jnp.concat(
             [
                 i0,
                 inf_with_feedback_proc_sample.post_initialization_infections,
             ]
         )
-        r_site_t = inf_with_feedback_proc_sample.rt
-        numpyro.deterministic("r_site_t", r_site_t)
+        r_subpop_t = inf_with_feedback_proc_sample.rt
+        numpyro.deterministic("r_subpop_t", r_subpop_t)
 
-        state_inf_per_capita = jnp.sum(self.pop_fraction * new_i_site, axis=1)
+        state_inf_per_capita = jnp.sum(
+            self.pop_fraction * new_i_subpop, axis=1
+        )
         numpyro.deterministic("state_inf_per_capita", state_inf_per_capita)
 
         # number of net infected individuals shedding on each day (sum of individuals in diff stages of infection)
@@ -290,7 +352,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             return jnp.convolve(m, s, mode="valid")
 
         model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
-            new_i_site
+            new_i_subpop
         )[-n_datapoints:, :]
         numpyro.deterministic("model_net_i", model_net_i)
 
@@ -416,7 +478,8 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         ww_pred = numpyro.sample(
             "site_ww_pred",
             dist.Normal(
-                loc=model_log_v_ot[:, self.lab_site_to_site_map] + ww_site_mod,
+                loc=model_log_v_ot[:, self.lab_site_to_subpop_map]
+                + ww_site_mod,
                 scale=sigma_ww_site,
             ),
         )

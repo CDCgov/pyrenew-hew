@@ -37,7 +37,6 @@ obs_time = stan_data["ot"]
 horizon_time = stan_data["ht"] #horizon time (nowcast + forecast time)
 n_weeks = stan_data["n_weeks"]
 unobs_time = stan_data["uot"] #unobserved time before we observe hospital admissions/ WW
-#n_datapoints = obs_time+horizon_time
 
 n_subpops = stan_data["n_subpops"]  #number of modeled subpops
 state_pop = stan_data["state_pop"]
@@ -49,7 +48,6 @@ pop_fraction = jnp.array(subpop_size)/norm_pop
 ww_ml_produced_per_day = stan_data["mwpd"]
 n_ww_lab_sites = stan_data["n_ww_lab_sites"]
 ww_log_lod =jnp.array(stan_data["ww_log_lod"])  # The limit of detection in that site at that time point
-lab_site_to_site_map = jnp.array(stan_data["lab_site_to_site_map"])    # which lab sites correspond to which sites
 
 n_censored = stan_data["n_censored"]
 n_uncensored = stan_data["n_uncensored"]
@@ -58,12 +56,12 @@ ww_uncensored = jnp.array(stan_data["ww_uncensored"])  #time that WW data is abo
 
 obs_ww_days = stan_data["owt"]  #number of days of observed WW (should be roughly ot/7)
 
-ww_sampled_subpop = jnp.array(stan_data["ww_sampled_subpop"])    # vector of unique sites in order of the sampled times
+ww_sampled_subpops = jnp.array(stan_data["ww_sampled_subpops"])    # vector of unique sites in order of the sampled times
 ww_sampled_times = jnp.array(stan_data["ww_sampled_times"])   # a list of all of the days on which WW is sampled, mapped to corresponding subpops
 ww_sampled_lab_sites = jnp.array(stan_data["ww_sampled_lab_sites"])
 #vector mapping the subpops to lab-site combos
+lab_site_to_subpop_map = stan_data["lab_site_to_subpop_map"]
 
-#lab_site_to_subpop_map = stan_data["lab_site_to_subpop_map"]
 data_observed_log_conc = jnp.array(stan_data["log_conc"])
 data_observed_hospital_admissions = jnp.array(stan_data["hosp"])
 
@@ -77,7 +75,9 @@ eta_sd_rv = DistributionalVariable("eta_sd", dist.TruncatedNormal(0, eta_sd_sd, 
 
 autoreg_rt_a = stan_data["autoreg_rt_a"]
 autoreg_rt_b = stan_data["autoreg_rt_b"]
-autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b)) #autoregressive coefficient for AR process on first differences in log R(t)
+autoreg_rt_rv = DistributionalVariable(
+    "autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b)
+    ) #autoregressive coefficient for AR process on first differences in log R(t)
 
 r_prior_mean = stan_data["r_prior_mean"]
 r_prior_sd = stan_data["r_prior_sd"]
@@ -201,13 +201,12 @@ sigma_initial_exp_growth_rate_rv = DistributionalVariable(
 
 mean_initial_exp_growth_rate_prior_mean = stan_data["mean_initial_exp_growth_rate_prior_mean"]
 mean_initial_exp_growth_rate_prior_sd = stan_data["mean_initial_exp_growth_rate_prior_sd"]
-#stan code uses normal distribution but hosp_only model uses TruncatedNormal
 mean_initial_exp_growth_rate_rv = DistributionalVariable(
     "mean_initial_exp_growth_rate", dist.TruncatedNormal(
         loc=mean_initial_exp_growth_rate_prior_mean,
         scale=mean_initial_exp_growth_rate_prior_sd,
-        low=-1,
-        high=1,
+        low=-0.001,
+        high=0.001,
     )
 )
 
@@ -297,13 +296,12 @@ my_model = ww_site_level_dynamics_model(
     n_initialization_points,
     max_shed_interval,
     i0_t_offset,
-    log_r_mu_intercept_rv,
+    log_r_t_first_obs_rv,
     autoreg_rt_rv,
     eta_sd_rv,
     t_peak_rv,
-    viral_peak_rv,
-    dur_shed_rv,
-    autoreg_rt_site_rv,
+    dur_shed_after_peak_rv,
+    autoreg_rt_subpop_rv,
     sigma_rt_rv,
     i_first_obs_over_n_rv,
     sigma_i_first_obs_rv,
@@ -324,13 +322,11 @@ my_model = ww_site_level_dynamics_model(
     phi_rv,
     ww_ml_produced_per_day,
     pop_fraction,
-    ww_uncensored,
-    ww_censored,
     ww_sampled_lab_sites,
-    ww_sampled_sites,
+    ww_sampled_subpops,
     ww_sampled_times,
     ww_log_lod,
-    lab_site_to_site_map
+    lab_site_to_subpop_map
 )
 ```
 
