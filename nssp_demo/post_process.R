@@ -36,6 +36,7 @@ make_forecast_fig <- function(model_dir) {
     filter(data_type == "train") %>%
     pull(date) %>%
     max()
+
   last_data_date <- dat %>%
     pull(date) %>%
     max()
