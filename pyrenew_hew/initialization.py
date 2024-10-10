@@ -15,6 +15,28 @@ def get_initialization(stan_data, stdev, rng_key):
     )
 
     init_vals = {
+        "offset_ref_log_r_t": (
+            dist.Normal(
+                stan_data["offset_ref_log_r_t_prior_mean"], stdev
+            ).sample(rng_key)
+            if stan_data["n_subpops"] > 1
+            else None
+        ),
+        "offset_ref_logit_i_first_obs": (
+            dist.Normal(
+                stan_data["offset_ref_logit_i_first_obs_prior_mean"], stdev
+            ).sample(rng_key)
+            if stan_data["n_subpops"] > 1
+            else None
+        ),
+        "offset_ref_initial_exp_growth_rate": (
+            dist.Normal(
+                stan_data["offset_ref_initial_exp_growth_rate_prior_mean"],
+                stdev,
+            ).sample(rng_key)
+            if stan_data["n_subpops"] > 1
+            else None
+        ),
         "eta_sd": jnp.abs(dist.Normal(0, stdev).sample(rng_key)),
         "autoreg_rt": jnp.abs(
             dist.Normal(
@@ -23,12 +45,12 @@ def get_initialization(stan_data, stdev, rng_key):
                 0.05,
             ).sample(rng_key)
         ),
-        "log_r_mu_intercept": dist.Normal(
+        "log_r_t_first_obs": dist.Normal(
             convert_to_logmean_log_sd(1, stdev)[0],
             convert_to_logmean_log_sd(1, stdev)[1],
         ).sample(rng_key),
         "sigma_rt": jnp.abs(dist.Normal(0, stdev).sample(rng_key)),
-        "autoreg_rt_site": jnp.abs(dist.Normal(0.5, 0.05).sample(rng_key)),
+        "autoreg_rt_subpop": jnp.abs(dist.Normal(0.5, 0.05).sample(rng_key)),
         "sigma_i_first_obs": jnp.abs(dist.Normal(0, stdev).sample(rng_key)),
         "sigma_initial_exp_growth_rate": jnp.abs(
             dist.Normal(0, stdev).sample(rng_key)
@@ -60,11 +82,7 @@ def get_initialization(stan_data, stdev, rng_key):
             stan_data["viral_shedding_pars"][0],
             stdev * stan_data["viral_shedding_pars"][1],
         ).sample(rng_key),
-        "viral_peak": dist.Normal(
-            stan_data["viral_shedding_pars"][2],
-            stdev * stan_data["viral_shedding_pars"][3],
-        ).sample(rng_key),
-        "dur_shed": dist.Normal(
+        "dur_shed_after_peak": dist.Normal(
             stan_data["viral_shedding_pars"][4],
             stdev * stan_data["viral_shedding_pars"][5],
         ).sample(rng_key),

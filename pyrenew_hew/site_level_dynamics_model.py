@@ -144,13 +144,10 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         ):
             n_datapoints = n_datapoints
         else:
-            n_datapoints = 94
-            # int(
-            #     max(
-            #         max(self.ww_sampled_times) + 1,
-            #         len(data_observed_hospital_admissions),
-            #     )
-            # )
+            n_datapoints = max(
+                len(data_observed_log_conc),
+                len(data_observed_hospital_admissions),
+            )
 
         n_weeks_post_init = n_datapoints // 7 + 1
 
@@ -233,14 +230,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 ),
                 transforms=lambda x: jnp.clip(x, -0.01, 0.01),
             )
-            # initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
-            #     "initial_exp_growth_rate_non_ref_subpop_raw",
-            #     dist.Normal(
-            #         mean_initial_exp_growth_rate,
-            #         sigma_initial_exp_growth_rate,
-            #     ),
-            #     reparam=LocScaleReparam(0),
-            # )
+
             autoreg_rt_subpop = self.autoreg_rt_subpop_rv()
             sigma_rt = self.sigma_rt_rv()
             rtu_subpop_ar_init_rv = DistributionalVariable(
@@ -474,27 +464,25 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             obs=data_observed_hospital_admissions,
         )
 
-        numpyro.sample(
-            "log_conc_obs",
-            CensoredNormal(
-                loc=exp_obs_log_v[self.ww_uncensored],
-                scale=sigma_ww_site[
-                    self.ww_sampled_lab_sites[self.ww_uncensored]
-                ],
-                lower_limit=self.ww_log_lod[self.ww_uncensored],
-            ),
-            obs=data_observed_log_conc[self.ww_uncensored],
-        )
-
         # numpyro.sample(
         #     "log_conc_obs",
         #     CensoredNormal(
-        #         loc=exp_obs_log_v,
-        #         scale=sigma_ww_site[self.ww_sampled_lab_sites],
-        #         lower_limit=self.ww_log_lod,
+        #         loc=exp_obs_log_v[self.ww_uncensored],
+        #         scale=sigma_ww_site[self.ww_sampled_lab_sites[self.ww_uncensored]],
+        #         lower_limit=self.ww_log_lod[self.ww_uncensored],
         #     ),
-        #     obs=data_observed_log_conc,
+        #     obs=data_observed_log_conc[self.ww_uncensored],
         # )
+
+        numpyro.sample(
+            "log_conc_obs",
+            CensoredNormal(
+                loc=exp_obs_log_v,
+                scale=sigma_ww_site[self.ww_sampled_lab_sites],
+                lower_limit=self.ww_log_lod,
+            ),
+            obs=data_observed_log_conc,
+        )
 
         ww_pred_log = numpyro.sample(
             "site_ww_pred_log",
@@ -517,8 +505,8 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         )
         numpyro.deterministic("state_log_c", state_log_c)
 
-        exp_state_ww_conc = jnp.exp(state_log_c)
-        numpyro.deterministic("exp_state_ww_conc", exp_state_ww_conc)
+        expected_state_ww_conc = jnp.exp(state_log_c)
+        numpyro.deterministic("expected_state_ww_conc", expected_state_ww_conc)
 
         state_rt = (
             state_inf_per_capita[-n_datapoints:]
