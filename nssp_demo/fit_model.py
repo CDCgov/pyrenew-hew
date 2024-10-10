@@ -34,11 +34,7 @@ my_model.run(
     nuts_args=dict(find_heuristic_step_size=True),
 )
 
-
-my_states = my_model.mcmc._states
-my_states_flat = my_model.mcmc._states_flat
-
-# my_model.mcmc.sampler = None
+my_model.mcmc.sampler = None
 
 with open(
     model_dir / "posterior_samples.pickle",
