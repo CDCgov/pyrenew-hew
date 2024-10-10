@@ -121,7 +121,7 @@ make_forecast_fig <- function(model_dir) {
 base_dir <- path(here(
   "nssp_demo",
   "private_data",
-  "influenza_r_2024-10-01_f_2024-04-03_l_2024-09-30_t_2024-09-25"
+  "covid-19_r_2024-10-10_f_2024-04-12_l_2024-10-09_t_2024-10-05"
 ))
 
 
