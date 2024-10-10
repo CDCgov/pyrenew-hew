@@ -153,11 +153,11 @@ walk(
   setdiff(usa::state.abb, "PR"),
   \(x) {
     prep_and_save_data(
-      disease = "COVID-19",
-      report_date = "2024-10-01",
+      disease = "Influenza",
+      report_date = "2024-10-10",
       min_reference_date = "2000-01-01",
       max_reference_date = "3000-01-01",
-      last_training_date = "2024-09-25",
+      last_training_date = "2024-10-05",
       state_abb = x
     )
   }
