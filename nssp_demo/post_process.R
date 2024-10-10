@@ -22,7 +22,7 @@ make_forecast_fig <- function(model_dir) {
 
 
   data_path <- path(model_dir, "data", ext = "csv")
-  posterior_samples_path <- path(model_dir, "pyrenew_inference_data",
+  inference_data_path <- path(model_dir, "inference_data",
     ext = "csv"
   )
 
@@ -47,7 +47,7 @@ make_forecast_fig <- function(model_dir) {
   }
 
   pyrenew_samples <-
-    read_csv(posterior_samples_path) %>%
+    read_csv(inference_data_path) %>%
     rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
     rename(
       .chain = chain,
@@ -128,7 +128,7 @@ base_dir <- path(here(
 forecast_fig_tbl <-
   tibble(base_model_dir = dir_ls(base_dir)) %>%
   filter(
-    path(base_model_dir, "pyrenew_inference_data", ext = "csv") %>%
+    path(base_model_dir, "inference_data", ext = "csv") %>%
       file_exists()
   ) %>%
   mutate(forecast_fig = map(base_model_dir, make_forecast_fig)) %>%

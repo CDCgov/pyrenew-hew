@@ -37,7 +37,7 @@ my_model.run(
 my_model.mcmc.sampler = None
 
 with open(
-    model_dir / "pyrenew_model_posterior.pickle",
+    model_dir / "posterior_samples.pickle",
     "wb",
 ) as file:
     pickle.dump(my_model.mcmc, file)

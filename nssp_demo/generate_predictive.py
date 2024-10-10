@@ -33,7 +33,7 @@ my_model, data_observed_hospital_admissions, right_truncation_offset = (
 )
 
 with open(
-    model_dir / "pyrenew_model_posterior.pickle",
+    model_dir / "posterior_samples.pickle",
     "rb",
 ) as file:
     my_model.mcmc = pickle.load(file)
