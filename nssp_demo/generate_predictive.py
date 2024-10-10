@@ -1,6 +1,5 @@
 import argparse
 import pickle
-import types
 from pathlib import Path
 
 import arviz as az
@@ -32,11 +31,16 @@ my_model, data_observed_hospital_admissions, right_truncation_offset = (
     build_model_from_dir(model_dir)
 )
 
+my_model._init_model(1, 1)
+fresh_sampler = my_model.mcmc.sampler
+
 with open(
     model_dir / "posterior_samples.pickle",
     "rb",
 ) as file:
     my_model.mcmc = pickle.load(file)
+
+my_model.mcmc.sampler = fresh_sampler
 
 # prior_predictive = my_model.prior_predictive(
 #     numpyro_predictive_args={
@@ -50,10 +54,6 @@ with open(
 posterior_predictive = my_model.posterior_predictive(
     n_datapoints=len(data_observed_hospital_admissions) + n_forecast_points
 )
-
-# hack to workaround the sampler being None
-my_model.mcmc.sampler = types.SimpleNamespace()
-my_model.mcmc.sampler.model = None
 
 idata = az.from_numpyro(
     my_model.mcmc,

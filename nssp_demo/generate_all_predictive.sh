@@ -14,5 +14,5 @@ BASE_DIR="$1"
 for SUBDIR in "$BASE_DIR"/*/; do
     # Run the Python script with the current subdirectory as the model_dir argument
     echo "$SUBDIR"
-    python generate_predictive.py --model_dir "$SUBDIR"
+    python generate_predictive.py --model_dir "$SUBDIR" --n_forecast_points 28
 done
