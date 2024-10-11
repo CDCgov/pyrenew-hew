@@ -13,9 +13,10 @@ from pyrenew.deterministic import DeterministicVariable, DeterministicPMF
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew_hew.site_level_dynamics_model import ww_site_level_dynamics_model
 from pyrenew_hew.initialization import get_initialization
-from numpyro.infer.initialization import init_to_sample, init_to_value
 import jax
-
+from numpyro.infer.initialization import init_to_sample, init_to_value
+import pyrenew_hew.plotting as plotting
+import matplotlib.pyplot as plt
 numpyro.set_host_device_count(4)
 ```
 
@@ -66,7 +67,6 @@ lab_site_to_subpop_map = jnp.array(stan_data["lab_site_to_subpop_map"]) -1   #ve
 
 data_observed_log_conc = jnp.array(stan_data["log_conc"])
 data_observed_hospital_admissions = jnp.array(stan_data["hosp"])
-
 ```
 
 ```{python}
@@ -90,7 +90,6 @@ log_r_t_first_obs_rv = DistributionalVariable(
 ```
 
 ```{python}
-
 offset_ref_log_r_t_prior_mean=stan_data["offset_ref_log_r_t_prior_mean"]
 offset_ref_log_r_t_prior_sd = stan_data["offset_ref_log_r_t_prior_sd"]
 offset_ref_log_r_t_rv = DistributionalVariable(
@@ -336,57 +335,68 @@ my_model = ww_site_level_dynamics_model(
 ```
 
 ```{python}
-# with numpyro.handlers.seed(rng_seed=242):
-#     test_model_sample = my_model.sample(n_datapoints=50)
-# test_model_sample
+n_forecast_days = 35
+
+prior_predictive = my_model.prior_predictive(
+    n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days,
+    numpyro_predictive_args={"num_samples": 100},
+)
 ```
 
-```{python}
-# n_forecast_days = 35
-
-# prior_predictive = my_model.prior_predictive(
-#     n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days,
-#     numpyro_predictive_args={"num_samples": 200},
-# )
-```
 ```{python}
 init_vals = get_initialization(stan_data,stdev=0.01,rng_key=jax.random.PRNGKey(0))
+my_model.run(
+    num_warmup=500,
+    num_samples=100,
+    rng_key=jax.random.key(223),
+    data_observed_hospital_admissions=data_observed_hospital_admissions,
+    data_observed_log_conc=data_observed_log_conc,
+    mcmc_args=dict(num_chains=4),
+    nuts_args=dict(init_strategy=init_to_value(values=init_vals))
+)
 ```
 
 ```{python}
-from numpyro.infer.initialization import init_to_sample, init_to_value
-try:
-    my_model.run(
-        num_warmup=100,
-        num_samples=100,
-        rng_key=jax.random.key(223),
-        data_observed_hospital_admissions=data_observed_hospital_admissions,
-        data_observed_log_conc=data_observed_log_conc,
-        mcmc_args=dict(num_chains=1),
-        nuts_args=dict(init_strategy=init_to_value(values=init_vals))
-    )
-except RuntimeError as e:
-    print(f"RuntimeError occurred: {e}")
+posterior_predictive = my_model.posterior_predictive(
+    n_datapoints=len(data_observed_hospital_admissions)  + n_forecast_days
+)
+```
+
+We can use initial values set in the stan code by using `init_strategy = init_to_value` and use the following to generate initial values 
+`init_vals = get_initialization(stan_data,stdev=0.01,rng_key=jax.random.PRNGKey(0))`
+
+```{python}
+import arviz as az
+idata = az.from_numpyro(
+    my_model.mcmc,
+    posterior_predictive=posterior_predictive,
+    prior=prior_predictive,
+)
 ```
 
 ```{python}
-try:
-    with numpyro.handlers.trace() as tr:
-        my_model.run(
-            num_warmup=100,
-            num_samples=100,
-            rng_key=jax.random.key(223),
-            data_observed_hospital_admissions=data_observed_hospital_admissions,
-            data_observed_log_conc=data_observed_log_conc,
-            mcmc_args=dict(num_chains=1),
-            nuts_args=dict(init_strategy=init_to_value(values=init_vals))
-        )
-except AssertionError as e:
-    print(f"AssertionError occurred: {e}")
+plotting.plot_predictive(idata, prior=True)
 ```
 
 ```{python}
-# Print trace of the random variables
-for site in tr.values():
-    print(site['name'], site['value'])
+plotting.plot_predictive(idata)
 ```
+
+```{python}
+plotting.plot_posterior(idata,'state_rt')
+```
+
+```{python}
+for i in range(n_subpops):
+    plotting.plot_posterior(idata, 'r_subpop_t', dim_1=i)
+```
+
+```{python}
+for i in range(n_ww_lab_sites):
+    plotting.plot_posterior(idata, 'site_ww_pred_log', dim_1=i)
+```
+
+```{python}
+diagnostic_stats_summary = az.summary(idata)
+```
+

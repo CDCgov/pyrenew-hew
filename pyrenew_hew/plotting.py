@@ -9,9 +9,13 @@ def compute_eti(dataset, eti_prob):
     return eti_bdry.values.T
 
 
-def plot_posterior(idata, name):
+def plot_posterior(idata, name, dim_1=None):
     x_data = idata.posterior[f"{name}_dim_0"]
-    y_data = idata.posterior[name]
+    y_data = (
+        idata.posterior[name]
+        if dim_1 is None
+        else idata.posterior[name].isel({f"{name}_dim_1": dim_1})
+    )
     fig, axes = plt.subplots(figsize=(6, 5))
     az.plot_hdi(
         x_data,
@@ -45,14 +49,11 @@ def plot_posterior(idata, name):
     axes.set_title(name, fontsize=10)
     axes.set_xlabel("Time", fontsize=10)
     axes.set_ylabel(name, fontsize=10)
-    return fig
 
 
 def plot_predictive(idata, prior=False):
     prior_or_post_text = "Prior" if prior else "Posterior"
-    predictive_obj = (
-        idata.prior_predictive if prior else idata.posterior_predictive
-    )
+    predictive_obj = idata.prior_predictive if prior else idata.posterior_predictive
 
     x_data = predictive_obj["observed_hospital_admissions_dim_0"]
     y_data = predictive_obj["observed_hospital_admissions"]

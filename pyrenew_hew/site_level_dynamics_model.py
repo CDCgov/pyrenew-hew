@@ -139,11 +139,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         if data_observed_hospital_admissions is None and data_observed_log_conc is None:
             n_datapoints = n_datapoints
         else:
-            # n_datapoints = len(data_observed_hospital_admissions)
-            n_datapoints = max(
-                len(data_observed_log_conc),
-                len(data_observed_hospital_admissions),
-            )
+            n_datapoints = len(data_observed_hospital_admissions)
 
         n_weeks_post_init = n_datapoints // 7 + 1
 
@@ -437,9 +433,8 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         hospital_admission_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions", concentration_rv=self.phi_rv
         )
-
         observed_hospital_admissions = hospital_admission_obs_rv(
-            mu=latent_hospital_admissions[self.hosp_times],
+            mu=latent_hospital_admissions,
             obs=data_observed_hospital_admissions,
         )
 
@@ -462,7 +457,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             ).log_cdf(self.ww_log_lod[self.ww_censored])
         numpyro.factor("log_prob_censored", log_cdf_values.sum())
 
-        ww_pred_log = numpyro.sample(
+        site_ww_pred_log = numpyro.sample(
             "site_ww_pred_log",
             dist.Normal(
                 loc=model_log_v_ot[:, self.lab_site_to_subpop_map] + ww_site_mod,
@@ -496,7 +491,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("state_rt", state_rt)
 
         return (
-            latent_hospital_admissions,
             observed_hospital_admissions,
-            ww_pred_log,
+            site_ww_pred_log,
         )
