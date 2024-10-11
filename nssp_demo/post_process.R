@@ -5,6 +5,17 @@ library(cowplot)
 library(glue)
 library(scales)
 library(here)
+library(argparser)
+
+# Create a parser
+p <- arg_parser("Generate forecast figures") %>%
+  add_argument(p, "model_dir", help = "Base directory for the model")
+
+# Parse the command line arguments
+argv <- parse_args(p)
+
+base_dir <- path(argv$model_dir)
+
 
 theme_set(theme_minimal_grid())
 
@@ -119,41 +130,10 @@ make_forecast_fig <- function(model_dir) {
 }
 
 
-base_dir <- path(here(
-  "nssp_demo",
-  "private_data",
-  "covid-19_r_2024-10-10_f_2024-04-12_l_2024-10-09_t_2024-10-05"
-))
+forecast_fig <- make_forecast_fig(model_dir)
 
-
-forecast_fig_tbl <-
-  tibble(base_model_dir = dir_ls(base_dir)) %>%
-  filter(
-    path(base_model_dir, "inference_data", ext = "csv") %>%
-      file_exists()
-  ) %>%
-  mutate(forecast_fig = map(base_model_dir, make_forecast_fig)) %>%
-  mutate(figure_path = path(base_model_dir, "forecast_plot", ext = "pdf"))
-
-pwalk(
-  forecast_fig_tbl %>% select(forecast_fig, figure_path),
-  function(forecast_fig, figure_path) {
-    save_plot(
-      filename = figure_path,
-      plot = forecast_fig,
-      device = cairo_pdf, base_height = 6
-    )
-  }
+save_plot(
+  filename = path(model_dir, "forecast_plot", ext = "pdf"),
+  plot = forecast_fig,
+  device = cairo_pdf, base_height = 6
 )
-
-str_c(forecast_fig_tbl$figure_path, collapse = " ") %>%
-  str_c(
-    path(base_dir,
-      glue("{path_file(base_dir)}_all_forecasts"),
-      ext = "pdf"
-    ),
-    sep = " "
-  ) %>%
-  system2("pdfunite", args = .)
-
-setdiff(usa::state.abb, path_file(forecast_fig_tbl$base_model_dir))
