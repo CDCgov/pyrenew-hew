@@ -25,17 +25,12 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
     def __init__(
         self,
         state_pop,
-        n_subpops,
-        n_ww_lab_sites,
         unobs_time,
         n_initialization_points,
-        max_shed_interval,
         i0_t_offset,
         log_r_t_first_obs_rv,
         autoreg_rt_rv,
         eta_sd_rv,
-        t_peak_rv,
-        dur_shed_after_peak_rv,
         autoreg_rt_subpop_rv,
         sigma_rt_rv,
         i_first_obs_over_n_rv,
@@ -53,22 +48,28 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         autoreg_p_hosp_rv,
         hosp_wday_effect_rv,
         inf_to_hosp_rv,
-        log10_g_rv,
-        mode_sigma_ww_site_rv,
-        sd_log_sigma_ww_site_rv,
-        ww_site_mod_sd_rv,
         phi_rv,
-        ww_ml_produced_per_day,
-        pop_fraction,
-        ww_uncensored,
-        ww_censored,
-        ww_sampled_lab_sites,
-        ww_sampled_subpops,
-        ww_sampled_times,
-        ww_log_lod,
-        lab_site_to_subpop_map,
         hosp_times,
-        max_ww_sampled_days,
+        pop_fraction,
+        n_subpops,
+        t_peak_rv=None,
+        dur_shed_after_peak_rv=None,
+        n_ww_lab_sites=None,
+        max_shed_interval=None,
+        log10_g_rv=None,
+        mode_sigma_ww_site_rv=None,
+        sd_log_sigma_ww_site_rv=None,
+        ww_site_mod_sd_rv=None,
+        ww_ml_produced_per_day=None,
+        ww_uncensored=None,
+        ww_censored=None,
+        ww_sampled_lab_sites=None,
+        ww_sampled_subpops=None,
+        ww_sampled_times=None,
+        ww_log_lod=None,
+        lab_site_to_subpop_map=None,
+        max_ww_sampled_days=None,
+        include_ww=1,
     ):  # numpydoc ignore=GL08
         self.state_pop = state_pop
         self.n_subpops = n_subpops
@@ -117,6 +118,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.lab_site_to_subpop_map = lab_site_to_subpop_map
         self.hosp_times = hosp_times
         self.max_ww_sampled_days = max_ww_sampled_days
+        self.include_ww = include_ww
 
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
@@ -139,16 +141,45 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         data_observed_hospital_admissions=None,
         data_observed_log_conc=None,
     ):  # numpydoc ignore=GL08
-        if (
-            data_observed_hospital_admissions is None
-            and data_observed_log_conc is None
-        ):
-            n_datapoints = n_datapoints
+        if n_datapoints is None:
+            if (
+                data_observed_hospital_admissions is None
+                and data_observed_log_conc is None
+            ):
+                raise ValueError(
+                    "Either n_datapoints or data_observed_hosp_admissions "
+                    "must be passed."
+                )
+            elif (
+                data_observed_hospital_admissions is None
+                and data_observed_log_conc is not None
+            ):
+                raise ValueError(
+                    "Either n_datapoints or data_observed_hosp_admissions "
+                    "must be passed."
+                )
+            elif (
+                data_observed_hospital_admissions is not None
+                and data_observed_log_conc is None
+            ):
+                n_datapoints = len(data_observed_hospital_admissions)
+            else:
+                n_datapoints = max(
+                    len(data_observed_hospital_admissions),
+                    self.max_ww_sampled_days,
+                )
         else:
-            n_datapoints = max(
-                len(data_observed_hospital_admissions),
-                self.max_ww_sampled_days,
-            )
+            if (
+                data_observed_hospital_admissions is not None
+                or data_observed_log_conc is not None
+            ):
+                raise ValueError(
+                    "Cannot pass both n_datapoints and "
+                    "data_observed_hospital_admissions "
+                    "or data_observed_log_conc"
+                )
+            else:
+                n_datapoints = n_datapoints
 
         n_weeks_post_init = n_datapoints // 7 + 1
 
@@ -172,12 +203,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
         )
         numpyro.deterministic("log_r_t_in_weeks", log_r_t_in_weeks)
-
-        t_peak = self.t_peak_rv()
-        # viral_peak = self.viral_peak_rv()
-        dur_shed = self.dur_shed_after_peak_rv()
-
-        s = get_vl_trajectory(t_peak, dur_shed, self.max_shed_interval)
 
         i_first_obs_over_n = self.i_first_obs_over_n_rv()
         offset_ref_logit_i_first_obs = self.offset_ref_logit_i_first_obs_rv()
@@ -337,12 +362,17 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             gen_int=generation_interval_pmf,
         )
 
-        new_i_subpop = jnp.concat(
-            [
-                i0,
-                inf_with_feedback_proc_sample.post_initialization_infections,
-            ]
+        new_i_subpop = jnp.atleast_2d(
+            jnp.concat(
+                [
+                    i0,
+                    inf_with_feedback_proc_sample.post_initialization_infections,
+                ]
+            )
         )
+        if new_i_subpop.shape[0] == 1:
+            new_i_subpop = new_i_subpop.T
+
         r_subpop_t = inf_with_feedback_proc_sample.rt
         numpyro.deterministic("r_subpop_t", r_subpop_t)
 
@@ -350,25 +380,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             self.pop_fraction * new_i_subpop, axis=1
         )
         numpyro.deterministic("state_inf_per_capita", state_inf_per_capita)
-
-        # number of net infected individuals shedding on each day (sum of individuals in diff stages of infection)
-        def batch_colvolve_fn(m):
-            return jnp.convolve(m, s, mode="valid")
-
-        model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
-            new_i_subpop
-        )[-n_datapoints:, :]
-        numpyro.deterministic("model_net_i", model_net_i)
-
-        log10_g = self.log10_g_rv()
-
-        # expected observed viral genomes/mL at all observed and forecasted times
-        model_log_v_ot = (
-            jnp.log(10) * log10_g
-            + jnp.log(model_net_i + 1e-8)
-            - jnp.log(self.ww_ml_produced_per_day)
-        )
-        numpyro.deterministic("model_log_v_ot", model_log_v_ot)
 
         # Hospital admission component
         p_hosp_mean = self.p_hosp_mean_rv()
@@ -422,40 +433,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             "latent_hospital_admissions", latent_hospital_admissions
         )
 
-        mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
-        sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
-        ww_site_mod_sd = self.ww_site_mod_sd_rv()
-
-        ww_site_mod_rv = DistributionalVariable(
-            "ww_site_mod",
-            dist.Normal(0, ww_site_mod_sd),
-            reparam=LocScaleReparam(0),
-        )  # lab-site specific variation
-
-        sigma_ww_site_rv = TransformedVariable(
-            "sigma_ww_site",
-            DistributionalVariable(
-                "log_sigma_ww_site",
-                dist.Normal(jnp.log(mode_sigma_ww_site), sd_log_sigma_ww_site),
-                reparam=LocScaleReparam(0),
-            ),
-            transforms=transforms.ExpTransform(),
-        )
-
-        with numpyro.plate("n_ww_lab_sites", self.n_ww_lab_sites):
-            ww_site_mod = ww_site_mod_rv()
-            sigma_ww_site = sigma_ww_site_rv()
-
-        # expected observations at each site in log scale
-        exp_obs_log_v_true = model_log_v_ot[
-            self.ww_sampled_times, self.ww_sampled_subpops
-        ]
-
-        # multiplies the expected observed genomes by the site-specific multiplier at that sampling time
-        exp_obs_log_v = (
-            exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
-        )
-
         hospital_admission_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions", concentration_rv=self.phi_rv
         )
@@ -464,66 +441,128 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             obs=data_observed_hospital_admissions,
         )
 
-        numpyro.sample(
-            "log_conc_obs",
-            dist.Normal(
-                loc=exp_obs_log_v[self.ww_uncensored],
-                scale=sigma_ww_site[
-                    self.ww_sampled_lab_sites[self.ww_uncensored]
-                ],
-            ),
-            obs=(
-                data_observed_log_conc[self.ww_uncensored]
-                if data_observed_log_conc is not None
-                else None
-            ),
-        )
-        if self.ww_censored.shape[0] != 0:
-            log_cdf_values = dist.Normal(
-                loc=exp_obs_log_v[self.ww_censored],
-                scale=sigma_ww_site[
-                    self.ww_sampled_lab_sites[self.ww_censored]
-                ],
-            ).log_cdf(self.ww_log_lod[self.ww_censored])
-        numpyro.factor("log_prob_censored", log_cdf_values.sum())
+        if self.include_ww:
+            t_peak = self.t_peak_rv()
+            dur_shed = self.dur_shed_after_peak_rv()
+            s = get_vl_trajectory(t_peak, dur_shed, self.max_shed_interval)
 
-        site_ww_pred_log = numpyro.sample(
-            "site_ww_pred_log",
-            dist.Normal(
-                loc=model_log_v_ot[:, self.lab_site_to_subpop_map]
-                + ww_site_mod,
-                scale=sigma_ww_site,
-            ),
-        )
+            # number of net infected individuals shedding on each day (sum of individuals in diff stages of infection)
+            def batch_colvolve_fn(m):
+                return jnp.convolve(m, s, mode="valid")
 
-        state_model_net_i = jnp.convolve(
-            state_inf_per_capita, s, mode="valid"
-        )[-n_datapoints:]
-        numpyro.deterministic("state_model_net_i", state_model_net_i)
+            model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
+                new_i_subpop
+            )[-n_datapoints:, :]
+            numpyro.deterministic("model_net_i", model_net_i)
 
-        state_log_c = (
-            jnp.log(10) * log10_g
-            + jnp.log(state_model_net_i + 1e-8)
-            - jnp.log(self.ww_ml_produced_per_day)
-        )
-        numpyro.deterministic("state_log_c", state_log_c)
+            log10_g = self.log10_g_rv()
 
-        expected_state_ww_conc = jnp.exp(state_log_c)
-        numpyro.deterministic("expected_state_ww_conc", expected_state_ww_conc)
+            # expected observed viral genomes/mL at all observed and forecasted times
+            model_log_v_ot = (
+                jnp.log(10) * log10_g
+                + jnp.log(model_net_i + 1e-8)
+                - jnp.log(self.ww_ml_produced_per_day)
+            )
+            numpyro.deterministic("model_log_v_ot", model_log_v_ot)
 
-        state_rt = (
-            state_inf_per_capita[-n_datapoints:]
-            / jnp.convolve(
-                state_inf_per_capita,
-                jnp.hstack(
-                    (jnp.array([0]), jnp.array(generation_interval_pmf))
+            mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
+            sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
+            ww_site_mod_sd = self.ww_site_mod_sd_rv()
+
+            ww_site_mod_rv = DistributionalVariable(
+                "ww_site_mod",
+                dist.Normal(0, ww_site_mod_sd),
+                reparam=LocScaleReparam(0),
+            )  # lab-site specific variation
+
+            sigma_ww_site_rv = TransformedVariable(
+                "sigma_ww_site",
+                DistributionalVariable(
+                    "log_sigma_ww_site",
+                    dist.Normal(
+                        jnp.log(mode_sigma_ww_site), sd_log_sigma_ww_site
+                    ),
+                    reparam=LocScaleReparam(0),
                 ),
-                mode="valid",
+                transforms=transforms.ExpTransform(),
+            )
+
+            with numpyro.plate("n_ww_lab_sites", self.n_ww_lab_sites):
+                ww_site_mod = ww_site_mod_rv()
+                sigma_ww_site = sigma_ww_site_rv()
+
+            # expected observations at each site in log scale
+            exp_obs_log_v_true = model_log_v_ot[
+                self.ww_sampled_times, self.ww_sampled_subpops
+            ]
+
+            # multiplies the expected observed genomes by the site-specific multiplier at that sampling time
+            exp_obs_log_v = (
+                exp_obs_log_v_true + ww_site_mod[self.ww_sampled_lab_sites]
+            )
+
+            numpyro.sample(
+                "log_conc_obs",
+                dist.Normal(
+                    loc=exp_obs_log_v[self.ww_uncensored],
+                    scale=sigma_ww_site[
+                        self.ww_sampled_lab_sites[self.ww_uncensored]
+                    ],
+                ),
+                obs=(
+                    data_observed_log_conc[self.ww_uncensored]
+                    if data_observed_log_conc is not None
+                    else None
+                ),
+            )
+            if self.ww_censored.shape[0] != 0:
+                log_cdf_values = dist.Normal(
+                    loc=exp_obs_log_v[self.ww_censored],
+                    scale=sigma_ww_site[
+                        self.ww_sampled_lab_sites[self.ww_censored]
+                    ],
+                ).log_cdf(self.ww_log_lod[self.ww_censored])
+            numpyro.factor("log_prob_censored", log_cdf_values.sum())
+
+            site_ww_pred_log = numpyro.sample(
+                "site_ww_pred_log",
+                dist.Normal(
+                    loc=model_log_v_ot[:, self.lab_site_to_subpop_map]
+                    + ww_site_mod,
+                    scale=sigma_ww_site,
+                ),
+            )
+
+            state_model_net_i = jnp.convolve(
+                state_inf_per_capita, s, mode="valid"
             )[-n_datapoints:]
-        )
-        numpyro.deterministic("state_rt", state_rt)
+            numpyro.deterministic("state_model_net_i", state_model_net_i)
+
+            state_log_c = (
+                jnp.log(10) * log10_g
+                + jnp.log(state_model_net_i + 1e-8)
+                - jnp.log(self.ww_ml_produced_per_day)
+            )
+            numpyro.deterministic("state_log_c", state_log_c)
+
+            expected_state_ww_conc = jnp.exp(state_log_c)
+            numpyro.deterministic(
+                "expected_state_ww_conc", expected_state_ww_conc
+            )
+
+            state_rt = (
+                state_inf_per_capita[-n_datapoints:]
+                / jnp.convolve(
+                    state_inf_per_capita,
+                    jnp.hstack(
+                        (jnp.array([0]), jnp.array(generation_interval_pmf))
+                    ),
+                    mode="valid",
+                )[-n_datapoints:]
+            )
+            numpyro.deterministic("state_rt", state_rt)
 
         return (
             observed_hospital_admissions,
-            site_ww_pred_log,
+            site_ww_pred_log if self.include_ww else None,
         )
