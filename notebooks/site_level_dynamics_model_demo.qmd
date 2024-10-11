@@ -50,7 +50,7 @@ pop_fraction = jnp.array(subpop_size)/norm_pop
 
 ww_ml_produced_per_day = stan_data["mwpd"]
 n_ww_lab_sites = stan_data["n_ww_lab_sites"]
-ww_log_lod =jnp.array(stan_data["ww_log_lod"])  
+ww_log_lod =jnp.array(stan_data["ww_log_lod"])
 
 n_censored = stan_data["n_censored"]
 n_uncensored = stan_data["n_uncensored"]
@@ -324,7 +324,7 @@ my_model = ww_site_level_dynamics_model(
 )
 ```
 
-Check that we can simulate from the prior predictive 
+Check that we can simulate from the prior predictive
 ```{python}
 # | label: prior
 n_forecast_days = 35
@@ -361,7 +361,7 @@ We can use initial values set in the stan code by using `init_strategy = init_to
 `init_vals = get_initialization(stan_data,stdev=0.01,rng_key=jax.random.PRNGKey(0))`
 
 ```{python}
-# | label: create inference data object 
+# | label: create inference data object
 import arviz as az
 idata = az.from_numpyro(
     my_model.mcmc,
