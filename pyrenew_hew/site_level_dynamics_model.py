@@ -69,6 +69,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         ww_log_lod,
         lab_site_to_subpop_map,
         hosp_times,
+        max_ww_sampled_days,
     ):  # numpydoc ignore=GL08
         self.state_pop = state_pop
         self.n_subpops = n_subpops
@@ -114,6 +115,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         self.ww_log_lod = ww_log_lod
         self.lab_site_to_subpop_map = lab_site_to_subpop_map
         self.hosp_times = hosp_times
+        self.max_ww_sampled_days = max_ww_sampled_days
 
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
@@ -139,7 +141,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         if data_observed_hospital_admissions is None and data_observed_log_conc is None:
             n_datapoints = n_datapoints
         else:
-            n_datapoints = len(data_observed_hospital_admissions)
+            n_datapoints = max(
+                len(data_observed_hospital_admissions), self.max_ww_sampled_days
+            )
 
         n_weeks_post_init = n_datapoints // 7 + 1
 
@@ -434,7 +438,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             "observed_hospital_admissions", concentration_rv=self.phi_rv
         )
         observed_hospital_admissions = hospital_admission_obs_rv(
-            mu=latent_hospital_admissions,
+            mu=latent_hospital_admissions[self.hosp_times],
             obs=data_observed_hospital_admissions,
         )
 

@@ -62,7 +62,7 @@ ww_sampled_subpops = jnp.array(stan_data["ww_sampled_subpops"]) -1   # vector of
 ww_sampled_times = jnp.array(stan_data["ww_sampled_times"]) -1  # a list of all of the days on which WW is sampled, mapped to corresponding subpops
 ww_sampled_lab_sites = jnp.array(stan_data["ww_sampled_lab_sites"]) - 1
 hosp_times = jnp.array(stan_data["hosp_times"]) -1
-
+max_ww_sampled_days = max(stan_data["ww_sampled_times"])
 lab_site_to_subpop_map = jnp.array(stan_data["lab_site_to_subpop_map"]) -1   #vector mapping the subpops to lab-site combos
 
 data_observed_log_conc = jnp.array(stan_data["log_conc"])
@@ -330,7 +330,8 @@ my_model = ww_site_level_dynamics_model(
     ww_sampled_times,
     ww_log_lod,
     lab_site_to_subpop_map,
-    hosp_times
+    hosp_times,
+    max_ww_sampled_days,
 )
 ```
 
@@ -338,13 +339,12 @@ my_model = ww_site_level_dynamics_model(
 n_forecast_days = 35
 
 prior_predictive = my_model.prior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days,
+    n_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days,
     numpyro_predictive_args={"num_samples": 100},
 )
 ```
 
 ```{python}
-init_vals = get_initialization(stan_data,stdev=0.01,rng_key=jax.random.PRNGKey(0))
 my_model.run(
     num_warmup=500,
     num_samples=100,
@@ -352,13 +352,13 @@ my_model.run(
     data_observed_hospital_admissions=data_observed_hospital_admissions,
     data_observed_log_conc=data_observed_log_conc,
     mcmc_args=dict(num_chains=4),
-    nuts_args=dict(init_strategy=init_to_value(values=init_vals))
+    nuts_args=dict(init_strategy=init_to_sample)
 )
 ```
 
 ```{python}
 posterior_predictive = my_model.posterior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions)  + n_forecast_days
+    n_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days,
 )
 ```
 
@@ -375,6 +375,10 @@ idata = az.from_numpyro(
 ```
 
 ```{python}
+idata
+```
+
+```{python}
 plotting.plot_predictive(idata, prior=True)
 ```
 
@@ -384,6 +388,45 @@ plotting.plot_predictive(idata)
 
 ```{python}
 plotting.plot_posterior(idata,'state_rt')
+```
+
+```{python}
+x_data = idata.posterior_predictive['state_rt_dim_0']
+y_data = idata.posterior_predictive['state_rt']
+
+def compute_eti(dataset, eti_prob):
+    eti_bdry = dataset.quantile(
+        ((1 - eti_prob) / 2, 1 / 2 + eti_prob / 2), dim=("chain", "draw")
+    )
+    return eti_bdry.values.T
+fig, axes = plt.subplots(figsize=(6, 5))
+az.plot_hdi(
+    x_data,
+    hdi_data=compute_eti(y_data, 0.9),
+    color="C0",
+    smooth=False,
+    fill_kwargs={"alpha": 0.3},
+    ax=axes,
+)
+
+az.plot_hdi(
+    x_data,
+    hdi_data=compute_eti(y_data, 0.5),
+    color="C0",
+    smooth=False,
+    fill_kwargs={"alpha": 0.6},
+    ax=axes,
+)
+
+# Add median of the posterior to the figure
+median_ts = y_data.median(dim=["chain", "draw"])
+
+plt.plot(
+    x_data,
+    median_ts,
+    color="C0",
+    label="Median",
+)
 ```
 
 ```{python}
@@ -399,4 +442,17 @@ for i in range(n_ww_lab_sites):
 ```{python}
 diagnostic_stats_summary = az.summary(idata)
 ```
+
+```{python}
+max(diagnostic_stats_summary['r_hat'])
+```
+
+```{python}
+min(diagnostic_stats_summary['ess_bulk'])
+```
+
+```{python}
+min(diagnostic_stats_summary['ess_tail'])
+```
+
 
