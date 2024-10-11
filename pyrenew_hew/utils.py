@@ -17,18 +17,20 @@ def normed_shedding_cdf(
     by a given time post infection.
     """
     norm_const = (t_p + t_d) * ((log_base - 1) / jnp.log(log_base) - 1)
-    ad_pre = (
-        lambda x: t_p
-        / jnp.log(log_base)
-        * jnp.exp(jnp.log(log_base) * x / t_p)
-        - x
-    )
-    ad_post = (
-        lambda x: -t_d
-        / jnp.log(log_base)
-        * jnp.exp(jnp.log(log_base) * (1 - ((x - t_p) / t_d)))
-        - x
-    )
+
+    def ad_pre(x):
+        return (
+            t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p) - x
+        )
+
+    def ad_post(x):
+        return (
+            -t_d
+            / jnp.log(log_base)
+            * jnp.exp(jnp.log(log_base) * (1 - ((x - t_p) / t_d)))
+            - x
+        )
+
     return (
         jnp.where(
             time < t_p + t_d,

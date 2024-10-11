@@ -53,7 +53,9 @@ def plot_posterior(idata, name, dim_1=None):
 
 def plot_predictive(idata, prior=False):
     prior_or_post_text = "Prior" if prior else "Posterior"
-    predictive_obj = idata.prior_predictive if prior else idata.posterior_predictive
+    predictive_obj = (
+        idata.prior_predictive if prior else idata.posterior_predictive
+    )
 
     x_data = predictive_obj["observed_hospital_admissions_dim_0"]
     y_data = predictive_obj["observed_hospital_admissions"]
