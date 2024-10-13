@@ -389,3 +389,6 @@ notebooks/*_files/
 notebooks/*.md
 
 nssp_demo/private_data/*
+renv/activate.R
+.vscode/settings.json
+renv/activate.R
