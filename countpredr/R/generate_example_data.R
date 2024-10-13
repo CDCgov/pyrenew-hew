@@ -3,19 +3,19 @@ library(dplyr)
 
 #' Generate Example Data
 #'
-#' This function generates example data for a specified target respiratory pathogen e.g., "covid", "influenza", or "rsv". 
+#' This function generates example data for a specified target respiratory pathogen e.g., "covid", "influenza", or "rsv".
 #' and saves it to a CSV file in the specified output directory.
-#' 
+#'
 #' We assume that the total number of ED visits per week for the whole US that are not respiratory virus related are ~ 2.6 million,
 #' based on https://www.cdc.gov/nchs/dhcs/ed-visits/index.htm . We can then estimate the number of respiratory virus related ED visits
 #' per week using the percentage of ED visits that are respiratory virus related. We can then estimate the number of ED visits related to the target respiratory virus
 #' and all other ED visits that are either respiratory virus related for a non-target respiratory virus or not respiratory virus related.
 #'
-#' @param target A character string specifying the target for which to generate data. 
+#' @param target A character string specifying the target for which to generate data.
 #'               Valid options are "covid", "influenza", or "rsv". Default is "covid".
-#' @param est_non_resp A numeric value representing the estimated number of non-respiratory ED visits per week. 
+#' @param est_non_resp A numeric value representing the estimated number of non-respiratory ED visits per week.
 #'                     Default is 2.6e6.
-#' @param output_dir A character string specifying the directory where the output CSV file will be saved. 
+#' @param output_dir A character string specifying the directory where the output CSV file will be saved.
 #'                   Default is "countpredr/local_assets".
 #'
 #' @return This function does not return a value. It saves the generated data to a CSV file.
@@ -37,7 +37,7 @@ library(dplyr)
 #' @export
 generate_example_data <- function(
   target = "covid",
-  est_non_resp = 2.6e6, 
+  est_non_resp = 2.6e6,
   output_dir = "countpredr/local_assets") {
   # Create the output directory if it doesn't exist
   if (!dir.exists(output_dir)) {
@@ -55,14 +55,14 @@ generate_example_data <- function(
   else {
     stop("Invalid target: ", target, ", please choose from 'covid', 'influenza', or 'rsv'")
   }
-  
+
   all_resp_nssp <- pub_covidcast(
     source = "nssp",
     signals = "pct_ed_visits_combined",
     geo_type = "nation",
     time_type = "week",
   ) |> rename(all_pct = value, date = time_value) |>
-    select(date, all_pct) 
+    select(date, all_pct)
 
   target_resp_nssp <- pub_covidcast(
     source = "nssp",
@@ -70,7 +70,7 @@ generate_example_data <- function(
     geo_type = "nation",
     time_type = "week",
   ) |> rename(target_pct = value, date = time_value) |>
-    select(date, target_pct)   
+    select(date, target_pct)
 
   exampledata <- left_join(all_resp_nssp, target_resp_nssp) |>
     mutate(resp_est = all_pct * est_non_resp / (100 - all_pct)) |>
@@ -83,6 +83,6 @@ generate_example_data <- function(
   # Save the data to a CSV file
   output_file <- file.path(output_dir, paste0("exampledata_",target,".csv"))
   write.csv(exampledata, output_file, row.names = FALSE)
-  
+
   message("Example data saved to ", output_file)
 }
