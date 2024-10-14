@@ -2501,20 +2501,6 @@
       ],
       "Hash": "a75e397766b45996310908b5b32557ba"
     },
-    "tsibbledata": {
-      "Package": "tsibbledata",
-      "Version": "0.4.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "rappdirs",
-        "tsibble",
-        "utils",
-        "vctrs"
-      ],
-      "Hash": "6b53c37a18049320fb08478aef6310c2"
-    },
     "tzdb": {
       "Package": "tzdb",
       "Version": "0.4.0",
