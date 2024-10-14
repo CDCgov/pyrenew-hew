@@ -102,12 +102,15 @@ exampledata |> print(n = 10)
     # ℹ 95 more rows
 
 Given the example data we can now forecast $N(t)$ using the
-`forecast_counts` function. The arguments are the data as well as: -
-`count_col`: The name of the column which has $N(t)$ (this must be
-numeric). - `date_col`: The name of the column which has reporting times
-(this must be a date). - `h`: This sets the forecast horizon. See [fable
-documentation](https://fable.tidyverts.org/). - `times`: Number of
-forecast samples to generate.
+`forecast_counts` function. The arguments are the data as well as:
+
+- `count_col`: The name of the column which has $N(t)$ (this must be
+numeric). 
+- `date_col`: The name of the column which has reporting times
+(this must be a date). 
+- `h`: This sets the forecast horizon. See [fable
+documentation](https://fable.tidyverts.org/). 
+- `times`: Number of forecast samples to generate.
 
 ``` r
 pred_nt <- forecast_counts(exampledata,

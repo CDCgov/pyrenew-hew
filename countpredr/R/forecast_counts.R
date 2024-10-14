@@ -19,6 +19,7 @@ library(dplyr)
 #' @param edvisitdata A data frame containing the count data.
 #' @param count_col A string specifying the column name of the count data.
 #' @param date_col A string specifying the column name of the date data.
+#' @param times An integer specifying the number of times to sample models.
 #' @param h A string specifying the forecast horizon (default is "3 weeks").
 #'
 #' @return A list containing:
@@ -59,7 +60,6 @@ forecast_counts <- function(
     generate(h = h, times = times) |>
     mutate(value = .sim, .draw = as.numeric(.rep)) |>
     select(!!date_sym, .draw, value)
-  # Calculate the forecasted values with prediction intervals
   fc <- fit |>
     forecast(h = h)
   # Return the results
