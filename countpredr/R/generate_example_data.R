@@ -17,6 +17,7 @@ library(dplyr)
 #'                     Default is 2.6e6.
 #' @param output_dir A character string specifying the directory where the output CSV file will be saved.
 #'                   Default is "countpredr/local_assets".
+#' @param savedata A logical value indicating whether to save the generated data to a CSV file. Default is TRUE.
 #'
 #' @return This function does not return a value. It saves the generated data to a CSV file.
 #'
@@ -38,7 +39,8 @@ library(dplyr)
 generate_example_data <- function(
   target = "covid",
   est_non_resp = 2.6e6,
-  output_dir = "countpredr/local_assets") {
+  output_dir = "countpredr/local_assets",
+  savedata = TRUE) {
   # Create the output directory if it doesn't exist
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
@@ -72,17 +74,21 @@ generate_example_data <- function(
   ) |> rename(target_pct = value, date = time_value) |>
     select(date, target_pct)
 
-  exampledata <- left_join(all_resp_nssp, target_resp_nssp) |>
+  exampledata <- left_join(all_resp_nssp, target_resp_nssp,
+    by = join_by(date)) |>
     mutate(resp_est = all_pct * est_non_resp / (100 - all_pct)) |>
     mutate(target_resp_est = resp_est * target_pct / all_pct) |>
     mutate(non_target_resp_est = resp_est - target_resp_est) |>
     mutate(other_ed_visits = non_target_resp_est + est_non_resp) |>
-    select(date, target_resp_est, other_ed_visits) |>
-    as_tsibble(index = date)
+    select(date, target_resp_est, other_ed_visits)
 
   # Save the data to a CSV file
-  output_file <- file.path(output_dir, paste0("exampledata_",target,".csv"))
-  write.csv(exampledata, output_file, row.names = FALSE)
+  if (savedata) {
+    output_file <- file.path(output_dir, paste0("exampledata_", target, ".csv"))
+    write.csv(exampledata, output_file, row.names = FALSE)
 
-  message("Example data saved to ", output_file)
+    message("Example data saved to ", output_file)
+  }
+
+  return(exampledata)
 }
