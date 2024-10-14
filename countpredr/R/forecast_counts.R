@@ -6,13 +6,13 @@ library(dplyr)
 #' Forecast Counts
 #'
 #' This function forecasts counts from a given dataset using an ensemble of
-#' Exponential Smoothing State Space Model (ETS) and seasonal AutoRegressive Integrated 
-#' Moving Average (SARIMA) models. It returns both predictive samples and a 
+#' Exponential Smoothing State Space Model (ETS) and seasonal AutoRegressive Integrated
+#' Moving Average (SARIMA) models. It returns both predictive samples and a
 #' forecast object  with prediction intervals. In the presence of missing values,
 #' the function defaults to an SARIMA model.
-#' 
+#'
 #' The expected use-case of this function is short term forecasting of count data
-#' for the numberator of a rate calculation. For example, the numerator for 
+#' for the numberator of a rate calculation. For example, the numerator for
 #' calculating the proportion of emergency department visits that are due to
 #' a target pathogen.
 #'
@@ -24,7 +24,7 @@ library(dplyr)
 #' @return A list containing:
 #' \item{predictive_samples}{A tsibble of predictive samples generated from the model.}
 #' \item{fc}{A fable object containing the forecasted values with prediction intervals.}
-forecast_counts <- function(edvisitdata, count_col, date_col, h = "3 weeks") {
+forecast_counts <- function(edvisitdata, count_col, date_col, times = 2000, h = "3 weeks") {
   # Convert the data frame to a tsibble
   count_tsibble <- edvisitdata |>
     as_tsibble(index = .data[[date_col]]) |>
@@ -51,7 +51,7 @@ forecast_counts <- function(edvisitdata, count_col, date_col, h = "3 weeks") {
   }
   # Produce forecasts
   predictive_samples <- fit |>
-    generate(h = h, times = 2000) |>
+    generate(h = h, times = times) |>
     mutate(value = .sim, .draw = as.numeric(.rep)) |>
     select(!!date_sym, .draw, value)
   # Calculate the forecasted values with prediction intervals
