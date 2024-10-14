@@ -105,11 +105,11 @@ Given the example data we can now forecast $N(t)$ using the
 `forecast_counts` function. The arguments are the data as well as:
 
 - `count_col`: The name of the column which has $N(t)$ (this must be
-numeric). 
+numeric).
 - `date_col`: The name of the column which has reporting times
-(this must be a date). 
+(this must be a date).
 - `h`: This sets the forecast horizon. See [fable
-documentation](https://fable.tidyverts.org/). 
+documentation](https://fable.tidyverts.org/).
 - `times`: Number of forecast samples to generate.
 
 ``` r
