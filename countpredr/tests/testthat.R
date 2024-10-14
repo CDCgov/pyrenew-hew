@@ -8,6 +8,9 @@
 
 library(testthat)
 
-##
+## Test generation of example data
 source("countpredr/R/generate_example_data.R")
 source("countpredr/tests/testthat/generate_example_data.R")
+## Test forecast_counts function
+source("countpredr/R/forecast_counts.R")
+source("countpredr/tests/testthat/forecast_counts.R")
