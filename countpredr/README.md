@@ -78,10 +78,10 @@ this.
 
 ``` r
 fn <- paste0("local_assets/exampledata_", target, ".csv")
-exampledata <- if(file.exists(fn)){
-    read_csv(fn)
+exampledata <- if (file.exists(fn)) {
+  read_csv(fn)
 } else {
-    generate_example_data(target = target, output_dir = "local_assets")
+  generate_example_data(target = target, output_dir = "local_assets")
 }
 exampledata |> print(n = 10)
 ```
@@ -110,11 +110,12 @@ documentation](https://fable.tidyverts.org/). - `times`: Number of
 forecast samples to generate.
 
 ``` r
-pred_Nt <- forecast_counts(exampledata,
-    count_col = "other_ed_visits",
-    date_col = "date",
-    h = "3 weeks",
-    times = 1000)
+pred_nt <- forecast_counts(exampledata,
+  count_col = "other_ed_visits",
+  date_col = "date",
+  h = "3 weeks",
+  times = 1000
+)
 ```
 
 ## Forecast model
@@ -137,7 +138,7 @@ The single models have a `hilo` function for the returned forecast
 object `fc` that allows the prediction intervals to be displayed.
 
 ``` r
-pred_Nt$fc |> hilo(level = c(80, 95))
+pred_nt$fc |> hilo(level = c(80, 95))
 ```
 
     # A tsibble: 9 x 6 [7D]
@@ -156,8 +157,8 @@ pred_Nt$fc |> hilo(level = c(80, 95))
     # ℹ 1 more variable: `95%` <hilo>
 
 ``` r
-fig <- pred_Nt$fc |> autoplot(as_tsibble(exampledata, index = date))
-fig + ggtitle(paste0("Forecasting all non-",target," pathogen ED visits"))
+fig <- pred_nt$fc |> autoplot(as_tsibble(exampledata, index = date))
+fig + ggtitle(paste0("Forecasting all non-", target, " pathogen ED visits"))
 ```
 
 ![](README-prediction_files/figure-commonmark/unnamed-chunk-5-1.png)
@@ -170,17 +171,24 @@ The `predictive_samples` field of the `preds` list gives the `times`
 number of samples from the ensemble model.
 
 ``` r
-predictive_samples <- pred_Nt$predictive_samples |>
-    filter(.model == "comb_model")
+predictive_samples <- pred_nt$predictive_samples |>
+  filter(.model == "comb_model")
 
 ggplot() +
-  geom_point(data = predictive_samples, aes(x = date, y = value, group = .draw),
-            alpha = 0.01, size = 1, color = "blue") +
-  geom_line(data = exampledata, aes(x = date, y = other_ed_visits),
-            color = "black", linewidth = 1) +
-  labs(title = paste0("Sample Plot of ensemble predictive Samples for non-",target),
-       x = "Date",
-       y = "Predicted Value")
+  geom_point(
+    data = predictive_samples, aes(x = date, y = value, group = .draw),
+    alpha = 0.01, size = 1, color = "blue"
+  ) +
+  geom_line(
+    data = exampledata, aes(x = date, y = other_ed_visits),
+    color = "black", linewidth = 1
+  ) +
+  labs(
+    title = paste0("Sample Plot of ensemble predictive samples
+    for non-", target),
+    x = "Date",
+    y = "Predicted Value"
+  )
 ```
 
 ![](README-prediction_files/figure-commonmark/unnamed-chunk-6-1.png)
@@ -197,11 +205,12 @@ First, we make our predictive model using `forecast_counts` aimed at the
 $X(t)$ counts.
 
 ``` r
-pred_Xt <- forecast_counts(exampledata,
-    count_col = "target_resp_est",
-    date_col = "date",
-    h = "3 weeks",
-    times = 1000)
+pred_xt <- forecast_counts(exampledata,
+  count_col = "target_resp_est",
+  date_col = "date",
+  h = "3 weeks",
+  times = 1000
+)
 ```
 
 Then we can `full_join` the $X(t)$ predictive model forecast samples to
@@ -210,22 +219,33 @@ the $N(t)$ predictive samples. Due to independence we can join on the
 $X(t)$.
 
 ``` r
-propdata <- full_join(pred_Xt$predictive_samples |> filter(.model == "comb_model"),
-     predictive_samples,
-    by = join_by(date, .draw, .model, .rep)) |>
-    mutate(percentage = 100 * value.x / (value.x + value.y))
+propdata <- full_join(
+  pred_xt$predictive_samples |>
+    filter(.model == "comb_model"),
+  predictive_samples,
+  by = join_by(date, .draw, .model, .rep)
+) |>
+  mutate(percentage = 100 * value.x / (value.x + value.y))
 
 aug_exampledata <- exampledata |>
-    mutate(percentage = 100 * target_resp_est / (target_resp_est + other_ed_visits))
+  mutate(percentage = 100 * target_resp_est /
+    (target_resp_est + other_ed_visits))
 
 ggplot() +
-  geom_point(data = propdata, aes(x = date, y = percentage, group = .draw),
-            alpha = 0.01, size = 1, color = "blue") +
-  geom_line(data = aug_exampledata, aes(x = date, y = percentage),
-            color = "black", linewidth = 1) +
-  labs(title = paste0("Ensemble predictive samples for % ED visits due to ",target),
-       x = "Date",
-       y = "% ED visits due to target")
+  geom_point(
+    data = propdata, aes(x = date, y = percentage, group = .draw),
+    alpha = 0.01, size = 1, color = "blue"
+  ) +
+  geom_line(
+    data = aug_exampledata, aes(x = date, y = percentage),
+    color = "black", linewidth = 1
+  ) +
+  labs(
+    title = paste0("Ensemble predictive samples for % ED
+    visits due to ", target),
+    x = "Date",
+    y = "% ED visits due to target"
+  )
 ```
 
 ![](README-prediction_files/figure-commonmark/unnamed-chunk-8-1.png)

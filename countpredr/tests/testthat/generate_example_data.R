@@ -22,18 +22,26 @@ test_that("generate_example_data doesnt the CSV file when savedata = FALSE", {
   output_dir <- file.path(temp_dir, "test_output")
   output_file <- file.path(output_dir, "exampledata_rsv.csv")
 
-  generate_example_data(target = "rsv", output_dir = output_dir, savedata = FALSE)
+  generate_example_data(
+    target = "rsv",
+    output_dir = output_dir,
+    savedata = FALSE
+  )
 
   expect_false(file.exists(output_file))
 })
 
-test_that("generate_example_data has non-negative values and above test non resp est", {
+test_that("generate_example_data has non-negative values and
+  above test non resp est", {
   temp_dir <- tempdir()
   output_dir <- file.path(temp_dir, "test_output")
   output_file <- file.path(output_dir, "exampledata_covid.csv")
 
   test_est_non_resp <- 2e6
-  generate_example_data(est_non_resp = test_est_non_resp, output_dir = output_dir)
+  generate_example_data(
+    est_non_resp = test_est_non_resp,
+    output_dir = output_dir
+  )
 
   exampledata <- read.csv(output_file)
 

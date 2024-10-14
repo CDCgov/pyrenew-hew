@@ -3,38 +3,45 @@ library(dplyr)
 
 #' Generate Example Data
 #'
-#' This function generates example data for a specified target respiratory pathogen e.g., "covid", "influenza", or "rsv".
+#' This function generates example data for a specified target
+#' respiratory pathogen e.g., "covid", "influenza", or "rsv",
 #' and saves it to a CSV file in the specified output directory.
 #'
-#' We assume that the total number of ED visits per week for the whole US that are not respiratory virus related are ~ 2.6 million,
-#' based on https://www.cdc.gov/nchs/dhcs/ed-visits/index.htm . We can then estimate the number of respiratory virus related ED visits
-#' per week using the percentage of ED visits that are respiratory virus related. We can then estimate the number of ED visits related to the target respiratory virus
-#' and all other ED visits that are either respiratory virus related for a non-target respiratory virus or not respiratory virus related.
+#' We assume that the total number of ED visits per week for the whole
+#' US that are not respiratory virus related are ~ 2.6 million,
+#' based on https://www.cdc.gov/nchs/dhcs/ed-visits/index.htm . We can
+#' then estimate the number of respiratory virus related ED visits
+#' per week using the percentage of ED visits that are respiratory virus
+#' related. We can then estimate the number of ED visits related to
+#' the target respiratory virus and all other ED visits that are
+#' either respiratory virus related for a non-target respiratory
+#' virus or not respiratory virus related.
 #'
-#' @param target A character string specifying the target for which to generate data.
-#'               Valid options are "covid", "influenza", or "rsv". Default is "covid".
-#' @param est_non_resp A numeric value representing the estimated number of non-respiratory ED visits per week.
-#'                     Default is 2.6e6.
-#' @param output_dir A character string specifying the directory where the output CSV file will be saved.
-#'                   Default is "countpredr/local_assets".
-#' @param savedata A logical value indicating whether to save the generated data to a CSV file. Default is TRUE.
+#' @param target A character string specifying the target for which to
+#' generate data. Valid options are "covid", "influenza", or "rsv".
+#' Default is "covid".
+#' @param est_non_resp A numeric value representing the estimated number of
+#' non-respiratory ED visits per week. Default is 2.6e6.
+#' @param output_dir A character string specifying the directory where the
+#' output CSV file will be saved. Default is "countpredr/local_assets".
+#' @param savedata A logical value indicating whether to save the generated data
+#' to a CSV file. Default is TRUE.
 #'
-#' @return This function does not return a value. It saves the generated data to a CSV file.
+#' @return An example dataset containing the estimated number of ED visits
+#' related to the target respiratory virus and all other ED visits.
 #'
 #' @details The function performs the following steps:
 #' \itemize{
 #'   \item Creates the output directory if it does not exist.
-#'   \item Validates the target respiratory virus is one of the available NSSP options.
-#'   \item Retrieves and processes data from the "nssp" source using the `epidatr::pub_covidcast` function.
-#'   \item Calculates various estimates and combines them into a `fabletools::tsibble`.
-#'   \item Saves the resulting data to a CSV file in the specified output directory.
+#'   \item Validates the target respiratory virus is one of the available
+#' NSSP options.
+#'   \item Retrieves and processes data from the "nssp" source using the
+#' `epidatr::pub_covidcast` function.
+#'   \item Calculates various estimates and combines them into a
+#' `fabletools::tsibble`.
+#'   \item Saves the resulting data to a CSV file in the specified output
+#' directory.
 #' }
-#'
-#' @examples
-#' \dontrun{
-#' generate_example_data(target = "covid", est_non_resp = 2.6e6, output_dir = "countpredr/local_assets")
-#' }
-#'
 #' @export
 generate_example_data <- function(
     target = "covid",
@@ -54,7 +61,10 @@ generate_example_data <- function(
   } else if (target == "rsv") {
     "pct_ed_visits_rsv"
   } else {
-    stop("Invalid target: ", target, ", please choose from 'covid', 'influenza', or 'rsv'")
+    stop(
+      "Invalid target: ", target,
+      ", please choose from 'covid', 'influenza', or 'rsv'"
+    )
   }
 
   all_resp_nssp <- pub_covidcast(
