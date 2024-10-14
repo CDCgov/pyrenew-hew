@@ -395,3 +395,5 @@ renv/activate.R
 
 countpred/count-prediction_files/*
 countpredr/count-prediction_files
+## countpredr special case
+!countpredr/README-prediction_files/figure-commonmark/*.png
