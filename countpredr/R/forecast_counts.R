@@ -35,9 +35,9 @@ forecast_counts <- function(edvisitdata, count_col, date_col, times = 2000, h = 
   fit <- if (anyNA(edvisitdata[[count_col]])) {
     message("The count column contains missing values. Defaulting to (S)ARIMA model.")
     count_tsibble |>
-    model(
-      arima = ARIMA(log(!!count_sym)),
-    )
+      model(
+        arima = ARIMA(log(!!count_sym)),
+      )
   } else {
     count_tsibble |>
       model(

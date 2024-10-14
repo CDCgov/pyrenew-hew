@@ -110,9 +110,9 @@ documentation](https://fable.tidyverts.org/). - `times`: Number of
 forecast samples to generate.
 
 ``` r
-pred_Nt <- forecast_counts(exampledata, 
-    count_col = "other_ed_visits", 
-    date_col = "date", 
+pred_Nt <- forecast_counts(exampledata,
+    count_col = "other_ed_visits",
+    date_col = "date",
     h = "3 weeks",
     times = 1000)
 ```
@@ -137,7 +137,7 @@ The single models have a `hilo` function for the returned forecast
 object `fc` that allows the prediction intervals to be displayed.
 
 ``` r
-pred_Nt$fc |> hilo(level = c(80, 95)) 
+pred_Nt$fc |> hilo(level = c(80, 95))
 ```
 
     # A tsibble: 9 x 6 [7D]
@@ -174,9 +174,9 @@ predictive_samples <- pred_Nt$predictive_samples |>
     filter(.model == "comb_model")
 
 ggplot() +
-  geom_point(data = predictive_samples, aes(x = date, y = value, group = .draw), 
+  geom_point(data = predictive_samples, aes(x = date, y = value, group = .draw),
             alpha = 0.01, size = 1, color = "blue") +
-  geom_line(data = exampledata, aes(x = date, y = other_ed_visits), 
+  geom_line(data = exampledata, aes(x = date, y = other_ed_visits),
             color = "black", linewidth = 1) +
   labs(title = paste0("Sample Plot of ensemble predictive Samples for non-",target),
        x = "Date",
@@ -197,9 +197,9 @@ First, we make our predictive model using `forecast_counts` aimed at the
 $X(t)$ counts.
 
 ``` r
-pred_Xt <- forecast_counts(exampledata, 
-    count_col = "target_resp_est", 
-    date_col = "date", 
+pred_Xt <- forecast_counts(exampledata,
+    count_col = "target_resp_est",
+    date_col = "date",
     h = "3 weeks",
     times = 1000)
 ```
@@ -219,9 +219,9 @@ aug_exampledata <- exampledata |>
     mutate(percentage = 100 * target_resp_est / (target_resp_est + other_ed_visits))
 
 ggplot() +
-  geom_point(data = propdata, aes(x = date, y = percentage, group = .draw), 
+  geom_point(data = propdata, aes(x = date, y = percentage, group = .draw),
             alpha = 0.01, size = 1, color = "blue") +
-  geom_line(data = aug_exampledata, aes(x = date, y = percentage), 
+  geom_line(data = aug_exampledata, aes(x = date, y = percentage),
             color = "black", linewidth = 1) +
   labs(title = paste0("Ensemble predictive samples for % ED visits due to ",target),
        x = "Date",

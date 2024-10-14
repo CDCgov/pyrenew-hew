@@ -37,10 +37,10 @@ library(dplyr)
 #'
 #' @export
 generate_example_data <- function(
-  target = "covid",
-  est_non_resp = 2.6e6,
-  output_dir = "countpredr/local_assets",
-  savedata = TRUE) {
+    target = "covid",
+    est_non_resp = 2.6e6,
+    output_dir = "countpredr/local_assets",
+    savedata = TRUE) {
   # Create the output directory if it doesn't exist
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
@@ -53,8 +53,7 @@ generate_example_data <- function(
     "pct_ed_visits_influenza"
   } else if (target == "rsv") {
     "pct_ed_visits_rsv"
-  }
-  else {
+  } else {
     stop("Invalid target: ", target, ", please choose from 'covid', 'influenza', or 'rsv'")
   }
 
@@ -63,7 +62,8 @@ generate_example_data <- function(
     signals = "pct_ed_visits_combined",
     geo_type = "nation",
     time_type = "week",
-  ) |> rename(all_pct = value, date = time_value) |>
+  ) |>
+    rename(all_pct = value, date = time_value) |>
     select(date, all_pct)
 
   target_resp_nssp <- pub_covidcast(
@@ -71,11 +71,13 @@ generate_example_data <- function(
     signals = signal,
     geo_type = "nation",
     time_type = "week",
-  ) |> rename(target_pct = value, date = time_value) |>
+  ) |>
+    rename(target_pct = value, date = time_value) |>
     select(date, target_pct)
 
   exampledata <- left_join(all_resp_nssp, target_resp_nssp,
-    by = join_by(date)) |>
+    by = join_by(date)
+  ) |>
     mutate(resp_est = all_pct * est_non_resp / (100 - all_pct)) |>
     mutate(target_resp_est = resp_est * target_pct / all_pct) |>
     mutate(non_target_resp_est = resp_est - target_resp_est) |>

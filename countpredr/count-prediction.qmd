@@ -44,14 +44,14 @@ target <- "influenza"
 
 As an example data set we generate as very rough estimate of *total* ED visits in the USA. The approximation scheme is based on these assumptions:
 
-- The annual ED visit count in the USA is around 150 million https://www.cdc.gov/nchs/dhcs/ed-visits/index.htm . 
-- Approximate 10% of the total ED visit rate is due to respiratory viruses https://www.cdc.gov/nchs/dhcs/ed-visits/index.htm . 
+- The annual ED visit count in the USA is around 150 million https://www.cdc.gov/nchs/dhcs/ed-visits/index.htm .
+- Approximate 10% of the total ED visit rate is due to respiratory viruses https://www.cdc.gov/nchs/dhcs/ed-visits/index.htm .
 - The ED visit rate due to *non-respiratory virus causes* is non-seasonal.
 
-The proportion of ED visits due to: 
+The proportion of ED visits due to:
 
-1. Covid. 
-2. Influenza. 
+1. Covid.
+2. Influenza.
 3. RSV.
 
 each week is publicily available. We can access this data using `epidatr::pub_covidcast` with a source of `nssp`.
@@ -60,15 +60,15 @@ each week is publicily available. We can access this data using `epidatr::pub_co
 To use `epidatr` you need a `DELPHI_EPIDATA_KEY` environmental variable for `R`, which can be requested from https://github.com/cmu-delphi/epidatr?tab=readme-ov-file#api-keys .
 :::
 
-From the assumptions and the reported proportions we can generate an estimate of both the number of ED visits each week for both $X(t)$ and $N(t)$. 
+From the assumptions and the reported proportions we can generate an estimate of both the number of ED visits each week for both $X(t)$ and $N(t)$.
 We have added the `generate_example_data` helper function to do this.
 
 ```{r}
 fn <- paste0("local_assets/exampledata_", target, ".csv")
-exampledata <- if(file.exists(fn)){
-    read_csv(fn)
+exampledata <- if (file.exists(fn)) {
+  read_csv(fn)
 } else {
-    generate_example_data(target = target, output_dir = "local_assets")
+  generate_example_data(target = target, output_dir = "local_assets")
 }
 exampledata |> print(n = 10)
 ```
@@ -81,11 +81,12 @@ The arguments are the data as well as:
 - `times`: Number of forecast samples to generate.
 
 ```{r}
-pred_Nt <- forecast_counts(exampledata, 
-    count_col = "other_ed_visits", 
-    date_col = "date", 
-    h = "3 weeks",
-    times = 1000)
+pred_Nt <- forecast_counts(exampledata,
+  count_col = "other_ed_visits",
+  date_col = "date",
+  h = "3 weeks",
+  times = 1000
+)
 ```
 
 ## Forecast model
@@ -102,9 +103,9 @@ For more information in general see [Forecasting: Principles and Practice](https
 The single models have a `hilo` function for the returned forecast object `fc` that allows the prediction intervals to be displayed.
 
 ```{r}
-pred_Nt$fc |> hilo(level = c(80, 95)) 
+pred_Nt$fc |> hilo(level = c(80, 95))
 fig <- pred_Nt$fc |> autoplot(as_tsibble(exampledata, index = date))
-fig + ggtitle(paste0("Forecasting all non-",target," pathogen ED visits"))
+fig + ggtitle(paste0("Forecasting all non-", target, " pathogen ED visits"))
 ```
 
 Note that the `arima` and `ets` models give differing forecasts, and the equal weight ensemble model `comb_model` gives the ensemble mean forecast.
@@ -113,16 +114,22 @@ The `predictive_samples` field of the `preds` list gives the `times` number of s
 
 ```{r}
 predictive_samples <- pred_Nt$predictive_samples |>
-    filter(.model == "comb_model")
+  filter(.model == "comb_model")
 
 ggplot() +
-  geom_point(data = predictive_samples, aes(x = date, y = value, group = .draw), 
-            alpha = 0.01, size = 1, color = "blue") +
-  geom_line(data = exampledata, aes(x = date, y = other_ed_visits), 
-            color = "black", linewidth = 1) +
-  labs(title = paste0("Sample Plot of ensemble predictive Samples for non-",target),
-       x = "Date",
-       y = "Predicted Value")
+  geom_point(
+    data = predictive_samples, aes(x = date, y = value, group = .draw),
+    alpha = 0.01, size = 1, color = "blue"
+  ) +
+  geom_line(
+    data = exampledata, aes(x = date, y = other_ed_visits),
+    color = "black", linewidth = 1
+  ) +
+  labs(
+    title = paste0("Sample Plot of ensemble predictive Samples for non-", target),
+    x = "Date",
+    y = "Predicted Value"
+  )
 ```
 
 
@@ -134,32 +141,39 @@ In this example, we'll use `forecast_counts` to also forecast the target pathoge
 First, we make our predictive model using `forecast_counts` aimed at the $X(t)$ counts.
 
 ```{r}
-pred_Xt <- forecast_counts(exampledata, 
-    count_col = "target_resp_est", 
-    date_col = "date", 
-    h = "3 weeks",
-    times = 1000)
+pred_Xt <- forecast_counts(exampledata,
+  count_col = "target_resp_est",
+  date_col = "date",
+  h = "3 weeks",
+  times = 1000
+)
 ```
 
-Then we can `full_join` the $X(t)$ predictive model forecast samples to the $N(t)$ predictive samples. Due to independence we can join on the `.draw` number. 
+Then we can `full_join` the $X(t)$ predictive model forecast samples to the $N(t)$ predictive samples. Due to independence we can join on the `.draw` number.
 However, note that $P(t)$ is not simply proportional to $X(t)$.
 
 ```{r}
 propdata <- full_join(pred_Xt$predictive_samples |> filter(.model == "comb_model"),
-     predictive_samples,
-    by = join_by(date, .draw, .model, .rep)) |>
-    mutate(percentage = 100 * value.x / (value.x + value.y))
+  predictive_samples,
+  by = join_by(date, .draw, .model, .rep)
+) |>
+  mutate(percentage = 100 * value.x / (value.x + value.y))
 
 aug_exampledata <- exampledata |>
-    mutate(percentage = 100 * target_resp_est / (target_resp_est + other_ed_visits))
+  mutate(percentage = 100 * target_resp_est / (target_resp_est + other_ed_visits))
 
 ggplot() +
-  geom_point(data = propdata, aes(x = date, y = percentage, group = .draw), 
-            alpha = 0.01, size = 1, color = "blue") +
-  geom_line(data = aug_exampledata, aes(x = date, y = percentage), 
-            color = "black", linewidth = 1) +
-  labs(title = paste0("Ensemble predictive samples for % ED visits due to ",target),
-       x = "Date",
-       y = "% ED visits due to target")
+  geom_point(
+    data = propdata, aes(x = date, y = percentage, group = .draw),
+    alpha = 0.01, size = 1, color = "blue"
+  ) +
+  geom_line(
+    data = aug_exampledata, aes(x = date, y = percentage),
+    color = "black", linewidth = 1
+  ) +
+  labs(
+    title = paste0("Ensemble predictive samples for % ED visits due to ", target),
+    x = "Date",
+    y = "% ED visits due to target"
+  )
 ```
-
