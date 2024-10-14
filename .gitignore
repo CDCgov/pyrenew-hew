@@ -392,3 +392,6 @@ nssp_demo/private_data/*
 renv/activate.R
 .vscode/settings.json
 renv/activate.R
+
+countpred/count-prediction_files/*
+countpredr/count-prediction_files
