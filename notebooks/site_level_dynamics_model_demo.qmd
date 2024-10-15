@@ -320,7 +320,7 @@ my_model = ww_site_level_dynamics_model(
         ww_log_lod,
         lab_site_to_subpop_map,
         max_ww_sampled_days,
-        include_ww=1
+        include_ww=True
 )
 ```
 
@@ -353,7 +353,7 @@ Simulate the posterior predictive distribution
 ```{python}
 # | label: posterior predictive
 posterior_predictive = my_model.posterior_predictive(
-    n_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days,
+    n_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days, forecast=True
 )
 ```
 
@@ -371,17 +371,13 @@ idata = az.from_numpyro(
 ```
 
 ```{python}
-idata
-```
-
-```{python}
 # | label: plot prior preditive
-plotting.plot_predictive(idata, prior=True)
+plotting.plot_predictive(idata, "observed_hospital_admissions", prior=True)
 ```
 
 ```{python}
 # | label: plot posterior preditive
-plotting.plot_predictive(idata)
+plotting.plot_predictive(idata,"pred_hospital_admissions")
 ```
 
 ```{python}
@@ -390,43 +386,8 @@ plotting.plot_posterior(idata,'state_rt')
 ```
 
 ```{python}
-# | label: plot posterior preditive rt
-x_data = idata.posterior_predictive['state_rt_dim_0']
-y_data = idata.posterior_predictive['state_rt']
-
-def compute_eti(dataset, eti_prob):
-    eti_bdry = dataset.quantile(
-        ((1 - eti_prob) / 2, 1 / 2 + eti_prob / 2), dim=("chain", "draw")
-    )
-    return eti_bdry.values.T
-fig, axes = plt.subplots(figsize=(6, 5))
-az.plot_hdi(
-    x_data,
-    hdi_data=compute_eti(y_data, 0.9),
-    color="C0",
-    smooth=False,
-    fill_kwargs={"alpha": 0.3},
-    ax=axes,
-)
-
-az.plot_hdi(
-    x_data,
-    hdi_data=compute_eti(y_data, 0.5),
-    color="C0",
-    smooth=False,
-    fill_kwargs={"alpha": 0.6},
-    ax=axes,
-)
-
-# Add median of the posterior to the figure
-median_ts = y_data.median(dim=["chain", "draw"])
-
-plt.plot(
-    x_data,
-    median_ts,
-    color="C0",
-    label="Median",
-)
+# | label: plot posterior predictive rt
+plotting.plot_predictive(idata,'state_rt')
 ```
 
 ```{python}
@@ -482,7 +443,7 @@ my_model_hosp_only_fit = ww_site_level_dynamics_model(
     hosp_times,
     pop_fraction=1,
     n_subpops=1,
-    include_ww=0,
+    include_ww=False,
 )
 ```
 
@@ -500,7 +461,7 @@ my_model_hosp_only_fit.run(
 
 ```{python}
 posterior_predictive_hosp_only = my_model_hosp_only_fit.posterior_predictive(
-    n_datapoints= len(data_observed_hospital_admissions) + n_forecast_days,
+    n_datapoints= len(data_observed_hospital_admissions) + n_forecast_days,forecast=True
 )
 ```
 
@@ -511,7 +472,7 @@ idata_hosp_only = az.from_numpyro(
 )
 ```
 ```{python}
-plotting.plot_predictive(idata_hosp_only)
+plotting.plot_predictive(idata_hosp_only,name='pred_hospital_admissions')
 ```
 
 ```{python}

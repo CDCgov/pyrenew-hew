@@ -14,7 +14,6 @@ from pyrenew.latent import (
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.metaclass import Model
-from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
@@ -69,7 +68,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         ww_log_lod=None,
         lab_site_to_subpop_map=None,
         max_ww_sampled_days=None,
-        include_ww=0,
+        include_ww=False,
     ):  # numpydoc ignore=GL08
         self.state_pop = state_pop
         self.n_subpops = n_subpops
@@ -129,7 +128,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             fundamental_process=ARProcess(),
             differencing_order=1,
         )
-
         return None
 
     def validate(self):  # numpydoc ignore=GL08
@@ -140,6 +138,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         n_datapoints=None,
         data_observed_hospital_admissions=None,
         data_observed_log_conc=None,
+        forecast=False,
     ):  # numpydoc ignore=GL08
         if n_datapoints is None:
             if (
@@ -228,7 +227,11 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             self.n_subpops > 1, offset_ref_log_r_t, 0
         )
 
-        if self.n_subpops > 1:
+        if self.n_subpops == 1:
+            i_first_obs_over_n_subpop = i_first_obs_over_n_ref_subpop
+            initial_exp_growth_rate_subpop = initial_exp_growth_rate_ref_subpop
+            log_rtu_subpop_in_week = log_rtu_ref_subpop_in_week[:, jnp.newaxis]
+        else:
             sigma_i_first_obs = self.sigma_i_first_obs_rv()
             i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
                 "i_first_obs_over_n_non_ref_subpop",
@@ -308,10 +311,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 ],
                 axis=1,
             )
-        else:
-            i_first_obs_over_n_subpop = i_first_obs_over_n_ref_subpop
-            initial_exp_growth_rate_subpop = initial_exp_growth_rate_ref_subpop
-            log_rtu_subpop_in_week = log_rtu_ref_subpop_in_week[:, jnp.newaxis]
 
         numpyro.deterministic(
             "i_first_obs_over_n_subpop", i_first_obs_over_n_subpop
@@ -433,13 +432,23 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             "latent_hospital_admissions", latent_hospital_admissions
         )
 
-        hospital_admission_obs_rv = NegativeBinomialObservation(
-            "observed_hospital_admissions", concentration_rv=self.phi_rv
-        )
-        observed_hospital_admissions = hospital_admission_obs_rv(
-            mu=latent_hospital_admissions[self.hosp_times],
+        phi = self.phi_rv()
+        numpyro.sample(
+            "observed_hospital_admissions",
+            dist.NegativeBinomial2(
+                mean=latent_hospital_admissions[self.hosp_times],
+                concentration=phi,
+            ),
             obs=data_observed_hospital_admissions,
         )
+
+        if forecast:
+            pred_hospital_admissions = numpyro.sample(
+                "pred_hospital_admissions",
+                dist.NegativeBinomial2(
+                    mean=latent_hospital_admissions, concentration=phi
+                ).mask(False),
+            )
 
         # wastewater component
         if self.include_ww:
@@ -522,6 +531,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 ).log_cdf(self.ww_log_lod[self.ww_censored])
             numpyro.factor("log_prob_censored", log_cdf_values.sum())
 
+            # if forecast:
             site_ww_pred_log = numpyro.sample(
                 "site_ww_pred_log",
                 dist.Normal(
@@ -561,6 +571,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             numpyro.deterministic("state_rt", state_rt)
 
         return (
-            observed_hospital_admissions,
+            pred_hospital_admissions if forecast else None,
             site_ww_pred_log if self.include_ww else None,
         )

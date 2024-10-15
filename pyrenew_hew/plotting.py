@@ -51,14 +51,14 @@ def plot_posterior(idata, name, dim_1=None):
     axes.set_ylabel(name, fontsize=10)
 
 
-def plot_predictive(idata, prior=False):
+def plot_predictive(idata, name="observed_hospital_admissions", prior=False):
     prior_or_post_text = "Prior" if prior else "Posterior"
     predictive_obj = (
         idata.prior_predictive if prior else idata.posterior_predictive
     )
 
-    x_data = predictive_obj["observed_hospital_admissions_dim_0"]
-    y_data = predictive_obj["observed_hospital_admissions"]
+    x_data = predictive_obj[f"{name}_dim_0"]
+    y_data = predictive_obj[name]
 
     fig, axes = plt.subplots(figsize=(6, 5))
     az.plot_hdi(
@@ -88,11 +88,15 @@ def plot_predictive(idata, prior=False):
         color="C0",
         label="Median",
     )
-    plt.scatter(
-        idata.observed_data["observed_hospital_admissions_dim_0"],
-        idata.observed_data["observed_hospital_admissions"],
-        color="black",
-    )
+    if (
+        name == "observed_hospital_admissions"
+        or name == "pred_hospital_admissions"
+    ):
+        plt.scatter(
+            idata.observed_data["observed_hospital_admissions_dim_0"],
+            idata.observed_data["observed_hospital_admissions"],
+            color="black",
+        )
     axes.legend()
     axes.set_title(f"{prior_or_post_text} Predictive Admissions", fontsize=10)
     axes.set_xlabel("Time", fontsize=10)
