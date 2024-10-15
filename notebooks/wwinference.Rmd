@@ -177,7 +177,7 @@ hosp_data_preprocessed <- wwinference::preprocess_count_data(
 
 We'll make some plots of the data just to make sure it looks like what we'd expect:
 
-```{r time-series-fig,  out.width='100%'}
+```{r wastewater-time-series-fig,  out.width='100%'}
 ggplot(ww_data_preprocessed) +
   geom_point(
     aes(
@@ -199,7 +199,8 @@ ggplot(ww_data_preprocessed) +
   ylab("Genome copies/mL") +
   ggtitle("Lab-site level wastewater concentration") +
   theme_bw()
-
+```
+```{r hosp-time-series-fig,  out.width='100%'}
 ggplot(hosp_data_preprocessed) +
   # Plot the hospital admissions data that we will evaluate against in white
   geom_point(
@@ -375,28 +376,10 @@ observed hospital admissions and wastewater concentrations, as well as the
 latent variables of interest including the site-level R(t) estimates and the
 state-level R(t) estimate.
 
-We can generate this directly on the output of `wwinference()` using:
-```{r extracting-draws}
-draws_df <- get_draws(ww_fit)
-
-cat(
-  "Variables in dataframe: ",
-  sprintf("%s", paste(unique(draws_df$name), collapse = ", "))
-)
-```
-Note that by default the `get_draws_df()` function will return  a tidy long
-dataframe with all of the posterior draws joined to applicable data for each of
-the included variables. To examine a particular variable (e.g. `"predicted counts"` for posterior
-predicted hospital admissions), filter the data frame based on the `name` column.
-
-### Using explicit passed arguments rather than S3 methods
-
-Rather than using S3 methods supplied for `wwinference()`, the elements in the
-`wwinference_fit` object can also be used directly to create this dataframe.
-This is demonstrated below:
+We can generate this using the `ww_fit` object as demonstrated below:
 
 ```{r extracting-draws-explicit}
-draws_explicit <- get_draws(
+draws <- get_draws(
   x = ww_fit$raw_input_data$input_ww_data,
   count_data = ww_fit$raw_input_data$input_count_data,
   date_time_spine = ww_fit$raw_input_data$date_time_spine,
