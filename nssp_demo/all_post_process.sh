@@ -14,14 +14,15 @@ BASE_DIR="$1"
 for SUBDIR in "$BASE_DIR"/*/; do
     # Run the R script with the current subdirectory as the model_dir argument
     echo "$SUBDIR"
-    Rscript post_process.R --model_dir "$SUBDIR"
+    # will work once  https://github.com/rstudio/renv/pull/2018 is merged
+    Rscript -e "renv::run(\"post_process.R\", project = \"..\", args = c(\"--model_dir ${SUBDIR}\"))"
 done
 
 
-# Get the name of the current directory (base_dir)
+# # Get the name of the current directory (base_dir)
 base_dir_name=$(basename "$(pwd)")
 
 # Find all forecast_plot.pdf files and combine them using pdfunite
-find . -name "forecast_plot.pdf" | sort | xargs pdfunite - "${base_dir_name}_all_forecasts.pdf"
+find . -name "forecast_plot.pdf" | sort | xargs pdfunite - "${BASE_DIR}/${base_dir_name}_all_forecasts.pdf"
 
 echo "Combined PDF created: ${base_dir_name}_all_forecasts.pdf"

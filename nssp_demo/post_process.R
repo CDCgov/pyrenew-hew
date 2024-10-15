@@ -1,6 +1,3 @@
-cat(getwd())
-renv::activate()
-renv::status()
 library(tidyverse)
 library(tidybayes)
 library(fs)
@@ -11,14 +8,9 @@ library(here)
 library(argparser)
 
 # Create a parser
-p <- arg_parser("Generate forecast figures") %>%
-  add_argument("--model_dir", help = "Base directory for the model")
+p <- arg_parser("Generate forecast figures")
 
-# Parse the command line arguments
-argv <- parse_args(p)
-
-model_dir <- path(argv$model_dir)
-# Need to extract base dir
+base_dir <- path_dir(model_dir)
 
 theme_set(theme_minimal_grid())
 
