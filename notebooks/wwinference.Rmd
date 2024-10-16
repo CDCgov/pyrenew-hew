@@ -481,10 +481,6 @@ rely on the admissions only model if there are covergence or known data issues
 with the wastewater data.
 
 ```{r fit-hosp-only, warning=FALSE, message=FALSE}
-params$sigma_rt_prior <- 0.0001 # This model contains a single "site," so we
-# decrease the prior variance to make the "site" Rt nearly the same as the
-# "global" Rt.
-
 fit_hosp_only <- wwinference::wwinference(
   ww_data = ww_data_to_fit,
   count_data = hosp_data_preprocessed,
