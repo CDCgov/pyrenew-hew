@@ -249,17 +249,13 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             sigma_initial_exp_growth_rate = (
                 self.sigma_initial_exp_growth_rate_rv()
             )
-            initial_exp_growth_rate_non_ref_subpop_rv = TransformedVariable(
-                "clipped_initial_exp_growth_rate_non_ref_subpop",
-                DistributionalVariable(
-                    "initial_exp_growth_rate_non_ref_subpop_raw",
-                    dist.Normal(
-                        mean_initial_exp_growth_rate,
-                        sigma_initial_exp_growth_rate,
-                    ),
-                    reparam=LocScaleReparam(0),
+            initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
+                "initial_exp_growth_rate_non_ref_subpop_raw",
+                dist.Normal(
+                    mean_initial_exp_growth_rate,
+                    sigma_initial_exp_growth_rate,
                 ),
-                transforms=lambda x: jnp.clip(x, -0.01, 0.01),
+                reparam=LocScaleReparam(0),
             )
 
             autoreg_rt_subpop = self.autoreg_rt_subpop_rv()
