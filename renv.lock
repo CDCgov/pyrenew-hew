@@ -91,11 +91,11 @@
       "Version": "0.0.0.9000",
       "Source": "GitHub",
       "RemoteType": "github",
-      "RemoteHost": "api.github.com",
       "RemoteUsername": "CDCgov",
       "RemoteRepo": "cfa-epinow2-pipeline",
       "RemoteRef": "main",
-      "RemoteSha": "c04c8f857e49530ffad946ea582f404a42098735",
+      "RemoteSha": "5e79a4e28ac8ecd2d485e2868fa7b4bf0a1b999d",
+      "RemoteHost": "api.github.com",
       "Remotes": "github::epiforecasts/EpiNow2@bcf297cf36a93cc56123bc3c9e8cebfb1421a962",
       "Requirements": [
         "AzureRMR",
@@ -107,7 +107,7 @@
         "duckdb",
         "rlang"
       ],
-      "Hash": "8e012d5b5d7114f9ff707973a74afd79"
+      "Hash": "51dc64d064becda8baf7254f809d3844"
     },
     "DBI": {
       "Package": "DBI",
@@ -328,6 +328,16 @@
       ],
       "Hash": "4f57884290cc75ab22f4af9e9d4ca862"
     },
+    "argparser": {
+      "Package": "argparser",
+      "Version": "0.7.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "methods"
+      ],
+      "Hash": "6ae51dd1cd6a2f5784273ab70d41c66c"
+    },
     "arrayhelpers": {
       "Package": "arrayhelpers",
       "Version": "1.1-0",
@@ -340,6 +350,28 @@
       ],
       "Hash": "3d4e52d458784c335af3846f2de64f75"
     },
+    "arrow": {
+      "Package": "arrow",
+      "Version": "17.0.0.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "R6",
+        "assertthat",
+        "bit64",
+        "cpp11",
+        "glue",
+        "methods",
+        "purrr",
+        "rlang",
+        "stats",
+        "tidyselect",
+        "utils",
+        "vctrs"
+      ],
+      "Hash": "14af96cb2973f6a6c220ce9c3e5b02cd"
+    },
     "askpass": {
       "Package": "askpass",
       "Version": "1.2.0",
@@ -349,6 +381,16 @@
         "sys"
       ],
       "Hash": "cad6cf7f1d5f6e906700b9d3e718c796"
+    },
+    "assertthat": {
+      "Package": "assertthat",
+      "Version": "0.2.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "tools"
+      ],
+      "Hash": "50c838a310445e954bc13f26f26a6ecf"
     },
     "backports": {
       "Package": "backports",
@@ -2189,6 +2231,17 @@
         "cpp11"
       ],
       "Hash": "f561504ec2897f4d46f0c7657e488ae1"
+    },
+    "usa": {
+      "Package": "usa",
+      "Version": "0.1.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "tibble"
+      ],
+      "Hash": "85af363a00cbf994a7b5153e053e0acd"
     },
     "utf8": {
       "Package": "utf8",
