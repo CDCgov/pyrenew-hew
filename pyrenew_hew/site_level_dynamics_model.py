@@ -140,11 +140,13 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         data_observed_log_conc=None,
         forecast=False,
     ):  # numpydoc ignore=GL08
-        if n_datapoints is None:
+        if (
+            n_datapoints is None
+        ):  # calculate model calibration period based on data
             if (
                 data_observed_hospital_admissions is None
                 and data_observed_log_conc is None
-            ):
+            ):  # no data for calibration
                 raise ValueError(
                     "Either n_datapoints or data_observed_hosp_admissions "
                     "must be passed."
@@ -152,7 +154,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             elif (
                 data_observed_hospital_admissions is None
                 and data_observed_log_conc is not None
-            ):
+            ):  # does not support fitting to just wastewater data
                 raise ValueError(
                     "Either n_datapoints or data_observed_hosp_admissions "
                     "must be passed."
@@ -160,9 +162,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             elif (
                 data_observed_hospital_admissions is not None
                 and data_observed_log_conc is None
-            ):
+            ):  # only fit hosp admissions data
                 n_datapoints = len(data_observed_hospital_admissions)
-            else:
+            else:  # both hosp admisssions and ww data provided
                 n_datapoints = max(
                     len(data_observed_hospital_admissions),
                     self.max_ww_sampled_days,
@@ -180,7 +182,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             else:
                 n_datapoints = n_datapoints
 
-        n_weeks_post_init = n_datapoints // 7 + 1
+        n_weeks_post_init = -((-n_datapoints) // 7)  # n_datapoints // 7 + 1
 
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()

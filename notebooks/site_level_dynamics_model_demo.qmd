@@ -357,9 +357,6 @@ posterior_predictive = my_model.posterior_predictive(
 )
 ```
 
-We can use initial values set in the stan code by using `init_strategy = init_to_value` and use the following to generate initial values
-`init_vals = get_initialization(stan_data,stdev=0.01,rng_key=jax.random.PRNGKey(0))`
-
 ```{python}
 # | label: create inference data object
 import arviz as az
