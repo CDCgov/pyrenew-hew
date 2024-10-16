@@ -16,37 +16,9 @@ theme_set(theme_minimal_grid())
 
 disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
 
-make_forecast_fig <- function(model_dir) {
-  disease_name_raw <- base_dir %>%
-    path_file() %>%
-    str_extract("^.+(?=_r_)")
-
-  state_abb <- model_dir %>%
-    path_split() %>%
-    pluck(1) %>%
-    tail(1)
-
-
-  data_path <- path(model_dir, "data", ext = "csv")
-  inference_data_path <- path(model_dir, "inference_data",
-    ext = "csv"
-  )
-
-
-  dat <- read_csv(data_path) %>%
-    arrange(date) %>%
-    mutate(time = row_number() - 1) %>%
-    rename(.value = COVID_ED_admissions)
-
-  last_training_date <- dat %>%
-    filter(data_type == "train") %>%
-    pull(date) %>%
-    max()
-
-  last_data_date <- dat %>%
-    pull(date) %>%
-    max()
-
+read_pyrenew_samples <- function(inference_data_path,
+                                 filter_bad_chains = TRUE,
+                                 good_chain_tol = 2) {
   arviz_split <- function(x) {
     x %>%
       select(-distribution) %>%
@@ -72,6 +44,63 @@ make_forecast_fig <- function(model_dir) {
     arviz_split() |>
     map(\(x) pivot_wider(x, names_from = name) |> tidy_draws())
 
+  if (filter_bad_chains) {
+    good_chains <-
+      pyrenew_samples$log_likelihood %>%
+      pivot_longer(-starts_with(".")) %>%
+      group_by(.iteration, .chain) %>%
+      summarize(value = sum(value)) %>%
+      group_by(.chain) %>%
+      summarize(value = mean(value)) %>%
+      filter(value >= max(value) - 2) %>%
+      pull(.chain)
+  } else {
+    good_chains <- unique(pyrenew_samples$log_likelihood$.chain)
+  }
+
+  good_pyrenew_samples <- map(
+    pyrenew_samples,
+    \(x) filter(x, .chain %in% good_chains)
+  )
+  good_pyrenew_samples
+}
+
+make_forecast_fig <- function(model_dir,
+                              filter_bad_chains = TRUE,
+                              good_chain_tol = 2) {
+  disease_name_raw <- base_dir %>%
+    path_file() %>%
+    str_extract("^.+(?=_r_)")
+
+  state_abb <- model_dir %>%
+    path_split() %>%
+    pluck(1) %>%
+    tail(1)
+
+  data_path <- path(model_dir, "data", ext = "csv")
+  inference_data_path <- path(model_dir, "inference_data",
+    ext = "csv"
+  )
+
+  dat <- read_csv(data_path) %>%
+    arrange(date) %>%
+    mutate(time = row_number() - 1) %>%
+    rename(.value = ED_admissions)
+
+  last_training_date <- dat %>%
+    filter(data_type == "train") %>%
+    pull(date) %>%
+    max()
+
+  last_data_date <- dat %>%
+    pull(date) %>%
+    max()
+
+
+  pyrenew_samples <- read_pyrenew_samples(inference_data_path,
+    filter_bad_chains = filter_bad_chains,
+    good_chain_tol = good_chain_tol
+  )
 
   hosp_ci <-
     pyrenew_samples$posterior_predictive %>%
@@ -124,7 +153,6 @@ make_forecast_fig <- function(model_dir) {
   forecast_plot
 }
 
-
 forecast_fig <- make_forecast_fig(model_dir)
 
 save_plot(
@@ -132,3 +160,32 @@ save_plot(
   plot = forecast_fig,
   device = cairo_pdf, base_height = 6
 )
+
+
+# Temp code while command line version doesn't work
+base_dir <- path(
+  "nssp_demo",
+  "private_data",
+  "influenza_r_2024-10-10_f_2024-04-12_l_2024-10-09_t_2024-10-05"
+)
+
+walk(dir_ls(base_dir), function(model_dir) {
+  forecast_fig <- make_forecast_fig(model_dir)
+
+  save_plot(
+    filename = path(model_dir, "forecast_plot", ext = "pdf"),
+    plot = forecast_fig,
+    device = cairo_pdf, base_height = 6
+  )
+})
+
+path(dir_ls(base_dir, type = "directory"), "forecast_plot", ext = "pdf") %>%
+  str_c(collapse = " ") %>%
+  str_c(
+    path(base_dir,
+      glue("{path_file(base_dir)}_all_forecasts"),
+      ext = "pdf"
+    ),
+    sep = " "
+  ) %>%
+  system2("pdfunite", args = .)
