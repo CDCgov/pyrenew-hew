@@ -12,23 +12,51 @@ disease_map = {
     "RSV": "RSV",
 }
 disease = "COVID-19"
-# todo read these from cli
 
-# todo also read dates from cli
+import argparse
 import json
 from datetime import datetime
 
-reference_date = datetime.strptime("2024-10-10", "%Y-%m-%d").date()
-training_day_offset = 7
-n_training_days = 1
+parser = argparse.ArgumentParser(
+    description="Create fit data for disease modeling."
+)
+parser.add_argument(
+    "--disease",
+    type=str,
+    required=True,
+    help="Disease to model (e.g., COVID-19, Influenza, RSV)",
+)
+parser.add_argument(
+    "--report_date",
+    type=lambda d: datetime.strptime(d, "%Y-%m-%d").date(),
+    default=(datetime.now()).strftime("%Y-%m-%d"),
+    help="Report date in YYYY-MM-DD format (default: yesterday)",
+)
+parser.add_argument(
+    "--training_day_offset",
+    type=int,
+    default=7,
+    help="Number of days before the reference day to use as test data (default: 7)",
+)
+parser.add_argument(
+    "--n_training_days",
+    type=int,
+    default=90,
+    help="Number of training days (default: 90)",
+)
 
-last_training_date = reference_date - timedelta(days=training_day_offset + 1)
-# +1 because max date in dataset is reference_date - 1
+args = parser.parse_args()
+
+disease = args.disease
+report_date = args.report_date
+training_day_offset = args.training_day_offset
+n_training_days = args.n_training_days
+
+last_training_date = report_date - timedelta(days=training_day_offset + 1)
+# +1 because max date in dataset is report_date - 1
 first_training_date = last_training_date - timedelta(days=n_training_days - 1)
 
-nssp_data = duckdb.arrow(
-    pq.read_table(f"private_data/{reference_date}.parquet")
-)
+nssp_data = duckdb.arrow(pq.read_table(f"private_data/{report_date}.parquet"))
 nnh_estimates = pl.from_arrow(pq.read_table("private_data/prod.parquet"))
 
 
@@ -37,7 +65,7 @@ generation_interval_pmf = (
         (pl.col("geo_value").is_null())
         & (pl.col("disease") == disease)
         & (pl.col("parameter") == "generation_interval")
-        & (pl.col("end_date").is_null())
+        & (pl.col("end_date").is_null())  # most recent estimate
     )
     .get_column("value")
     .to_list()[0]
@@ -48,7 +76,7 @@ delay_pmf = (
         (pl.col("geo_value").is_null())
         & (pl.col("disease") == disease)
         & (pl.col("parameter") == "delay")
-        & (pl.col("end_date").is_null())
+        & (pl.col("end_date").is_null())  # most recent estimate
     )
     .get_column("value")
     .to_list()[0]
@@ -60,7 +88,6 @@ all_states = (
     .pl()["geo_value"]
     .to_list()
 )
-
 
 facts = pl.read_csv(
     "https://raw.githubusercontent.com/k5cents/usa/refs/heads/master/data-raw/facts.csv"
@@ -77,7 +104,7 @@ for state_abb in all_states:
     data_to_save = duckdb.sql(
         f"""
         SELECT report_date, reference_date, SUM(value) AS ED_admissions,
-        CASE WHEN reference_date <= '{first_training_date}'
+        CASE WHEN reference_date <= '{last_training_date}'
             THEN 'train'
             ELSE 'test' END AS data_type
         FROM nssp_data
@@ -92,7 +119,6 @@ for state_abb in all_states:
 
     data_to_save_pl = data_to_save.pl()
 
-    report_date = data_to_save_pl[0, "report_date"]
     actual_first_date = data_to_save_pl["reference_date"].min()
     actual_last_date = data_to_save_pl["reference_date"].max()
 
@@ -108,9 +134,13 @@ for state_abb in all_states:
             & (pl.col("disease") == disease)
             & (pl.col("parameter") == "right_truncation")
             & (pl.col("end_date").is_null())
-            & (pl.col("reference_date") <= reference_date)
+            & (
+                pl.col("reference_date") <= report_date
+            )  # estimates nearest the report date
         )
-        .filter(pl.col("reference_date") == pl.col("reference_date").max())
+        .filter(
+            pl.col("reference_date") == pl.col("reference_date").max()
+        )  # estimates nearest the report date
         .get_column("value")
         .to_list()[0]
     )
