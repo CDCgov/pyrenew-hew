@@ -336,7 +336,7 @@ Fit the model to observed hospital admissions and wastewater data
 ```{python}
 # | label: model fit
 my_model.run(
-    num_warmup=500,
+    num_warmup=100,
     num_samples=100,
     rng_key=jax.random.key(223),
     data_observed_hospital_admissions=data_observed_hospital_admissions,
@@ -349,7 +349,7 @@ Simulate the posterior predictive distribution
 ```{python}
 # | label: posterior predictive
 posterior_predictive = my_model.posterior_predictive(
-    n_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days, forecast=True
+    n_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days, is_predictive=True
 )
 ```
 
@@ -370,12 +370,7 @@ plotting.plot_predictive(idata, "observed_hospital_admissions", prior=True)
 
 ```{python}
 # | label: plot posterior preditive
-plotting.plot_predictive(idata,"pred_hospital_admissions")
-```
-
-```{python}
-# | label: plot posterior rt
-plotting.plot_posterior(idata,'state_rt')
+plotting.plot_predictive(idata,"observed_hospital_admissions")
 ```
 
 ```{python}
@@ -384,9 +379,9 @@ plotting.plot_predictive(idata,'state_rt')
 ```
 
 ```{python}
-# | label: plot posterior rt by subpop
+# | label: plot posterior predictive rt by subpop
 for i in range(n_subpops):
-    plotting.plot_posterior(idata, 'r_subpop_t', dim_1=i)
+    plotting.plot_predictive(idata, 'r_subpop_t', dim_1=i)
 ```
 
 ```{python}
@@ -439,7 +434,7 @@ my_model_hosp_only_fit = ww_site_level_dynamics_model(
 ```{python}
 # | label: hosp only fit
 my_model_hosp_only_fit.run(
-    num_warmup=500,
+    num_warmup=100,
     num_samples=100,
     rng_key=jax.random.key(223),
     data_observed_hospital_admissions=data_observed_hospital_admissions,
@@ -449,7 +444,7 @@ my_model_hosp_only_fit.run(
 
 ```{python}
 posterior_predictive_hosp_only = my_model_hosp_only_fit.posterior_predictive(
-    n_datapoints= len(data_observed_hospital_admissions) + n_forecast_days,forecast=True
+    n_datapoints= len(data_observed_hospital_admissions) + n_forecast_days,is_predictive=True
 )
 ```
 
@@ -460,9 +455,9 @@ idata_hosp_only = az.from_numpyro(
 )
 ```
 ```{python}
-plotting.plot_predictive(idata_hosp_only,name='pred_hospital_admissions')
+plotting.plot_predictive(idata_hosp_only,name='observed_hospital_admissions')
 ```
 
 ```{python}
-plotting.plot_posterior(idata_hosp_only,'r_subpop_t')
+plotting.plot_predictive(idata_hosp_only,'r_subpop_t')
 ```

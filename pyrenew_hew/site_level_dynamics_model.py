@@ -14,6 +14,7 @@ from pyrenew.latent import (
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.metaclass import Model
+from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
@@ -138,7 +139,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         n_datapoints=None,
         data_observed_hospital_admissions=None,
         data_observed_log_conc=None,
-        forecast=False,
+        is_predictive=False,
     ):  # numpydoc ignore=GL08
         if (
             n_datapoints is None
@@ -430,23 +431,19 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             "latent_hospital_admissions", latent_hospital_admissions
         )
 
-        phi = self.phi_rv()
-        numpyro.sample(
-            "observed_hospital_admissions",
-            dist.NegativeBinomial2(
-                mean=latent_hospital_admissions[self.hosp_times],
-                concentration=phi,
-            ),
-            obs=data_observed_hospital_admissions,
+        hospital_admission_obs_rv = NegativeBinomialObservation(
+            "observed_hospital_admissions", concentration_rv=self.phi_rv
         )
 
-        if forecast:
-            pred_hospital_admissions = numpyro.sample(
-                "pred_hospital_admissions",
-                dist.NegativeBinomial2(
-                    mean=latent_hospital_admissions, concentration=phi
-                ).mask(False),
-            )
+        if not is_predictive:
+            mu_obs_hosp = latent_hospital_admissions[self.hosp_times]
+        else:
+            mu_obs_hosp = latent_hospital_admissions
+
+        observed_hospital_admissions = hospital_admission_obs_rv(
+            mu=mu_obs_hosp,
+            obs=data_observed_hospital_admissions,
+        )
 
         # wastewater component
         if self.include_ww:
@@ -529,7 +526,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 ).log_cdf(self.ww_log_lod[self.ww_censored])
             numpyro.factor("log_prob_censored", log_cdf_values.sum())
 
-            # if forecast:
             site_ww_pred_log = numpyro.sample(
                 "site_ww_pred_log",
                 dist.Normal(
@@ -569,6 +565,6 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             numpyro.deterministic("state_rt", state_rt)
 
         return (
-            pred_hospital_admissions if forecast else None,
+            observed_hospital_admissions,
             site_ww_pred_log if self.include_ww else None,
         )
