@@ -118,7 +118,5 @@ for key in list(idata.posterior.keys()):
 ## Save for Post-Processing
 
 ```{python}
-idata.to_dataframe().to_csv(
-    "data/fit_hosp_only/pyrenew_inference_data.csv", index=False
-)
+idata.to_dataframe().to_csv("data/fit_hosp_only/inference_data.csv", index=False)
 ```

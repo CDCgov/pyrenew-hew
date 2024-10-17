@@ -55,11 +55,9 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             infection_feedback_pmf=infection_feedback_pmf_rv,
         )
 
-        self.p_hosp_ar_proc = ARProcess("p_hosp")
+        self.p_hosp_ar_proc = ARProcess()
         self.ar_diff = DifferencedProcess(
-            fundamental_process=ARProcess(
-                noise_rv_name="rtu_weekly_diff_first_diff_ar_process_noise"
-            ),
+            fundamental_process=ARProcess(),
             differencing_order=1,
         )
 
@@ -124,6 +122,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             autoreg=jnp.array(autoreg_rt),
             noise_sd=jnp.array(eta_sd),
             fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
+            noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
         )
 
         rtu = repeat_until_n(
@@ -165,6 +164,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         p_hosp_ar_init = p_hosp_ar_init_rv()
 
         p_hosp_ar = self.p_hosp_ar_proc(
+            noise_name="p_hosp",
             n=n_weeks_post_init,
             autoreg=autoreg_p_hosp,
             init_vals=p_hosp_ar_init,

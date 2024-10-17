@@ -40,18 +40,28 @@ blob storage.
 Models are fit by calling `python fit_model.py --model_dir MODEL_DIR` from the
 command line, where MODEL_DIR is of the form `private_data/{str_to_lower(disease)}_r_{report_date}_f_{actual_first_date}_l_{actual_last_date}_t_{last_training_date}/{state_abb}`
 
-The model is fit, non-converging chains are pruned, and forecasting is
-performed. The results are saved as a csv in `private_data/{str_to_lower(disease)}_r_{report_date}_f_{actual_first_date}_l_{actual_last_date}_t_{last_training_date}/{state_abb}/pyrenew_inference_data.csv`
+Results are saved as a pickle file in `private_data/{str_to_lower(disease)}_r_{report_date}_f_{actual_first_date}_l_{actual_last_date}_t_{last_training_date}/{state_abb}/posterior_samples.pickle`
 
+
+## 2. Creating forecasts
+
+Forecasts are created by calling `python generate_predictive.py --model_dir MODEL_DIR` from the
+command line, where MODEL_DIR is of the form `private_data/{str_to_lower(disease)}_r_{report_date}_f_{actual_first_date}_l_{actual_last_date}_t_{last_training_date}/{state_abb}`
+
+The results are saved as a csv in
+`private_data/{str_to_lower(disease)}_r_{report_date}_f_{actual_first_date}_l_{actual_last_date}_t_{last_training_date}/{state_abb}/inference_data.csv`
+Results are also saved as a netCDF file in
+`private_data/{str_to_lower(disease)}_r_{report_date}_f_{actual_first_date}_l_{actual_last_date}_t_{last_training_date}/{state_abb}/inference_data.nc`
 
 ### In the future
 
-Model fitting and forecasting should be separated into different scripts. All
-chains should be saved, regardless of convergence.
+Exported file formates may change (see github issues.)
 
-## 3. Post-processing
+## 4. Post-processing
 
 ### Now
+
+Non-converging chains should be pruned here.
 
 `post_process.R` contains a function `make_forecast_fig` that takes `model_dir`
 as an argument. It creates a forecast plot.

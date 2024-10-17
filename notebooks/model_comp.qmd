@@ -56,7 +56,7 @@ stan_tidy_draws <- read_cmdstan_csv(stan_files)$post_warmup_draws |>
 
 pyrenew_tidy_draws <-
   read_csv(here(path("notebooks", "data", "fit_hosp_only",
-    "pyrenew_inference_data",
+    "inference_data",
     ext = "csv"
   ))) |>
   rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
