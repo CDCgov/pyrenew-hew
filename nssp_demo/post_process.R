@@ -8,7 +8,14 @@ library(here)
 library(argparser)
 
 # Create a parser
-p <- arg_parser("Generate forecast figures")
+p <- arg_parser("Generate forecast figures") %>%
+  add_argument(p, "--model_dir",
+    help = "Directory containing the model data",
+    required = TRUE
+  )
+
+argv <- parse_args(p)
+model_dir <- path(argv$model_dir)
 
 base_dir <- path_dir(model_dir)
 
