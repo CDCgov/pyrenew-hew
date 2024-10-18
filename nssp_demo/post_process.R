@@ -155,5 +155,3 @@ str_c(forecast_fig_tbl$figure_path, collapse = " ") %>%
     sep = " "
   ) %>%
   system2("pdfunite", args = .)
-
-setdiff(usa::state.abb, path_file(forecast_fig_tbl$base_model_dir))
