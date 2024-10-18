@@ -30,10 +30,10 @@ parser.add_argument(
     "--report_date",
     type=lambda d: datetime.strptime(d, "%Y-%m-%d").date(),
     # default=(datetime.now()).strftime("%Y-%m-%d"),
-    default="2024-10-18",
+    required=True,
+    # todo: allow this to just be "latest" and have this be the default
     help="Report date in YYYY-MM-DD format (default: yesterday)",
 )
-# todo: allow this to just be "latest"
 parser.add_argument(
     "--training_day_offset",
     type=int,
