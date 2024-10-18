@@ -389,3 +389,11 @@ notebooks/*_files/
 notebooks/*.md
 
 nssp_demo/private_data/*
+renv/activate.R
+.vscode/settings.json
+renv/activate.R
+
+countpred/count-prediction_files/*
+countpredr/count-prediction_files
+## countpredr special case
+!countpredr/README-prediction_files/figure-commonmark/*.png
