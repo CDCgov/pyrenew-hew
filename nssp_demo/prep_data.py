@@ -30,9 +30,10 @@ parser.add_argument(
     "--report_date",
     type=lambda d: datetime.strptime(d, "%Y-%m-%d").date(),
     # default=(datetime.now()).strftime("%Y-%m-%d"),
-    default="2024-10-17",
+    default="2024-10-18",
     help="Report date in YYYY-MM-DD format (default: yesterday)",
 )
+# todo: allow this to just be "latest"
 parser.add_argument(
     "--training_day_offset",
     type=int,
@@ -57,7 +58,7 @@ last_training_date = report_date - timedelta(days=training_day_offset + 1)
 # +1 because max date in dataset is report_date - 1
 first_training_date = last_training_date - timedelta(days=n_training_days - 1)
 
-nssp_data = duckdb.arrow(pq.read_table(f"private_data/{report_date}.parquet"))
+nssp_data = duckdb.read_parquet(f"private_data/{report_date}.parquet")
 nnh_estimates = pl.from_arrow(pq.read_table("private_data/prod.parquet"))
 
 
