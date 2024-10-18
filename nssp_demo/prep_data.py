@@ -29,7 +29,8 @@ parser.add_argument(
 parser.add_argument(
     "--report_date",
     type=lambda d: datetime.strptime(d, "%Y-%m-%d").date(),
-    default=(datetime.now()).strftime("%Y-%m-%d"),
+    # default=(datetime.now()).strftime("%Y-%m-%d"),
+    default="2024-10-17",
     help="Report date in YYYY-MM-DD format (default: yesterday)",
 )
 parser.add_argument(
@@ -82,8 +83,10 @@ delay_pmf = (
     .to_list()[0]
 )
 
+excluded_states = ["GU", "MO", "WY"]
 all_states = (
     nssp_data.unique("geo_value")
+    .filter(f"geo_value NOT IN {excluded_states}")
     .order("geo_value")
     .pl()["geo_value"]
     .to_list()
@@ -101,6 +104,7 @@ state_pop_df = facts.join(states, on="name").select(
 )
 
 for state_abb in all_states:
+    print(f"Processing {state_abb}")
     data_to_save = duckdb.sql(
         f"""
         SELECT report_date, reference_date, SUM(value) AS ED_admissions,
