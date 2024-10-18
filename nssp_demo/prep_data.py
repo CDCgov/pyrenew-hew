@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import pathlib
 from datetime import datetime, timedelta
@@ -7,6 +8,9 @@ from datetime import datetime, timedelta
 import duckdb
 import polars as pl
 import pyarrow.parquet as pq
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 disease_map = {
     "COVID-19": "COVID-19/Omicron",
@@ -25,11 +29,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--report_date",
-    type=lambda d: datetime.strptime(d, "%Y-%m-%d").date(),
-    # default=(datetime.now()).strftime("%Y-%m-%d"),
-    required=True,
-    # todo: allow this to just be "latest" and have this be the default
-    help="Report date in YYYY-MM-DD format (default: yesterday)",
+    type=str,
+    default="latest",
+    help="Report date in YYYY-MM-DD format or latest (default: latest)",
 )
 parser.add_argument(
     "--training_day_offset",
@@ -48,6 +50,16 @@ args = parser.parse_args()
 
 disease = args.disease
 report_date = args.report_date
+
+if report_date == "latest":
+    report_date = max(
+        f.stem
+        for f in pathlib.Path("private_data/nssp_etl_gold").glob("*.parquet")
+    )
+
+report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+
+logger.info(f"Report date: {report_date}")
 training_day_offset = args.training_day_offset
 n_training_days = args.n_training_days
 
@@ -55,8 +67,12 @@ last_training_date = report_date - timedelta(days=training_day_offset + 1)
 # +1 because max date in dataset is report_date - 1
 first_training_date = last_training_date - timedelta(days=n_training_days - 1)
 
-nssp_data = duckdb.read_parquet(f"private_data/{report_date}.parquet")
-nnh_estimates = pl.from_arrow(pq.read_table("private_data/prod.parquet"))
+nssp_data = duckdb.read_parquet(
+    f"private_data/nssp_etl_gold/{report_date}.parquet"
+)
+nnh_estimates = pl.from_arrow(
+    pq.read_table("private_data/prod_param_estimates/prod.parquet")
+)
 
 
 generation_interval_pmf = (
@@ -102,7 +118,7 @@ state_pop_df = facts.join(states, on="name").select(
 )
 
 for state_abb in all_states:
-    print(f"Processing {state_abb}")
+    logger.info(f"Processing {state_abb}")
     data_to_save = duckdb.sql(
         f"""
         SELECT report_date, reference_date, SUM(value) AS ED_admissions,
@@ -173,10 +189,12 @@ for state_abb in all_states:
     os.makedirs(model_folder, exist_ok=True)
     state_folder = pathlib.Path(model_folder, state_abb)
     os.makedirs(state_folder, exist_ok=True)
-    print(f"Saving {state_abb}")
+    logger.info(f"Saving {state_abb}")
     data_to_save.to_csv(str(pathlib.Path(state_folder, "data.csv")))
 
     with open(
         pathlib.Path(state_folder, "data_for_model_fit.json"), "w"
     ) as json_file:
         json.dump(data_for_model_fit, json_file)
+
+logger.info("Data preparation complete.")
