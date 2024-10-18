@@ -1,6 +1,8 @@
+import argparse
+import json
 import os
 import pathlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import duckdb
 import polars as pl
@@ -11,11 +13,6 @@ disease_map = {
     "Influenza": "Influenza",
     "RSV": "RSV",
 }
-disease = "COVID-19"
-
-import argparse
-import json
-from datetime import datetime
 
 parser = argparse.ArgumentParser(
     description="Create fit data for disease modeling."
