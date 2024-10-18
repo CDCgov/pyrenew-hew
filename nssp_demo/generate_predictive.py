@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "--model_dir",
-    type=str,
+    type=Path,
     required=True,
     help="Path to the model directory containing the data.",
 )
@@ -25,7 +25,7 @@ parser.add_argument(
     help="Number of time points to forecast",
 )
 args = parser.parse_args()
-model_dir = Path(args.model_dir)
+model_dir = args.model_dir
 n_forecast_points = args.n_forecast_points
 my_model, data_observed_hospital_admissions, right_truncation_offset = (
     build_model_from_dir(model_dir)
