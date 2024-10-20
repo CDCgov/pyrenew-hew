@@ -9,122 +9,28 @@ import duckdb
 import polars as pl
 import pyarrow.parquet as pq
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-disease_map = {
-    "COVID-19": "COVID-19/Omicron",
-    "Influenza": "Influenza",
-    "RSV": "RSV",
-}
+def process_and_save_state(state_abb,
+                           disease,
+                           report_date,
+                           first_training_date,
+                           last_training_date,
+                           state_pop_df,
+                           param_estimates,
+                           output_data_dir,
+                           logger=None):
+    disease_map = {
+        "COVID-19": "COVID-19/Omicron",
+        "Influenza": "Influenza",
+        "RSV": "RSV",
+    }
 
-parser = argparse.ArgumentParser(
-    description="Create fit data for disease modeling."
-)
-parser.add_argument(
-    "--disease",
-    type=str,
-    required=True,
-    help="Disease to model (e.g., COVID-19, Influenza, RSV)",
-)
-parser.add_argument(
-    "--report_date",
-    type=str,
-    default="latest",
-    help="Report date in YYYY-MM-DD format or latest (default: latest)",
-)
-parser.add_argument(
-    "--training_day_offset",
-    type=int,
-    default=7,
-    help="Number of days before the reference day to use as test data (default: 7)",
-)
-parser.add_argument(
-    "--n_training_days",
-    type=int,
-    default=90,
-    help="Number of training days (default: 90)",
-)
-
-args = parser.parse_args()
-
-disease = args.disease
-report_date = args.report_date
-
-if report_date == "latest":
-    report_date = max(
-        f.stem
-        for f in pathlib.Path("private_data/nssp_etl_gold").glob("*.parquet")
-    )
-
-report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
-
-logger.info(f"Report date: {report_date}")
-training_day_offset = args.training_day_offset
-n_training_days = args.n_training_days
-
-last_training_date = report_date - timedelta(days=training_day_offset + 1)
-# +1 because max date in dataset is report_date - 1
-first_training_date = last_training_date - timedelta(days=n_training_days - 1)
-
-nssp_data = duckdb.read_parquet(
-    f"private_data/nssp_etl_gold/{report_date}.parquet"
-)
-nnh_estimates = pl.from_arrow(
-    pq.read_table("private_data/prod_param_estimates/prod.parquet")
-)
-
-
-generation_interval_pmf = (
-    nnh_estimates.filter(
-        (pl.col("geo_value").is_null())
-        & (pl.col("disease") == disease)
-        & (pl.col("parameter") == "generation_interval")
-        & (pl.col("end_date").is_null())  # most recent estimate
-    )
-    .get_column("value")
-    .to_list()[0]
-)
-
-delay_pmf = (
-    nnh_estimates.filter(
-        (pl.col("geo_value").is_null())
-        & (pl.col("disease") == disease)
-        & (pl.col("parameter") == "delay")
-        & (pl.col("end_date").is_null())  # most recent estimate
-    )
-    .get_column("value")
-    .to_list()[0]
-)
-
-excluded_states = ["GU", "MO", "WY"]
-all_states = (
-    nssp_data.unique("geo_value")
-    .filter(f"geo_value NOT IN {excluded_states}")
-    .order("geo_value")
-    .pl()["geo_value"]
-    .to_list()
-)
-
-facts = pl.read_csv(
-    "https://raw.githubusercontent.com/k5cents/usa/refs/heads/master/data-raw/facts.csv"
-)
-states = pl.read_csv(
-    "https://raw.githubusercontent.com/k5cents/usa/refs/heads/master/data-raw/states.csv"
-)
-
-state_pop_df = facts.join(states, on="name").select(
-    ["abb", "name", "population"]
-)
-
-for state_abb in all_states:
-    logger.info(f"Processing {state_abb}")
     data_to_save = duckdb.sql(
         f"""
         SELECT report_date, reference_date, SUM(value) AS ED_admissions,
         CASE WHEN reference_date <= '{last_training_date}'
-            THEN 'train'
-            ELSE 'test' END AS data_type
+        THEN 'train'
+        ELSE 'test' END AS data_type
         FROM nssp_data
         WHERE disease = '{disease_map[disease]}' AND metric = 'count_ed_visits'
         AND geo_value = '{state_abb}'
@@ -137,17 +43,37 @@ for state_abb in all_states:
 
     data_to_save_pl = data_to_save.pl()
 
-    actual_first_date = data_to_save_pl["reference_date"].min()
-    actual_last_date = data_to_save_pl["reference_date"].max()
-
     state_pop = (
         state_pop_df.filter(pl.col("abb") == state_abb)
         .get_column("population")
         .to_list()[0]
     )
 
+    generation_interval_pmf = (
+        param_estimates.filter(
+            (pl.col("geo_value").is_null())
+            & (pl.col("disease") == disease)
+            & (pl.col("parameter") == "generation_interval")
+            & (pl.col("end_date").is_null())  # most recent estimate
+        )
+        .get_column("value")
+        .to_list()[0]
+    )
+
+    delay_pmf = (
+        param_estimates.filter(
+            (pl.col("geo_value").is_null())
+            & (pl.col("disease") == disease)
+            & (pl.col("parameter") == "delay")
+            & (pl.col("end_date").is_null())  # most recent estimate
+        )
+        .get_column("value")
+        .to_list()[0]
+    )
+
+
     right_truncation_pmf = (
-        nnh_estimates.filter(
+        param_estimates.filter(
             (pl.col("geo_value") == state_abb)
             & (pl.col("disease") == disease)
             & (pl.col("parameter") == "right_truncation")
@@ -183,18 +109,146 @@ for state_abb in all_states:
         "state_pop": state_pop,
     }
 
-    model_folder_name = f"{disease.lower()}_r_{report_date}_f_{actual_first_date}_l_{actual_last_date}_t_{last_training_date}"
+    state_dir = os.path.join(output_data_dir, state_abb)
+    os.makedirs(state_dir, exist_ok=True)
+    if logger is not None:
+        logger.info(f"Saving {state_abb} to {state_dir}")
+    data_to_save.to_csv(str(pathlib.Path(state_dir, "data.csv")))
 
-    model_folder = pathlib.Path("private_data", model_folder_name)
-    os.makedirs(model_folder, exist_ok=True)
-    state_folder = pathlib.Path(model_folder, state_abb)
-    os.makedirs(state_folder, exist_ok=True)
-    logger.info(f"Saving {state_abb}")
-    data_to_save.to_csv(str(pathlib.Path(state_folder, "data.csv")))
-
-    with open(
-        pathlib.Path(state_folder, "data_for_model_fit.json"), "w"
-    ) as json_file:
+    with open(os.path.join(state_dir, "data_for_model_fit.json"), "w"
+              ) as json_file:
         json.dump(data_for_model_fit, json_file)
 
-logger.info("Data preparation complete.")
+
+def main(disease,
+         report_date,
+         nssp_data_dir,
+         param_estimate_dir,
+         output_data_dir,
+         training_day_offset,
+         n_training_days):
+
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    if report_date == "latest":
+        report_date = max(
+            f.stem
+            for f in pathlib.Path(nssp_data_dir).glob("*.parquet")
+        )
+
+    report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+
+    logger.info(f"Report date: {report_date}")
+
+    last_training_date = (report_date -
+                          timedelta(days=training_day_offset + 1))
+    # +1 because max date in dataset is report_date - 1
+    first_training_date = (last_training_date -
+                           timedelta(days=n_training_days - 1))
+
+    datafile = f"{report_date}.parquet"
+    nssp_data = duckdb.read_parquet(
+        os.path.join(nssp_data_dir, datafile))
+    param_estimates = pl.from_arrow(
+        pq.read_table(os.path.join(
+            param_estimate_dir,
+            "prod.parquet")))
+
+    excluded_states = ["GU", "MO", "WY"]
+    all_states = (
+        nssp_data.unique("geo_value")
+        .filter(f"geo_value NOT IN {excluded_states}")
+        .order("geo_value")
+        .pl()["geo_value"]
+        .to_list()
+    )
+
+    facts = pl.read_csv(
+        "https://raw.githubusercontent.com/k5cents/usa/"
+        "refs/heads/master/data-raw/facts.csv"
+    )
+    states = pl.read_csv(
+        "https://raw.githubusercontent.com/k5cents/usa/"
+        "refs/heads/master/data-raw/states.csv"
+    )
+
+    state_pop_df = facts.join(states, on="name").select(
+        ["abb", "name", "population"]
+    )
+
+    model_folder_name = (
+        f"{disease.lower()}_r_{report_date}_f_"
+        f"{first_training_date}_t_{last_training_date}")
+
+    model_folder = os.path.join(output_data_dir, model_folder_name)
+    os.makedirs(model_folder, exist_ok=True)
+
+    for state_abb in all_states:
+        logger.info(f"Processing {state_abb}")
+        process_and_save_state(
+            state_abb=state_abb,
+            disease=disease,
+            report_date=report_date,
+            first_training_date=first_training_date,
+            last_training_date=last_training_date,
+            state_pop_df=state_pop_df,
+            param_estimates=param_estimates,
+            output_data_dir=output_data_dir,
+            logger=logger)
+    logger.info("Data preparation complete.")
+
+
+parser = argparse.ArgumentParser(
+    description="Create fit data for disease modeling."
+)
+parser.add_argument(
+    "--disease",
+    type=str,
+    required=True,
+    help="Disease to model (e.g., COVID-19, Influenza, RSV)",
+)
+parser.add_argument(
+    "--report-date",
+    type=str,
+    default="latest",
+    help="Report date in YYYY-MM-DD format or latest (default: latest)",
+)
+
+parser.add_argument(
+    "--nssp-data-dir",
+    type=str,
+    default=os.path.join("private_data", "nssp_etl_gold"),
+    help="Directory in which to look for NSSP input data.")
+
+parser.add_argument(
+    "--param-data-dir",
+    type=str,
+    default=os.path.join("private_data", "prod_param_estimates"),
+    help=(
+        "Directory in which to look for parameter estimates"
+        "such as delay PMFs."))
+
+parser.add_argument(
+    "--output-data-dir",
+    type=str,
+    default=os.path.join("private_data"),
+    help="Directory in which to save output data.")
+
+parser.add_argument(
+    "--training-day-offset",
+    type=int,
+    default=7,
+    help="Number of days before the reference day to use as test data (default: 7)",
+)
+
+parser.add_argument(
+    "--n-training-days",
+    type=int,
+    default=90,
+    help="Number of training days (default: 90)",
+)
+
+args = parser.parse_args()
+
+main(**args)
