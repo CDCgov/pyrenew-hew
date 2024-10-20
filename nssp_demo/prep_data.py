@@ -123,7 +123,7 @@ def process_and_save_state(state_abb,
 def main(disease,
          report_date,
          nssp_data_dir,
-         param_estimate_dir,
+         param_data_dir,
          output_data_dir,
          training_day_offset,
          n_training_days):
