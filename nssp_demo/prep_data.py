@@ -89,11 +89,20 @@ def process_and_save_state(state_abb,
         .to_list()[0]
     )
 
+    last_actual_training_date = (
+        data_to_save_pl.filter(
+            pl.col("data_type") == "train"
+        ).get_column("reference_date").max())
+
+    right_truncation_offset = (
+        report_date - last_actual_training_date).days
+
     train_ed_admissions = (
         data_to_save_pl.filter(pl.col("data_type") == "train")
         .get_column("ED_admissions")
         .to_list()
     )
+
     test_ed_admissions = (
         data_to_save_pl.filter(pl.col("data_type") == "test")
         .get_column("ED_admissions")
@@ -107,6 +116,7 @@ def process_and_save_state(state_abb,
         "data_observed_hospital_admissions": train_ed_admissions,
         "test_ed_admissions": test_ed_admissions,
         "state_pop": state_pop,
+        "right_truncation_offset": right_truncation_offset
     }
 
     state_dir = os.path.join(model_data_dir, state_abb)
