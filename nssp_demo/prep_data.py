@@ -12,6 +12,7 @@ import pyarrow.parquet as pq
 
 def process_and_save_state(state_abb,
                            disease,
+                           nssp_data,
                            report_date,
                            first_training_date,
                            last_training_date,
@@ -70,7 +71,6 @@ def process_and_save_state(state_abb,
         .get_column("value")
         .to_list()[0]
     )
-
 
     right_truncation_pmf = (
         param_estimates.filter(
@@ -152,7 +152,7 @@ def main(disease,
         os.path.join(nssp_data_dir, datafile))
     param_estimates = pl.from_arrow(
         pq.read_table(os.path.join(
-            param_estimate_dir,
+            param_data_dir,
             "prod.parquet")))
 
     excluded_states = ["GU", "MO", "WY"]
@@ -189,6 +189,7 @@ def main(disease,
         process_and_save_state(
             state_abb=state_abb,
             disease=disease,
+            nssp_data=nssp_data,
             report_date=report_date,
             first_training_date=first_training_date,
             last_training_date=last_training_date,
