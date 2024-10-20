@@ -251,4 +251,4 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-main(**args)
+main(**vars(args))
