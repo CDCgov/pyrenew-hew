@@ -18,7 +18,7 @@ def process_and_save_state(state_abb,
                            last_training_date,
                            state_pop_df,
                            param_estimates,
-                           output_data_dir,
+                           model_data_dir,
                            logger=None):
     disease_map = {
         "COVID-19": "COVID-19/Omicron",
@@ -109,7 +109,7 @@ def process_and_save_state(state_abb,
         "state_pop": state_pop,
     }
 
-    state_dir = os.path.join(output_data_dir, state_abb)
+    state_dir = os.path.join(model_data_dir, state_abb)
     os.makedirs(state_dir, exist_ok=True)
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
@@ -177,12 +177,12 @@ def main(disease,
         ["abb", "name", "population"]
     )
 
-    model_folder_name = (
+    model_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}")
 
-    model_folder = os.path.join(output_data_dir, model_folder_name)
-    os.makedirs(model_folder, exist_ok=True)
+    model_data_dir = os.path.join(output_data_dir, model_dir_name)
+    os.makedirs(model_data_dir, exist_ok=True)
 
     for state_abb in all_states:
         logger.info(f"Processing {state_abb}")
@@ -195,7 +195,7 @@ def main(disease,
             last_training_date=last_training_date,
             state_pop_df=state_pop_df,
             param_estimates=param_estimates,
-            output_data_dir=output_data_dir,
+            model_data_dir=model_data_dir,
             logger=logger)
     logger.info("Data preparation complete.")
 
