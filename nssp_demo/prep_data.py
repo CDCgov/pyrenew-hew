@@ -228,15 +228,15 @@ parser.add_argument(
 
 parser.add_argument(
     "--nssp-data-dir",
-    type=str,
-    default=os.path.join("private_data", "nssp_etl_gold"),
+    type=Path,
+    default=Path("private_data", "nssp_etl_gold"),
     help="Directory in which to look for NSSP input data.",
 )
 
 parser.add_argument(
     "--param-data-dir",
-    type=str,
-    default=os.path.join("private_data", "prod_param_estimates"),
+    type=Path,
+    default=Path("private_data", "prod_param_estimates"),
     help=(
         "Directory in which to look for parameter estimates"
         "such as delay PMFs."
@@ -245,8 +245,8 @@ parser.add_argument(
 
 parser.add_argument(
     "--output-data-dir",
-    type=str,
-    default=os.path.join("private_data"),
+    type=Path,
+    default="private_data",
     help="Directory in which to save output data.",
 )
 
