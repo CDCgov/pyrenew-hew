@@ -7,6 +7,10 @@ library(scales)
 library(here)
 library(argparser)
 
+theme_set(theme_minimal_grid())
+
+disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
+
 # Create a parser
 p <- arg_parser("Generate forecast figures") %>%
   add_argument(p, "--model_dir",
@@ -29,9 +33,7 @@ good_chain_tol <- argv$good_chain_tol
 
 base_dir <- path_dir(model_dir)
 
-theme_set(theme_minimal_grid())
 
-disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
 
 read_pyrenew_samples <- function(inference_data_path,
                                  filter_bad_chains = TRUE,
@@ -178,8 +180,9 @@ save_plot(
   device = cairo_pdf, base_height = 6
 )
 
-
-# Temp code while command line version doesn't work
+# File will end here once command line version is working
+# Temp code to run for all states while command line version doesn't work
+# Command line version is dependent on https://github.com/rstudio/renv/pull/2018
 base_dir <- path(
   "nssp_demo",
   "private_data",
