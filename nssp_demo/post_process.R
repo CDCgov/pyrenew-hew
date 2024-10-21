@@ -194,7 +194,7 @@ save_plot(
 base_dir <- path(
   "nssp_demo",
   "private_data",
-  "influenza_r_2024-10-10_f_2024-04-12_l_2024-10-09_t_2024-10-05"
+  "influenza_r_2024-10-21_f_2024-07-16_t_2024-10-13"
 )
 
 walk(dir_ls(base_dir), function(model_dir) {
