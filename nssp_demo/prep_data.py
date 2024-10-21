@@ -10,16 +10,18 @@ import polars as pl
 import pyarrow.parquet as pq
 
 
-def process_and_save_state(state_abb,
-                           disease,
-                           nssp_data,
-                           report_date,
-                           first_training_date,
-                           last_training_date,
-                           state_pop_df,
-                           param_estimates,
-                           model_data_dir,
-                           logger=None):
+def process_and_save_state(
+    state_abb,
+    disease,
+    nssp_data,
+    report_date,
+    first_training_date,
+    last_training_date,
+    state_pop_df,
+    param_estimates,
+    model_data_dir,
+    logger=None,
+):
     disease_map = {
         "COVID-19": "COVID-19/Omicron",
         "Influenza": "Influenza",
@@ -90,12 +92,12 @@ def process_and_save_state(state_abb,
     )
 
     last_actual_training_date = (
-        data_to_save_pl.filter(
-            pl.col("data_type") == "train"
-        ).get_column("reference_date").max())
+        data_to_save_pl.filter(pl.col("data_type") == "train")
+        .get_column("reference_date")
+        .max()
+    )
 
-    right_truncation_offset = (
-        report_date - last_actual_training_date).days
+    right_truncation_offset = (report_date - last_actual_training_date).days
 
     train_ed_admissions = (
         data_to_save_pl.filter(pl.col("data_type") == "train")
@@ -116,7 +118,7 @@ def process_and_save_state(state_abb,
         "data_observed_hospital_admissions": train_ed_admissions,
         "test_ed_admissions": test_ed_admissions,
         "state_pop": state_pop,
-        "right_truncation_offset": right_truncation_offset
+        "right_truncation_offset": right_truncation_offset,
     }
 
     state_dir = os.path.join(model_data_dir, state_abb)
@@ -125,45 +127,44 @@ def process_and_save_state(state_abb,
         logger.info(f"Saving {state_abb} to {state_dir}")
     data_to_save.to_csv(str(pathlib.Path(state_dir, "data.csv")))
 
-    with open(os.path.join(state_dir, "data_for_model_fit.json"), "w"
-              ) as json_file:
+    with open(
+        os.path.join(state_dir, "data_for_model_fit.json"), "w"
+    ) as json_file:
         json.dump(data_for_model_fit, json_file)
 
 
-def main(disease,
-         report_date,
-         nssp_data_dir,
-         param_data_dir,
-         output_data_dir,
-         training_day_offset,
-         n_training_days):
-
+def main(
+    disease,
+    report_date,
+    nssp_data_dir,
+    param_data_dir,
+    output_data_dir,
+    training_day_offset,
+    n_training_days,
+):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
     if report_date == "latest":
         report_date = max(
-            f.stem
-            for f in pathlib.Path(nssp_data_dir).glob("*.parquet")
+            f.stem for f in pathlib.Path(nssp_data_dir).glob("*.parquet")
         )
 
     report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
 
     logger.info(f"Report date: {report_date}")
 
-    last_training_date = (report_date -
-                          timedelta(days=training_day_offset + 1))
+    last_training_date = report_date - timedelta(days=training_day_offset + 1)
     # +1 because max date in dataset is report_date - 1
-    first_training_date = (last_training_date -
-                           timedelta(days=n_training_days - 1))
+    first_training_date = last_training_date - timedelta(
+        days=n_training_days - 1
+    )
 
     datafile = f"{report_date}.parquet"
-    nssp_data = duckdb.read_parquet(
-        os.path.join(nssp_data_dir, datafile))
+    nssp_data = duckdb.read_parquet(os.path.join(nssp_data_dir, datafile))
     param_estimates = pl.from_arrow(
-        pq.read_table(os.path.join(
-            param_data_dir,
-            "prod.parquet")))
+        pq.read_table(os.path.join(param_data_dir, "prod.parquet"))
+    )
 
     excluded_states = ["GU", "MO", "WY"]
     all_states = (
@@ -189,7 +190,8 @@ def main(disease,
 
     model_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
-        f"{first_training_date}_t_{last_training_date}")
+        f"{first_training_date}_t_{last_training_date}"
+    )
 
     model_data_dir = os.path.join(output_data_dir, model_dir_name)
     os.makedirs(model_data_dir, exist_ok=True)
@@ -206,7 +208,8 @@ def main(disease,
             state_pop_df=state_pop_df,
             param_estimates=param_estimates,
             model_data_dir=model_data_dir,
-            logger=logger)
+            logger=logger,
+        )
     logger.info("Data preparation complete.")
 
 
@@ -230,7 +233,8 @@ parser.add_argument(
     "--nssp-data-dir",
     type=str,
     default=os.path.join("private_data", "nssp_etl_gold"),
-    help="Directory in which to look for NSSP input data.")
+    help="Directory in which to look for NSSP input data.",
+)
 
 parser.add_argument(
     "--param-data-dir",
@@ -238,13 +242,16 @@ parser.add_argument(
     default=os.path.join("private_data", "prod_param_estimates"),
     help=(
         "Directory in which to look for parameter estimates"
-        "such as delay PMFs."))
+        "such as delay PMFs."
+    ),
+)
 
 parser.add_argument(
     "--output-data-dir",
     type=str,
     default=os.path.join("private_data"),
-    help="Directory in which to save output data.")
+    help="Directory in which to save output data.",
+)
 
 parser.add_argument(
     "--training-day-offset",
