@@ -58,6 +58,7 @@ def process_and_save_state(
             & (pl.col("parameter") == "generation_interval")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
+        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -69,6 +70,7 @@ def process_and_save_state(
             & (pl.col("parameter") == "delay")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
+        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -86,6 +88,7 @@ def process_and_save_state(
         .filter(
             pl.col("reference_date") == pl.col("reference_date").max()
         )  # estimates nearest the report date
+        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -156,9 +159,7 @@ def main(
 
     datafile = f"{report_date}.parquet"
     nssp_data = pl.scan_parquet(Path(nssp_data_dir, datafile))
-    param_estimates = pl.from_arrow(
-        pq.read_table(os.path.join(param_data_dir, "prod.parquet"))
-    )  # make this lazy
+    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
 
     excluded_states = ["GU", "MO", "WY"]
 
