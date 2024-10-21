@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
-import pyarrow.parquet as pq
 
 
 def process_and_save_state(
@@ -151,7 +150,8 @@ def process_and_save_state(
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
-    data_to_save.sink_csv(Path(state_dir, "data.csv"))
+    # data_to_save.sink_csv(Path(state_dir, "data.csv")) # Not yet supported
+    data_to_save.collect().write_csv(Path(state_dir, "data.csv"))
 
     with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
