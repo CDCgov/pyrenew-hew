@@ -10,6 +10,10 @@ library(argparser)
 theme_set(theme_minimal_grid())
 
 disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
+disease_name_nssp_map <- c(
+  "covid-19" = "COVID-19/Omicron",
+  "influenza" = "Influenza"
+)
 
 # Create a parser
 p <- arg_parser("Generate forecast figures") %>%
@@ -33,7 +37,12 @@ good_chain_tol <- argv$good_chain_tol
 
 base_dir <- path_dir(model_dir)
 
+disease_name_raw <- base_dir %>%
+  path_file() %>%
+  str_extract("^.+(?=_r_)")
 
+disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
+disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
 
 read_pyrenew_samples <- function(inference_data_path,
                                  filter_bad_chains = TRUE,
@@ -87,10 +96,6 @@ read_pyrenew_samples <- function(inference_data_path,
 make_forecast_fig <- function(model_dir,
                               filter_bad_chains = TRUE,
                               good_chain_tol = 2) {
-  disease_name_raw <- base_dir %>%
-    path_file() %>%
-    str_extract("^.+(?=_r_)")
-
   state_abb <- model_dir %>%
     path_split() %>%
     pluck(1) %>%
@@ -136,7 +141,10 @@ make_forecast_fig <- function(model_dir,
       mapping = aes(ymin = .lower, ymax = .upper),
       color = "#08519c", key_glyph = draw_key_rect, step = "mid"
     ) +
-    geom_point(mapping = aes(shape = data_type), data = dat) +
+    geom_point(
+      mapping = aes(shape = data_type),
+      data = dat %>% filter(disease == disease_name_nssp)
+    ) +
     scale_y_continuous("Emergency Department Admissions") +
     scale_x_date("Date") +
     scale_fill_brewer(
@@ -162,7 +170,7 @@ make_forecast_fig <- function(model_dir,
     ) +
     ggtitle(
       glue(
-        "{disease_name_formatter[disease_name_raw]} ",
+        "{disease_name_pretty} ",
         "NSSP-based forecast for {state_abb}"
       ),
       subtitle = glue("as of {last_data_date}")
