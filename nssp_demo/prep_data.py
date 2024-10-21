@@ -34,7 +34,7 @@ def process_and_save_state(
             & (pl.col("geo_value") == state_abb)
             & (pl.col("reference_date") >= first_training_date)
         )
-        .group_by(["report_date", "reference_date", "disease"])
+        .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ED_admissions"))
         .with_columns(
             pl.when(pl.col("reference_date") <= last_training_date)
@@ -42,7 +42,8 @@ def process_and_save_state(
             .otherwise(pl.lit("test"))
             .alias("data_type")
         )
-        .sort(["report_date", "reference_date", "disease"])
+        .rename({"reference_date": "date"})
+        .sort(["date", "disease"])
     )
 
     state_pop = (
