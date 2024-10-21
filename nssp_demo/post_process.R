@@ -10,7 +10,8 @@ theme_set(theme_minimal_grid())
 
 disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
 
-make_forecast_fig <- function(model_dir) {
+make_forecast_fig <- function(model_dir,
+                              base_dir) {
   disease_name_raw <- base_dir %>%
     path_file() %>%
     str_extract("^.+(?=_r_)")
@@ -28,9 +29,10 @@ make_forecast_fig <- function(model_dir) {
 
 
   dat <- read_csv(data_path) %>%
+    rename(date = reference_date) %>%
     arrange(date) %>%
     mutate(time = row_number() - 1) %>%
-    rename(.value = COVID_ED_admissions)
+    rename(.value = ED_admissions)
 
   last_training_date <- dat %>%
     filter(data_type == "train") %>%
@@ -119,39 +121,49 @@ make_forecast_fig <- function(model_dir) {
 }
 
 
-base_dir <- path(here(
-  "nssp_demo",
-  "private_data",
-  "covid-19_r_2024-10-10_f_2024-04-12_l_2024-10-09_t_2024-10-05"
-))
+postprocess <- function(base_dir){
+    forecast_fig_tbl <-
+        tibble(base_model_dir = dir_ls(base_dir)) %>%
+        filter(
+            path(base_model_dir, "inference_data", ext = "csv") %>%
+            file_exists()
+        ) %>%
+        mutate(forecast_fig = map(
+                   base_model_dir,
+                   \(x) make_forecast_fig(x, base_dir=base_dir)),
+               figure_path = path(base_model_dir,
+                                  "forecast_plot", ext = "pdf"))
 
-
-forecast_fig_tbl <-
-  tibble(base_model_dir = dir_ls(base_dir)) %>%
-  filter(
-    path(base_model_dir, "inference_data", ext = "csv") %>%
-      file_exists()
-  ) %>%
-  mutate(forecast_fig = map(base_model_dir, make_forecast_fig)) %>%
-  mutate(figure_path = path(base_model_dir, "forecast_plot", ext = "pdf"))
-
-pwalk(
-  forecast_fig_tbl %>% select(forecast_fig, figure_path),
-  function(forecast_fig, figure_path) {
-    save_plot(
-      filename = figure_path,
-      plot = forecast_fig,
-      device = cairo_pdf, base_height = 6
+    pwalk(
+        forecast_fig_tbl %>% select(forecast_fig, figure_path),
+        function(forecast_fig, figure_path) {
+            save_plot(
+                filename = figure_path,
+                plot = forecast_fig,
+                device = cairo_pdf, base_height = 6
+            )
+        }
     )
-  }
-)
 
-str_c(forecast_fig_tbl$figure_path, collapse = " ") %>%
-  str_c(
-    path(base_dir,
-      glue("{path_file(base_dir)}_all_forecasts"),
-      ext = "pdf"
-    ),
-    sep = " "
-  ) %>%
-  system2("pdfunite", args = .)
+    str_c(forecast_fig_tbl$figure_path, collapse = " ") %>%
+        str_c(
+            path(base_dir,
+                 glue("{path_file(base_dir)}_all_forecasts"),
+                 ext = "pdf"
+                 ),
+            sep = " "
+        ) %>%
+        system2("pdfunite", args = .)
+}
+
+argv_parser <- argparser::arg_parser(paste0(
+                              "Postprocess Pyrenew HEW model fits"
+                          )) |>
+    argparser::add_argument(
+                   "model_dir",
+                   help = "Directory of forecasts to postprocess"
+               )
+
+argv <- argparser::parse_args(argv_parser)
+
+postprocess(argv$model_dir)
