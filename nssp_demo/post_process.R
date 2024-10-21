@@ -12,10 +12,20 @@ p <- arg_parser("Generate forecast figures") %>%
   add_argument(p, "--model_dir",
     help = "Directory containing the model data",
     required = TRUE
+  ) %>%
+  add_argument(p, "--filter_bad_chains",
+    help = "Filter out bad chains from the samples",
+    flag = TRUE
+  ) %>%
+  add_argument(p, "--good_chain_tol",
+    help = "Tolerance level for determining good chains",
+    default = 2
   )
 
 argv <- parse_args(p)
 model_dir <- path(argv$model_dir)
+filter_bad_chains <- argv$filter_bad_chains
+good_chain_tol <- argv$good_chain_tol
 
 base_dir <- path_dir(model_dir)
 
@@ -160,7 +170,7 @@ make_forecast_fig <- function(model_dir,
   forecast_plot
 }
 
-forecast_fig <- make_forecast_fig(model_dir)
+forecast_fig <- make_forecast_fig(model_dir, filter_bad_chains, good_chain_tol)
 
 save_plot(
   filename = path(model_dir, "forecast_plot", ext = "pdf"),
