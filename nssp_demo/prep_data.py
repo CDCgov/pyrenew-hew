@@ -125,7 +125,7 @@ def process_and_save_state(
         .to_list()
     )
 
-    test_disease_ed_admissions = (
+    test_total_ed_admissions = (
         data_to_save.filter(
             (pl.col("data_type") == "test") & (pl.col("disease") == "Total")
         )
