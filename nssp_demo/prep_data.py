@@ -2,8 +2,8 @@ import argparse
 import json
 import logging
 import os
-import pathlib
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import duckdb
 import polars as pl
@@ -28,22 +28,23 @@ def process_and_save_state(
         "RSV": "RSV",
     }
 
-    data_to_save = duckdb.sql(
-        f"""
-        SELECT report_date, reference_date, SUM(value) AS ED_admissions,
-        CASE WHEN reference_date <= '{last_training_date}'
-        THEN 'train'
-        ELSE 'test' END AS data_type
-        FROM nssp_data
-        WHERE disease = '{disease_map[disease]}' AND metric = 'count_ed_visits'
-        AND geo_value = '{state_abb}'
-        and reference_date >= '{first_training_date}'
-        GROUP BY report_date, reference_date
-        ORDER BY report_date, reference_date
-        """
+    data_to_save = (
+        nssp_data.filter(
+            (pl.col("disease") == disease_map[disease])
+            & (pl.col("metric") == "count_ed_visits")
+            & (pl.col("geo_value") == state_abb)
+            & (pl.col("reference_date") >= first_training_date)
+        )
+        .group_by(["report_date", "reference_date"])
+        .agg(pl.col("value").sum().alias("ED_admissions"))
+        .with_columns(
+            pl.when(pl.col("reference_date") <= last_training_date)
+            .then(pl.lit("train"))
+            .otherwise(pl.lit("test"))
+            .alias("data_type")
+        )
+        .sort(["report_date", "reference_date"])
     )
-
-    data_to_save_pl = data_to_save.pl()
 
     state_pop = (
         state_pop_df.filter(pl.col("abb") == state_abb)
@@ -90,22 +91,18 @@ def process_and_save_state(
         .to_list()[0]
     )
 
-    last_actual_training_date = (
-        data_to_save_pl.filter(pl.col("data_type") == "train")
-        .get_column("reference_date")
-        .max()
-    )
-
-    right_truncation_offset = (report_date - last_actual_training_date).days
+    right_truncation_offset = (report_date - last_training_date).days
 
     train_ed_admissions = (
-        data_to_save_pl.filter(pl.col("data_type") == "train")
+        data_to_save.filter(pl.col("data_type") == "train")
+        .collect()
         .get_column("ED_admissions")
         .to_list()
     )
 
     test_ed_admissions = (
-        data_to_save_pl.filter(pl.col("data_type") == "test")
+        data_to_save.filter(pl.col("data_type") == "test")
+        .collect()
         .get_column("ED_admissions")
         .to_list()
     )
@@ -122,13 +119,12 @@ def process_and_save_state(
 
     state_dir = os.path.join(model_data_dir, state_abb)
     os.makedirs(state_dir, exist_ok=True)
+
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
-    data_to_save.to_csv(str(pathlib.Path(state_dir, "data.csv")))
+    data_to_save.sink_csv(Path(state_dir, "data.csv"))
 
-    with open(
-        os.path.join(state_dir, "data_for_model_fit.json"), "w"
-    ) as json_file:
+    with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
 
 
@@ -146,7 +142,7 @@ def main(
 
     if report_date == "latest":
         report_date = max(
-            f.stem for f in pathlib.Path(nssp_data_dir).glob("*.parquet")
+            f.stem for f in Path(nssp_data_dir).glob("*.parquet")
         )
 
     report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
@@ -160,19 +156,21 @@ def main(
     )
 
     datafile = f"{report_date}.parquet"
-    nssp_data = duckdb.read_parquet(os.path.join(nssp_data_dir, datafile))
+    nssp_data = pl.scan_parquet(Path(nssp_data_dir, datafile))
     param_estimates = pl.from_arrow(
         pq.read_table(os.path.join(param_data_dir, "prod.parquet"))
-    )
+    )  # make this lazy
 
     excluded_states = ["GU", "MO", "WY"]
+
     all_states = (
-        nssp_data.unique("geo_value")
-        .filter(f"geo_value NOT IN {excluded_states}")
-        .order("geo_value")
-        .pl()["geo_value"]
+        nssp_data.select(pl.col("geo_value").unique())
+        .filter(~pl.col("geo_value").is_in(excluded_states))
+        .collect()
+        .get_column("geo_value")
         .to_list()
     )
+    all_states.sort()
 
     facts = pl.read_csv(
         "https://raw.githubusercontent.com/k5cents/usa/"
@@ -192,7 +190,7 @@ def main(
         f"{first_training_date}_t_{last_training_date}"
     )
 
-    model_data_dir = os.path.join(output_data_dir, model_dir_name)
+    model_data_dir = Path(output_data_dir, model_dir_name)
     os.makedirs(model_data_dir, exist_ok=True)
 
     for state_abb in all_states:
