@@ -42,7 +42,6 @@ def process_and_save_state(
         ORDER BY report_date, reference_date
         """
     )
-    # why not count_admitted_ed_visits ?
 
     data_to_save_pl = data_to_save.pl()
 
@@ -267,6 +266,6 @@ parser.add_argument(
     help="Number of training days (default: 90)",
 )
 
-args = parser.parse_args()
-
-main(**vars(args))
+if __name__ == "__main__":
+    args = parser.parse_args()
+    main(**vars(args))
