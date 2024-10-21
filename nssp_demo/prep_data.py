@@ -5,7 +5,6 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import duckdb
 import polars as pl
 import pyarrow.parquet as pq
 
