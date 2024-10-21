@@ -21,6 +21,9 @@ make_forecast_fig <- function(model_dir,
     pluck(1) %>%
     tail(1)
 
+  message(
+      glue::glue("Making forecast fig for {state_abb}/{disease_name_raw}"
+                 ))
 
   data_path <- path(model_dir, "data", ext = "csv")
   inference_data_path <- path(model_dir, "inference_data",
@@ -28,7 +31,7 @@ make_forecast_fig <- function(model_dir,
   )
 
 
-  dat <- read_csv(data_path) %>%
+  dat <- read_csv(data_path, show_col_types=FALSE) %>%
     rename(date = reference_date) %>%
     arrange(date) %>%
     mutate(time = row_number() - 1) %>%
@@ -50,7 +53,7 @@ make_forecast_fig <- function(model_dir,
   }
 
   pyrenew_samples <-
-    read_csv(inference_data_path) %>%
+    read_csv(inference_data_path, show_col_types=FALSE) %>%
     rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
     rename(
       .chain = chain,
