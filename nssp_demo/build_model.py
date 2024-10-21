@@ -45,8 +45,8 @@ def build_model_from_dir(model_dir):
         jnp.array(model_data["generation_interval_pmf"]),
     )  # check if off by 1 or reversed
 
-    data_observed_hospital_admissions = jnp.array(
-        model_data["data_observed_hospital_admissions"]
+    data_observed_disease_hospital_admissions = jnp.array(
+        model_data["data_observed_disease_hospital_admissions"]
     )
     state_pop = jnp.array(model_data["state_pop"])
 
@@ -84,4 +84,8 @@ def build_model_from_dir(model_dir):
         n_initialization_points=uot,
     )
 
-    return my_model, data_observed_hospital_admissions, right_truncation_offset
+    return (
+        my_model,
+        data_observed_disease_hospital_admissions,
+        right_truncation_offset,
+    )

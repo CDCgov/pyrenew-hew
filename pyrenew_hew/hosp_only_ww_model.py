@@ -85,23 +85,26 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
     def sample(
         self,
         n_datapoints=None,
-        data_observed_hospital_admissions=None,
+        data_observed_disease_hospital_admissions=None,
         right_truncation_offset=None,
     ):  # numpydoc ignore=GL08
-        if n_datapoints is None and data_observed_hospital_admissions is None:
+        if (
+            n_datapoints is None
+            and data_observed_disease_hospital_admissions is None
+        ):
             raise ValueError(
                 "Either n_datapoints or data_observed_hosp_admissions "
                 "must be passed."
             )
         elif (
             n_datapoints is not None
-            and data_observed_hospital_admissions is not None
+            and data_observed_disease_hospital_admissions is not None
         ):
             raise ValueError(
-                "Cannot pass both n_datapoints and data_observed_hospital_admissions."
+                "Cannot pass both n_datapoints and data_observed_disease_hospital_admissions."
             )
         elif n_datapoints is None:
-            n_datapoints = len(data_observed_hospital_admissions)
+            n_datapoints = len(data_observed_disease_hospital_admissions)
         else:
             n_datapoints = n_datapoints
 
@@ -225,7 +228,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
 
         observed_hospital_admissions = hospital_admission_obs_rv(
             mu=latent_hospital_admissions_now,
-            obs=data_observed_hospital_admissions,
+            obs=data_observed_disease_hospital_admissions,
         )
 
         return observed_hospital_admissions
@@ -360,7 +363,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     uot = len(jnp.array(stan_data["inf_to_hosp"]))
     state_pop = stan_data["state_pop"]
 
-    data_observed_hospital_admissions = jnp.array(stan_data["hosp"])
+    data_observed_disease_hospital_admissions = jnp.array(stan_data["hosp"])
     right_truncation_pmf_rv = DeterministicVariable(
         "right_truncation_pmf", jnp.array(1)
     )
@@ -384,4 +387,4 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
         n_initialization_points=uot,
     )
 
-    return my_model, data_observed_hospital_admissions
+    return my_model, data_observed_disease_hospital_admissions

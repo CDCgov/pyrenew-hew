@@ -27,9 +27,11 @@ parser.add_argument(
 args = parser.parse_args()
 model_dir = args.model_dir
 n_forecast_points = args.n_forecast_points
-my_model, data_observed_hospital_admissions, right_truncation_offset = (
-    build_model_from_dir(model_dir)
-)
+(
+    my_model,
+    data_observed_disease_hospital_admissions,
+    right_truncation_offset,
+) = build_model_from_dir(model_dir)
 
 my_model._init_model(1, 1)
 fresh_sampler = my_model.mcmc.sampler
@@ -47,12 +49,13 @@ my_model.mcmc.sampler = fresh_sampler
 #         "num_samples": my_model.mcmc.num_samples * my_model.mcmc.num_chains,
 #         "batch_ndims":1
 #     },
-#     n_datapoints=len(data_observed_hospital_admissions) + n_forecast_points,
+#     n_datapoints=len(data_observed_disease_hospital_admissions) + n_forecast_points,
 # )
 # need to figure out a way to generate these as distinct chains, so that the result of the to_datarame method is more compact
 
 posterior_predictive = my_model.posterior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions) + n_forecast_points
+    n_datapoints=len(data_observed_disease_hospital_admissions)
+    + n_forecast_points
 )
 
 idata = az.from_numpyro(
