@@ -27,7 +27,7 @@ p <- arg_parser("Generate forecast figures") %>%
   ) %>%
   add_argument(p, "--good_chain_tol",
     help = "Tolerance level for determining good chains",
-    default = 2
+    default = 2L
   )
 
 argv <- parse_args(p)
