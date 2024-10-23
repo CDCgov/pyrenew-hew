@@ -6,6 +6,7 @@ library(glue)
 library(scales)
 library(here)
 library(argparser)
+library(arrow)
 
 theme_set(theme_minimal_grid())
 
@@ -44,6 +45,7 @@ disease_name_raw <- base_dir %>%
 disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
 
+# To be replaced with reading tidy data from forecasttools
 read_pyrenew_samples <- function(inference_data_path,
                                  filter_bad_chains = TRUE,
                                  good_chain_tol = 2) {
@@ -93,9 +95,9 @@ read_pyrenew_samples <- function(inference_data_path,
   good_pyrenew_samples
 }
 
-make_forecast_fig <- function(model_dir,
-                              filter_bad_chains = TRUE,
-                              good_chain_tol = 2) {
+make_forecast_figs <- function(model_dir,
+                               filter_bad_chains = TRUE,
+                               good_chain_tol = 2) {
   state_abb <- model_dir %>%
     path_split() %>%
     pluck(1) %>%
@@ -105,11 +107,23 @@ make_forecast_fig <- function(model_dir,
   inference_data_path <- path(model_dir, "inference_data",
     ext = "csv"
   )
+  total_ed_admissions_path <- path(model_dir, "total_ed_admissions_forecast",
+    ext = "parquet"
+  )
 
-  dat <- read_csv(data_path) %>%
-    arrange(date) %>%
-    mutate(time = row_number() - 1) %>%
-    rename(.value = ED_admissions)
+  dat <-
+    read_csv(data_path) %>%
+    mutate(disease = if_else(disease == disease_name_nssp,
+      "Disease",
+      disease
+    )) %>%
+    pivot_wider(names_from = disease, values_from = ED_admissions) %>%
+    mutate(prop_disease_ed_admissions = Disease / Total) %>%
+    mutate(time = dense_rank(date)) %>%
+    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
+      names_to = "disease",
+      values_to = ".value"
+    )
 
   last_training_date <- dat %>%
     filter(data_type == "train") %>%
@@ -120,38 +134,93 @@ make_forecast_fig <- function(model_dir,
     pull(date) %>%
     max()
 
-
   pyrenew_samples <- read_pyrenew_samples(inference_data_path,
     filter_bad_chains = filter_bad_chains,
     good_chain_tol = good_chain_tol
   )
 
-  hosp_ci <-
+  total_ed_admission_samples <- read_parquet(total_ed_admissions_path) %>%
+    rename(Total = ED_admissions)
+
+  all_total_ed_admission_samples <-
+    bind_rows(
+      dat %>%
+        filter(
+          disease == "Total",
+          date <= last_training_date
+        ) %>%
+        select(date, Total = .value) %>%
+        expand_grid(.draw = 1:max(total_ed_admissions_samples$.draw)),
+      total_ed_admissions_samples
+    )
+
+
+  posterior_predictive_samples <-
     pyrenew_samples$posterior_predictive %>%
     gather_draws(observed_hospital_admissions[time]) %>%
-    median_qi(.width = c(0.5, 0.8, 0.95)) %>%
-    mutate(date = min(dat$date) + time)
+    pivot_wider(names_from = .variable, values_from = .value) %>%
+    rename(Disease = observed_hospital_admissions) %>%
+    ungroup() %>%
+    mutate(date = min(dat$date) + time) %>%
+    left_join(all_total_ed_admissions_samples) %>%
+    mutate(prop_disease_ed_admissions = Disease / Total) %>%
+    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
+      names_to = "disease",
+      values_to = ".value"
+    )
+
+  posterior_predictive_ci <-
+    posterior_predictive_samples %>%
+    select(date, disease, .value) %>%
+    group_by(date, disease) %>%
+    median_qi(.width = c(0.5, 0.8, 0.95))
 
 
+  all_forecast_plots <- map(
+    set_names(unique(dat$disease)),
+    ~ make_one_forecast_fig(
+      .x,
+      dat,
+      last_training_date,
+      last_data_date,
+      posterior_predictive_ci,
+      state_abb
+    )
+  )
 
-  forecast_plot <-
-    ggplot(mapping = aes(date, .value)) +
+  all_forecast_plots
+}
+
+make_one_forecast_fig <- function(target_disease,
+                                  dat,
+                                  last_training_date,
+                                  last_data_date,
+                                  posterior_predictive_ci,
+                                  state_abb) {
+  y_scale <- if (str_starts(target_disease, "prop")) {
+    scale_y_continuous("Proportion of Emergency Department Admissions",
+      labels = percent
+    )
+  } else {
+    scale_y_continuous("Emergency Department Admissions", labels = comma)
+  }
+
+  title <- if (target_disease == "Total") {
+    glue("Total ED Admissions in {state_abb}")
+  } else {
+    glue("{disease_name_pretty} ED Admissions in {state_abb}")
+  }
+
+  ggplot(mapping = aes(date, .value)) +
     geom_lineribbon(
-      data = hosp_ci,
+      data = posterior_predictive_ci %>% filter(disease == target_disease),
       mapping = aes(ymin = .lower, ymax = .upper),
       color = "#08519c", key_glyph = draw_key_rect, step = "mid"
     ) +
     geom_point(
       mapping = aes(shape = data_type),
-      data = dat %>% filter(disease == disease_name_nssp)
+      data = dat %>% filter(disease == target_disease)
     ) +
-    scale_y_continuous("Emergency Department Admissions") +
-    scale_x_date("Date") +
-    scale_fill_brewer(
-      name = "Credible Interval Width",
-      labels = ~ percent(as.numeric(.))
-    ) +
-    scale_shape_discrete("Data Type", labels = str_to_title) +
     geom_vline(xintercept = last_training_date, linetype = "dashed") +
     annotate(
       geom = "text",
@@ -168,25 +237,29 @@ make_forecast_fig <- function(model_dir,
       hjust = "left",
       vjust = "bottom",
     ) +
-    ggtitle(
-      glue(
-        "{disease_name_pretty} ",
-        "NSSP-based forecast for {state_abb}"
-      ),
-      subtitle = glue("as of {last_data_date}")
+    ggtitle(title, subtitle = glue("as of {last_data_date}")) +
+    y_scale +
+    scale_x_date("Date") +
+    scale_shape_discrete("Data Type", labels = str_to_title) +
+    scale_fill_brewer(
+      name = "Credible Interval Width",
+      labels = ~ percent(as.numeric(.))
     ) +
     theme(legend.position = "bottom")
-
-  forecast_plot
 }
 
-forecast_fig <- make_forecast_fig(model_dir, filter_bad_chains, good_chain_tol)
-
-save_plot(
-  filename = path(model_dir, "forecast_plot", ext = "pdf"),
-  plot = forecast_fig,
-  device = cairo_pdf, base_height = 6
+forecast_figs <- make_forecast_figs(
+  model_dir,
+  filter_bad_chains,
+  good_chain_tol
 )
+
+imap(forecast_figs, ~ save_plot(
+  filename = path(model_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
+  plot = .x,
+  device = cairo_pdf, base_height = 6
+))
+
 
 # File will end here once command line version is working
 # Temp code to run for all states while command line version doesn't work
@@ -197,23 +270,35 @@ base_dir <- path(
   "influenza_r_2024-10-21_f_2024-07-16_t_2024-10-13"
 )
 
-walk(dir_ls(base_dir), function(model_dir) {
-  forecast_fig <- make_forecast_fig(model_dir)
-
-  save_plot(
-    filename = path(model_dir, "forecast_plot", ext = "pdf"),
-    plot = forecast_fig,
-    device = cairo_pdf, base_height = 6
+walk(dir_ls(base_dir, type = "dir"), function(model_dir) {
+  print(model_dir)
+  forecast_figs <- make_forecast_figs(model_dir,
+    filter_bad_chains = TRUE,
+    good_chain_tol = 2
   )
+
+  imap(forecast_figs, ~ save_plot(
+    filename = path(model_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
+    plot = .x,
+    device = cairo_pdf, base_height = 6
+  ))
 })
 
-path(dir_ls(base_dir, type = "directory"), "forecast_plot", ext = "pdf") %>%
-  str_c(collapse = " ") %>%
-  str_c(
-    path(base_dir,
-      glue("{path_file(base_dir)}_all_forecasts"),
-      ext = "pdf"
-    ),
-    sep = " "
-  ) %>%
-  system2("pdfunite", args = .)
+
+tibble(
+  full_path = dir_ls(base_dir,
+    type = "file",
+    glob = "*_forecast_plot.pdf",
+    recurse = TRUE
+  ),
+  plot_type = path_file(full_path)
+) %>%
+  group_by(plot_type) %>%
+  summarize(all_fig_paths = str_c(full_path, collapse = " ")) %>%
+  mutate(combined_plot_path = path(
+    base_dir,
+    glue("{path_file(base_dir)}_{plot_type}")
+  )) %>%
+  select(-plot_type) %>%
+  as.list() %>%
+  pwalk(~ system2("pdfunite", args = glue("{.x} {.y}")))
