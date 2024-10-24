@@ -24,7 +24,7 @@ def main(
 
     diseases_to_pull = [diseases_to_column_names.get(disease)
                         for disease in diseases]
-    
+
     col_names_to_pull = diseases_to_pull + ["Total"]
 
     if isinstance(report_date, str):
@@ -121,16 +121,18 @@ parser = argparse.ArgumentParser(
     description="Pull NSSP data across pathogens."
 )
 parser.add_argument(
-    "--nssp-data-dir",
+    "nssp_data_dir",
     type=Path,
     required=True,
-    help="Directory in which to look for NSSP input data."
+    help=(
+        "Directory in which to look for NSSP data gold table "
+        ".parquet files.")
 )
 parser.add_argument(
-    "--output-path",
+    "output_path",
     type=Path,
     required=True,
-    help="Path to which to save the file."
+    help="Path to which to save the output file, as a tsv."
 )
 
 parser.add_argument(
