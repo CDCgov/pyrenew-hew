@@ -139,10 +139,7 @@ make_forecast_figs <- function(model_dir,
     good_chain_tol = good_chain_tol
   )
 
-  total_ed_admission_samples <- read_parquet(total_ed_admissions_path) %>%
-    rename(Total = ED_admissions)
-
-  all_total_ed_admission_samples <-
+  total_ed_admission_samples <-
     bind_rows(
       dat %>%
         filter(
@@ -150,10 +147,10 @@ make_forecast_figs <- function(model_dir,
           date <= last_training_date
         ) %>%
         select(date, Total = .value) %>%
-        expand_grid(.draw = 1:max(total_ed_admissions_samples$.draw)),
-      total_ed_admissions_samples
+        expand_grid(.draw = 1:n_samples),
+      read_parquet(total_ed_admissions_path) %>%
+        rename(Total = total_ED_admissions)
     )
-
 
   posterior_predictive_samples <-
     pyrenew_samples$posterior_predictive %>%
@@ -162,7 +159,7 @@ make_forecast_figs <- function(model_dir,
     rename(Disease = observed_hospital_admissions) %>%
     ungroup() %>%
     mutate(date = min(dat$date) + time) %>%
-    left_join(all_total_ed_admissions_samples) %>%
+    left_join(total_ed_admission_samples) %>%
     mutate(prop_disease_ed_admissions = Disease / Total) %>%
     pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
       names_to = "disease",

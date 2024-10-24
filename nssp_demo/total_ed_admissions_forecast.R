@@ -47,7 +47,7 @@ fit_and_forecast <- function(denom_data,
     as_tibble() %>%
     mutate(ED_admissions = .sim, .draw = as.integer(.rep)) |>
     filter(.model == "comb_model") %>%
-    select(date, .draw, ED_admissions)
+    select(date, .draw, total_ED_admissions = ED_admissions)
 
   forecast_samples
 }
