@@ -19,8 +19,12 @@ def main(
     diseases_to_pull = diseases + ["Total"]
 
     if isinstance(report_date, str):
-        report_date = datetime.datetime.strptime(
-            report_date, "%Y-%m-%d").date()
+        if report_date == "latest":
+            report_date = max(
+                f.stem for f in Path(nssp_data_dir).glob("*.parquet"))
+        else:
+            report_date = datetime.datetime.strptime(
+                report_date, "%Y-%m-%d").date()
     elif not isinstance(report_date, datetime.date):
         raise ValueError(
             "`report_date` must be either be a "
@@ -42,10 +46,6 @@ def main(
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    if report_date == "latest":
-        report_date = max(
-            f.stem for f in Path(nssp_data_dir).glob("*.parquet"))
-
     logger.info(f"Report date: {report_date}")
 
     datafile = f"{report_date}.parquet"
@@ -60,7 +60,7 @@ def main(
             ["reference_date",
              "geo_value",
              "disease",
-             "value"] 
+             "value"]
         ).group_by(
             ["reference_date",
              "geo_value",
