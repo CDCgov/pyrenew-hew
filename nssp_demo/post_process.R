@@ -118,7 +118,7 @@ make_forecast_figs <- function(model_dir,
       disease
     )) %>%
     pivot_wider(names_from = disease, values_from = ED_admissions) %>%
-    mutate(prop_disease_ed_admissions = Disease / Total) %>%
+    mutate(prop_disease_ed_admissions = Disease / (Disease + Total)) %>%
     mutate(time = dense_rank(date)) %>%
     pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
       names_to = "disease",
