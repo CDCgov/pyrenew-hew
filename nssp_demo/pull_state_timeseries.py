@@ -69,8 +69,6 @@ def main(
             value=pl.col("value").sum()
         ).unpivot(
             pl.col("disease")
-        ).sort(
-            ["reference_date", "geo_value"]
         ).collect()
 
     logger.info(f"Saving data to {output_path}.")
