@@ -22,9 +22,8 @@ def main(
         if report_date == "latest":
             report_date = max(
                 f.stem for f in Path(nssp_data_dir).glob("*.parquet"))
-        else:
-            report_date = datetime.datetime.strptime(
-                report_date, "%Y-%m-%d").date()
+        report_date = datetime.datetime.strptime(
+            report_date, "%Y-%m-%d").date()
     elif not isinstance(report_date, datetime.date):
         raise ValueError(
             "`report_date` must be either be a "
@@ -32,7 +31,7 @@ def main(
             "giving a date in IS08601 format.")
 
     if first_date_to_pull is None:
-        first_date_to_pull = pl.col("date").min()
+        first_date_to_pull = pl.col("reference_date").min()
     elif isinstance(first_date_to_pull, str):
         first_date_to_pull = datetime.datetime.strptime(
             first_date_to_pull, "%Y-%m-%d").date()
@@ -67,13 +66,13 @@ def main(
              "disease"]
         ).agg(
             value=pl.col("value").sum()
-        ).unpivot(
-            pl.col("disease")
+        ).sort(
+            ["reference_date", "geo_value"]
         ).collect()
 
     logger.info(f"Saving data to {output_path}.")
 
-    data.write_csv(data, separator=separator)
+    data.write_csv(file=output_path, separator=separator)
 
     logger.info("Data preparation complete.")
 
