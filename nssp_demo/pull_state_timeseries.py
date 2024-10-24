@@ -19,7 +19,8 @@ def main(
     diseases_to_pull = diseases + ["Total"]
 
     if isinstance(report_date, str):
-        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+        report_date = datetime.datetime.strptime(
+            report_date, "%Y-%m-%d").date()
     elif not isinstance(report_date, datetime.date):
         raise ValueError(
             "`report_date` must be either be a "
