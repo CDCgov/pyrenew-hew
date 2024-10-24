@@ -6,7 +6,7 @@ library(glue)
 library(argparser)
 library(arrow)
 
-p <- arg_parser("Forecast total ED admissions") %>%
+p <- arg_parser("Forecast other (non-target-disease) ED admissions") %>%
   add_argument(p, "--model_dir",
     help = "Directory containing the model data",
     required = TRUE
@@ -60,7 +60,7 @@ fit_and_forecast <- function(other_data,
     as_tibble() %>%
     mutate(ED_admissions = .sim, .draw = as.integer(.rep)) |>
     filter(.model == "comb_model") %>%
-    select(date, .draw, total_ED_admissions = ED_admissions)
+    select(date, .draw, other_ED_admissions = ED_admissions)
 
   forecast_samples
 }
