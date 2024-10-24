@@ -25,13 +25,21 @@ model_dir <- path(argv$model_dir)
 n_forecast_days <- argv$n_forecast_days
 n_samples <- arv$n_samples
 
-fit_and_forecast <- function(denom_data,
+base_dir <- path_dir(model_dir)
+
+disease_name_raw <- base_dir %>%
+  path_file() %>%
+  str_extract("^.+(?=_r_)")
+
+disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
+
+fit_and_forecast <- function(other_data,
                              n_forecast_days = 28,
                              n_samples = 2000) {
   forecast_horizon <- glue("{n_forecast_days} days")
 
   fit <-
-    denom_data %>%
+    other_data %>%
     filter(data_type == "train") %>%
     model(
       comb_model = combination_ensemble(
@@ -56,14 +64,18 @@ main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
   # to do: do this with json data that has dates
   data_path <- path(model_dir, "data", ext = "csv")
 
-  denom_data <- read_csv(data_path) %>%
-    filter(disease == "Total") %>%
-    select(-disease) %>%
+  other_data <- read_csv(data_path) %>%
+    mutate(disease = if_else(disease == disease_name_nssp,
+      "Disease", disease
+    )) %>%
+    pivot_wider(names_from = disease, values_from = ED_admissions) %>%
+    mutate(Other = Total - Disease) %>%
+    select(date, ED_admissions = Other, data_type) %>%
     as_tsibble(index = date)
 
-  forecast_samples <- fit_and_forecast(denom_data, n_forecast_days, n_samples)
+  forecast_samples <- fit_and_forecast(other_data, n_forecast_days, n_samples)
 
-  save_path <- path(model_dir, "total_ed_admissions_forecast", ext = "parquet")
+  save_path <- path(model_dir, "other_ed_admissions_forecast", ext = "parquet")
   write_parquet(forecast_samples, save_path)
 }
 

@@ -165,7 +165,7 @@ make_forecast_figs <- function(model_dir,
   inference_data_path <- path(model_dir, "inference_data",
     ext = "csv"
   )
-  total_ed_admissions_path <- path(model_dir, "total_ed_admissions_forecast",
+  total_ed_admissions_path <- path(model_dir, "other_ed_admissions_forecast",
     ext = "parquet"
   )
 
