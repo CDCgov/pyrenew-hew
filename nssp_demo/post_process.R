@@ -95,99 +95,6 @@ read_pyrenew_samples <- function(inference_data_path,
   good_pyrenew_samples
 }
 
-make_forecast_figs <- function(model_dir,
-                               filter_bad_chains = TRUE,
-                               good_chain_tol = 2) {
-  state_abb <- model_dir %>%
-    path_split() %>%
-    pluck(1) %>%
-    tail(1)
-
-  data_path <- path(model_dir, "data", ext = "csv")
-  inference_data_path <- path(model_dir, "inference_data",
-    ext = "csv"
-  )
-  total_ed_admissions_path <- path(model_dir, "total_ed_admissions_forecast",
-    ext = "parquet"
-  )
-
-  dat <-
-    read_csv(data_path) %>%
-    mutate(disease = if_else(disease == disease_name_nssp,
-      "Disease",
-      disease
-    )) %>%
-    pivot_wider(names_from = disease, values_from = ED_admissions) %>%
-    mutate(prop_disease_ed_admissions = Disease / (Disease + Total)) %>%
-    mutate(time = dense_rank(date)) %>%
-    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
-      names_to = "disease",
-      values_to = ".value"
-    )
-
-  last_training_date <- dat %>%
-    filter(data_type == "train") %>%
-    pull(date) %>%
-    max()
-
-  last_data_date <- dat %>%
-    pull(date) %>%
-    max()
-
-  pyrenew_samples <- read_pyrenew_samples(inference_data_path,
-    filter_bad_chains = filter_bad_chains,
-    good_chain_tol = good_chain_tol
-  )
-
-  total_ed_admission_samples <-
-    bind_rows(
-      dat %>%
-        filter(
-          disease == "Total",
-          date <= last_training_date
-        ) %>%
-        select(date, Total = .value) %>%
-        expand_grid(.draw = 1:n_samples),
-      read_parquet(total_ed_admissions_path) %>%
-        rename(Total = total_ED_admissions)
-    )
-
-  posterior_predictive_samples <-
-    pyrenew_samples$posterior_predictive %>%
-    gather_draws(observed_hospital_admissions[time]) %>%
-    pivot_wider(names_from = .variable, values_from = .value) %>%
-    rename(Disease = observed_hospital_admissions) %>%
-    ungroup() %>%
-    mutate(date = min(dat$date) + time) %>%
-    left_join(total_ed_admission_samples) %>%
-    mutate(prop_disease_ed_admissions = Disease / Total) %>%
-    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
-      names_to = "disease",
-      values_to = ".value"
-    )
-
-  posterior_predictive_ci <-
-    posterior_predictive_samples %>%
-    select(date, disease, .value) %>%
-    group_by(date, disease) %>%
-    median_qi(.width = c(0.5, 0.8, 0.95))
-
-
-  all_forecast_plots <- map(
-    set_names(unique(dat$disease)),
-    ~ make_one_forecast_fig(
-      .x,
-      dat,
-      last_training_date,
-      last_data_date,
-      posterior_predictive_ci,
-      state_abb
-    )
-  )
-
-  all_forecast_plots
-}
-
 make_one_forecast_fig <- function(target_disease,
                                   dat,
                                   last_training_date,
@@ -243,6 +150,104 @@ make_one_forecast_fig <- function(target_disease,
       labels = ~ percent(as.numeric(.))
     ) +
     theme(legend.position = "bottom")
+}
+
+
+make_forecast_figs <- function(model_dir,
+                               filter_bad_chains = TRUE,
+                               good_chain_tol = 2) {
+  state_abb <- model_dir %>%
+    path_split() %>%
+    pluck(1) %>%
+    tail(1)
+
+  data_path <- path(model_dir, "data", ext = "csv")
+  inference_data_path <- path(model_dir, "inference_data",
+    ext = "csv"
+  )
+  total_ed_admissions_path <- path(model_dir, "total_ed_admissions_forecast",
+    ext = "parquet"
+  )
+
+  dat <-
+    read_csv(data_path) %>%
+    mutate(disease = if_else(disease == disease_name_nssp,
+      "Disease",
+      disease
+    )) %>%
+    pivot_wider(names_from = disease, values_from = ED_admissions) %>%
+    mutate(prop_disease_ed_admissions = Disease / (Disease + Total)) %>%
+    mutate(time = dense_rank(date)) %>%
+    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
+      names_to = "disease",
+      values_to = ".value"
+    )
+
+  last_training_date <- dat %>%
+    filter(data_type == "train") %>%
+    pull(date) %>%
+    max()
+
+  last_data_date <- dat %>%
+    pull(date) %>%
+    max()
+
+  pyrenew_samples <- read_pyrenew_samples(inference_data_path,
+    filter_bad_chains = filter_bad_chains,
+    good_chain_tol = good_chain_tol
+  )
+
+  total_ed_admission_forecast <-
+    read_parquet(total_ed_admissions_path) %>%
+    rename(Total = total_ED_admissions)
+
+
+  total_ed_admission_samples <-
+    bind_rows(
+      dat %>%
+        filter(
+          disease == "Total",
+          date <= last_training_date
+        ) %>%
+        select(date, Total = .value) %>%
+        expand_grid(.draw = 1:max(total_ed_admission_forecast$.draw)),
+      total_ed_admission_forecast
+    )
+
+  posterior_predictive_samples <-
+    pyrenew_samples$posterior_predictive %>%
+    gather_draws(observed_hospital_admissions[time]) %>%
+    pivot_wider(names_from = .variable, values_from = .value) %>%
+    rename(Disease = observed_hospital_admissions) %>%
+    ungroup() %>%
+    mutate(date = min(dat$date) + time) %>%
+    left_join(total_ed_admission_samples) %>%
+    mutate(prop_disease_ed_admissions = Disease / Total) %>%
+    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
+      names_to = "disease",
+      values_to = ".value"
+    )
+
+  posterior_predictive_ci <-
+    posterior_predictive_samples %>%
+    select(date, disease, .value) %>%
+    group_by(date, disease) %>%
+    median_qi(.width = c(0.5, 0.8, 0.95))
+
+
+  all_forecast_plots <- map(
+    set_names(unique(dat$disease)),
+    ~ make_one_forecast_fig(
+      .x,
+      dat,
+      last_training_date,
+      last_data_date,
+      posterior_predictive_ci,
+      state_abb
+    )
+  )
+
+  all_forecast_plots
 }
 
 forecast_figs <- make_forecast_figs(
