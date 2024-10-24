@@ -25,6 +25,11 @@ model_dir <- path(argv$model_dir)
 n_forecast_days <- argv$n_forecast_days
 n_samples <- arv$n_samples
 
+disease_name_nssp_map <- c(
+  "covid-19" = "COVID-19/Omicron",
+  "influenza" = "Influenza"
+)
+
 base_dir <- path_dir(model_dir)
 
 disease_name_raw <- base_dir %>%
