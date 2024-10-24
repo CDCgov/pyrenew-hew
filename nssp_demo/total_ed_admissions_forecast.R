@@ -68,7 +68,7 @@ main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
 }
 
 
-main(model_dir, n_forecast_days)
+main(model_dir, n_forecast_days, n_samples)
 # File will end here once command line version is working
 # Temp code to run for all states while command line version doesn't work
 # Command line version is dependent on https://github.com/rstudio/renv/pull/2018
@@ -80,5 +80,5 @@ base_dir <- path(
 dir_ls(base_dir, type = "dir") %>%
   map(.f = function(model_dir) {
     print(path_file(model_dir))
-    main(model_dir, n_forecast_days = 28)
+    main(model_dir, n_forecast_days = 28, n_samples = 2000)
   })
