@@ -109,8 +109,8 @@ make_one_forecast_fig <- function(target_disease,
     scale_y_continuous("Emergency Department Admissions", labels = comma)
   }
 
-  title <- if (target_disease == "Total") {
-    glue("Total ED Admissions in {state_abb}")
+  title <- if (target_disease == "Other") {
+    glue("Other ED Admissions in {state_abb}")
   } else {
     glue("{disease_name_pretty} ED Admissions in {state_abb}")
   }
@@ -165,7 +165,7 @@ make_forecast_figs <- function(model_dir,
   inference_data_path <- path(model_dir, "inference_data",
     ext = "csv"
   )
-  total_ed_admissions_path <- path(model_dir, "other_ed_admissions_forecast",
+  other_ed_admissions_path <- path(model_dir, "other_ed_admissions_forecast",
     ext = "parquet"
   )
 
@@ -176,9 +176,13 @@ make_forecast_figs <- function(model_dir,
       disease
     )) %>%
     pivot_wider(names_from = disease, values_from = ED_admissions) %>%
-    mutate(prop_disease_ed_admissions = Disease / (Disease + Total)) %>%
+    mutate(
+      Other = Total - Disease,
+      prop_disease_ed_admissions = Disease / Total
+    ) %>%
+    select(-Total) %>%
     mutate(time = dense_rank(date)) %>%
-    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
+    pivot_longer(c(Disease, Other, prop_disease_ed_admissions),
       names_to = "disease",
       values_to = ".value"
     )
@@ -197,21 +201,21 @@ make_forecast_figs <- function(model_dir,
     good_chain_tol = good_chain_tol
   )
 
-  total_ed_admission_forecast <-
-    read_parquet(total_ed_admissions_path) %>%
-    rename(Total = total_ED_admissions)
+  other_ed_admission_forecast <-
+    read_parquet(other_ed_admissions_path) %>%
+    rename(Other = other_ED_admissions)
 
 
-  total_ed_admission_samples <-
+  other_ed_admission_samples <-
     bind_rows(
       dat %>%
         filter(
-          disease == "Total",
+          disease == "Other",
           date <= last_training_date
         ) %>%
-        select(date, Total = .value) %>%
-        expand_grid(.draw = 1:max(total_ed_admission_forecast$.draw)),
-      total_ed_admission_forecast
+        select(date, Other = .value) %>%
+        expand_grid(.draw = 1:max(other_ed_admission_forecast$.draw)),
+      other_ed_admission_forecast
     )
 
   posterior_predictive_samples <-
@@ -221,9 +225,9 @@ make_forecast_figs <- function(model_dir,
     rename(Disease = observed_hospital_admissions) %>%
     ungroup() %>%
     mutate(date = min(dat$date) + time) %>%
-    left_join(total_ed_admission_samples) %>%
-    mutate(prop_disease_ed_admissions = Disease / Total) %>%
-    pivot_longer(c(Total, Disease, prop_disease_ed_admissions),
+    left_join(other_ed_admission_samples) %>%
+    mutate(prop_disease_ed_admissions = Disease / (Disease + Other)) %>%
+    pivot_longer(c(Other, Disease, prop_disease_ed_admissions),
       names_to = "disease",
       values_to = ".value"
     )
@@ -286,7 +290,6 @@ walk(dir_ls(base_dir, type = "dir"), function(model_dir) {
     device = cairo_pdf, base_height = 6
   ))
 })
-
 
 # Combine figures across states
 tibble(
