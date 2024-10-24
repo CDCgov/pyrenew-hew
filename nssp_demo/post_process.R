@@ -251,7 +251,7 @@ forecast_figs <- make_forecast_figs(
   good_chain_tol
 )
 
-imap(forecast_figs, ~ save_plot(
+iwalk(forecast_figs, ~ save_plot(
   filename = path(model_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
   plot = .x,
   device = cairo_pdf, base_height = 6
@@ -274,7 +274,7 @@ walk(dir_ls(base_dir, type = "dir"), function(model_dir) {
     good_chain_tol = 2
   )
 
-  imap(forecast_figs, ~ save_plot(
+  iwalk(forecast_figs, ~ save_plot(
     filename = path(model_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
     plot = .x,
     device = cairo_pdf, base_height = 6
