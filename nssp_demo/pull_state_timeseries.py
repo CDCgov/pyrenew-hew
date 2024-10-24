@@ -123,7 +123,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "nssp_data_dir",
     type=Path,
-    required=True,
     help=(
         "Directory in which to look for NSSP data gold table "
         ".parquet files.")
@@ -131,7 +130,6 @@ parser.add_argument(
 parser.add_argument(
     "output_path",
     type=Path,
-    required=True,
     help="Path to which to save the output file, as a tsv."
 )
 
