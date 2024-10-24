@@ -11,16 +11,23 @@ p <- arg_parser("Forecast total ED admissions") %>%
     help = "Directory containing the model data",
     required = TRUE
   ) %>%
-  add_argument(p, "--n_forecast_days",
+  add_argument("--n_forecast_days",
     help = "Number of days to forecast",
     default = 28L
+  ) %>%
+  add_argument("--n_samples",
+    help = "Number of samples to generate",
+    default = 2000L
   )
 
 argv <- parse_args(p)
 model_dir <- path(argv$model_dir)
 n_forecast_days <- argv$n_forecast_days
+n_samples <- arv$n_samples
 
-fit_and_forecast <- function(denom_data, n_forecast_days = 28) {
+fit_and_forecast <- function(denom_data,
+                             n_forecast_days = 28,
+                             n_samples = 2000) {
   forecast_horizon <- glue("{n_forecast_days} days")
 
   fit <-
@@ -45,7 +52,7 @@ fit_and_forecast <- function(denom_data, n_forecast_days = 28) {
   forecast_samples
 }
 
-main <- function(model_dir, n_forecast_days = 28) {
+main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
   # to do: do this with json data that has dates
   data_path <- path(model_dir, "data", ext = "csv")
 
@@ -54,7 +61,7 @@ main <- function(model_dir, n_forecast_days = 28) {
     select(-disease) %>%
     as_tsibble(index = date)
 
-  forecast_samples <- fit_and_forecast(denom_data, n_forecast_days)
+  forecast_samples <- fit_and_forecast(denom_data, n_forecast_days, n_samples)
 
   save_path <- path(model_dir, "total_ed_admissions_forecast", ext = "parquet")
   write_parquet(forecast_samples, save_path)
