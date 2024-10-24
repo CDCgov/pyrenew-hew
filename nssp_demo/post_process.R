@@ -172,7 +172,7 @@ make_forecast_figs <- function(model_dir,
   dat <-
     read_csv(data_path) %>%
     mutate(disease = if_else(disease == disease_name_nssp,
-      "Disease",
+      "Disease", # assign a common name for use in plotting functions
       disease
     )) %>%
     pivot_wider(names_from = disease, values_from = ED_admissions) %>%
@@ -272,6 +272,7 @@ base_dir <- path(
   "influenza_r_2024-10-21_f_2024-07-16_t_2024-10-13"
 )
 
+# Save all figures for each state
 walk(dir_ls(base_dir, type = "dir"), function(model_dir) {
   print(model_dir)
   forecast_figs <- make_forecast_figs(model_dir,
@@ -287,6 +288,7 @@ walk(dir_ls(base_dir, type = "dir"), function(model_dir) {
 })
 
 
+# Combine figures across states
 tibble(
   full_path = dir_ls(base_dir,
     type = "file",
