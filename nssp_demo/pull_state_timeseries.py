@@ -12,11 +12,20 @@ def main(
         report_date: str | datetime.date,
         first_date_to_pull: str | datetime.date = None,
         separator="\t",
-        diseases=["COVID-19/Omicron",
-                  "Influenza",
-                  "RSV"],
+        diseases=["covid",
+                  "influenza",
+                  "rsv"],
 ):
-    diseases_to_pull = diseases + ["Total"]
+    diseases_to_column_names = dict(
+        covid="COVID-19/Omicron",
+        influenza="Influenza",
+        rsv="RSV",
+        total="Total")
+
+    diseases_to_pull = [diseases_to_column_names.get(disease)
+                        for disease in diseases]
+    
+    col_names_to_pull = diseases_to_pull + ["Total"]
 
     if isinstance(report_date, str):
         if report_date == "latest":
@@ -51,7 +60,7 @@ def main(
     nssp_data = pl.scan_parquet(Path(nssp_data_dir, datafile))
 
     data = nssp_data.filter(
-            pl.col("disease").is_in(diseases_to_pull),
+            pl.col("disease").is_in(col_names_to_pull),
             pl.col("metric") == "count_ed_visits",
             pl.col("reference_date") > first_date_to_pull,
             pl.col("report_date") == report_date
@@ -72,7 +81,34 @@ def main(
         ).pivot(
             on="disease",
             index=["reference_date", "geo_value"]
+        ).rename(
+            {v: f"count_{k}" for k, v
+             in diseases_to_column_names.items()
+             if v in col_names_to_pull}
+        ).with_columns(
+            **{f"frac_{x}":
+               (pl.col(f"count_{x}") / pl.col("count_total"))
+               for x in diseases}
+        ).with_columns(
+            **{f"pct_{x}": (100. * pl.col(f"frac_{x}"))
+               for x in diseases}
+        ).select(
+            [
+                pl.col("reference_date").alias("date"),
+                pl.col("geo_value").alias("location")
+            ] +
+            [
+                item for x in diseases for item in
+                [
+                    f"count_{x}",
+                    f"frac_{x}",
+                    f"pct_{x}"
+                ]
+            ] +
+            ["count_total"]
         )
+
+    print(data)
 
     logger.info(f"Saving data to {output_path}.")
 
