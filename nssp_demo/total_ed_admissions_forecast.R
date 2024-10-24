@@ -78,7 +78,7 @@ base_dir <- path(
 )
 
 dir_ls(base_dir, type = "dir") %>%
-  map(.f = function(model_dir) {
+  walk(.f = function(model_dir) {
     print(path_file(model_dir))
     main(model_dir, n_forecast_days = 28, n_samples = 2000)
   })
