@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
-import pyarrow.parquet as pq
 
 
 def process_and_save_state(
