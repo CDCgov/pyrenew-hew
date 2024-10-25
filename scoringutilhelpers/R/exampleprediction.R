@@ -1,5 +1,4 @@
 library(arrow)
-library(tidybayes)
 library(dplyr)
 library(lubridate)
 
@@ -39,13 +38,14 @@ library(lubridate)
 #'   \item{.draw}{Row number for each observation.}
 #' }
 #' @export
-exampleprediction <- function(sourcepath = "scortingutilhelpers/assets",
-    ndays = 21, reps = 100, nchains = 4, nareas = 3, savedata = FALSE, ...) {
+exampleprediction <- function(
+  sourcepath = "scoringutilhelpers/assets/examplepredictions", ndays = 21,
+  reps = 100, nchains = 4, nareas = 3, savedata = FALSE, ...) {
   # Generate a sequence of dates for 3 weeks
   dates <- seq.Date(from = lubridate::ymd("2024-10-24"), by = "day",
     length.out = ndays)
   areas <- LETTERS[1:nareas]
-  # Create normally distributed data for each date and area
+  # Create log-normally distributed data for each date and area
   # sending to tidydata
   exampledata <- lapply(areas,
     function(area) {
