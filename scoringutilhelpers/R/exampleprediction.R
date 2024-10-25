@@ -11,7 +11,7 @@ library(lubridate)
 #' path with a default path of "scortingutilhelpers/assets" and a default file
 #' format of Arrow/Parquet.
 #'
-#' @param sourcepath A character string specifying the path where the data
+#' @param savepath A character string specifying the path where the data
 #' should be saved if `savedata` is TRUE.
 #' @param ndays An integer specifying the number of days for which to generate
 #' data. Default is 21.
@@ -23,7 +23,7 @@ library(lubridate)
 #' @param nareas An integer specifying the number of areas for which to generate
 #' data. Areas are "A", "B", etc. Default is 3.
 #' @param savedata A logical value indicating whether to save the generated data
-#' to `sourcepath`. Default is FALSE.
+#' to `savepath`. Default is FALSE.
 #' @param ... Additional arguments passed to `arrow::write_dataset` if
 #' `savedata` is TRUE.
 #'
@@ -39,7 +39,7 @@ library(lubridate)
 #' }
 #' @export
 exampleprediction <- function(
-  sourcepath = "scoringutilhelpers/assets/examplepredictions", ndays = 21,
+  savepath = "scoringutilhelpers/assets/examplepredictions", ndays = 21,
   reps = 100, nchains = 4, nareas = 3, savedata = FALSE, ...) {
   # Generate a sequence of dates for 3 weeks
   dates <- seq.Date(from = lubridate::ymd("2024-10-24"), by = "day",
@@ -66,7 +66,7 @@ exampleprediction <- function(
       .draw = row_number()
     )
     if (savedata) {
-        arrow::write_dataset(exampledata, sourcepath, ...)
+        arrow::write_dataset(exampledata, savepath, ...)
     }
     return(exampledata)
 }

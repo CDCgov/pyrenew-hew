@@ -11,7 +11,8 @@ test_that("exampleprediction generates data with correct dimensions", {
 
 test_that("exampleprediction generates data with correct columns", {
     result <- exampleprediction()
-    expect_true(all(c("area", "date", "prediction", ".chain", ".iteration", ".draw") %in% colnames(result)))
+    expect_true(all(c("area", "date", "prediction", ".chain", ".iteration",
+        ".draw") %in% colnames(result)))
 })
 
 test_that("exampleprediction generates data with correct date range", {
@@ -36,6 +37,6 @@ test_that("exampleprediction generates data with correct number of chains", {
 
 test_that("exampleprediction saves data when savedata is TRUE", {
     temp_dir <- tempdir()
-    result <- exampleprediction(sourcepath = temp_dir, savedata = TRUE)
+    result <- exampleprediction(savepath = temp_dir, savedata = TRUE)
     expect_true(file.exists(file.path(temp_dir, "part-0.parquet")))
 })
