@@ -36,6 +36,7 @@ library(lubridate)
 #'   \item{.chain}{Chain identifier for the data generation process.}
 #'   \item{.iteration}{Iteration number for each observation.}
 #'   \item{.draw}{Row number for each observation.}
+#'   \item{model}{Model identifier for the data generation process.}
 #' }
 #' @export
 exampleprediction <- function(
@@ -44,6 +45,10 @@ exampleprediction <- function(
   # Generate a sequence of dates for 3 weeks
   dates <- seq.Date(from = lubridate::ymd("2024-10-24"), by = "day",
     length.out = ndays)
+  dates_1wkahead <- seq.Date(from = lubridate::ymd("2024-10-31"), by = "day",
+    length.out = ndays)
+  dates_2wkahead <- seq.Date(from = lubridate::ymd("2024-11-7"), by = "day",
+    length.out = ndays)  
   areas <- LETTERS[1:nareas]
   # Create log-normally distributed data for each date and area
   # sending to tidydata
@@ -51,19 +56,29 @@ exampleprediction <- function(
     function(area) {
     lapply(1:nchains,
         function(i) {
-        data <- tibble(
+        data1wk <- tibble(
             area = area,
-            date = rep(dates, each = reps),
+            reference_date = rep(dates, each = reps),
+            target_end_date = rep(dates_1wkahead, each = reps),
             prediction = rlnorm(reps * ndays, meanlog = log(1.0), sdlog = 0.25),
             .chain = i,
             .iteration = 1:(reps * ndays),
             )
+        data2wk <- tibble(
+            area = area,
+            reference_date = rep(dates, each = reps),
+            target_end_date = rep(dates_2wkahead, each = reps),
+            prediction = rlnorm(reps * ndays, meanlog = log(1.0), sdlog = 0.25),
+            .chain = i,
+            .iteration = 1:(reps * ndays),
+            )
+        data <- bind_rows(data1wk, data2wk)
         }) |>
         bind_rows()
     }) |>
     bind_rows() |>
     mutate(
-      .draw = row_number()
+      .draw = row_number(), model = "example"
     )
     if (savedata) {
         arrow::write_dataset(exampledata, savepath, ...)
