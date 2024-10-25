@@ -212,6 +212,8 @@ cython_debug/
 # R
 # https://github.com/github/gitignore/blob/main/R.gitignore
 
+.Rprofile
+
 # History files
 .Rhistory
 .Rapp.history
@@ -389,3 +391,4 @@ notebooks/*_files/
 notebooks/*.md
 
 nssp_demo/private_data/*
+.vscode/settings.json
