@@ -48,10 +48,7 @@ score_forecasts <- function(
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
   # Add relative skill if more than one model is present
-  model_sym <- rlang::sym(model_col)
-  if (summarize(scored_data,
-    all_same = n_distinct(!!model_sym) != 1
-  )$all_same) {
+  if (n_distinct(scorable_data[[model_col]]) != 1) {
     scored_data <- scoringutils::add_relative_skill(scored_data)
   }
   return(scored_data)
