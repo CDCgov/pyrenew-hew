@@ -45,9 +45,9 @@ example_prediction <- function(
     reps = 100, nchains = 4, nareas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates for 3 weeks
   dates <- seq.Date(
-      from = lubridate::ymd("2024-10-24"), by = "day",
-      length.out = ndays
-    )
+    from = lubridate::ymd("2024-10-24"), by = "day",
+    length.out = ndays
+  )
   areas <- LETTERS[1:nareas]
   example_data <- tidyr::expand_grid(
     .chain = 1:nchains,
@@ -56,11 +56,15 @@ example_prediction <- function(
     reference_date = list(dates),
     target_end_date = list(dates + 7, dates + 14)
   ) |>
-    mutate(.draw = tidybayes:::draw_from_chain_and_iteration_(.chain,
-      .iteration), .after = .iteration) |>
+    mutate(.draw = tidybayes:::draw_from_chain_and_iteration_(
+      .chain,
+      .iteration
+    ), .after = .iteration) |>
     tidyr::unnest(c(reference_date, target_end_date)) |>
-    mutate(prediction = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25),
-      model = "example")
+    mutate(
+      prediction = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25),
+      model = "example"
+    )
   if (save_data) {
     arrow::write_dataset(example_data, save_path, ...)
   }

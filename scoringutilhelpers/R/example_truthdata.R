@@ -37,7 +37,7 @@ example_truthdata <- function(
     date = list(dates)
   ) |>
     tidyr::unnest(date) |>
-  mutate(truthdata = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
+    mutate(truthdata = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
 
 
 
