@@ -15,14 +15,14 @@ library(readr)
 #' data. Default is 3.
 #' @param savedata A logical value indicating whether to save the generated
 #' data. Default is FALSE.
-#' @param ... Additional arguments passed to `arrow::write_dataset` if
+#' @param ... Additional arguments passed to `readr::write_tsv` if
 #' `savedata` is TRUE.
 #'
 #' @return A tibble containing the generated example truth data with columns for
 #' area, date, and truthdata.
 #' @export
 exampletruthdata <- function(
-  savepath = "scortingutilhelpers/assets/exampletruthdata",
+  savepath = "scoringutilhelpers/assets",
   ndays = 21, nareas = 3, savedata = FALSE, ...) {
   # Generate a sequence of dates and a sequence of areas
   dates <- seq.Date(from = lubridate::ymd("2024-10-24"), by = "day",
@@ -39,7 +39,8 @@ exampletruthdata <- function(
     }) |>
     bind_rows()
     if (savedata) {
-        readr::write_tsv(exampledata, savepath, ...)
+        readr::write_tsv(exampledata,
+        file.path(savepath, "exampletruthdata.tsv"), ...)
     }
     return(exampledata)
 }
