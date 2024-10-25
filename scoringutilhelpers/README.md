@@ -11,7 +11,7 @@ First, we load the code:
 ``` r
 library(scoringutils)
 library(ggplot2)
-source("R/exampleprediction.R")
+source("R/example_prediction.R")
 source("R/exampletruthdata.R")
 source("R/join_forecast_and_data.R")
 source("R/score_forecasts.R")
@@ -21,7 +21,7 @@ source("R/score_forecasts.R")
 
 Now, we can generate some example data.
 
-The `exampleprediction` function generates log-normal “forecasts” across
+The `example_prediction` function generates log-normal “forecasts” across
 a user selected number of areas and dates with 1 and 2 week lookaheads.
 In order to make the example data match the likely use-case we also
 generate `.chain` and `.iteration` fields to match a tidybayes-type data
@@ -32,9 +32,9 @@ and also serialises to `/assets`.
 
 ``` r
 #Example predictions
-examplepreds <- exampleprediction(savedata = TRUE)
+examplepreds <- example_prediction(save_data = TRUE)
 #Example truth data
-exampledata <- exampletruthdata(savedata = TRUE)
+exampledata <- exampletruthdata(save_data = TRUE)
 ```
 
 Note that the `examplepreds` is serialised in `parquet` format and
@@ -53,7 +53,7 @@ Preparation for scoring the forecasts is done by:
     recorded at that `date`.
 
 ``` r
-forecast_source <- "scoringutilhelpers/assets/examplepredictions"
+forecast_source <- "scoringutilhelpers/assets/example_predictions"
 truthdata_file <- "scoringutilhelpers/assets/exampletruthdata.tsv"
 scorable_data <- join_forecast_and_data(forecast_source, truthdata_file,
         join_key = join_by(area, target_end_date == date)) |>

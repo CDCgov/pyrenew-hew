@@ -28,14 +28,14 @@ test_that("exampletruthdata generates correct number of unique areas", {
   expect_equal(length(unique(result$area)), nareas)
 })
 
-test_that("exampletruthdata saves data when savedata is TRUE", {
-  savepath <- tempdir()
-  filename <- file.path(savepath, "exampletruthdata.tsv")
-  result <- exampletruthdata(savepath = savepath, savedata = TRUE)
+test_that("exampletruthdata saves data when save_data is TRUE", {
+  save_path <- tempdir()
+  filename <- file.path(save_path, "exampletruthdata.tsv")
+  result <- exampletruthdata(save_path = save_path, save_data = TRUE)
   expect_true(file.exists(filename))
   saved_data <- readr::read_tsv(filename)
   expect_equal(nrow(saved_data), nrow(result))
   expect_equal(ncol(saved_data), ncol(result))
   expect_equal(colnames(saved_data), colnames(result))
-  unlink(savepath) # Clean up the temporary file
+  unlink(save_path) # Clean up the temporary file
 })

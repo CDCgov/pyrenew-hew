@@ -1,6 +1,6 @@
-examplepreds <- exampleprediction(savedata = TRUE)
-exampledata <- exampletruthdata(savedata = TRUE)
-forecast_source <- "scoringutilhelpers/assets/examplepredictions"
+examplepreds <- example_prediction(save_data = TRUE)
+exampledata <- exampletruthdata(save_data = TRUE)
+forecast_source <- "scoringutilhelpers/assets/example_predictions"
 truthdata_file <- "scoringutilhelpers/assets/exampletruthdata.tsv"
 forecast_unit <- c("area", "reference_date", "target_end_date", "model")
 observed <- "truthdata"

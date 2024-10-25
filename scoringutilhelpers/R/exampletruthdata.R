@@ -7,23 +7,23 @@ library(readr)
 #' areas. The data is log-normally distributed and can optionally be saved to a
 #' specified path.
 #'
-#' @param savepath A character string specifying the path where the data
+#' @param save_path A character string specifying the path where the data
 #' should be saved. Default is "scortingutilhelpers/assets".
 #' @param ndays An integer specifying the number of days for which to generate
 #' data. Default is 21.
 #' @param nareas An integer specifying the number of areas for which to generate
 #' data. Default is 3.
-#' @param savedata A logical value indicating whether to save the generated
+#' @param save_data A logical value indicating whether to save the generated
 #' data. Default is FALSE.
 #' @param ... Additional arguments passed to `readr::write_tsv` if
-#' `savedata` is TRUE.
+#' `save_data` is TRUE.
 #'
 #' @return A tibble containing the generated example truth data with columns for
 #' area, date, and truthdata.
 #' @export
 exampletruthdata <- function(
-    savepath = "scoringutilhelpers/assets",
-    ndays = 21, nareas = 3, savedata = FALSE, ...) {
+    save_path = "scoringutilhelpers/assets",
+    ndays = 21, nareas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates and a sequence of areas
   dates <- seq.Date(
     from = lubridate::ymd("2024-10-24"), by = "day",
@@ -42,10 +42,10 @@ exampletruthdata <- function(
     }
   ) |>
     bind_rows()
-  if (savedata) {
+  if (save_data) {
     readr::write_tsv(
       exampledata,
-      file.path(savepath, "exampletruthdata.tsv"), ...
+      file.path(save_path, "exampletruthdata.tsv"), ...
     )
   }
   return(exampledata)

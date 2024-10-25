@@ -1,13 +1,13 @@
 # Test join_forecast_and_data function
 test_that("join_forecast_and_data correctly joins forecast and actual data", {
   # Use testing data functions to test the join_forecast_and_data function
-  examplepreds <- exampleprediction(savedata = TRUE)
-  exampledata <- exampletruthdata(savedata = TRUE)
-  forecast_source <- "scoringutilhelpers/assets/examplepredictions"
+  examplepreds <- example_prediction(save_data = TRUE)
+  exampledata <- exampletruthdata(save_data = TRUE)
+  forecast_source <- "scoringutilhelpers/assets/example_predictions"
   truthdata_file <- "scoringutilhelpers/assets/exampletruthdata.tsv"
   # Write mock data to temporary files
   predictions <-
-    arrow::open_dataset("scoringutilhelpers/assets/examplepredictions")
+    arrow::open_dataset("scoringutilhelpers/assets/example_predictions")
   actual_data <-
     readr::read_tsv("scoringutilhelpers/assets/exampletruthdata.tsv")
   scoringdataset <- join_forecast_and_data(forecast_source, truthdata_file,

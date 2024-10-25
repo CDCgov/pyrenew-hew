@@ -1,8 +1,8 @@
 library(testthat)
 
-# exampleprediction.R
-source("scoringutilhelpers/R/exampleprediction.R")
-source("scoringutilhelpers/tests/testthat/exampleprediction.R")
+# example_prediction.R
+source("scoringutilhelpers/R/example_prediction.R")
+source("scoringutilhelpers/tests/testthat/example_prediction.R")
 
 # exampletruthdata.R
 source("scoringutilhelpers/R/exampletruthdata.R")
