@@ -35,7 +35,7 @@ We begin by loading the Stan data, converting it the correct inputs for our mode
 
 ```{python}
 # | label: create model
-my_hosp_only_ww_model, data_observed_hospital_admissions = (
+my_hosp_only_ww_model, data_observed_disease_hospital_admissions = (
     create_hosp_only_ww_model_from_stan_data(
         "data/fit_hosp_only/stan_data.json"
     )
@@ -50,7 +50,7 @@ We check that we can simulate from the prior predictive
 n_forecast_days = 35
 
 prior_predictive = my_hosp_only_ww_model.prior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days,
+    n_datapoints=len(data_observed_disease_hospital_admissions) + n_forecast_days,
     numpyro_predictive_args={"num_samples": 200},
 )
 ```
@@ -64,7 +64,7 @@ my_hosp_only_ww_model.run(
     num_warmup=500,
     num_samples=500,
     rng_key=jax.random.key(200),
-    data_observed_hospital_admissions=data_observed_hospital_admissions,
+    data_observed_disease_hospital_admissions=data_observed_disease_hospital_admissions,
     mcmc_args=dict(num_chains=4, progress_bar=False),
     nuts_args=dict(find_heuristic_step_size=True),
 )
@@ -75,7 +75,7 @@ Create the posterior predictive and forecast:
 ```{python}
 # | label: posterior predictive
 posterior_predictive = my_hosp_only_ww_model.posterior_predictive(
-    n_datapoints=len(data_observed_hospital_admissions) + n_forecast_days
+    n_datapoints=len(data_observed_disease_hospital_admissions) + n_forecast_days
 )
 ```
 

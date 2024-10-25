@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
-import pyarrow.parquet as pq
 
 
 def process_and_save_state(
@@ -25,16 +24,17 @@ def process_and_save_state(
         "COVID-19": "COVID-19/Omicron",
         "Influenza": "Influenza",
         "RSV": "RSV",
+        "Total": "Total",
     }
 
     data_to_save = (
         nssp_data.filter(
-            (pl.col("disease") == disease_map[disease])
+            (pl.col("disease").is_in([disease_map[disease], "Total"]))
             & (pl.col("metric") == "count_ed_visits")
             & (pl.col("geo_value") == state_abb)
             & (pl.col("reference_date") >= first_training_date)
         )
-        .group_by(["report_date", "reference_date"])
+        .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ED_admissions"))
         .with_columns(
             pl.when(pl.col("reference_date") <= last_training_date)
@@ -42,7 +42,8 @@ def process_and_save_state(
             .otherwise(pl.lit("test"))
             .alias("data_type")
         )
-        .sort(["report_date", "reference_date"])
+        .rename({"reference_date": "date"})
+        .sort(["date", "disease"])
     )
 
     state_pop = (
@@ -95,15 +96,39 @@ def process_and_save_state(
 
     right_truncation_offset = (report_date - last_training_date).days
 
-    train_ed_admissions = (
-        data_to_save.filter(pl.col("data_type") == "train")
+    train_disease_ed_admissions = (
+        data_to_save.filter(
+            (pl.col("data_type") == "train")
+            & (pl.col("disease") == disease_map[disease])
+        )
         .collect()
         .get_column("ED_admissions")
         .to_list()
     )
 
-    test_ed_admissions = (
-        data_to_save.filter(pl.col("data_type") == "test")
+    test_disease_ed_admissions = (
+        data_to_save.filter(
+            (pl.col("data_type") == "test")
+            & (pl.col("disease") == disease_map[disease])
+        )
+        .collect()
+        .get_column("ED_admissions")
+        .to_list()
+    )
+
+    train_total_ed_admissions = (
+        data_to_save.filter(
+            (pl.col("data_type") == "train") & (pl.col("disease") == "Total")
+        )
+        .collect()
+        .get_column("ED_admissions")
+        .to_list()
+    )
+
+    test_total_ed_admissions = (
+        data_to_save.filter(
+            (pl.col("data_type") == "test") & (pl.col("disease") == "Total")
+        )
         .collect()
         .get_column("ED_admissions")
         .to_list()
@@ -113,8 +138,10 @@ def process_and_save_state(
         "inf_to_hosp_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_hospital_admissions": train_ed_admissions,
-        "test_ed_admissions": test_ed_admissions,
+        "data_observed_disease_hospital_admissions": train_disease_ed_admissions,
+        "data_observed_disease_hospital_admissions_test": test_disease_ed_admissions,
+        "data_observed_total_hospital_admissions": train_total_ed_admissions,
+        "data_observed_total_hospital_admissions_test": test_total_ed_admissions,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
@@ -124,7 +151,8 @@ def process_and_save_state(
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
-    data_to_save.sink_csv(Path(state_dir, "data.csv"))
+    # data_to_save.sink_csv(Path(state_dir, "data.csv")) # Not yet supported
+    data_to_save.collect().write_csv(Path(state_dir, "data.csv"))
 
     with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)

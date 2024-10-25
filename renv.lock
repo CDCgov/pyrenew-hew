@@ -9,6 +9,13 @@
     ]
   },
   "Packages": {
+    "BH": {
+      "Package": "BH",
+      "Version": "1.84.0-0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "a8235afbcd6316e6e91433ea47661013"
+    },
     "DBI": {
       "Package": "DBI",
       "Version": "1.2.3",
@@ -106,6 +113,28 @@
       ],
       "Hash": "4f57884290cc75ab22f4af9e9d4ca862"
     },
+    "anytime": {
+      "Package": "anytime",
+      "Version": "0.3.9",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "BH",
+        "R",
+        "Rcpp"
+      ],
+      "Hash": "74a64813f17b492da9c6afda6b128e3d"
+    },
+    "argparser": {
+      "Package": "argparser",
+      "Version": "0.7.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "methods"
+      ],
+      "Hash": "6ae51dd1cd6a2f5784273ab70d41c66c"
+    },
     "arrayhelpers": {
       "Package": "arrayhelpers",
       "Version": "1.1-0",
@@ -118,6 +147,28 @@
       ],
       "Hash": "3d4e52d458784c335af3846f2de64f75"
     },
+    "arrow": {
+      "Package": "arrow",
+      "Version": "17.0.0.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "R6",
+        "assertthat",
+        "bit64",
+        "cpp11",
+        "glue",
+        "methods",
+        "purrr",
+        "rlang",
+        "stats",
+        "tidyselect",
+        "utils",
+        "vctrs"
+      ],
+      "Hash": "14af96cb2973f6a6c220ce9c3e5b02cd"
+    },
     "askpass": {
       "Package": "askpass",
       "Version": "1.2.0",
@@ -127,6 +178,16 @@
         "sys"
       ],
       "Hash": "cad6cf7f1d5f6e906700b9d3e718c796"
+    },
+    "assertthat": {
+      "Package": "assertthat",
+      "Version": "0.2.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "tools"
+      ],
+      "Hash": "50c838a310445e954bc13f26f26a6ecf"
     },
     "backports": {
       "Package": "backports",
@@ -530,6 +591,17 @@
       ],
       "Hash": "54ed3ea01b11e81a86544faaecfef8e2"
     },
+    "ellipsis": {
+      "Package": "ellipsis",
+      "Version": "0.3.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "rlang"
+      ],
+      "Hash": "bb0eec2fe32e88d9e2836c2f73ea2077"
+    },
     "evaluate": {
       "Package": "evaluate",
       "Version": "0.24.0",
@@ -540,6 +612,53 @@
         "methods"
       ],
       "Hash": "a1066cbc05caee9a4bf6d90f194ff4da"
+    },
+    "fable": {
+      "Package": "fable",
+      "Version": "0.4.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "distributional",
+        "dplyr",
+        "fabletools",
+        "rlang",
+        "stats",
+        "tibble",
+        "tidyr",
+        "tsibble",
+        "utils"
+      ],
+      "Hash": "c0d483fecb4ea17420795160dc0bdd92"
+    },
+    "fabletools": {
+      "Package": "fabletools",
+      "Version": "0.5.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "R6",
+        "distributional",
+        "dplyr",
+        "generics",
+        "ggdist",
+        "ggplot2",
+        "lifecycle",
+        "progressr",
+        "rlang",
+        "scales",
+        "stats",
+        "tibble",
+        "tidyr",
+        "tidyselect",
+        "tsibble",
+        "utils",
+        "vctrs"
+      ],
+      "Hash": "0242939c5bf3a090df0b8877c7a6c97a"
     },
     "fansi": {
       "Package": "fansi",
@@ -1171,6 +1290,18 @@
       ],
       "Hash": "f4625e061cb2865f111b47ff163a5ca6"
     },
+    "progressr": {
+      "Package": "progressr",
+      "Version": "0.14.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "digest",
+        "utils"
+      ],
+      "Hash": "ac50c4ffa8f6a46580dd4d7813add3c4"
+    },
     "ps": {
       "Package": "ps",
       "Version": "1.7.7",
@@ -1659,6 +1790,27 @@
         "xfun"
       ],
       "Hash": "cfbad971a71f0e27cec22e544a08bc3b"
+    },
+    "tsibble": {
+      "Package": "tsibble",
+      "Version": "1.1.5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "anytime",
+        "dplyr",
+        "ellipsis",
+        "generics",
+        "lifecycle",
+        "lubridate",
+        "methods",
+        "rlang",
+        "tibble",
+        "tidyselect",
+        "vctrs"
+      ],
+      "Hash": "a75e397766b45996310908b5b32557ba"
     },
     "tzdb": {
       "Package": "tzdb",
