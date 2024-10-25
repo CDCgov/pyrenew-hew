@@ -43,55 +43,23 @@ example_prediction <- function(
     save_path = "scoringutilhelpers/assets/example_predictions", ndays = 21,
     reps = 100, nchains = 4, nareas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates for 3 weeks
-  dates <- seq.Date(
+dates <- seq.Date(
     from = lubridate::ymd("2024-10-24"), by = "day",
     length.out = ndays
   )
-  dates_1wkahead <- seq.Date(
-    from = lubridate::ymd("2024-10-31"), by = "day",
-    length.out = ndays
-  )
-  dates_2wkahead <- seq.Date(
-    from = lubridate::ymd("2024-11-7"), by = "day",
-    length.out = ndays
-  )
   areas <- LETTERS[1:nareas]
-  # Create log-normally distributed data for each date and area
-  # sending to tidydata
-  exampledata <- lapply(
-    areas,
-    function(area) {
-      lapply(
-        1:nchains,
-        function(i) {
-          data1wk <- tibble(
-            area = area,
-            reference_date = rep(dates, each = reps),
-            target_end_date = rep(dates_1wkahead, each = reps),
-            prediction = rlnorm(reps * ndays, meanlog = log(1.0), sdlog = 0.25),
-            .chain = i,
-            .iteration = 1:(reps * ndays),
-          )
-          data2wk <- tibble(
-            area = area,
-            reference_date = rep(dates, each = reps),
-            target_end_date = rep(dates_2wkahead, each = reps),
-            prediction = rlnorm(reps * ndays, meanlog = log(1.0), sdlog = 0.25),
-            .chain = i,
-            .iteration = 1:(reps * ndays),
-          )
-          data <- bind_rows(data1wk, data2wk)
-        }
-      ) |>
-        bind_rows()
-    }
-  ) |>
-    bind_rows() |>
-    mutate(
-      .draw = row_number(), model = "example"
-    )
-  if (save_data) {
-    arrow::write_dataset(exampledata, save_path, ...)
+  exampledata <- expand_grid(
+    .chain = 1:nchains,
+    .iteration = 1:reps,
+    area = areas,
+    reference_date = list(dates),
+    target_end_date = list(dates + 7, dates + 14)
+  ) %>%
+    mutate(.draw = tidybayes:::draw_from_chain_and_iteration_(.chain, .iteration), .after = .iteration) %>%
+    unnest(c(reference_date, target_end_date)) %>%
+    mutate(prediction = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
+  if (savedata) {
+    arrow::write_dataset(exampledata, savepath, ...)
   }
   return(exampledata)
 }
