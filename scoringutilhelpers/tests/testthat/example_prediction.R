@@ -33,7 +33,7 @@ test_that("example_prediction generates data with correct date range", {
 test_that("example_prediction generates data with correct areas", {
   nareas <- 2
   result <- example_prediction(nareas = nareas)
-  expect_true(all(result$area %in% LETTERS[1:nareas]))
+  expect_true(setequal(result$area, LETTERS[1:nareas]))
 })
 
 test_that("example_prediction generates data with correct number of chains", {
