@@ -40,48 +40,58 @@ library(lubridate)
 #' }
 #' @export
 exampleprediction <- function(
-  savepath = "scoringutilhelpers/assets/examplepredictions", ndays = 21,
-  reps = 100, nchains = 4, nareas = 3, savedata = FALSE, ...) {
+    savepath = "scoringutilhelpers/assets/examplepredictions", ndays = 21,
+    reps = 100, nchains = 4, nareas = 3, savedata = FALSE, ...) {
   # Generate a sequence of dates for 3 weeks
-  dates <- seq.Date(from = lubridate::ymd("2024-10-24"), by = "day",
-    length.out = ndays)
-  dates_1wkahead <- seq.Date(from = lubridate::ymd("2024-10-31"), by = "day",
-    length.out = ndays)
-  dates_2wkahead <- seq.Date(from = lubridate::ymd("2024-11-7"), by = "day",
-    length.out = ndays)  
+  dates <- seq.Date(
+    from = lubridate::ymd("2024-10-24"), by = "day",
+    length.out = ndays
+  )
+  dates_1wkahead <- seq.Date(
+    from = lubridate::ymd("2024-10-31"), by = "day",
+    length.out = ndays
+  )
+  dates_2wkahead <- seq.Date(
+    from = lubridate::ymd("2024-11-7"), by = "day",
+    length.out = ndays
+  )
   areas <- LETTERS[1:nareas]
   # Create log-normally distributed data for each date and area
   # sending to tidydata
-  exampledata <- lapply(areas,
+  exampledata <- lapply(
+    areas,
     function(area) {
-    lapply(1:nchains,
+      lapply(
+        1:nchains,
         function(i) {
-        data1wk <- tibble(
+          data1wk <- tibble(
             area = area,
             reference_date = rep(dates, each = reps),
             target_end_date = rep(dates_1wkahead, each = reps),
             prediction = rlnorm(reps * ndays, meanlog = log(1.0), sdlog = 0.25),
             .chain = i,
             .iteration = 1:(reps * ndays),
-            )
-        data2wk <- tibble(
+          )
+          data2wk <- tibble(
             area = area,
             reference_date = rep(dates, each = reps),
             target_end_date = rep(dates_2wkahead, each = reps),
             prediction = rlnorm(reps * ndays, meanlog = log(1.0), sdlog = 0.25),
             .chain = i,
             .iteration = 1:(reps * ndays),
-            )
-        data <- bind_rows(data1wk, data2wk)
-        }) |>
+          )
+          data <- bind_rows(data1wk, data2wk)
+        }
+      ) |>
         bind_rows()
-    }) |>
+    }
+  ) |>
     bind_rows() |>
     mutate(
       .draw = row_number(), model = "example"
     )
-    if (savedata) {
-        arrow::write_dataset(exampledata, savepath, ...)
-    }
-    return(exampledata)
+  if (savedata) {
+    arrow::write_dataset(exampledata, savepath, ...)
+  }
+  return(exampledata)
 }

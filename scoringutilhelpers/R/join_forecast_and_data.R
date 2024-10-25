@@ -7,7 +7,7 @@ library(dplyr)
 #' This function reads forecast data from a Parquet file and actual data from a
 #' TSV file, then joins them using a specified key.
 #'
-#' @param forecast_source A character vector specifying the path to the 
+#' @param forecast_source A character vector specifying the path to the
 #' directory containing Parquet file(s) containing forecast data.
 #' @param data_path A character string specifying the path to the TSV file
 #' containing actual/truth data.
@@ -18,8 +18,9 @@ library(dplyr)
 #' @return A data frame resulting from the left join of the forecast and actual
 #' data.
 #' @export
-join_forecast_and_data <- function(forecast_source, data_path, join_key = NULL,
-  ...) {
+join_forecast_and_data <- function(
+    forecast_source, data_path, join_key = NULL,
+    ...) {
   predictions <- arrow::open_dataset(forecast_source, ...)
   actual_data <- readr::read_tsv(data_path)
   joined_data <- dplyr::left_join(predictions, actual_data, by = join_key)

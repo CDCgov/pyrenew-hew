@@ -34,7 +34,8 @@ library(scoringutils)
 #'
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
-score_forecasts <- function(scorable_data, forecast_unit, observed, predicted,
+score_forecasts <- function(
+    scorable_data, forecast_unit, observed, predicted,
     sample_id = ".draw", model_col = "model", ...) {
   scored_data <- scorable_data |>
     collect() |>
@@ -46,11 +47,12 @@ score_forecasts <- function(scorable_data, forecast_unit, observed, predicted,
     ) |>
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
-    # Add relative skill if more than one model is present
-    model_sym <- rlang::sym(model_col)
-    if (summarize(scored_data,
-        all_same = n_distinct(!!model_sym) != 1)$all_same) {
-        scored_data <- scoringutils::add_relative_skill(scored_data)
-    }
+  # Add relative skill if more than one model is present
+  model_sym <- rlang::sym(model_col)
+  if (summarize(scored_data,
+    all_same = n_distinct(!!model_sym) != 1
+  )$all_same) {
+    scored_data <- scoringutils::add_relative_skill(scored_data)
+  }
   return(scored_data)
 }
