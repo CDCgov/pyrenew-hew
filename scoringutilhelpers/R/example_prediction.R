@@ -1,6 +1,7 @@
 library(arrow)
 library(dplyr)
 library(lubridate)
+library(tidyr)
 
 #' Generate Example Prediction Data
 #'
@@ -22,8 +23,8 @@ library(lubridate)
 #' output. Default is 4.
 #' @param nareas An integer specifying the number of areas for which to generate
 #' data. Areas are "A", "B", etc. Default is 3.
-#' @param save_data A logical value indicating whether to save the generated data
-#' to `save_path`. Default is FALSE.
+#' @param save_data A logical value indicating whether to save the generated
+#' data to `save_path`. Default is FALSE.
 #' @param ... Additional arguments passed to `arrow::write_dataset` if
 #' `save_data` is TRUE.
 #'
@@ -43,23 +44,25 @@ example_prediction <- function(
     save_path = "scoringutilhelpers/assets/example_predictions", ndays = 21,
     reps = 100, nchains = 4, nareas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates for 3 weeks
-dates <- seq.Date(
-    from = lubridate::ymd("2024-10-24"), by = "day",
-    length.out = ndays
-  )
+  dates <- seq.Date(
+      from = lubridate::ymd("2024-10-24"), by = "day",
+      length.out = ndays
+    )
   areas <- LETTERS[1:nareas]
-  exampledata <- expand_grid(
+  example_data <- tidyr::expand_grid(
     .chain = 1:nchains,
     .iteration = 1:reps,
     area = areas,
     reference_date = list(dates),
     target_end_date = list(dates + 7, dates + 14)
-  ) %>%
-    mutate(.draw = tidybayes:::draw_from_chain_and_iteration_(.chain, .iteration), .after = .iteration) %>%
-    unnest(c(reference_date, target_end_date)) %>%
-    mutate(prediction = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
-  if (savedata) {
-    arrow::write_dataset(exampledata, savepath, ...)
+  ) |>
+    mutate(.draw = tidybayes:::draw_from_chain_and_iteration_(.chain,
+      .iteration), .after = .iteration) |>
+    tidyr::unnest(c(reference_date, target_end_date)) |>
+    mutate(prediction = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25),
+      model = "example")
+  if (save_data) {
+    arrow::write_dataset(example_data, save_path, ...)
   }
-  return(exampledata)
+  return(example_data)
 }

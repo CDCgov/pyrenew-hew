@@ -1,5 +1,6 @@
 library(dplyr)
 library(readr)
+library(tidyr)
 
 #' Generate Example Truth Data
 #'
@@ -21,7 +22,7 @@ library(readr)
 #' @return A tibble containing the generated example truth data with columns for
 #' area, date, and truthdata.
 #' @export
-exampletruthdata <- function(
+example_truthdata <- function(
     save_path = "scoringutilhelpers/assets",
     ndays = 21, nareas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates and a sequence of areas
@@ -31,21 +32,19 @@ exampletruthdata <- function(
   )
   areas <- LETTERS[1:nareas]
   # Create log-normally distributed truth data
-  exampledata <- lapply(
-    areas,
-    function(area) {
-      data <- tibble(
-        area = area,
-        date = dates,
-        truthdata = rlnorm(ndays, meanlog = log(1.0), sdlog = 0.25),
-      )
-    }
+  exampledata <- tidyr::expand_grid(
+    area = areas,
+    date = list(dates)
   ) |>
-    bind_rows()
+    tidyr::unnest(date) |>
+  mutate(truthdata = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
+  
+  
+
   if (save_data) {
     readr::write_tsv(
       exampledata,
-      file.path(save_path, "exampletruthdata.tsv"), ...
+      file.path(save_path, "example_truthdata.tsv"), ...
     )
   }
   return(exampledata)
