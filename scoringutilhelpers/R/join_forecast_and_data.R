@@ -7,10 +7,10 @@ library(dplyr)
 #' This function reads forecast data from a Parquet file and actual data from a
 #' TSV file, then joins them using a specified key.
 #'
-#' @param forecast_source A character vector specifying the path to the Parquet
-#' file containing forecast data.
+#' @param forecast_source A character vector specifying the path to the 
+#' directory containing Parquet file(s) containing forecast data.
 #' @param data_path A character string specifying the path to the TSV file
-#' containing actual data.
+#' containing actual/truth data.
 #' @param join_key A character vector specifying the key(s) to join the forecast
 #' and actual data on. Default is NULL.
 #' @param ... Additional arguments passed to `arrow::open_dataset`.
