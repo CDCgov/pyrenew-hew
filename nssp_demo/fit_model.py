@@ -21,14 +21,16 @@ parser.add_argument(
 args = parser.parse_args()
 model_dir = args.model_dir
 
-my_model, data_observed_hospital_admissions, right_truncation_offset = (
-    build_model_from_dir(model_dir)
-)
+(
+    my_model,
+    data_observed_disease_hospital_admissions,
+    right_truncation_offset,
+) = build_model_from_dir(model_dir)
 my_model.run(
     num_warmup=500,
     num_samples=500,
     rng_key=jax.random.key(200),
-    data_observed_hospital_admissions=data_observed_hospital_admissions,
+    data_observed_disease_hospital_admissions=data_observed_disease_hospital_admissions,
     right_truncation_offset=right_truncation_offset,
     mcmc_args=dict(num_chains=n_chains, progress_bar=True),
     nuts_args=dict(find_heuristic_step_size=True),
