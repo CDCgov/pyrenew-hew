@@ -4,9 +4,9 @@ library(testthat)
 source("scoringutilhelpers/R/example_prediction.R")
 source("scoringutilhelpers/tests/testthat/example_prediction.R")
 
-# exampletruthdata.R
-source("scoringutilhelpers/R/exampletruthdata.R")
-source("scoringutilhelpers/tests/testthat/exampletruthdata.R")
+# example_truthdata.R
+source("scoringutilhelpers/R/example_truthdata.R")
+source("scoringutilhelpers/tests/testthat/example_truthdata.R")
 
 # join_forecast_and_data.R
 source("scoringutilhelpers/R/join_forecast_and_data.R")
