@@ -30,6 +30,25 @@ test_that("score_forecasts works with different sample_id", {
     )
     expect_s3_class(result, "data.frame")
 })
+
+test_that("score_forecasts works with more than one model", {
+    scorable_data <- join_forecast_and_data(forecast_source, truthdata_file,
+        join_key = join_by(area, target_end_date == date)) |>
+        mutate(model = "example1") |>
+        collect()
+    scorable_data2 <- join_forecast_and_data(forecast_source, truthdata_file,
+        join_key = join_by(area, target_end_date == date)) |>
+        mutate(model = "example2") |>
+        collect()
+    #Suppress warning from wilcox test on models
+    result <- suppressWarnings(bind_rows(scorable_data, scorable_data2)  |>
+        score_forecasts(
+        forecast_unit = forecast_unit,
+        observed = observed,
+        predicted = predicted,
+    ))
+    expect_s3_class(result, "data.frame")
+})
 # Clean up temporary files
 unlink(forecast_source, recursive = TRUE)
 unlink(truthdata_file)
