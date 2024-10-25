@@ -38,8 +38,8 @@ example_truthdata <- function(
   ) |>
     tidyr::unnest(date) |>
   mutate(truthdata = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
-  
-  
+
+
 
   if (save_data) {
     readr::write_tsv(
