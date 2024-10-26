@@ -1,5 +1,12 @@
 FROM python:3.12
 
-COPY . ./pyrenew_hew
+RUN apt-get update
+RUN apt-get install -y r-base
 
-RUN pip install --root-user-action=ignore ./pyrenew_hew
+COPY . ./pyrenew-hew
+
+WORKDIR pyrenew-hew
+
+COPY .ContainerBuildRprofile .Rprofile
+
+RUN pip install --root-user-action=ignore .
