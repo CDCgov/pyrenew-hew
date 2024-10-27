@@ -23,6 +23,8 @@ def main(
         n_training_days,
         n_forecast_days,
         n_chains,
+        n_warmup,
+        n_samples,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -71,13 +73,21 @@ def main(
     logger.info("Data preparation complete.")
 
     logger.info("Fitting model")
-    fit_and_save_model(model_fit_dir)
+    fit_and_save_model(model_fit_dir,
+                       num_warmup=n_warmup,
+                       num_samples=n_samples)
     logger.info("Model fitting complete")
 
     logger.info("Performing posterior prediction / forecasting...")
     generate_and_save_predictions(
         model_fit_dir,
         n_forecast_days)
+
+    logger.info("Forecasting complete.")
+
+    logger.info("Single state pipeline complete "
+                f"for state {state} with "
+                f"report date {report_date}.")
 
     return None
 
@@ -143,11 +153,26 @@ parser.add_argument(
     default=28,
     help="Number of days ahead to forecast")
 
+
 parser.add_argument(
     "--n-chains",
     type=int,
     default=4,
     help="Number of MCMC chains to run (default: 4)")
+
+parser.add_argument(
+    "--n-warmup",
+    type=int,
+    default=1000,
+    help=("Number of warmup iterations per chain for NUTS"
+          "(default: 1000)"))
+
+parser.add_argument(
+    "--n-samples",
+    type=int,
+    default=1000,
+    help=("Number of posterior samples to draw per "
+          "chain using NUTS (default: 1000)"))
 
 
 if __name__ == "__main__":
