@@ -71,6 +71,7 @@ def process_and_save_state(
             & (pl.col("parameter") == "generation_interval")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
+        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -82,6 +83,7 @@ def process_and_save_state(
             & (pl.col("parameter") == "delay")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
+        .collect()
         .get_column("value")
         .to_list()[0]
     )
