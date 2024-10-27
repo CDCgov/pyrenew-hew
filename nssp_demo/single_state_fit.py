@@ -171,11 +171,10 @@ def process_and_save_state(
 def main(
     disease,
     report_date,
-        state_abb,
+    state,
     nssp_data_dir,
     param_data_dir,
     output_data_dir,
-    training_day_offset,
     n_training_days,
 ):
     logging.basicConfig(level=logging.INFO)
@@ -190,7 +189,7 @@ def main(
 
     logger.info(f"Report date: {report_date}")
 
-    last_training_date = report_date - timedelta(days=training_day_offset + 1)
+    last_training_date = report_date - timedelta(days=1)
     # + 1 because max date in dataset is report_date - 1
     first_training_date = last_training_date - timedelta(
         days=n_training_days - 1
@@ -208,9 +207,9 @@ def main(
 
     os.makedirs(model_data_dir, exist_ok=True)
 
-    logger.info(f"Processing {state_abb}")
+    logger.info(f"Processing {state}")
     process_and_save_state(
-        state_abb=state_abb,
+        state_abb=state,
         disease=disease,
         nssp_data=nssp_data,
         report_date=report_date,
@@ -232,6 +231,14 @@ parser.add_argument(
     required=True,
     help="Disease to model (e.g., COVID-19, Influenza, RSV)",
 )
+
+parser.add_argument(
+    "--state",
+    type=str,
+    required=True,
+    help=("Two letter abbreviation for the state to fit"
+          "(e.g. 'AK', 'AL', 'AZ', etc.)"))
+
 parser.add_argument(
     "--report-date",
     type=str,
@@ -264,17 +271,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--training-day-offset",
-    type=int,
-    default=7,
-    help="Number of days before the reference day to use as test data (default: 7)",
-)
-
-parser.add_argument(
     "--n-training-days",
     type=int,
-    default=90,
-    help="Number of training days (default: 90)",
+    default=180,
+    help="Number of training days (default: 180)",
 )
 
 if __name__ == "__main__":
