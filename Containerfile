@@ -9,4 +9,5 @@ WORKDIR pyrenew-hew
 
 COPY .ContainerBuildRprofile .Rprofile
 
+RUN pip install -U pip
 RUN pip install --root-user-action=ignore .
