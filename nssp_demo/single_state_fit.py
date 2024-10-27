@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
+import numpyro
+numpyro.set_host_device_count(4)
+
+from fit_model import fit_and_save_model # noqa
 
 
 def process_and_save_state(
@@ -178,6 +182,7 @@ def main(
     param_data_dir,
     output_data_dir,
     n_training_days,
+        n_chains,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -207,6 +212,8 @@ def main(
 
     model_data_dir = Path(output_data_dir, model_dir_name)
 
+    model_fit_dir = Path(model_data_dir, state)
+    
     os.makedirs(model_data_dir, exist_ok=True)
 
     logger.info(f"Processing {state}")
@@ -222,6 +229,10 @@ def main(
         logger=logger,
     )
     logger.info("Data preparation complete.")
+
+    logger.info("Fitting model")
+    fit_and_save_model(model_fit_dir)
+    logger.info("Model fitting complete")
 
 
 parser = argparse.ArgumentParser(
@@ -279,6 +290,13 @@ parser.add_argument(
     help="Number of training days (default: 180)",
 )
 
+parser.add_argument(
+    "--n-chains",
+    type=int,
+    default=4,
+    help="Number of MCMC chains to run (default: 4)")
+
 if __name__ == "__main__":
     args = parser.parse_args()
+    numpyro.set_host_device_count(args.n_chains)
     main(**vars(args))
