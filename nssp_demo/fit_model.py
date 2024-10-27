@@ -24,7 +24,8 @@ def fit_and_save_model(
         num_warmup=num_warmup,
         num_samples=num_samples,
         rng_key=rng_key,
-        data_observed_disease_hospital_admissions=data_observed_disease_hospital_admissions,
+        data_observed_disease_hospital_admissions=(
+            data_observed_disease_hospital_admissions),
         right_truncation_offset=right_truncation_offset,
         mcmc_args=dict(num_chains=n_chains, progress_bar=True),
         nuts_args=dict(find_heuristic_step_size=True),

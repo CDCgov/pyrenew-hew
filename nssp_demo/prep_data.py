@@ -15,11 +15,10 @@ def process_and_save_state(
     report_date,
     first_training_date,
     last_training_date,
-    state_pop_df,
     param_estimates,
     model_data_dir,
     logger=None,
-):
+) -> None:
     disease_map = {
         "COVID-19": "COVID-19/Omicron",
         "Influenza": "Influenza",
@@ -46,6 +45,19 @@ def process_and_save_state(
         .sort(["date", "disease"])
     )
 
+    facts = pl.read_csv(
+        "https://raw.githubusercontent.com/k5cents/usa/"
+        "refs/heads/master/data-raw/facts.csv"
+    )
+    states = pl.read_csv(
+        "https://raw.githubusercontent.com/k5cents/usa/"
+        "refs/heads/master/data-raw/states.csv"
+    )
+
+    state_pop_df = facts.join(states, on="name").select(
+        ["abb", "name", "population"]
+    )
+
     state_pop = (
         state_pop_df.filter(pl.col("abb") == state_abb)
         .get_column("population")
@@ -59,6 +71,7 @@ def process_and_save_state(
             & (pl.col("parameter") == "generation_interval")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
+        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -70,6 +83,7 @@ def process_and_save_state(
             & (pl.col("parameter") == "delay")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
+        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -136,10 +150,13 @@ def process_and_save_state(
         "inf_to_hosp_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_hospital_admissions": train_disease_ed_admissions,
-        "data_observed_disease_hospital_admissions_test": test_disease_ed_admissions,
+        "data_observed_disease_hospital_admissions":
+        train_disease_ed_admissions,
+        "data_observed_disease_hospital_admissions_test":
+        test_disease_ed_admissions,
         "data_observed_total_hospital_admissions": train_total_ed_admissions,
-        "data_observed_total_hospital_admissions_test": test_total_ed_admissions,
+        "data_observed_total_hospital_admissions_test":
+        test_total_ed_admissions,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
@@ -149,11 +166,12 @@ def process_and_save_state(
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
-    # data_to_save.sink_csv(Path(state_dir, "data.csv")) # Not yet supported
     data_to_save.collect().write_csv(Path(state_dir, "data.csv"))
 
     with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
+
+    return None
 
 
 def main(
@@ -198,19 +216,6 @@ def main(
     )
     all_states.sort()
 
-    facts = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/"
-        "refs/heads/master/data-raw/facts.csv"
-    )
-    states = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/"
-        "refs/heads/master/data-raw/states.csv"
-    )
-
-    state_pop_df = facts.join(states, on="name").select(
-        ["abb", "name", "population"]
-    )
-
     model_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -229,12 +234,13 @@ def main(
             report_date=report_date,
             first_training_date=first_training_date,
             last_training_date=last_training_date,
-            state_pop_df=state_pop_df,
             param_estimates=param_estimates,
             model_data_dir=model_data_dir,
             logger=logger,
         )
     logger.info("Data preparation complete.")
+
+    return None
 
 
 parser = argparse.ArgumentParser(
@@ -281,7 +287,8 @@ parser.add_argument(
     "--training-day-offset",
     type=int,
     default=7,
-    help="Number of days before the reference day to use as test data (default: 7)",
+    help=("Number of days before the reference day "
+          "to use as test data (default: 7)"),
 )
 
 parser.add_argument(
@@ -290,6 +297,7 @@ parser.add_argument(
     default=90,
     help="Number of training days (default: 90)",
 )
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
