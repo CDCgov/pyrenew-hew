@@ -13,7 +13,6 @@ def generate_and_save_predictions(
 
     model_dir = Path(model_dir)
 
-    n_forecast_points = args.n_forecast_points
     (
         my_model,
         data_observed_disease_hospital_admissions,
