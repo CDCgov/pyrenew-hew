@@ -4,25 +4,35 @@ from pathlib import Path
 
 import jax
 import numpy as np
-import numpyro
 from build_model import build_model_from_dir
 
 
 def fit_and_save_model(
-    model_dir,
-    num_warmup=1000,
-    num_samples=1000,
-    n_chains=4,
-    rng_key=jax.random.key(np.random.randint(0, 10000)),
+    model_run_dir: str,
+    n_warmup: int = 1000,
+    n_samples: int = 1000,
+    n_chains: int = 4,
+    rng_key: int | jax.random.key = None,
 ) -> None:
+    if rng_key is None:
+        rng_key = np.random.randint(0, 10000)
+    if not isinstance(rng_key, jax.random.key):
+        if isinstance(rng_key, int):
+            rng_key = jax.random.key(rng_key)
+        else:
+            raise ValueError(
+                "rng_key must be a jax.random.key "
+                "object or an integer from which "
+                "to initialize such an object"
+            )
     (
         my_model,
         data_observed_disease_hospital_admissions,
         right_truncation_offset,
-    ) = build_model_from_dir(model_dir)
+    ) = build_model_from_dir(model_run_dir)
     my_model.run(
-        num_warmup=num_warmup,
-        num_samples=num_samples,
+        num_warmup=n_warmup,
+        num_samples=n_samples,
         rng_key=rng_key,
         data_observed_disease_hospital_admissions=(
             data_observed_disease_hospital_admissions
@@ -35,25 +45,61 @@ def fit_and_save_model(
     my_model.mcmc.sampler = None
 
     with open(
-        model_dir / "posterior_samples.pickle",
+        model_run_dir / "posterior_samples.pickle",
         "wb",
     ) as file:
         pickle.dump(my_model.mcmc, file)
 
 
 if __name__ == "__main__":
-    n_chains = 4
-    numpyro.set_host_device_count(n_chains)
-
     parser = argparse.ArgumentParser(
         description="Fit the hospital-only wastewater model."
     )
     parser.add_argument(
-        "--model_dir",
+        "model-run-dir",
         type=Path,
-        required=True,
-        help="Path to the model directory containing the data.",
+        help=(
+            "Path to a directory containing model fitting data. "
+            "The completed fit will be saved here."
+        ),
     )
+    parser.add_argument(
+        "--n-warmup",
+        type=int,
+        default=1000,
+        help=(
+            "Number of warmup iterations for the No-U-Turn sampler "
+            "(Default: 1000)."
+        ),
+    )
+    parser.add_argument(
+        "--n-samples",
+        type=int,
+        default=1000,
+        help=(
+            "Number of sampling iterations after warmup "
+            "for the No-U-Turn sampler "
+            "(Default: 1000)."
+        ),
+    )
+    parser.add_argument(
+        "--n-chains",
+        type=int,
+        default=1000,
+        help=("Number of duplicate MCMC chains to run " "(Default 4)."),
+    )
+    parser.add_argument(
+        "--rng-key",
+        type=int,
+        default=None,
+        help=(
+            "Integer with which to seed the pseudorandom"
+            "number generator. If none is specified, a "
+            "pseudorandom seed will be drawn via "
+            "np.random.randint"
+        ),
+    )
+
     args = parser.parse_args()
 
-    fit_and_save_model(**vars(args), n_chains=n_chains)
+    fit_and_save_model(**vars(args))
