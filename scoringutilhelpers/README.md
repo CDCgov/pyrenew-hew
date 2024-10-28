@@ -12,7 +12,7 @@ First, we load the code:
 library(scoringutils)
 library(ggplot2)
 source("R/example_prediction.R")
-source("R/example_truthdata.R")
+source("R/example_truth_data.R")
 source("R/join_forecast_and_data.R")
 source("R/score_forecasts.R")
 ```
@@ -28,14 +28,14 @@ we also generate `.chain` and `.iteration` fields to match a
 tidybayes-type data structure. The example data is serialised locally in
 `/assets`.
 
-The `example_truthdata` function generates “truthdata” in a similar way,
+The `example_truth_data` function generates “truth_data” in a similar way,
 and also serialises to `/assets`.
 
 ``` r
 # Example predictions
 examplepreds <- example_prediction(save_data = TRUE)
 # Example truth data
-exampledata <- example_truthdata(save_data = TRUE)
+exampledata <- example_truth_data(save_data = TRUE)
 ```
 
 Note that the `examplepreds` is serialised in `parquet` format and
@@ -46,8 +46,8 @@ Note that the `examplepreds` is serialised in `parquet` format and
 Preparation for scoring the forecasts is done by:
 
 1.  Ingesting forecasts from the `forecast_source` directory and
-    truthdata from `truthdata_file`. The forecasts are treated as an
-    Arrow dataset and loaded with `arrow::open_dataset`. The truthdata
+    truth_data from `truth_data_file`. The forecasts are treated as an
+    Arrow dataset and loaded with `arrow::open_dataset`. The truth_data
     is assumed to be a `tsv` file.
 2.  The joining operation is determined by `join_key`. In this case the
     forecast is *to* a date in `target_end_date` scored with data
@@ -55,8 +55,8 @@ Preparation for scoring the forecasts is done by:
 
 ``` r
 forecast_source <- "scoringutilhelpers/assets/example_predictions"
-truthdata_file <- "scoringutilhelpers/assets/example_truthdata.tsv"
-scorable_data <- join_forecast_and_data(forecast_source, truthdata_file,
+truth_data_file <- "scoringutilhelpers/assets/example_truth_data.tsv"
+scorable_data <- join_forecast_and_data(forecast_source, truth_data_file,
   join_key = join_by(area, target_end_date == date)
 ) |>
   collect()
@@ -77,7 +77,7 @@ scorable_data |> print(n = 10)
      9      1          1     1 A     2024-11-01     2024-11-08           1.02  exam…
     10      1          1     1 A     2024-11-02     2024-11-09           1.18  exam…
     # ℹ 50,390 more rows
-    # ℹ 1 more variable: truthdata <dbl>
+    # ℹ 1 more variable: truth_data <dbl>
 
 ## Scoring prepared forecasts
 
@@ -98,7 +98,7 @@ Scoring the forecast is done by:
 
 ``` r
 forecast_unit <- c("area", "reference_date", "target_end_date", "model")
-observed <- "truthdata"
+observed <- "truth_data"
 predicted <- "prediction"
 
 scored_forecasts <- score_forecasts(scorable_data,

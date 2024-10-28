@@ -20,9 +20,9 @@ library(tidyr)
 #' `save_data` is TRUE.
 #'
 #' @return A tibble containing the generated example truth data with columns for
-#' area, date, and truthdata.
+#' area, date, and truth_data.
 #' @export
-example_truthdata <- function(
+example_truth_data <- function(
     save_path = "scoringutilhelpers/assets",
     n_days = 21, n_areas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates and a sequence of areas
@@ -37,14 +37,14 @@ example_truthdata <- function(
     date = list(dates)
   ) |>
     tidyr::unnest(date) |>
-    mutate(truthdata = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
+    mutate(truth_data = rlnorm(n(), meanlog = log(1.0), sdlog = 0.25))
 
 
 
   if (save_data) {
     readr::write_tsv(
       exampledata,
-      file.path(save_path, "example_truthdata.tsv"), ...
+      file.path(save_path, "example_truth_data.tsv"), ...
     )
   }
   return(exampledata)

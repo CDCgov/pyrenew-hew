@@ -1,13 +1,13 @@
 examplepreds <- example_prediction(save_data = TRUE)
-exampledata <- example_truthdata(save_data = TRUE)
+exampledata <- example_truth_data(save_data = TRUE)
 forecast_source <- "scoringutilhelpers/assets/example_predictions"
-truthdata_file <- "scoringutilhelpers/assets/example_truthdata.tsv"
+truth_data_file <- "scoringutilhelpers/assets/example_truth_data.tsv"
 forecast_unit <- c("area", "reference_date", "target_end_date", "model")
-observed <- "truthdata"
+observed <- "truth_data"
 predicted <- "prediction"
 
 test_that("score_forecasts returns a data frame", {
-  scorable_data <- join_forecast_and_data(forecast_source, truthdata_file,
+  scorable_data <- join_forecast_and_data(forecast_source, truth_data_file,
     join_key = join_by(area, target_end_date == date)
   ) |>
     collect()
@@ -20,7 +20,7 @@ test_that("score_forecasts returns a data frame", {
 })
 
 test_that("score_forecasts works with different sample_id", {
-  scorable_data <- join_forecast_and_data(forecast_source, truthdata_file,
+  scorable_data <- join_forecast_and_data(forecast_source, truth_data_file,
     join_key = join_by(area, target_end_date == date)
   ) |>
     collect()
@@ -35,12 +35,12 @@ test_that("score_forecasts works with different sample_id", {
 })
 
 test_that("score_forecasts works with more than one model", {
-  scorable_data <- join_forecast_and_data(forecast_source, truthdata_file,
+  scorable_data <- join_forecast_and_data(forecast_source, truth_data_file,
     join_key = join_by(area, target_end_date == date)
   ) |>
     mutate(model = "example1") |>
     collect()
-  scorable_data2 <- join_forecast_and_data(forecast_source, truthdata_file,
+  scorable_data2 <- join_forecast_and_data(forecast_source, truth_data_file,
     join_key = join_by(area, target_end_date == date)
   ) |>
     mutate(model = "example2") |>
@@ -56,4 +56,4 @@ test_that("score_forecasts works with more than one model", {
 })
 # Clean up temporary files
 unlink(forecast_source, recursive = TRUE)
-unlink(truthdata_file)
+unlink(truth_data_file)
