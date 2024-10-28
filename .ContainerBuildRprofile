@@ -1,10 +1,4 @@
 options(
-  ## make HTTP requests
-  ## identify us correctly
-  ## to Posit package manager
-  ## so we get appropriate
-  ## precompiled binaries
-  ## see https://docs.posit.co/rspm/1.0.12/admin/binaries.html#binaries-r-configuration
   HTTPUserAgent = sprintf(
     "R/%s R (%s)",
     getRversion(),
@@ -19,7 +13,7 @@ options(
   repos = c(
     RSPM = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
   ),
-  renv.config.pak.enabled = TRUE,
+  renv.config.pak.enabled = TRUE
 )
 
 cat(".Rprofile for container loaded successfully\n")

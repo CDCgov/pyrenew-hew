@@ -9,5 +9,9 @@ WORKDIR pyrenew-hew
 
 COPY .ContainerBuildRprofile .Rprofile
 
-RUN pip install -U pip
+RUN Rscript -e "install.packages('pak')"
+RUN Rscript -e "pak::local_install('hewr')"
+
+RUN pip install --root-user-action=ignore -U pip 
 RUN pip install --root-user-action=ignore .
+

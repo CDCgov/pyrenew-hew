@@ -1,62 +1,39 @@
-library(tidyverse)
-library(tidybayes)
-library(fs)
-library(cowplot)
-library(glue)
-library(scales)
-library(here)
-library(argparser)
-library(arrow)
-
-theme_set(theme_minimal_grid())
-
-disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
-disease_name_nssp_map <- c(
-  "covid-19" = "COVID-19/Omicron",
-  "influenza" = "Influenza"
+script_packages <- c(
+    'dplyr',
+    'stringr',
+    'purrr',
+    'ggplot2',
+    'tidybayes',
+    'fs',
+    'cowplot',
+    'glue',
+    'scales',
+    'argparser',
+    'arrow',
+    'tidyr',
+    'readr',
+    'here'
 )
 
-# Create a parser
-p <- arg_parser("Generate forecast figures") %>%
-  add_argument(p, "--model_dir",
-    help = "Directory containing the model data",
-    required = TRUE
-  ) %>%
-  add_argument(p, "--filter_bad_chains",
-    help = "Filter out bad chains from the samples",
-    flag = TRUE
-  ) %>%
-  add_argument(p, "--good_chain_tol",
-    help = "Tolerance level for determining good chains",
-    default = 2L
-  )
-
-argv <- parse_args(p)
-model_dir <- path(argv$model_dir)
-filter_bad_chains <- argv$filter_bad_chains
-good_chain_tol <- argv$good_chain_tol
-
-base_dir <- path_dir(model_dir)
-
-disease_name_raw <- base_dir %>%
-  path_file() %>%
-  str_extract("^.+(?=_r_)")
-
-disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
-disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
+## load in packages without messages
+for (package in script_packages){
+    suppressPackageStartupMessages(
+        library(package,
+                character.only=TRUE))
+}
 
 # To be replaced with reading tidy data from forecasttools
 read_pyrenew_samples <- function(inference_data_path,
                                  filter_bad_chains = TRUE,
                                  good_chain_tol = 2) {
   arviz_split <- function(x) {
-    x %>%
-      select(-distribution) %>%
+    x |>
+      select(-distribution) |>
       split(f = as.factor(x$distribution))
   }
 
   pyrenew_samples <-
-    read_csv(inference_data_path) %>%
+    read_csv(inference_data_path) |>
     rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
     rename(
       .chain = chain,
@@ -76,13 +53,13 @@ read_pyrenew_samples <- function(inference_data_path,
 
   if (filter_bad_chains) {
     good_chains <-
-      pyrenew_samples$log_likelihood %>%
-      pivot_longer(-starts_with(".")) %>%
-      group_by(.iteration, .chain) %>%
-      summarize(value = sum(value)) %>%
-      group_by(.chain) %>%
-      summarize(value = mean(value)) %>%
-      filter(value >= max(value) - 2) %>%
+      pyrenew_samples$log_likelihood |>
+      pivot_longer(-starts_with(".")) |>
+      group_by(.iteration, .chain) |>
+      summarize(value = sum(value)) |>
+      group_by(.chain) |>
+      summarize(value = mean(value)) |>
+      filter(value >= max(value) - 2) |>
       pull(.chain)
   } else {
     good_chains <- unique(pyrenew_samples$log_likelihood$.chain)
@@ -117,13 +94,13 @@ make_one_forecast_fig <- function(target_disease,
 
   ggplot(mapping = aes(date, .value)) +
     geom_lineribbon(
-      data = posterior_predictive_ci %>% filter(disease == target_disease),
+      data = posterior_predictive_ci |> filter(disease == target_disease),
       mapping = aes(ymin = .lower, ymax = .upper),
       color = "#08519c", key_glyph = draw_key_rect, step = "mid"
     ) +
     geom_point(
       mapping = aes(shape = data_type),
-      data = dat %>% filter(disease == target_disease)
+      data = dat |> filter(disease == target_disease)
     ) +
     geom_vline(xintercept = last_training_date, linetype = "dashed") +
     annotate(
@@ -156,44 +133,45 @@ make_one_forecast_fig <- function(target_disease,
 make_forecast_figs <- function(model_dir,
                                filter_bad_chains = TRUE,
                                good_chain_tol = 2) {
-  state_abb <- model_dir %>%
-    path_split() %>%
-    pluck(1) %>%
+  state_abb <- model_dir |>
+    path_split() |>
+    pluck(1) |>
     tail(1)
 
   data_path <- path(model_dir, "data", ext = "csv")
   inference_data_path <- path(model_dir, "inference_data",
     ext = "csv"
   )
-  other_ed_admissions_path <- path(model_dir, "other_ed_admissions_forecast",
-    ext = "parquet"
+  other_ed_admissions_path <- path(
+      model_dir,
+      "other_ed_admissions_forecast",
+      ext = "parquet"
   )
 
-  dat <-
-    read_csv(data_path) %>%
+  dat <- readr::read_csv(data_path) |>
     mutate(disease = if_else(disease == disease_name_nssp,
       "Disease", # assign a common name for use in plotting functions
       disease
-    )) %>%
-    pivot_wider(names_from = disease, values_from = ED_admissions) %>%
+    )) |>
+    pivot_wider(names_from = disease, values_from = ED_admissions) |>
     mutate(
       Other = Total - Disease,
       prop_disease_ed_admissions = Disease / Total
-    ) %>%
-    select(-Total) %>%
-    mutate(time = dense_rank(date)) %>%
+    ) |>
+    select(-Total) |>
+    mutate(time = dense_rank(date)) |>
     pivot_longer(c(Disease, Other, prop_disease_ed_admissions),
       names_to = "disease",
       values_to = ".value"
     )
 
-  last_training_date <- dat %>%
-    filter(data_type == "train") %>%
-    pull(date) %>%
+  last_training_date <- dat |>
+    filter(data_type == "train") |>
+    pull(date) |>
     max()
 
-  last_data_date <- dat %>%
-    pull(date) %>%
+  last_data_date <- dat |>
+    pull(date) |>
     max()
 
   pyrenew_samples <- read_pyrenew_samples(inference_data_path,
@@ -202,40 +180,40 @@ make_forecast_figs <- function(model_dir,
   )
 
   other_ed_admission_forecast <-
-    read_parquet(other_ed_admissions_path) %>%
+    read_parquet(other_ed_admissions_path) |>
     rename(Other = other_ED_admissions)
 
 
   other_ed_admission_samples <-
     bind_rows(
-      dat %>%
+      dat |>
         filter(
           disease == "Other",
           date <= last_training_date
-        ) %>%
-        select(date, Other = .value) %>%
+        ) |>
+        select(date, Other = .value) |>
         expand_grid(.draw = 1:max(other_ed_admission_forecast$.draw)),
       other_ed_admission_forecast
     )
 
   posterior_predictive_samples <-
-    pyrenew_samples$posterior_predictive %>%
-    gather_draws(observed_hospital_admissions[time]) %>%
-    pivot_wider(names_from = .variable, values_from = .value) %>%
-    rename(Disease = observed_hospital_admissions) %>%
-    ungroup() %>%
-    mutate(date = min(dat$date) + time) %>%
-    left_join(other_ed_admission_samples) %>%
-    mutate(prop_disease_ed_admissions = Disease / (Disease + Other)) %>%
+    pyrenew_samples$posterior_predictive |>
+    gather_draws(observed_hospital_admissions[time]) |>
+    pivot_wider(names_from = .variable, values_from = .value) |>
+    rename(Disease = observed_hospital_admissions) |>
+    ungroup() |>
+    mutate(date = min(dat$date) + time) |>
+    left_join(other_ed_admission_samples) |>
+    mutate(prop_disease_ed_admissions = Disease / (Disease + Other)) |>
     pivot_longer(c(Other, Disease, prop_disease_ed_admissions),
       names_to = "disease",
       values_to = ".value"
     )
 
   posterior_predictive_ci <-
-    posterior_predictive_samples %>%
-    select(date, disease, .value) %>%
-    group_by(date, disease) %>%
+    posterior_predictive_samples |>
+    select(date, disease, .value) |>
+    group_by(date, disease) |>
     median_qi(.width = c(0.5, 0.8, 0.95))
 
 
@@ -251,9 +229,50 @@ make_forecast_figs <- function(model_dir,
     )
   )
 
-  all_forecast_plots
+  return(all_forecast_plots)
 }
 
+
+theme_set(theme_minimal_grid())
+
+disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
+disease_name_nssp_map <- c(
+  "covid-19" = "COVID-19/Omicron",
+  "influenza" = "Influenza"
+)
+
+# Create a parser
+p <- arg_parser("Generate forecast figures") |>
+    add_argument(
+        "--model_dir",
+        help = "Directory containing the model data",
+        ) |>
+    add_argument(
+        "--filter_bad_chains",
+        help = "Filter out bad chains from the samples",
+        flag = TRUE
+    ) |>
+    add_argument(
+        "--good_chain_tol",
+        help = "Tolerance level for determining good chains",
+        default = 2L
+    )
+
+argv <- parse_args(p)
+model_dir <- path(argv$model_dir)
+filter_bad_chains <- argv$filter_bad_chains
+good_chain_tol <- argv$good_chain_tol
+
+base_dir <- path_dir(model_dir)
+
+disease_name_raw <- base_dir |>
+  path_file() |>
+  str_extract("^.+(?=_r_)")
+
+disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
+disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
+
+    
 forecast_figs <- make_forecast_figs(
   model_dir,
   filter_bad_chains,
@@ -265,47 +284,3 @@ iwalk(forecast_figs, ~ save_plot(
   plot = .x,
   device = cairo_pdf, base_height = 6
 ))
-
-
-# File will end here once command line version is working
-# Temp code to run for all states while command line version doesn't work
-# Command line version is dependent on https://github.com/rstudio/renv/pull/2018
-base_dir <- path(
-  "nssp_demo",
-  "private_data",
-  "influenza_r_2024-10-21_f_2024-07-16_t_2024-10-13"
-)
-
-# Save all figures for each state
-walk(dir_ls(base_dir, type = "dir"), function(model_dir) {
-  print(model_dir)
-  forecast_figs <- make_forecast_figs(model_dir,
-    filter_bad_chains = TRUE,
-    good_chain_tol = 2
-  )
-
-  iwalk(forecast_figs, ~ save_plot(
-    filename = path(model_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
-    plot = .x,
-    device = cairo_pdf, base_height = 6
-  ))
-})
-
-# Combine figures across states
-tibble(
-  full_path = dir_ls(base_dir,
-    type = "file",
-    glob = "*_forecast_plot.pdf",
-    recurse = TRUE
-  ),
-  plot_type = path_file(full_path)
-) %>%
-  group_by(plot_type) %>%
-  summarize(all_fig_paths = str_c(full_path, collapse = " ")) %>%
-  mutate(combined_plot_path = path(
-    base_dir,
-    glue("{path_file(base_dir)}_{plot_type}")
-  )) %>%
-  select(-plot_type) %>%
-  as.list() %>%
-  pwalk(~ system2("pdfunite", args = glue("{.x} {.y}")))
