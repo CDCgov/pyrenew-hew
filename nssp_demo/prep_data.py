@@ -34,7 +34,7 @@ def process_and_save_state(
             & (pl.col("reference_date") >= first_training_date)
         )
         .group_by(["reference_date", "disease"])
-        .agg(pl.col("value").sum().alias("ED_admissions"))
+        .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
             pl.when(pl.col("reference_date") <= last_training_date)
             .then(pl.lit("train"))
@@ -108,41 +108,41 @@ def process_and_save_state(
 
     right_truncation_offset = (report_date - last_training_date).days
 
-    train_disease_ed_admissions = (
+    train_disease_ed_visits = (
         data_to_save.filter(
             (pl.col("data_type") == "train")
             & (pl.col("disease") == disease_map[disease])
         )
         .collect()
-        .get_column("ED_admissions")
+        .get_column("ed_visits")
         .to_list()
     )
 
-    test_disease_ed_admissions = (
+    test_disease_ed_visits = (
         data_to_save.filter(
             (pl.col("data_type") == "test")
             & (pl.col("disease") == disease_map[disease])
         )
         .collect()
-        .get_column("ED_admissions")
+        .get_column("ed_visits")
         .to_list()
     )
 
-    train_total_ed_admissions = (
+    train_total_ed_visits = (
         data_to_save.filter(
             (pl.col("data_type") == "train") & (pl.col("disease") == "Total")
         )
         .collect()
-        .get_column("ED_admissions")
+        .get_column("ed_visits")
         .to_list()
     )
 
-    test_total_ed_admissions = (
+    test_total_ed_visits = (
         data_to_save.filter(
             (pl.col("data_type") == "test") & (pl.col("disease") == "Total")
         )
         .collect()
-        .get_column("ED_admissions")
+        .get_column("ed_visits")
         .to_list()
     )
 
@@ -151,12 +151,12 @@ def process_and_save_state(
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "data_observed_disease_hospital_admissions":
-        train_disease_ed_admissions,
+        train_disease_ed_visits,
         "data_observed_disease_hospital_admissions_test":
-        test_disease_ed_admissions,
-        "data_observed_total_hospital_admissions": train_total_ed_admissions,
+        test_disease_ed_visits,
+        "data_observed_total_hospital_admissions": train_total_ed_visits,
         "data_observed_total_hospital_admissions_test":
-        test_total_ed_admissions,
+        test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }

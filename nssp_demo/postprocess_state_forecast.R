@@ -33,7 +33,8 @@ read_pyrenew_samples <- function(inference_data_path,
   }
 
   pyrenew_samples <-
-    read_csv(inference_data_path) |>
+      read_csv(inference_data_path,
+               show_col_types = FALSE) |>
     rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
     rename(
       .chain = chain,
@@ -79,17 +80,17 @@ make_one_forecast_fig <- function(target_disease,
                                   posterior_predictive_ci,
                                   state_abb) {
   y_scale <- if (str_starts(target_disease, "prop")) {
-    scale_y_continuous("Proportion of Emergency Department Admissions",
+    scale_y_continuous("Proportion of Emergency Department Visits",
       labels = percent
     )
   } else {
-    scale_y_continuous("Emergency Department Admissions", labels = comma)
+    scale_y_continuous("Emergency Department Visits", labels = comma)
   }
 
   title <- if (target_disease == "Other") {
-    glue("Other ED Admissions in {state_abb}")
+    glue("Other ED Visits in {state_abb}")
   } else {
-    glue("{disease_name_pretty} ED Admissions in {state_abb}")
+    glue("{disease_name_pretty} ED Visits in {state_abb}")
   }
 
   ggplot(mapping = aes(date, .value)) +
@@ -142,28 +143,34 @@ make_forecast_figs <- function(model_dir,
   inference_data_path <- path(model_dir, "inference_data",
     ext = "csv"
   )
-  other_ed_admissions_path <- path(
+  other_ed_visits_path <- path(
       model_dir,
-      "other_ed_admissions_forecast",
+      "other_ed_visits_forecast",
       ext = "parquet"
   )
 
-  dat <- readr::read_csv(data_path) |>
-    mutate(disease = if_else(disease == disease_name_nssp,
-      "Disease", # assign a common name for use in plotting functions
-      disease
-    )) |>
-    pivot_wider(names_from = disease, values_from = ED_admissions) |>
-    mutate(
-      Other = Total - Disease,
-      prop_disease_ed_admissions = Disease / Total
-    ) |>
-    select(-Total) |>
-    mutate(time = dense_rank(date)) |>
-    pivot_longer(c(Disease, Other, prop_disease_ed_admissions),
-      names_to = "disease",
-      values_to = ".value"
-    )
+  dat <- read_csv(
+      data_path,
+      col_types = cols(
+          disease = col_character(),
+          data_type = col_character(),
+          ed_visits = col_double(),
+          date = col_date())) |>
+      mutate(
+          disease = if_else(
+              disease == disease_name_nssp,
+              "Disease", # assign a common name for
+              ## use in plotting functions
+              disease)) |>
+      pivot_wider(names_from = disease, values_from = ed_visits) |>
+      mutate(
+          Other = Total - Disease,
+          prop_disease_ed_visits = Disease / Total) |>
+      select(-Total) |>
+      mutate(time = dense_rank(date)) |>
+      pivot_longer(c(Disease, Other, prop_disease_ed_visits),
+                   names_to = "disease",
+                   values_to = ".value")
 
   last_training_date <- dat |>
     filter(data_type == "train") |>
@@ -179,12 +186,12 @@ make_forecast_figs <- function(model_dir,
     good_chain_tol = good_chain_tol
   )
 
-  other_ed_admission_forecast <-
-    read_parquet(other_ed_admissions_path) |>
-    rename(Other = other_ED_admissions)
+  other_ed_visits_forecast <-
+    read_parquet(other_ed_visits_path) |>
+    rename(Other = other_ed_visits)
 
 
-  other_ed_admission_samples <-
+  other_ed_visits_samples <-
     bind_rows(
       dat |>
         filter(
@@ -192,8 +199,8 @@ make_forecast_figs <- function(model_dir,
           date <= last_training_date
         ) |>
         select(date, Other = .value) |>
-        expand_grid(.draw = 1:max(other_ed_admission_forecast$.draw)),
-      other_ed_admission_forecast
+        expand_grid(.draw = 1:max(other_ed_visits_forecast$.draw)),
+      other_ed_visits_forecast
     )
 
   posterior_predictive_samples <-
@@ -203,9 +210,10 @@ make_forecast_figs <- function(model_dir,
     rename(Disease = observed_hospital_admissions) |>
     ungroup() |>
     mutate(date = min(dat$date) + time) |>
-    left_join(other_ed_admission_samples) |>
-    mutate(prop_disease_ed_admissions = Disease / (Disease + Other)) |>
-    pivot_longer(c(Other, Disease, prop_disease_ed_admissions),
+    left_join(other_ed_visits_samples,
+              by = c(".draw", "date")) |>
+    mutate(prop_disease_ed_visits = Disease / (Disease + Other)) |>
+    pivot_longer(c(Other, Disease, prop_disease_ed_visits),
       names_to = "disease",
       values_to = ".value"
     )

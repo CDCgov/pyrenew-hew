@@ -27,7 +27,7 @@ def generate_and_save_predictions(
             "rb",
     ) as file:
         my_model.mcmc = pickle.load(file)
-    
+
     my_model.mcmc.sampler = fresh_sampler
 
     posterior_predictive = my_model.posterior_predictive(

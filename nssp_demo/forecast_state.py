@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from prep_data import process_and_save_state
@@ -11,6 +12,21 @@ numpyro.set_host_device_count(4)
 
 from fit_model import fit_and_save_model # noqa
 from generate_predictive import generate_and_save_predictions # noqa
+
+
+def forecast_denominator(
+        model_dir: Path,
+        n_forecast_days: int
+) -> None:
+    subprocess.run(
+        ["Rscript",
+         "forecast_non_target_visits.R",
+         "--model-dir",
+         f"{model_dir}",
+         "--n-forecast-days",
+         f"{n_forecast_days}"
+         ])
+    return None
 
 
 def main(
@@ -82,6 +98,10 @@ def main(
     generate_and_save_predictions(
         model_fit_dir,
         n_forecast_days)
+
+    logger.info("Performing non-target pathogen forecasting...")
+    forecast_denominator(model_fit_dir,
+                         n_forecast_days)
 
     logger.info("Forecasting complete.")
 

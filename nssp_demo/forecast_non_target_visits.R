@@ -2,6 +2,7 @@ script_packages <- c(
     'dplyr',
     'tidyr',
     'tibble',
+    'readr',
     'stringr',
     'fs',
     'fable',
@@ -28,19 +29,19 @@ fit_and_forecast <- function(other_data,
     filter(data_type == "train") |>
     model(
       comb_model = combination_ensemble(
-        ETS(log(ED_admissions) ~ trend(method = c("N", "M", "A"))),
-        ARIMA(log(ED_admissions))
+        ETS(log(ed_visits) ~ trend(method = c("N", "M", "A"))),
+        ARIMA(log(ed_visits))
       ),
-      arima = ARIMA(log(ED_admissions)),
-      ets = ETS(log(ED_admissions) ~ trend(method = c("N", "M", "A")))
+      arima = ARIMA(log(ed_visits)),
+      ets = ETS(log(ed_visits) ~ trend(method = c("N", "M", "A")))
     )
 
   forecast_samples <- fit |>
     generate(h = forecast_horizon, times = n_samples) |>
     as_tibble() |>
-    mutate(ED_admissions = .sim, .draw = as.integer(.rep)) |>
+    mutate(ed_visits = .sim, .draw = as.integer(.rep)) |>
     filter(.model == "comb_model") |>
-    select(date, .draw, other_ED_admissions = ED_admissions)
+    select(date, .draw, other_ed_visits = ed_visits)
 
   forecast_samples
 }
@@ -49,24 +50,30 @@ main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
   # to do: do this with json data that has dates
   data_path <- path(model_dir, "data", ext = "csv")
 
-  other_data <- readr::read_csv(data_path) |>
-    mutate(disease = if_else(disease == disease_name_nssp,
-      "Disease", disease
-    )) |>
-    pivot_wider(names_from = disease, values_from = ED_admissions) |>
-    mutate(Other = Total - Disease) |>
-    select(date, ED_admissions = Other, data_type) |>
-    as_tsibble(index = date)
+    other_data <- read_csv(
+        data_path,
+        col_types = cols(
+            disease = col_character(),
+            data_type = col_character(),
+            ed_visits = col_double(),
+            date = col_date())) |>
+        mutate(disease = if_else(
+                   disease == disease_name_nssp,
+                   "Disease", disease)) |>
+        pivot_wider(names_from = disease, values_from = ed_visits) |>
+        mutate(Other = Total - Disease) |>
+        select(date, ed_visits = Other, data_type) |>
+        as_tsibble(index = date)
 
   forecast_samples <- fit_and_forecast(other_data, n_forecast_days, n_samples)
 
-  save_path <- path(model_dir, "other_ed_admissions_forecast", ext = "parquet")
+  save_path <- path(model_dir, "other_ed_visits_forecast", ext = "parquet")
   write_parquet(forecast_samples, save_path)
 }
 
 
 p <- arg_parser(
-    "Forecast other (non-target-disease) ED admissions") |>
+    "Forecast other (non-target-disease) ED visits") |>
     add_argument(
         "--model-dir",
         help = "Directory containing the model data",
