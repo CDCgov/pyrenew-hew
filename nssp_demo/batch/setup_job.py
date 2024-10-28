@@ -2,7 +2,6 @@ import argparse
 
 import polars as pl
 from azure.batch import models
-
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job_if_not_exists

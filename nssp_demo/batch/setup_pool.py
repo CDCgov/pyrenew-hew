@@ -2,9 +2,8 @@
 
 import argparse
 
-from azure.mgmt.batch import models
-
 import azuretools.defaults as d
+from azure.mgmt.batch import models
 from azuretools import blob
 from azuretools.auth import EnvCredentialHandler, get_compute_node_id_reference
 from azuretools.client import get_batch_management_client
