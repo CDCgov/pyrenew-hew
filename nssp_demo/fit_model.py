@@ -3,17 +3,17 @@ import pickle
 from pathlib import Path
 
 import jax
-import numpyro
 import numpy as np
+import numpyro
 from build_model import build_model_from_dir
 
 
 def fit_and_save_model(
-        model_dir,
-        num_warmup=1000,
-        num_samples=1000,
-        n_chains=4,
-        rng_key=jax.random.key(np.random.randint(0, 10000))
+    model_dir,
+    num_warmup=1000,
+    num_samples=1000,
+    n_chains=4,
+    rng_key=jax.random.key(np.random.randint(0, 10000)),
 ) -> None:
     (
         my_model,
@@ -25,7 +25,8 @@ def fit_and_save_model(
         num_samples=num_samples,
         rng_key=rng_key,
         data_observed_disease_hospital_admissions=(
-            data_observed_disease_hospital_admissions),
+            data_observed_disease_hospital_admissions
+        ),
         right_truncation_offset=right_truncation_offset,
         mcmc_args=dict(num_chains=n_chains, progress_bar=True),
         nuts_args=dict(find_heuristic_step_size=True),
@@ -34,8 +35,8 @@ def fit_and_save_model(
     my_model.mcmc.sampler = None
 
     with open(
-            model_dir / "posterior_samples.pickle",
-            "wb",
+        model_dir / "posterior_samples.pickle",
+        "wb",
     ) as file:
         pickle.dump(my_model.mcmc, file)
 
@@ -55,5 +56,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    fit_and_save_model(**vars(args),
-                       n_chains=n_chains)
+    fit_and_save_model(**vars(args), n_chains=n_chains)

@@ -1,21 +1,23 @@
 script_packages <- c(
-    'dplyr',
-    'tidyr',
-    'tibble',
-    'readr',
-    'stringr',
-    'fs',
-    'fable',
-    'jsonlite',
-    'argparser',
-    'arrow'
+  "dplyr",
+  "tidyr",
+  "tibble",
+  "readr",
+  "stringr",
+  "fs",
+  "fable",
+  "jsonlite",
+  "argparser",
+  "arrow"
 )
 
 ## load in packages without messages
-for (package in script_packages){
-    suppressPackageStartupMessages(
-        library(package,
-                character.only=TRUE))
+for (package in script_packages) {
+  suppressPackageStartupMessages(
+    library(package,
+      character.only = TRUE
+    )
+  )
 }
 
 
@@ -50,20 +52,23 @@ main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
   # to do: do this with json data that has dates
   data_path <- path(model_dir, "data", ext = "csv")
 
-    other_data <- read_csv(
-        data_path,
-        col_types = cols(
-            disease = col_character(),
-            data_type = col_character(),
-            ed_visits = col_double(),
-            date = col_date())) |>
-        mutate(disease = if_else(
-                   disease == disease_name_nssp,
-                   "Disease", disease)) |>
-        pivot_wider(names_from = disease, values_from = ed_visits) |>
-        mutate(Other = Total - Disease) |>
-        select(date, ed_visits = Other, data_type) |>
-        as_tsibble(index = date)
+  other_data <- read_csv(
+    data_path,
+    col_types = cols(
+      disease = col_character(),
+      data_type = col_character(),
+      ed_visits = col_double(),
+      date = col_date()
+    )
+  ) |>
+    mutate(disease = if_else(
+      disease == disease_name_nssp,
+      "Disease", disease
+    )) |>
+    pivot_wider(names_from = disease, values_from = ed_visits) |>
+    mutate(Other = Total - Disease) |>
+    select(date, ed_visits = Other, data_type) |>
+    as_tsibble(index = date)
 
   forecast_samples <- fit_and_forecast(other_data, n_forecast_days, n_samples)
 
@@ -73,21 +78,22 @@ main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
 
 
 p <- arg_parser(
-    "Forecast other (non-target-disease) ED visits") |>
-    add_argument(
-        "--model-dir",
-        help = "Directory containing the model data",
-        ) |>
-    add_argument(
-        "--n-forecast-days",
-        help = "Number of days to forecast",
-        default = 28L
-    ) |>
-    add_argument(
-        "--n-samples",
-        help = "Number of samples to generate",
-        default = 2000L
-    )
+  "Forecast other (non-target-disease) ED visits"
+) |>
+  add_argument(
+    "--model-dir",
+    help = "Directory containing the model data",
+  ) |>
+  add_argument(
+    "--n-forecast-days",
+    help = "Number of days to forecast",
+    default = 28L
+  ) |>
+  add_argument(
+    "--n-samples",
+    help = "Number of samples to generate",
+    default = 2000L
+  )
 
 argv <- parse_args(p)
 model_dir <- path(argv$model_dir)

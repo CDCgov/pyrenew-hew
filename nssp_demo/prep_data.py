@@ -150,13 +150,10 @@ def process_and_save_state(
         "inf_to_hosp_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_hospital_admissions":
-        train_disease_ed_visits,
-        "data_observed_disease_hospital_admissions_test":
-        test_disease_ed_visits,
+        "data_observed_disease_hospital_admissions": train_disease_ed_visits,
+        "data_observed_disease_hospital_admissions_test": test_disease_ed_visits,
         "data_observed_total_hospital_admissions": train_total_ed_visits,
-        "data_observed_total_hospital_admissions_test":
-        test_total_ed_visits,
+        "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
@@ -287,8 +284,10 @@ parser.add_argument(
     "--training-day-offset",
     type=int,
     default=7,
-    help=("Number of days before the reference day "
-          "to use as test data (default: 7)"),
+    help=(
+        "Number of days before the reference day "
+        "to use as test data (default: 7)"
+    ),
 )
 
 parser.add_argument(

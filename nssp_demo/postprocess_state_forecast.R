@@ -1,25 +1,27 @@
 script_packages <- c(
-    'dplyr',
-    'stringr',
-    'purrr',
-    'ggplot2',
-    'tidybayes',
-    'fs',
-    'cowplot',
-    'glue',
-    'scales',
-    'argparser',
-    'arrow',
-    'tidyr',
-    'readr',
-    'here'
+  "dplyr",
+  "stringr",
+  "purrr",
+  "ggplot2",
+  "tidybayes",
+  "fs",
+  "cowplot",
+  "glue",
+  "scales",
+  "argparser",
+  "arrow",
+  "tidyr",
+  "readr",
+  "here"
 )
 
 ## load in packages without messages
-for (package in script_packages){
-    suppressPackageStartupMessages(
-        library(package,
-                character.only=TRUE))
+for (package in script_packages) {
+  suppressPackageStartupMessages(
+    library(package,
+      character.only = TRUE
+    )
+  )
 }
 
 # To be replaced with reading tidy data from forecasttools
@@ -33,8 +35,9 @@ read_pyrenew_samples <- function(inference_data_path,
   }
 
   pyrenew_samples <-
-      read_csv(inference_data_path,
-               show_col_types = FALSE) |>
+    read_csv(inference_data_path,
+      show_col_types = FALSE
+    ) |>
     rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
     rename(
       .chain = chain,
@@ -144,33 +147,39 @@ make_forecast_figs <- function(model_dir,
     ext = "csv"
   )
   other_ed_visits_path <- path(
-      model_dir,
-      "other_ed_visits_forecast",
-      ext = "parquet"
+    model_dir,
+    "other_ed_visits_forecast",
+    ext = "parquet"
   )
 
   dat <- read_csv(
-      data_path,
-      col_types = cols(
-          disease = col_character(),
-          data_type = col_character(),
-          ed_visits = col_double(),
-          date = col_date())) |>
-      mutate(
-          disease = if_else(
-              disease == disease_name_nssp,
-              "Disease", # assign a common name for
-              ## use in plotting functions
-              disease)) |>
-      pivot_wider(names_from = disease, values_from = ed_visits) |>
-      mutate(
-          Other = Total - Disease,
-          prop_disease_ed_visits = Disease / Total) |>
-      select(-Total) |>
-      mutate(time = dense_rank(date)) |>
-      pivot_longer(c(Disease, Other, prop_disease_ed_visits),
-                   names_to = "disease",
-                   values_to = ".value")
+    data_path,
+    col_types = cols(
+      disease = col_character(),
+      data_type = col_character(),
+      ed_visits = col_double(),
+      date = col_date()
+    )
+  ) |>
+    mutate(
+      disease = if_else(
+        disease == disease_name_nssp,
+        "Disease", # assign a common name for
+        ## use in plotting functions
+        disease
+      )
+    ) |>
+    pivot_wider(names_from = disease, values_from = ed_visits) |>
+    mutate(
+      Other = Total - Disease,
+      prop_disease_ed_visits = Disease / Total
+    ) |>
+    select(-Total) |>
+    mutate(time = dense_rank(date)) |>
+    pivot_longer(c(Disease, Other, prop_disease_ed_visits),
+      names_to = "disease",
+      values_to = ".value"
+    )
 
   last_training_date <- dat |>
     filter(data_type == "train") |>
@@ -211,7 +220,8 @@ make_forecast_figs <- function(model_dir,
     ungroup() |>
     mutate(date = min(dat$date) + time) |>
     left_join(other_ed_visits_samples,
-              by = c(".draw", "date")) |>
+      by = c(".draw", "date")
+    ) |>
     mutate(prop_disease_ed_visits = Disease / (Disease + Other)) |>
     pivot_longer(c(Other, Disease, prop_disease_ed_visits),
       names_to = "disease",
@@ -251,20 +261,20 @@ disease_name_nssp_map <- c(
 
 # Create a parser
 p <- arg_parser("Generate forecast figures") |>
-    add_argument(
-        "--model-dir",
-        help = "Directory containing the model data",
-        ) |>
-    add_argument(
-        "--filter-bad-chains",
-        help = "Filter out bad chains from the samples",
-        flag = TRUE
-    ) |>
-    add_argument(
-        "--good-chain-tol",
-        help = "Tolerance level for determining good chains",
-        default = 2L
-    )
+  add_argument(
+    "--model-dir",
+    help = "Directory containing the model data",
+  ) |>
+  add_argument(
+    "--filter-bad-chains",
+    help = "Filter out bad chains from the samples",
+    flag = TRUE
+  ) |>
+  add_argument(
+    "--good-chain-tol",
+    help = "Tolerance level for determining good chains",
+    default = 2L
+  )
 
 argv <- parse_args(p)
 model_dir <- path(argv$model_dir)
@@ -280,7 +290,7 @@ disease_name_raw <- base_dir |>
 disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
 
-    
+
 forecast_figs <- make_forecast_figs(
   model_dir,
   filter_bad_chains,

@@ -7,10 +7,8 @@ from build_model import build_model_from_dir
 
 
 def generate_and_save_predictions(
-        model_dir: str | Path,
-        n_forecast_points: int
+    model_dir: str | Path, n_forecast_points: int
 ) -> None:
-
     model_dir = Path(model_dir)
 
     (
@@ -23,8 +21,8 @@ def generate_and_save_predictions(
     fresh_sampler = my_model.mcmc.sampler
 
     with open(
-            model_dir / "posterior_samples.pickle",
-            "rb",
+        model_dir / "posterior_samples.pickle",
+        "rb",
     ) as file:
         my_model.mcmc = pickle.load(file)
 
@@ -40,8 +38,7 @@ def generate_and_save_predictions(
         posterior_predictive=posterior_predictive,
     )
 
-    idata.to_dataframe().to_csv(
-        model_dir / "inference_data.csv", index=False)
+    idata.to_dataframe().to_csv(model_dir / "inference_data.csv", index=False)
 
     # Save one netcdf for reloading
     idata.to_netcdf(model_dir / "inference_data.nc")
@@ -72,5 +69,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    generate_and_save_predictions(
-        **vars(args))
+    generate_and_save_predictions(**vars(args))

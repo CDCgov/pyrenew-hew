@@ -4,54 +4,55 @@ import os
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import numpyro
+import polars as pl
 from prep_data import process_and_save_state
 
-import polars as pl
-import numpyro
 numpyro.set_host_device_count(4)
 
-from fit_model import fit_and_save_model # noqa
-from generate_predictive import generate_and_save_predictions # noqa
+from fit_model import fit_and_save_model  # noqa
+from generate_predictive import generate_and_save_predictions  # noqa
 
 
-def forecast_denominator(
-        model_dir: Path,
-        n_forecast_days: int
-) -> None:
+def forecast_denominator(model_dir: Path, n_forecast_days: int) -> None:
     subprocess.run(
-        ["Rscript",
-         "nssp_demo/forecast_non_target_visits.R",
-         "--model-dir",
-         f"{model_dir}",
-         "--n-forecast-days",
-         f"{n_forecast_days}"
-         ])
+        [
+            "Rscript",
+            "nssp_demo/forecast_non_target_visits.R",
+            "--model-dir",
+            f"{model_dir}",
+            "--n-forecast-days",
+            f"{n_forecast_days}",
+        ]
+    )
     return None
 
 
-def postprocess_forecast(
-        model_dir: Path) -> None:
+def postprocess_forecast(model_dir: Path) -> None:
     subprocess.run(
-        ["Rscript",
-         "nssp_demo/postprocess_state_forecast.R",
-         "--model-dir",
-         f"{model_dir}",
-         ])
+        [
+            "Rscript",
+            "nssp_demo/postprocess_state_forecast.R",
+            "--model-dir",
+            f"{model_dir}",
+        ]
+    )
     return None
 
 
 def main(
-        disease,
-        report_date,
-        state,
-        nssp_data_dir,
-        param_data_dir,
-        output_data_dir,
-        n_training_days,
-        n_forecast_days,
-        n_chains,
-        n_warmup,
-        n_samples,
+    disease,
+    report_date,
+    state,
+    nssp_data_dir,
+    param_data_dir,
+    output_data_dir,
+    n_training_days,
+    n_forecast_days,
+    n_chains,
+    n_warmup,
+    n_samples,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -100,27 +101,26 @@ def main(
     logger.info("Data preparation complete.")
 
     logger.info("Fitting model")
-    fit_and_save_model(model_fit_dir,
-                       num_warmup=n_warmup,
-                       num_samples=n_samples)
+    fit_and_save_model(
+        model_fit_dir, num_warmup=n_warmup, num_samples=n_samples
+    )
     logger.info("Model fitting complete")
 
     logger.info("Performing posterior prediction / forecasting...")
-    generate_and_save_predictions(
-        model_fit_dir,
-        n_forecast_days)
+    generate_and_save_predictions(model_fit_dir, n_forecast_days)
 
     logger.info("Performing non-target pathogen forecasting...")
-    forecast_denominator(model_fit_dir,
-                         n_forecast_days)
+    forecast_denominator(model_fit_dir, n_forecast_days)
     logger.info("Forecasting complete.")
 
     logger.info("Postprocessing forecast...")
     postprocess_forecast(model_fit_dir)
     logger.info("Postprocessing complete.")
-    logger.info("Single state pipeline complete "
-                f"for state {state} with "
-                f"report date {report_date}.")
+    logger.info(
+        "Single state pipeline complete "
+        f"for state {state} with "
+        f"report date {report_date}."
+    )
 
     return None
 
@@ -139,8 +139,11 @@ parser.add_argument(
     "--state",
     type=str,
     required=True,
-    help=("Two letter abbreviation for the state to fit"
-          "(e.g. 'AK', 'AL', 'AZ', etc.)"))
+    help=(
+        "Two letter abbreviation for the state to fit"
+        "(e.g. 'AK', 'AL', 'AZ', etc.)"
+    ),
+)
 
 parser.add_argument(
     "--report-date",
@@ -184,28 +187,33 @@ parser.add_argument(
     "--n-forecast-days",
     type=int,
     default=28,
-    help="Number of days ahead to forecast")
+    help="Number of days ahead to forecast",
+)
 
 
 parser.add_argument(
     "--n-chains",
     type=int,
     default=4,
-    help="Number of MCMC chains to run (default: 4)")
+    help="Number of MCMC chains to run (default: 4)",
+)
 
 parser.add_argument(
     "--n-warmup",
     type=int,
     default=1000,
-    help=("Number of warmup iterations per chain for NUTS"
-          "(default: 1000)"))
+    help=("Number of warmup iterations per chain for NUTS" "(default: 1000)"),
+)
 
 parser.add_argument(
     "--n-samples",
     type=int,
     default=1000,
-    help=("Number of posterior samples to draw per "
-          "chain using NUTS (default: 1000)"))
+    help=(
+        "Number of posterior samples to draw per "
+        "chain using NUTS (default: 1000)"
+    ),
+)
 
 
 if __name__ == "__main__":

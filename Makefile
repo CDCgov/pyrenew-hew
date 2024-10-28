@@ -1,4 +1,4 @@
-.PHONY: container_build container_tag acr_login container_push 
+.PHONY: container_build container_tag acr_login container_push
 
 ENGINE := docker
 CONTAINER_NAME := pyrenew-hew
@@ -15,4 +15,3 @@ acr_login:
 
 container_push: container_tag acr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
-

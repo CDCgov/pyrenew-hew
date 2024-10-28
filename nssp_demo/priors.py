@@ -4,7 +4,6 @@ import pyrenew.transformation as transformation
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-
 # many of these should probably be different depending
 # on if we are modeling flu
 # or covid
@@ -36,9 +35,7 @@ inf_feedback_strength_rv = TransformedVariable(
     "inf_feedback",
     DistributionalVariable(
         "inf_feedback_raw",
-        dist.LogNormal(
-            jnp.log(50),
-            jnp.log(2)),
+        dist.LogNormal(jnp.log(50), jnp.log(2)),
     ),
     transforms=transformation.AffineTransform(loc=0, scale=-1),
 )
