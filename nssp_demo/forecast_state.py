@@ -20,7 +20,7 @@ def forecast_denominator(
 ) -> None:
     subprocess.run(
         ["Rscript",
-         "forecast_non_target_visits.R",
+         "nssp_demo/forecast_non_target_visits.R",
          "--model-dir",
          f"{model_dir}",
          "--n-forecast-days",
@@ -33,7 +33,7 @@ def postprocess_forecast(
         model_dir: Path) -> None:
     subprocess.run(
         ["Rscript",
-         "postprocess_state_forecast.R",
+         "nssp_demo/postprocess_state_forecast.R",
          "--model-dir",
          f"{model_dir}",
          ])
