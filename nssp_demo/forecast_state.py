@@ -29,6 +29,17 @@ def forecast_denominator(
     return None
 
 
+def postprocess_forecast(
+        model_dir: Path) -> None:
+    subprocess.run(
+        ["Rscript",
+         "postprocess_state_forecast.R",
+         "--model-dir",
+         f"{model_dir}",
+         ])
+    return None
+
+
 def main(
         disease,
         report_date,
@@ -102,9 +113,11 @@ def main(
     logger.info("Performing non-target pathogen forecasting...")
     forecast_denominator(model_fit_dir,
                          n_forecast_days)
-
     logger.info("Forecasting complete.")
 
+    logger.info("Postprocessing forecast...")
+    postprocess_forecast(model_fit_dir)
+    logger.info("Postprocessing complete.")
     logger.info("Single state pipeline complete "
                 f"for state {state} with "
                 f"report date {report_date}.")

@@ -252,16 +252,16 @@ disease_name_nssp_map <- c(
 # Create a parser
 p <- arg_parser("Generate forecast figures") |>
     add_argument(
-        "--model_dir",
+        "--model-dir",
         help = "Directory containing the model data",
         ) |>
     add_argument(
-        "--filter_bad_chains",
+        "--filter-bad-chains",
         help = "Filter out bad chains from the samples",
         flag = TRUE
     ) |>
     add_argument(
-        "--good_chain_tol",
+        "--good-chain-tol",
         help = "Tolerance level for determining good chains",
         default = 2L
     )
