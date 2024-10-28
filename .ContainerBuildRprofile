@@ -11,7 +11,7 @@ options(
   ## use Posit package manager to get
   ## precompiled binaries where possible
   repos = c(
-    RSPM = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
+    RSPM = "https://packagemanager.posit.co/cran/__linux__/bookworm/latest"
   ),
   renv.config.pak.enabled = TRUE
 )
