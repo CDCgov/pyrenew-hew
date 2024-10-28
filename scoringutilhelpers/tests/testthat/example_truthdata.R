@@ -1,8 +1,8 @@
 test_that("example_truthdata generates correct number of rows and columns", {
-  ndays <- 10
-  nareas <- 2
-  result <- example_truthdata(ndays = ndays, nareas = nareas)
-  expect_equal(nrow(result), ndays * nareas)
+  n_days <- 10
+  n_areas <- 2
+  result <- example_truthdata(n_days = n_days, n_areas = n_areas)
+  expect_equal(nrow(result), n_days * n_areas)
   expect_equal(ncol(result), 3)
 })
 
@@ -12,20 +12,20 @@ test_that("example_truthdata generates correct column names", {
 })
 
 test_that("example_truthdata generates correct date range", {
-  ndays <- 17
+  n_days <- 17
   start_date <- ymd("2024-10-24")
-  result <- example_truthdata(ndays = ndays)
+  result <- example_truthdata(n_days = n_days)
   expected_dates <- seq.Date(
     from = start_date, by = "day",
-    length.out = ndays
+    length.out = n_days
   )
   expect_equal(unique(result$date), expected_dates)
 })
 
 test_that("example_truthdata generates correct number of unique areas", {
-  nareas <- 5
-  result <- example_truthdata(nareas = nareas)
-  expect_equal(length(unique(result$area)), nareas)
+  n_areas <- 5
+  result <- example_truthdata(n_areas = n_areas)
+  expect_equal(length(unique(result$area)), n_areas)
 })
 
 test_that("example_truthdata saves data when save_data is TRUE", {

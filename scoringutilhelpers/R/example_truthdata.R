@@ -10,10 +10,10 @@ library(tidyr)
 #'
 #' @param save_path A character string specifying the path where the data
 #' should be saved. Default is "scortingutilhelpers/assets".
-#' @param ndays An integer specifying the number of days for which to generate
+#' @param n_days An integer specifying the number of days for which to generate
 #' data. Default is 21.
-#' @param nareas An integer specifying the number of areas for which to generate
-#' data. Default is 3.
+#' @param n_areas An integer specifying the number of areas for which to
+#' generate data. Default is 3.
 #' @param save_data A logical value indicating whether to save the generated
 #' data. Default is FALSE.
 #' @param ... Additional arguments passed to `readr::write_tsv` if
@@ -24,13 +24,13 @@ library(tidyr)
 #' @export
 example_truthdata <- function(
     save_path = "scoringutilhelpers/assets",
-    ndays = 21, nareas = 3, save_data = FALSE, ...) {
+    n_days = 21, n_areas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates and a sequence of areas
   dates <- seq.Date(
     from = lubridate::ymd("2024-10-24"), by = "day",
-    length.out = ndays
+    length.out = n_days
   )
-  areas <- LETTERS[1:nareas]
+  areas <- LETTERS[1:n_areas]
   # Create log-normally distributed truth data
   exampledata <- tidyr::expand_grid(
     area = areas,

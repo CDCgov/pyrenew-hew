@@ -14,15 +14,15 @@ library(tidyr)
 #'
 #' @param save_path A character string specifying the path where the data
 #' should be saved if `save_data` is TRUE.
-#' @param ndays An integer specifying the number of days for which to generate
+#' @param n_days An integer specifying the number of days for which to generate
 #' data. Default is 21.
 #' @param reps An integer specifying the number of repetitions for each
 #' day/location. Default is 100.
-#' @param nchains An integer specifying the number of chains for which to
+#' @param n_chains An integer specifying the number of chains for which to
 #' generate data. NB: this is not a MCMC method but meant to test expected
 #' output. Default is 4.
-#' @param nareas An integer specifying the number of areas for which to generate
-#' data. Areas are "A", "B", etc. Default is 3.
+#' @param n_areas An integer specifying the number of areas for which to
+#' generate data. Areas are "A", "B", etc. Default is 3.
 #' @param save_data A logical value indicating whether to save the generated
 #' data to `save_path`. Default is FALSE.
 #' @param ... Additional arguments passed to `arrow::write_dataset` if
@@ -41,16 +41,16 @@ library(tidyr)
 #' }
 #' @export
 example_prediction <- function(
-    save_path = "scoringutilhelpers/assets/example_predictions", ndays = 21,
-    reps = 100, nchains = 4, nareas = 3, save_data = FALSE, ...) {
+    save_path = "scoringutilhelpers/assets/example_predictions", n_days = 21,
+    reps = 100, n_chains = 4, n_areas = 3, save_data = FALSE, ...) {
   # Generate a sequence of dates for 3 weeks
   dates <- seq.Date(
     from = lubridate::ymd("2024-10-24"), by = "day",
-    length.out = ndays
+    length.out = n_days
   )
-  areas <- LETTERS[1:nareas]
+  areas <- LETTERS[1:n_areas]
   example_data <- tidyr::expand_grid(
-    .chain = 1:nchains,
+    .chain = 1:n_chains,
     .iteration = 1:reps,
     area = areas,
     reference_date = list(dates),
