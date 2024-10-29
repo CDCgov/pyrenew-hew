@@ -15,13 +15,13 @@ from fit_model import fit_and_save_model  # noqa
 from generate_predictive import generate_and_save_predictions  # noqa
 
 
-def forecast_denominator(model_dir: Path, n_forecast_days: int) -> None:
+def forecast_denominator(model_run_dir: Path, n_forecast_days: int) -> None:
     subprocess.run(
         [
             "Rscript",
             "nssp_demo/forecast_non_target_visits.R",
-            "--model-dir",
-            f"{model_dir}",
+            "--model-run-dir",
+            f"{model_run_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",
         ]
@@ -29,13 +29,13 @@ def forecast_denominator(model_dir: Path, n_forecast_days: int) -> None:
     return None
 
 
-def postprocess_forecast(model_dir: Path) -> None:
+def postprocess_forecast(model_run_dir: Path) -> None:
     subprocess.run(
         [
             "Rscript",
             "nssp_demo/postprocess_state_forecast.R",
-            "--model-dir",
-            f"{model_dir}",
+            "--model-run-dir",
+            f"{model_run_dir}",
         ]
     )
     return None
@@ -53,7 +53,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
-    n_data_days_to_truncate: int = 0,
+    last_training_date: str,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -62,17 +62,29 @@ def main(
         report_date = max(
             f.stem for f in Path(nssp_data_dir).glob("*.parquet")
         )
-
     report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
 
     logger.info(f"Report date: {report_date}")
 
-    last_training_date = report_date - timedelta(
-        days=n_data_days_to_truncate + 1
-    )
-    # + 1 because max date in dataset is report_date - 1
+    if last_training_date == "latest":
+        # + 1 because max date in dataset is report_date - 1
+        last_training_date = report_date - timedelta(days=1)
+    else:
+        last_training_date = datetime.strptime(
+            last_training_date, "%Y-%m-%d"
+        ).date()
+
+    if last_training_date >= report_date:
+        raise ValueError(
+            "Last training date must be before the report date. "
+            "Got a last training date of {last_training_date} "
+            "with a report date of {report_date}."
+        )
+
+    logger.info(f"last training date: {last_training_date}")
+
     first_training_date = last_training_date - timedelta(
-        days=n_training_days + n_data_days_to_truncate - 1
+        days=n_training_days - 1
     )
 
     datafile = f"{report_date}.parquet"
@@ -135,7 +147,7 @@ parser.add_argument(
     "--disease",
     type=str,
     required=True,
-    help="Disease to model (e.g., COVID-19, Influenza, RSV)",
+    help="Disease to model (e.g., COVID-19, Influenza, RSV).",
 )
 
 parser.add_argument(
@@ -144,7 +156,7 @@ parser.add_argument(
     required=True,
     help=(
         "Two letter abbreviation for the state to fit"
-        "(e.g. 'AK', 'AL', 'AZ', etc.)"
+        "(e.g. 'AK', 'AL', 'AZ', etc.)."
     ),
 )
 
@@ -152,7 +164,7 @@ parser.add_argument(
     "--report-date",
     type=str,
     default="latest",
-    help="Report date in YYYY-MM-DD format or latest (default: latest)",
+    help="Report date in YYYY-MM-DD format or latest (default: latest).",
 )
 
 parser.add_argument(
@@ -183,14 +195,14 @@ parser.add_argument(
     "--n-training-days",
     type=int,
     default=180,
-    help="Number of training days (default: 180)",
+    help="Number of training days (default: 180).",
 )
 
 parser.add_argument(
     "--n-forecast-days",
     type=int,
     default=28,
-    help="Number of days ahead to forecast",
+    help="Number of days ahead to forecast (default: 28).",
 )
 
 
@@ -198,14 +210,14 @@ parser.add_argument(
     "--n-chains",
     type=int,
     default=4,
-    help="Number of MCMC chains to run (default: 4)",
+    help="Number of MCMC chains to run (default: 4).",
 )
 
 parser.add_argument(
     "--n-warmup",
     type=int,
     default=1000,
-    help=("Number of warmup iterations per chain for NUTS" "(default: 1000)"),
+    help=("Number of warmup iterations per chain for NUTS" "(default: 1000)."),
 )
 
 parser.add_argument(
@@ -214,18 +226,17 @@ parser.add_argument(
     default=1000,
     help=(
         "Number of posterior samples to draw per "
-        "chain using NUTS (default: 1000)"
+        "chain using NUTS (default: 1000)."
     ),
 )
 
 parser.add_argument(
-    "--n-data-days-to-truncate",
-    type=int,
-    default=0,
+    "--last-training-date",
+    type=str,
+    default="latest",
     help=(
-        "Number of days to remove from the end of the "
-        "timeseries when assembling the training data "
-        "(Default: 0)"
+        "Last date to use for model training in "
+        "YYYY-MM-DD format or 'latest' (default: latest)."
     ),
 )
 
