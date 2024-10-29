@@ -16,13 +16,12 @@ script_packages <- c(
 )
 
 ## load in packages without messages
-for (package in script_packages) {
+purrr::walk(script_packages, \(pkg) {
   suppressPackageStartupMessages(
-    library(package,
-      character.only = TRUE
-    )
+    library(pkg, character.only = TRUE)
   )
-}
+})
+
 
 # To be replaced with reading tidy data from forecasttools
 read_pyrenew_samples <- function(inference_data_path,

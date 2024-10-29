@@ -12,13 +12,11 @@ script_packages <- c(
 )
 
 ## load in packages without messages
-for (package in script_packages) {
+purrr::walk(script_packages, \(pkg) {
   suppressPackageStartupMessages(
-    library(package,
-      character.only = TRUE
-    )
+    library(pkg, character.only = TRUE)
   )
-}
+})
 
 
 fit_and_forecast <- function(other_data,
