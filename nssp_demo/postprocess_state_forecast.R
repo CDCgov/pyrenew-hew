@@ -164,7 +164,7 @@ make_forecast_figs <- function(model_dir,
       disease = if_else(
         disease == disease_name_nssp,
         "Disease", # assign a common name for
-        ## use in plotting functions
+        # use in plotting functions
         disease
       )
     ) |>
