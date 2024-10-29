@@ -32,9 +32,8 @@ def aggregate_facility_level_nssp_to_state(
         .with_columns(
             disease=pl.col("disease")
             .cast(pl.Utf8)
-            .replace({v: k for k, v in disease_map.items()})
-            .cast(pl.Categorical),
-            geo_value=pl.lit(state_abb).cast(pl.Categorical),
+            .replace({v: k for k, v in disease_map.items()}),
+            geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
@@ -47,6 +46,7 @@ def process_and_save_state(
     state_abb,
     disease,
     report_date,
+    state_level_report_date,
     first_training_date,
     last_training_date,
     param_estimates,
@@ -54,7 +54,6 @@ def process_and_save_state(
     logger=None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
-    state_level_report_date=None,
 ) -> None:
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
@@ -65,9 +64,9 @@ def process_and_save_state(
     elif facility_level_nssp_data is None:
         facility_level_nssp_data = pl.LazyFrame(
             schema={
-                "disease": pl.Categorical,
+                "disease": pl.Utf8,
                 "metric": pl.Categorical,
-                "geo_value": pl.Categorical,
+                "geo_value": pl.Uf8,
                 "reference_date": pl.Date,
                 "value": pl.Float64,
             }
@@ -75,9 +74,9 @@ def process_and_save_state(
     elif state_level_nssp_data is None:
         state_level_nssp_data = pl.LazyFrame(
             schema={
-                "disease": pl.Categorical,
+                "disease": pl.Utf8,
                 "metric": pl.Categorical,
-                "geo_value": pl.Categorical,
+                "geo_value": pl.Utf8,
                 "geo_type": pl.Categorical,
                 "reference_date": pl.Date,
                 "report_date": pl.Date,
@@ -176,17 +175,14 @@ def process_and_save_state(
         .select(
             [
                 pl.col("reference_date").alias("date"),
-                "geo_value",
-                "disease",
+                pl.col("geo_value").cast(pl.Utf8),
+                pl.col("disease").cast(pl.Utf8),
                 pl.col("value").alias("ed_visits"),
             ]
         )
         .sort(["date", "disease"])
         .collect()
     )
-
-    print(state_level_data)
-    print(aggregated_facility_data)
 
     data_to_save = (
         pl.concat([state_level_data, aggregated_facility_data])
@@ -270,15 +266,27 @@ def main(
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    if report_date == "latest":
-        report_date = max(
-            f.stem
-            for f in Path(facility_level_nssp_data_dir).glob("*.parquet")
-        )
+    available_facility_level_reports = [
+        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        for f in Path(facility_level_nssp_data_dir).glob("*.parquet")
+    ]
+    available_state_level_reports = [
+        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        for f in Path(state_level_nssp_data_dir).glob("*.parquet")
+    ]
 
-    report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+    if report_date == "latest":
+        report_date = max(available_facility_level_reports)
+    else:
+        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+
+    if report_date in available_state_level_reports:
+        state_report_date = report_date
+    else:
+        state_report_date = max(available_state_level_reports)
 
     logger.info(f"Report date: {report_date}")
+    logger.info(f"Using state-level data as of: {state_report_date}")
 
     last_training_date = report_date - timedelta(days=training_day_offset + 1)
     # +1 because max date in dataset is report_date - 1
@@ -286,15 +294,20 @@ def main(
         days=n_training_days - 1
     )
 
-    datafile = f"{report_date}.parquet"
-    facility_level_nssp_data = pl.scan_parquet(
-        Path(facility_level_nssp_data_dir, datafile)
-    )
+    facility_level_nssp_data, state_level_nssp_data = None, None
 
-    state_level_nssp_data = None
-    if state_level_nssp_data_dir is not None:
+    if report_date in available_facility_level_reports:
+        logger.info(
+            "Facility level data available for " "the given report date"
+        )
+        facility_datafile = f"{report_date}.parquet"
+        facility_level_nssp_data = pl.scan_parquet(
+            Path(facility_level_nssp_data_dir, facility_datafile)
+        )
+    if state_report_date in available_state_level_reports:
+        state_datafile = f"{state_report_date}.parquet"
         state_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, datafile)
+            Path(state_level_nssp_data_dir, state_datafile)
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
@@ -327,6 +340,7 @@ def main(
             facility_level_nssp_data=facility_level_nssp_data,
             state_level_nssp_data=state_level_nssp_data,
             report_date=report_date,
+            state_level_report_date=state_report_date,
             first_training_date=first_training_date,
             last_training_date=last_training_date,
             param_estimates=param_estimates,
