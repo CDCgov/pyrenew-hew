@@ -5,7 +5,6 @@ from pathlib import Path
 import jax
 import numpy as np
 from build_model import build_model_from_dir
-from jax.typing import ArrayLike
 
 
 def fit_and_save_model(
@@ -13,20 +12,17 @@ def fit_and_save_model(
     n_warmup: int = 1000,
     n_samples: int = 1000,
     n_chains: int = 4,
-    rng_key: int | ArrayLike = None,
+    rng_key: int = None,
 ) -> None:
     if rng_key is None:
         rng_key = np.random.randint(0, 10000)
-    if not isinstance(rng_key, ArrayLike):
-        if isinstance(rng_key, int):
-            rng_key = jax.random.key(rng_key)
-        else:
-            raise ValueError(
-                "rng_key must be key array "
-                "created by :func:`jax.random.key``"
-                "object or an integer to use when "
-                "seeding :func:`jax.random.key`."
-            )
+    if isinstance(rng_key, int):
+        rng_key = jax.random.key(rng_key)
+    else:
+        raise ValueError(
+            "rng_key must be an integer with which "
+            "to seed :func:`jax.random.key`"
+        )
     (
         my_model,
         data_observed_disease_hospital_admissions,
