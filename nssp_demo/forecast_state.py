@@ -26,7 +26,8 @@ def forecast_denominator(
             f"{model_run_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",
-            "--n-samples" f"{n_samples}",
+            "--n-samples",
+            f"{n_samples}",
         ]
     )
     return None
