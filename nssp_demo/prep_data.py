@@ -8,6 +8,43 @@ from pathlib import Path
 import polars as pl
 
 
+def aggregate_facility_level_nssp_to_state(
+    facility_level_nssp_data: pl.LazyFrame,
+    state_abb: str,
+    disease: str,
+    first_training_date: str,
+    last_training_date: str,
+) -> pl.DataFrame:
+    disease_map = {
+        "COVID-19": "COVID-19/Omicron",
+    }
+    disease_key = disease_map.get(disease, disease)
+
+    return (
+        facility_level_nssp_data.filter(
+            pl.col("disease").is_in([disease_key, "Total"]),
+            pl.col("metric") == "count_ed_visits",
+            pl.col("geo_value") == state_abb,
+            pl.col("reference_date") >= first_training_date,
+        )
+        .group_by(["reference_date", "disease"])
+        .agg(pl.col("value").sum().alias("ed_visits"))
+        .with_columns(
+            pl.when(pl.col("reference_date") <= last_training_date)
+            .then(pl.lit("train"))
+            .otherwise(pl.lit("test"))
+            .alias("data_type"),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace({v: k for k, v in disease_map.items()})
+            .cast(pl.Categorical),
+        )
+        .rename({"reference_date": "date"})
+        .sort(["date", "disease"])
+        .collect()
+    )
+
+
 def process_and_save_state(
     state_abb,
     disease,
@@ -19,32 +56,6 @@ def process_and_save_state(
     model_batch_dir,
     logger=None,
 ) -> None:
-    disease_map = {
-        "COVID-19": "COVID-19/Omicron",
-        "Influenza": "Influenza",
-        "RSV": "RSV",
-        "Total": "Total",
-    }
-
-    data_to_save = (
-        nssp_data.filter(
-            (pl.col("disease").is_in([disease_map[disease], "Total"]))
-            & (pl.col("metric") == "count_ed_visits")
-            & (pl.col("geo_value") == state_abb)
-            & (pl.col("reference_date") >= first_training_date)
-        )
-        .group_by(["reference_date", "disease"])
-        .agg(pl.col("value").sum().alias("ed_visits"))
-        .with_columns(
-            pl.when(pl.col("reference_date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("test"))
-            .alias("data_type")
-        )
-        .rename({"reference_date": "date"})
-        .sort(["date", "disease"])
-    )
-
     facts = pl.read_csv(
         "https://raw.githubusercontent.com/k5cents/usa/"
         "refs/heads/master/data-raw/facts.csv"
@@ -108,40 +119,43 @@ def process_and_save_state(
 
     right_truncation_offset = (report_date - last_training_date).days
 
+    data_to_save = aggregate_facility_level_nssp_to_state(
+        facility_level_nssp_data=nssp_data,
+        state_abb=state_abb,
+        disease=disease,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+    )
+
     train_disease_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "train")
-            & (pl.col("disease") == disease_map[disease])
+            pl.col("data_type") == "train", pl.col("disease") == disease
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
 
     test_disease_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "test")
-            & (pl.col("disease") == disease_map[disease])
+            pl.col("data_type") == "test",
+            pl.col("disease") == disease,
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
 
     train_total_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "train") & (pl.col("disease") == "Total")
+            pl.col("data_type") == "train", pl.col("disease") == "Total"
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
 
     test_total_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "test") & (pl.col("disease") == "Total")
+            pl.col("data_type") == "test", pl.col("disease") == "Total"
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
@@ -163,7 +177,7 @@ def process_and_save_state(
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
-    data_to_save.collect().write_csv(Path(state_dir, "data.csv"))
+    data_to_save.write_csv(Path(state_dir, "data.csv"))
 
     with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
