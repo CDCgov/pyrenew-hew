@@ -12,7 +12,7 @@ def fit_and_save_model(
     n_warmup: int = 1000,
     n_samples: int = 1000,
     n_chains: int = 4,
-    rng_key: int | jax.random.key = None,
+    rng_key: int | jax.random.KeyArray = None,
 ) -> None:
     if rng_key is None:
         rng_key = np.random.randint(0, 10000)
@@ -21,9 +21,9 @@ def fit_and_save_model(
             rng_key = jax.random.key(rng_key)
         else:
             raise ValueError(
-                "rng_key must be a jax.random.key "
+                "rng_key must be a jax.random.KeyArray "
                 "object or an integer from which "
-                "to initialize such an object"
+                "to instaniate such an object."
             )
     (
         my_model,
