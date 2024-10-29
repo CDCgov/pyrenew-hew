@@ -30,17 +30,15 @@ def aggregate_facility_level_nssp_to_state(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            pl.when(pl.col("reference_date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("test"))
-            .alias("data_type"),
             disease=pl.col("disease")
             .cast(pl.Utf8)
             .replace({v: k for k, v in disease_map.items()})
             .cast(pl.Categorical),
+            geo_value=pl.lit(state_abb).cast(pl.Categorical),
         )
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
+        .select(["date", "geo_value", "disease", "ed_visits"])
         .collect()
     )
 
@@ -56,12 +54,35 @@ def process_and_save_state(
     logger=None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
+    state_level_report_date=None,
 ) -> None:
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
             "Must provide at least one "
             "of facility-level and state-level"
             "NSSP data"
+        )
+    elif facility_level_nssp_data is None:
+        facility_level_nssp_data = pl.LazyFrame(
+            schema={
+                "disease": pl.Categorical,
+                "metric": pl.Categorical,
+                "geo_value": pl.Categorical,
+                "reference_date": pl.Date,
+                "value": pl.Float64,
+            }
+        )
+    elif state_level_nssp_data is None:
+        state_level_nssp_data = pl.LazyFrame(
+            schema={
+                "disease": pl.Categorical,
+                "metric": pl.Categorical,
+                "geo_value": pl.Categorical,
+                "geo_type": pl.Categorical,
+                "reference_date": pl.Date,
+                "report_date": pl.Date,
+                "value": pl.Float64,
+            }
         )
 
     facts = pl.read_csv(
@@ -127,12 +148,55 @@ def process_and_save_state(
 
     right_truncation_offset = (report_date - last_training_date).days
 
-    data_to_save = aggregate_facility_level_nssp_to_state(
+    if state_level_report_date is None:
+        state_level_report_date = report_date
+
+    aggregated_facility_data = aggregate_facility_level_nssp_to_state(
         facility_level_nssp_data=facility_level_nssp_data,
         state_abb=state_abb,
         disease=disease,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
+    )
+
+    first_facility_level_date = aggregated_facility_data.get_column(
+        "date"
+    ).min()
+
+    state_level_data = (
+        state_level_nssp_data.filter(
+            pl.col("disease").is_in([disease, "Total"]),
+            pl.col("metric") == "count_ed_visits",
+            pl.col("geo_value") == state_abb,
+            pl.col("geo_type") == "state",
+            pl.col("reference_date") >= first_training_date,
+            pl.col("reference_date") < first_facility_level_date,
+            pl.col("report_date") == state_level_report_date,
+        )
+        .select(
+            [
+                pl.col("reference_date").alias("date"),
+                "geo_value",
+                "disease",
+                pl.col("value").alias("ed_visits"),
+            ]
+        )
+        .sort(["date", "disease"])
+        .collect()
+    )
+
+    print(state_level_data)
+    print(aggregated_facility_data)
+
+    data_to_save = (
+        pl.concat([state_level_data, aggregated_facility_data])
+        .with_columns(
+            pl.when(pl.col("date") <= last_training_date)
+            .then(pl.lit("train"))
+            .otherwise(pl.lit("test"))
+            .alias("data_type"),
+        )
+        .sort(["date", "disease"])
     )
 
     train_disease_ed_visits = (
