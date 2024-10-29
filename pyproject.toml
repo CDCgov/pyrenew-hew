@@ -15,7 +15,6 @@ jupyter = "^1.0.0"
 ipykernel = "^6.29.5"
 polars = "^1.5.0"
 pyarrow = "^17.0.0"
-azuretools = {git = "https://github.com/cdcent/cfa-stf-azuretools"}
 
 
 [build-system]
