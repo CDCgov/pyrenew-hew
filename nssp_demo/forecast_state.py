@@ -90,16 +90,16 @@ def main(
     datafile = f"{report_date}.parquet"
     nssp_data = pl.scan_parquet(Path(nssp_data_dir, datafile))
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-    model_dir_name = (
+    model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
     )
 
-    model_data_dir = Path(output_data_dir, model_dir_name)
+    model_batch_dir = Path(output_data_dir, model_batch_dir_name)
 
-    model_fit_dir = Path(model_data_dir, state)
+    model_run_dir = Path(model_batch_dir, state)
 
-    os.makedirs(model_data_dir, exist_ok=True)
+    os.makedirs(model_run_dir, exist_ok=True)
 
     logger.info(f"Processing {state}")
     process_and_save_state(
@@ -110,14 +110,14 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         param_estimates=param_estimates,
-        model_data_dir=model_data_dir,
+        model_run_dir=model_run_dir,
         logger=logger,
     )
     logger.info("Data preparation complete.")
 
     logger.info("Fitting model")
     fit_and_save_model(
-        model_fit_dir,
+        model_run_dir,
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
@@ -125,14 +125,14 @@ def main(
     logger.info("Model fitting complete")
 
     logger.info("Performing posterior prediction / forecasting...")
-    generate_and_save_predictions(model_fit_dir, n_forecast_days)
+    generate_and_save_predictions(model_run_dir, n_forecast_days)
 
     logger.info("Performing non-target pathogen forecasting...")
-    forecast_denominator(model_fit_dir, n_forecast_days)
+    forecast_denominator(model_run_dir, n_forecast_days)
     logger.info("Forecasting complete.")
 
     logger.info("Postprocessing forecast...")
-    postprocess_forecast(model_fit_dir)
+    postprocess_forecast(model_run_dir)
     logger.info("Postprocessing complete.")
     logger.info(
         "Single state pipeline complete "
