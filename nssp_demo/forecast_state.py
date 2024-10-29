@@ -110,7 +110,7 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         param_estimates=param_estimates,
-        model_run_dir=model_run_dir,
+        model_batch_dir=model_batch_dir,
         logger=logger,
     )
     logger.info("Data preparation complete.")

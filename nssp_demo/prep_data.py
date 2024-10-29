@@ -16,7 +16,7 @@ def process_and_save_state(
     first_training_date,
     last_training_date,
     param_estimates,
-    model_data_dir,
+    model_batch_dir,
     logger=None,
 ) -> None:
     disease_map = {
@@ -158,7 +158,7 @@ def process_and_save_state(
         "right_truncation_offset": right_truncation_offset,
     }
 
-    state_dir = os.path.join(model_data_dir, state_abb)
+    state_dir = os.path.join(model_batch_dir, state_abb)
     os.makedirs(state_dir, exist_ok=True)
 
     if logger is not None:
@@ -218,9 +218,9 @@ def main(
         f"{first_training_date}_t_{last_training_date}"
     )
 
-    model_data_dir = Path(output_data_dir, model_dir_name)
+    model_batch_dir = Path(output_data_dir, model_dir_name)
 
-    os.makedirs(model_data_dir, exist_ok=True)
+    os.makedirs(model_batch_dir, exist_ok=True)
 
     for state_abb in all_states:
         logger.info(f"Processing {state_abb}")
@@ -232,7 +232,7 @@ def main(
             first_training_date=first_training_date,
             last_training_date=last_training_date,
             param_estimates=param_estimates,
-            model_data_dir=model_data_dir,
+            model_batch_dir=model_batch_dir,
             logger=logger,
         )
     logger.info("Data preparation complete.")
