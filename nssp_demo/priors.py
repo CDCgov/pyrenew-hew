@@ -4,9 +4,8 @@ import pyrenew.transformation as transformation
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-from pyrenew_hew.utils import convert_to_logmean_log_sd
-
-# many of these should probably be different depending on if we are modeling flu
+# many of these should probably be different depending
+# on if we are modeling flu
 # or covid
 
 i0_first_obs_n_rv = DistributionalVariable(
@@ -18,7 +17,9 @@ initialization_rate_rv = DistributionalVariable(
     "rate", dist.Normal(0, 0.01), reparam=LocScaleReparam(0)
 )
 
-r_logmean, r_logsd = convert_to_logmean_log_sd(1, 1)
+r_logmean = jnp.log(1)
+r_logsd = jnp.log(jnp.sqrt(2))
+
 log_r_mu_intercept_rv = DistributionalVariable(
     "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
 )
@@ -34,14 +35,14 @@ inf_feedback_strength_rv = TransformedVariable(
     "inf_feedback",
     DistributionalVariable(
         "inf_feedback_raw",
-        dist.LogNormal(6.37408, 0.4),
+        dist.LogNormal(jnp.log(50), jnp.log(2)),
     ),
     transforms=transformation.AffineTransform(loc=0, scale=-1),
 )
 # Could be reparameterized?
 
 # Note: multiplied by 1/2 from hosp model
-# this actually represents ed admissions
+# this actually represents ed visits
 p_hosp_mean_rv = DistributionalVariable(
     "p_hosp_mean",
     dist.Normal(
