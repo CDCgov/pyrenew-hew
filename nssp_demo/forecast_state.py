@@ -117,7 +117,10 @@ def main(
 
     logger.info("Fitting model")
     fit_and_save_model(
-        model_fit_dir, num_warmup=n_warmup, num_samples=n_samples
+        model_fit_dir,
+        n_warmup=n_warmup,
+        n_samples=n_samples,
+        n_chains=n_chains,
     )
     logger.info("Model fitting complete")
 
