@@ -48,14 +48,22 @@ def aggregate_facility_level_nssp_to_state(
 def process_and_save_state(
     state_abb,
     disease,
-    nssp_data,
     report_date,
     first_training_date,
     last_training_date,
     param_estimates,
     model_batch_dir,
     logger=None,
+    facility_level_nssp_data: pl.LazyFrame = None,
+    state_level_nssp_data: pl.LazyFrame = None,
 ) -> None:
+    if facility_level_nssp_data is None and state_level_nssp_data is None:
+        raise ValueError(
+            "Must provide at least one "
+            "of facility-level and state-level"
+            "NSSP data"
+        )
+
     facts = pl.read_csv(
         "https://raw.githubusercontent.com/k5cents/usa/"
         "refs/heads/master/data-raw/facts.csv"
@@ -120,7 +128,7 @@ def process_and_save_state(
     right_truncation_offset = (report_date - last_training_date).days
 
     data_to_save = aggregate_facility_level_nssp_to_state(
-        facility_level_nssp_data=nssp_data,
+        facility_level_nssp_data=facility_level_nssp_data,
         state_abb=state_abb,
         disease=disease,
         first_training_date=first_training_date,
@@ -188,7 +196,8 @@ def process_and_save_state(
 def main(
     disease,
     report_date,
-    nssp_data_dir,
+    facility_level_nssp_data_dir,
+    state_level_nssp_data_dir,
     param_data_dir,
     output_data_dir,
     training_day_offset,
@@ -199,7 +208,8 @@ def main(
 
     if report_date == "latest":
         report_date = max(
-            f.stem for f in Path(nssp_data_dir).glob("*.parquet")
+            f.stem
+            for f in Path(facility_level_nssp_data_dir).glob("*.parquet")
         )
 
     report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
@@ -213,13 +223,22 @@ def main(
     )
 
     datafile = f"{report_date}.parquet"
-    nssp_data = pl.scan_parquet(Path(nssp_data_dir, datafile))
+    facility_level_nssp_data = pl.scan_parquet(
+        Path(facility_level_nssp_data_dir, datafile)
+    )
+
+    state_level_nssp_data = None
+    if state_level_nssp_data_dir is not None:
+        state_level_nssp_data = pl.scan_parquet(
+            Path(facility_level_nssp_data_dir, datafile)
+        )
+
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
 
     excluded_states = ["GU", "MO", "WY"]
 
     all_states = (
-        nssp_data.select(pl.col("geo_value").unique())
+        facility_level_nssp_data.select(pl.col("geo_value").unique())
         .filter(~pl.col("geo_value").is_in(excluded_states))
         .collect()
         .get_column("geo_value")
@@ -241,7 +260,8 @@ def main(
         process_and_save_state(
             state_abb=state_abb,
             disease=disease,
-            nssp_data=nssp_data,
+            facility_level_nssp_data=facility_level_nssp_data,
+            state_level_nssp_data=state_level_nssp_data,
             report_date=report_date,
             first_training_date=first_training_date,
             last_training_date=last_training_date,
@@ -271,10 +291,23 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--nssp-data-dir",
+    "--facility-level-nssp-data-dir",
     type=Path,
     default=Path("private_data", "nssp_etl_gold"),
-    help="Directory in which to look for NSSP input data.",
+    help=(
+        "Directory in which to look for facility-level NSSP " "ED visit data"
+    ),
+)
+
+parser.add_argument(
+    "--state-level-nssp-data-dir",
+    type=Path,
+    default=None,
+    help=(
+        "Directory in which to look for state-level NSSP "
+        "ED visit data (Default: None, which implies using "
+        "only facility-level data"
+    ),
 )
 
 parser.add_argument(

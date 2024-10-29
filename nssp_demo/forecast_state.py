@@ -49,7 +49,7 @@ def main(
     disease: str,
     report_date: str,
     state: str,
-    nssp_data_dir: Path | str,
+    facility_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
     output_data_dir: Path | str,
     n_training_days: int,
@@ -64,7 +64,8 @@ def main(
 
     if report_date == "latest":
         report_date = max(
-            f.stem for f in Path(nssp_data_dir).glob("*.parquet")
+            f.stem
+            for f in Path(facility_level_nssp_data_dir).glob("*.parquet")
         )
     report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
 
@@ -92,7 +93,9 @@ def main(
     )
 
     datafile = f"{report_date}.parquet"
-    nssp_data = pl.scan_parquet(Path(nssp_data_dir, datafile))
+    facility_level_nssp_data = pl.scan_parquet(
+        Path(facility_level_nssp_data_dir, datafile)
+    )
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
@@ -109,7 +112,8 @@ def main(
     process_and_save_state(
         state_abb=state,
         disease=disease,
-        nssp_data=nssp_data,
+        facility_level_nssp_data=facility_level_nssp_data,
+        state_level_nssp_data=None,
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
@@ -176,10 +180,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--nssp-data-dir",
+    "--facility-level-nssp-data-dir",
     type=Path,
     default=Path("private_data", "nssp_etl_gold"),
-    help="Directory in which to look for NSSP input data.",
+    help=(
+        "Directory in which to look for facility-level " "NSSP ED visit data.",
+    ),
 )
 
 parser.add_argument(

@@ -44,7 +44,7 @@ def main(job_id, pool_id, container_image) -> None:
         "--n-training-days 365 "
         "--n-warmup 1000 "
         "--n-samples 500 "
-        "--nssp-data-dir nssp_demo/nssp-etl/gold "
+        "--facility-level-nssp-data-dir nssp_demo/nssp-etl/gold "
         "--param-data-dir nssp_demo/params "
         "--output-data-dir nssp_demo/private_data"
         "'"
