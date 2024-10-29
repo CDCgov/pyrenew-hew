@@ -133,20 +133,20 @@ make_one_forecast_fig <- function(target_disease,
 }
 
 
-make_forecast_figs <- function(model_dir,
+make_forecast_figs <- function(model_run_dir,
                                filter_bad_chains = TRUE,
                                good_chain_tol = 2) {
-  state_abb <- model_dir |>
+  state_abb <- model_run_dir |>
     path_split() |>
     pluck(1) |>
     tail(1)
 
-  data_path <- path(model_dir, "data", ext = "csv")
-  inference_data_path <- path(model_dir, "inference_data",
+  data_path <- path(model_run_dir, "data", ext = "csv")
+  inference_data_path <- path(model_run_dir, "inference_data",
     ext = "csv"
   )
   other_ed_visits_path <- path(
-    model_dir,
+    model_run_dir,
     "other_ed_visits_forecast",
     ext = "parquet"
   )
@@ -261,26 +261,26 @@ disease_name_nssp_map <- c(
 # Create a parser
 p <- arg_parser("Generate forecast figures") |>
   add_argument(
-    "--model-dir",
-    help = "Directory containing the model data",
+    "--model-run-dir",
+    help = "Directory containing the model data and output.",
   ) |>
   add_argument(
     "--filter-bad-chains",
-    help = "Filter out bad chains from the samples",
+    help = "Filter out bad chains from the samples? Default TRUE.",
     flag = TRUE
   ) |>
   add_argument(
     "--good-chain-tol",
-    help = "Tolerance level for determining good chains",
+    help = "Tolerance level for determining good chains.",
     default = 2L
   )
 
 argv <- parse_args(p)
-model_dir <- path(argv$model_dir)
+model_run_dir <- path(argv$model_run_dir)
 filter_bad_chains <- argv$filter_bad_chains
 good_chain_tol <- argv$good_chain_tol
 
-base_dir <- path_dir(model_dir)
+base_dir <- path_dir(model_run_dir)
 
 disease_name_raw <- base_dir |>
   path_file() |>
@@ -291,13 +291,13 @@ disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
 
 
 forecast_figs <- make_forecast_figs(
-  model_dir,
+  model_run_dir,
   filter_bad_chains,
   good_chain_tol
 )
 
 iwalk(forecast_figs, ~ save_plot(
-  filename = path(model_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
+  filename = path(model_run_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
   plot = .x,
   device = cairo_pdf, base_height = 6
 ))

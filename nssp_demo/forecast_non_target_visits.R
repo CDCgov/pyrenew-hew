@@ -46,9 +46,9 @@ fit_and_forecast <- function(other_data,
   forecast_samples
 }
 
-main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
+main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
   # to do: do this with json data that has dates
-  data_path <- path(model_dir, "data", ext = "csv")
+  data_path <- path(model_run_dir, "data", ext = "csv")
 
   other_data <- read_csv(
     data_path,
@@ -70,31 +70,31 @@ main <- function(model_dir, n_forecast_days = 28, n_samples = 2000) {
 
   forecast_samples <- fit_and_forecast(other_data, n_forecast_days, n_samples)
 
-  save_path <- path(model_dir, "other_ed_visits_forecast", ext = "parquet")
+  save_path <- path(model_run_dir, "other_ed_visits_forecast", ext = "parquet")
   write_parquet(forecast_samples, save_path)
 }
 
 
 p <- arg_parser(
-  "Forecast other (non-target-disease) ED visits"
+  "Forecast other (non-target-disease) ED visits for a given location."
 ) |>
   add_argument(
-    "--model-dir",
-    help = "Directory containing the model data",
+    "--model-run-dir",
+    help = "Directory containing the model data and output.",
   ) |>
   add_argument(
     "--n-forecast-days",
-    help = "Number of days to forecast",
+    help = "Number of days to forecast.",
     default = 28L
   ) |>
   add_argument(
     "--n-samples",
-    help = "Number of samples to generate",
+    help = "Number of samples to generate.",
     default = 2000L
   )
 
 argv <- parse_args(p)
-model_dir <- path(argv$model_dir)
+model_run_dir <- path(argv$model_run_dir)
 n_forecast_days <- argv$n_forecast_days
 n_samples <- argv$n_samples
 
@@ -103,7 +103,7 @@ disease_name_nssp_map <- c(
   "influenza" = "Influenza"
 )
 
-base_dir <- path_dir(model_dir)
+base_dir <- path_dir(model_run_dir)
 
 disease_name_raw <- base_dir |>
   path_file() |>
@@ -111,4 +111,4 @@ disease_name_raw <- base_dir |>
 
 disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 
-main(model_dir, n_forecast_days, n_samples)
+main(model_run_dir, n_forecast_days, n_samples)
