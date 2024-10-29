@@ -254,7 +254,7 @@ theme_set(theme_minimal_grid())
 
 disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
 disease_name_nssp_map <- c(
-  "covid-19" = "COVID-19/Omicron",
+  "covid-19" = "COVID-19",
   "influenza" = "Influenza"
 )
 
