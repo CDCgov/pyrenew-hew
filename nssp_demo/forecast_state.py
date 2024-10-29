@@ -42,17 +42,18 @@ def postprocess_forecast(model_dir: Path) -> None:
 
 
 def main(
-    disease,
-    report_date,
-    state,
-    nssp_data_dir,
-    param_data_dir,
-    output_data_dir,
-    n_training_days,
-    n_forecast_days,
-    n_chains,
-    n_warmup,
-    n_samples,
+    disease: str,
+    report_date: str,
+    state: str,
+    nssp_data_dir: Path | str,
+    param_data_dir: Path | str,
+    output_data_dir: Path | str,
+    n_training_days: int,
+    n_forecast_days: int,
+    n_chains: int,
+    n_warmup: int,
+    n_samples: int,
+    n_data_days_to_truncate: int = 0,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -66,10 +67,12 @@ def main(
 
     logger.info(f"Report date: {report_date}")
 
-    last_training_date = report_date - timedelta(days=1)
+    last_training_date = report_date - timedelta(
+        days=n_data_days_to_truncate + 1
+    )
     # + 1 because max date in dataset is report_date - 1
     first_training_date = last_training_date - timedelta(
-        days=n_training_days - 1
+        days=n_training_days + n_data_days_to_truncate - 1
     )
 
     datafile = f"{report_date}.parquet"
@@ -212,6 +215,17 @@ parser.add_argument(
     help=(
         "Number of posterior samples to draw per "
         "chain using NUTS (default: 1000)"
+    ),
+)
+
+parser.add_argument(
+    "--n-data-days-to-truncate",
+    type=int,
+    default=0,
+    help=(
+        "Number of days to remove from the end of the "
+        "timeseries when assembling the training data "
+        "(Default: 0)"
     ),
 )
 
