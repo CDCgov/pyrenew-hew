@@ -66,7 +66,7 @@ def process_and_save_state(
             schema={
                 "disease": pl.Utf8,
                 "metric": pl.Categorical,
-                "geo_value": pl.Uf8,
+                "geo_value": pl.Utf8,
                 "reference_date": pl.Date,
                 "value": pl.Float64,
             }
@@ -82,6 +82,12 @@ def process_and_save_state(
                 "report_date": pl.Date,
                 "value": pl.Float64,
             }
+        )
+    else:
+        raise ValueError(
+            "Must provide either state-level "
+            "or facility-level ED visit data, "
+            "but not both."
         )
 
     facts = pl.read_csv(
@@ -133,9 +139,6 @@ def process_and_save_state(
             & (pl.col("disease") == disease)
             & (pl.col("parameter") == "right_truncation")
             & (pl.col("end_date").is_null())
-            & (
-                pl.col("reference_date") <= report_date
-            )  # estimates nearest the report date
         )
         .filter(
             pl.col("reference_date") == pl.col("reference_date").max()
@@ -304,18 +307,27 @@ def main(
         facility_level_nssp_data = pl.scan_parquet(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
-    if state_report_date in available_state_level_reports:
+        dat = facility_level_nssp_data
+    elif state_report_date in available_state_level_reports:
+        logger.info(
+            "State-level data available for the "
+            "given report date, but no facility level data"
+        )
         state_datafile = f"{state_report_date}.parquet"
         state_level_nssp_data = pl.scan_parquet(
             Path(state_level_nssp_data_dir, state_datafile)
         )
+        dat = state_level_nssp_data
+    else:
+        raise ValueError(
+            "No data available for the requested " f"report date {report_date}"
+        )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-
     excluded_states = ["GU", "MO", "WY"]
 
     all_states = (
-        facility_level_nssp_data.select(pl.col("geo_value").unique())
+        dat.select(pl.col("geo_value").unique())
         .filter(~pl.col("geo_value").is_in(excluded_states))
         .collect()
         .get_column("geo_value")
@@ -380,12 +392,8 @@ parser.add_argument(
 parser.add_argument(
     "--state-level-nssp-data-dir",
     type=Path,
-    default=None,
-    help=(
-        "Directory in which to look for state-level NSSP "
-        "ED visit data (Default: None, which implies using "
-        "only facility-level data"
-    ),
+    default=Path("private_data", "nssp_state_level_gold"),
+    help=("Directory in which to look for state-level NSSP " "ED visit data."),
 )
 
 parser.add_argument(
