@@ -340,7 +340,7 @@ def main(
             facility_level_nssp_data = pl.scan_parquet(facility_file)
         dat = facility_level_nssp_data
     if state_report_date in available_state_level_reports:
-        logger.info("State-level data available for the " "given report date.")
+        logger.info("State-level data available for the given report date.")
         state_datafile = f"{state_report_date}.parquet"
         state_datapath = Path(state_level_nssp_data_dir, state_datafile)
         with open(state_datapath) as state_datafile:
