@@ -8,13 +8,61 @@ from pathlib import Path
 import polars as pl
 
 
+def process_state_level_data(
+    state_level_nssp_data: pl.LazyFrame,
+    state_abb,
+    disease: str,
+    first_training_date,
+    state_level_report_date,
+) -> pl.DataFrame:
+    if state_level_nssp_data is None:
+        return pl.DataFrame(
+            schema={
+                "date": pl.Date,
+                "geo_value": pl.Utf8,
+                "disease": pl.Utf8,
+                "ed_visits": pl.Float64,
+            }
+        )
+
+    return (
+        state_level_nssp_data.filter(
+            pl.col("disease") == disease,
+            pl.col("metric") == "count_ed_visits",
+            pl.col("geo_value") == state_abb,
+            pl.col("geo_type") == "state",
+            pl.col("reference_date") >= first_training_date,
+            pl.col("report_date") == state_level_report_date,
+        )
+        .select(
+            [
+                pl.col("reference_date").alias("date"),
+                pl.col("geo_value").cast(pl.Utf8),
+                pl.col("disease").cast(pl.Utf8),
+                pl.col("value").alias("ed_visits"),
+            ]
+        )
+        .sort(["date", "disease"])
+        .collect()
+    )
+
+
 def aggregate_facility_level_nssp_to_state(
     facility_level_nssp_data: pl.LazyFrame,
     state_abb: str,
     disease: str,
     first_training_date: str,
-    last_training_date: str,
 ) -> pl.DataFrame:
+    if facility_level_nssp_data is None:
+        return pl.DataFrame(
+            schema={
+                "date": pl.Date,
+                "geo_value": pl.Utf8,
+                "disease": pl.Utf8,
+                "value": pl.Float64,
+            }
+        )
+
     disease_map = {
         "COVID-19": "COVID-19/Omicron",
     }
@@ -60,34 +108,6 @@ def process_and_save_state(
             "Must provide at least one "
             "of facility-level and state-level"
             "NSSP data"
-        )
-    elif facility_level_nssp_data is None:
-        facility_level_nssp_data = pl.LazyFrame(
-            schema={
-                "disease": pl.Utf8,
-                "metric": pl.Categorical,
-                "geo_value": pl.Utf8,
-                "reference_date": pl.Date,
-                "value": pl.Float64,
-            }
-        )
-    elif state_level_nssp_data is None:
-        state_level_nssp_data = pl.LazyFrame(
-            schema={
-                "disease": pl.Utf8,
-                "metric": pl.Categorical,
-                "geo_value": pl.Utf8,
-                "geo_type": pl.Categorical,
-                "reference_date": pl.Date,
-                "report_date": pl.Date,
-                "value": pl.Float64,
-            }
-        )
-    else:
-        raise ValueError(
-            "Must provide either state-level "
-            "or facility-level ED visit data, "
-            "but not both."
         )
 
     facts = pl.read_csv(
@@ -158,34 +178,31 @@ def process_and_save_state(
         state_abb=state_abb,
         disease=disease,
         first_training_date=first_training_date,
-        last_training_date=last_training_date,
     )
 
-    first_facility_level_date = aggregated_facility_data.get_column(
-        "date"
-    ).min()
-
-    state_level_data = (
-        state_level_nssp_data.filter(
-            pl.col("disease").is_in([disease, "Total"]),
-            pl.col("metric") == "count_ed_visits",
-            pl.col("geo_value") == state_abb,
-            pl.col("geo_type") == "state",
-            pl.col("reference_date") >= first_training_date,
-            pl.col("reference_date") < first_facility_level_date,
-            pl.col("report_date") == state_level_report_date,
-        )
-        .select(
-            [
-                pl.col("reference_date").alias("date"),
-                pl.col("geo_value").cast(pl.Utf8),
-                pl.col("disease").cast(pl.Utf8),
-                pl.col("value").alias("ed_visits"),
-            ]
-        )
-        .sort(["date", "disease"])
-        .collect()
+    state_level_data = process_state_level_data(
+        state_level_nssp_data=state_level_nssp_data,
+        state_abb=state_abb,
+        disease=disease,
+        first_training_date=first_training_date,
+        state_level_report_date=state_level_report_date,
     )
+    print(state_level_data)
+
+    if aggregated_facility_data.height > 0:
+        if state_level_data.height > 0:
+            print("Unfiltered state level data")
+            print(state_level_data)
+
+        first_facility_level_data_date = aggregated_facility_data.get_column(
+            "date"
+        ).min()
+        state_level_data = state_level_data.filter(
+            pl.col("date") < first_facility_level_data_date
+        )
+        if state_level_data.height > 0:
+            print("filtered state-level data")
+            print(state_level_data)
 
     data_to_save = (
         pl.concat([state_level_data, aggregated_facility_data])
@@ -197,6 +214,8 @@ def process_and_save_state(
         )
         .sort(["date", "disease"])
     )
+
+    print(data_to_save)
 
     train_disease_ed_visits = (
         data_to_save.filter(
@@ -304,9 +323,11 @@ def main(
             "Facility level data available for " "the given report date"
         )
         facility_datafile = f"{report_date}.parquet"
-        facility_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, facility_datafile)
+        facility_datapath = Path(
+            facility_level_nssp_data_dir, facility_datafile
         )
+        with open(facility_datapath) as facility_file:
+            facility_level_nssp_data = pl.scan_parquet(facility_file)
         dat = facility_level_nssp_data
     elif state_report_date in available_state_level_reports:
         logger.info(
@@ -314,16 +335,17 @@ def main(
             "given report date, but no facility level data"
         )
         state_datafile = f"{state_report_date}.parquet"
-        state_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, state_datafile)
-        )
+        state_datapath = Path(state_level_nssp_data_dir, state_datafile)
+        with open(state_datapath) as state_datafile:
+            state_level_nssp_data = pl.scan_parquet(state_datafile)
         dat = state_level_nssp_data
     else:
         raise ValueError(
             "No data available for the requested " f"report date {report_date}"
         )
 
-    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
+    with open(Path(param_data_dir, "prod.parquet")) as param_file:
+        param_estimates = pl.scan_parquet(param_file)
     excluded_states = ["GU", "MO", "WY"]
 
     all_states = (

@@ -50,6 +50,7 @@ def main(
     report_date: str,
     state: str,
     facility_level_nssp_data_dir: Path | str,
+    state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
     output_data_dir: Path | str,
     n_training_days: int,
@@ -57,19 +58,32 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
-    last_training_date: str,
+    last_training_date: str = None,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
+    available_facility_level_reports = [
+        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        for f in Path(facility_level_nssp_data_dir).glob("*.parquet")
+    ]
+    available_state_level_reports = [
+        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        for f in Path(state_level_nssp_data_dir).glob("*.parquet")
+    ]
+
     if report_date == "latest":
-        report_date = max(
-            f.stem
-            for f in Path(facility_level_nssp_data_dir).glob("*.parquet")
-        )
-    report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+        report_date = max(available_facility_level_reports)
+    else:
+        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+
+    if report_date in available_state_level_reports:
+        state_report_date = report_date
+    else:
+        state_report_date = max(available_state_level_reports)
 
     logger.info(f"Report date: {report_date}")
+    logger.info(f"Using state-level data as of: {state_report_date}")
 
     if last_training_date == "latest":
         # + 1 because max date in dataset is report_date - 1
@@ -88,14 +102,35 @@ def main(
 
     logger.info(f"last training date: {last_training_date}")
 
+    # +1 because max date in dataset is report_date - 1
     first_training_date = last_training_date - timedelta(
         days=n_training_days - 1
     )
 
-    datafile = f"{report_date}.parquet"
-    facility_level_nssp_data = pl.scan_parquet(
-        Path(facility_level_nssp_data_dir, datafile)
-    )
+    facility_level_nssp_data, state_level_nssp_data = None, None
+
+    if report_date in available_facility_level_reports:
+        logger.info(
+            "Facility level data available for " "the given report date"
+        )
+        facility_datafile = f"{report_date}.parquet"
+        facility_level_nssp_data = pl.scan_parquet(
+            Path(facility_level_nssp_data_dir, facility_datafile)
+        )
+    elif state_report_date in available_state_level_reports:
+        logger.info(
+            "State-level data available for the "
+            "given report date, but no facility level data"
+        )
+        state_datafile = f"{state_report_date}.parquet"
+        state_level_nssp_data = pl.scan_parquet(
+            Path(state_level_nssp_data_dir, state_datafile)
+        )
+    else:
+        raise ValueError(
+            "No data available for the requested " f"report date {report_date}"
+        )
+
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
@@ -113,8 +148,9 @@ def main(
         state_abb=state,
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
-        state_level_nssp_data=None,
+        state_level_nssp_data=state_level_nssp_data,
         report_date=report_date,
+        state_level_report_date=state_report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         param_estimates=param_estimates,
@@ -184,8 +220,15 @@ parser.add_argument(
     type=Path,
     default=Path("private_data", "nssp_etl_gold"),
     help=(
-        "Directory in which to look for facility-level " "NSSP ED visit data.",
+        "Directory in which to look for facility-level NSSP " "ED visit data"
     ),
+)
+
+parser.add_argument(
+    "--state-level-nssp-data-dir",
+    type=Path,
+    default=Path("private_data", "nssp_state_level_gold"),
+    help=("Directory in which to look for state-level NSSP " "ED visit data."),
 )
 
 parser.add_argument(
