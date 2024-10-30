@@ -107,6 +107,8 @@ def main(
         days=n_training_days - 1
     )
 
+    logger.info(f"First training date {first_training_date}")
+
     facility_level_nssp_data, state_level_nssp_data = None, None
 
     if report_date in available_facility_level_reports:
@@ -117,18 +119,15 @@ def main(
         facility_level_nssp_data = pl.scan_parquet(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
-    elif state_report_date in available_state_level_reports:
-        logger.info(
-            "State-level data available for the "
-            "given report date, but no facility level data"
-        )
+    if state_report_date in available_state_level_reports:
+        logger.info("State-level data available for the " "given report date.")
         state_datafile = f"{state_report_date}.parquet"
         state_level_nssp_data = pl.scan_parquet(
             Path(state_level_nssp_data_dir, state_datafile)
         )
-    else:
+    if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
-            "No data available for the requested " f"report date {report_date}"
+            "No data available for the requested report date " f"{report_date}"
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))

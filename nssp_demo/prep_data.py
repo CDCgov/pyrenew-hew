@@ -25,9 +25,14 @@ def process_state_level_data(
             }
         )
 
+    disease_map = {
+        "COVID-19": "COVID-19/Omicron",
+    }
+    disease_key = disease_map.get(disease, disease)
+
     return (
         state_level_nssp_data.filter(
-            pl.col("disease") == disease,
+            pl.col("disease").is_in([disease_key, "Total"]),
             pl.col("metric") == "count_ed_visits",
             pl.col("geo_value") == state_abb,
             pl.col("geo_type") == "state",
@@ -41,6 +46,11 @@ def process_state_level_data(
                 pl.col("disease").cast(pl.Utf8),
                 pl.col("value").alias("ed_visits"),
             ]
+        )
+        .with_columns(
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace({v: k for k, v in disease_map.items()}),
         )
         .sort(["date", "disease"])
         .collect()
@@ -59,7 +69,7 @@ def aggregate_facility_level_nssp_to_state(
                 "date": pl.Date,
                 "geo_value": pl.Utf8,
                 "disease": pl.Utf8,
-                "value": pl.Float64,
+                "ed_visits": pl.Float64,
             }
         )
 
@@ -169,9 +179,6 @@ def process_and_save_state(
     )
 
     right_truncation_offset = (report_date - last_training_date).days
-
-    if state_level_report_date is None:
-        state_level_report_date = report_date
 
     aggregated_facility_data = aggregate_facility_level_nssp_to_state(
         facility_level_nssp_data=facility_level_nssp_data,
@@ -329,17 +336,15 @@ def main(
         with open(facility_datapath) as facility_file:
             facility_level_nssp_data = pl.scan_parquet(facility_file)
         dat = facility_level_nssp_data
-    elif state_report_date in available_state_level_reports:
-        logger.info(
-            "State-level data available for the "
-            "given report date, but no facility level data"
-        )
+    if state_report_date in available_state_level_reports:
+        logger.info("State-level data available for the " "given report date.")
         state_datafile = f"{state_report_date}.parquet"
         state_datapath = Path(state_level_nssp_data_dir, state_datafile)
         with open(state_datapath) as state_datafile:
             state_level_nssp_data = pl.scan_parquet(state_datafile)
-        dat = state_level_nssp_data
-    else:
+        if dat is None:
+            dat = state_level_nssp_data
+    if dat is None:
         raise ValueError(
             "No data available for the requested " f"report date {report_date}"
         )
