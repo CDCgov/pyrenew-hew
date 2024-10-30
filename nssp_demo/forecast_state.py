@@ -45,6 +45,15 @@ def postprocess_forecast(model_run_dir: Path) -> None:
     return None
 
 
+def get_available_reports(
+    data_dir: str | Path, glob_pattern: str = "*.parquet"
+):
+    return [
+        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        for f in Path(data_dir).glob(glob_pattern)
+    ]
+
+
 def main(
     disease: str,
     report_date: str,
@@ -63,14 +72,13 @@ def main(
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    available_facility_level_reports = [
-        datetime.strptime(f.stem, "%Y-%m-%d").date()
-        for f in Path(facility_level_nssp_data_dir).glob("*.parquet")
-    ]
-    available_state_level_reports = [
-        datetime.strptime(f.stem, "%Y-%m-%d").date()
-        for f in Path(state_level_nssp_data_dir).glob("*.parquet")
-    ]
+    available_facility_level_reports = get_available_reports(
+        facility_level_nssp_data_dir
+    )
+
+    available_state_level_reports = get_available_reports(
+        state_level_nssp_data_dir
+    )
 
     if report_date == "latest":
         report_date = max(available_facility_level_reports)
