@@ -150,50 +150,6 @@ def process_and_save_state(
         .to_list()[0]
     )
 
-    generation_interval_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "generation_interval")
-            & (pl.col("end_date").is_null())  # most recent estimate
-        )
-        .collect()
-        .get_column("value")
-        .to_list()[0]
-    )
-
-    delay_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "delay")
-            & (pl.col("end_date").is_null())  # most recent estimate
-        )
-        .collect()
-        .get_column("value")
-        .to_list()[0]
-    )
-
-    right_truncation_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value") == state_abb)
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "right_truncation")
-            & (pl.col("end_date").is_null())
-        )
-        .with_columns(
-            # get estimate from nearest the report date
-            diff_from_report=pl.col("reference_date") - report_date
-        )
-        .abs()
-        .filter(pl.col("diff_from_report") == pl.col("diff_from_report").min())
-        .collect()
-        .get_column("value")
-        .to_list()[0]
-    )
-
-    right_truncation_offset = (report_date - last_training_date).days
-
     aggregated_facility_data = aggregate_facility_level_nssp_to_state(
         facility_level_nssp_data=facility_level_nssp_data,
         state_abb=state_abb,
@@ -230,40 +186,89 @@ def process_and_save_state(
 
     verify_no_date_gaps(data_to_save)
 
-    train_disease_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "train", pl.col("disease") == disease
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    train_total_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "train", pl.col("disease") == "Total"
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    data_for_model_fit = {
-        "inf_to_hosp_pmf": delay_pmf,
-        "generation_interval_pmf": generation_interval_pmf,
-        "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_hospital_admissions": train_disease_ed_visits,
-        "data_observed_total_hospital_admissions": train_total_ed_visits,
-        "state_pop": state_pop,
-        "right_truncation_offset": right_truncation_offset,
-    }
-
     state_dir = os.path.join(model_batch_dir, state_abb)
     os.makedirs(state_dir, exist_ok=True)
-    if logger is not None:
-        logger.info(f"Saving {state_abb} to {state_dir}")
 
     if mode == "forecast":
+        if logger is not None:
+            logger.info(f"Saving {state_abb} to {state_dir}")
         data_to_save.write_csv(Path(state_dir, "data.tsv"), sep="\t")
+
     elif mode == "eval":
+        generation_interval_pmf = (
+            param_estimates.filter(
+                (pl.col("geo_value").is_null())
+                & (pl.col("disease") == disease)
+                & (pl.col("parameter") == "generation_interval")
+                & (pl.col("end_date").is_null())  # most recent estimate
+            )
+            .collect()
+            .get_column("value")
+            .to_list()[0]
+        )
+
+        delay_pmf = (
+            param_estimates.filter(
+                (pl.col("geo_value").is_null())
+                & (pl.col("disease") == disease)
+                & (pl.col("parameter") == "delay")
+                & (pl.col("end_date").is_null())  # most recent estimate
+            )
+            .collect()
+            .get_column("value")
+            .to_list()[0]
+        )
+
+        right_truncation_pmf = (
+            param_estimates.filter(
+                (pl.col("geo_value") == state_abb)
+                & (pl.col("disease") == disease)
+                & (pl.col("parameter") == "right_truncation")
+                & (pl.col("end_date").is_null())
+            )
+            .with_columns(
+                # get estimate from nearest the report date
+                diff_from_report=pl.col("reference_date") - report_date
+            )
+            .abs()
+            .filter(
+                pl.col("diff_from_report") == pl.col("diff_from_report").min()
+            )
+            .collect()
+            .get_column("value")
+            .to_list()[0]
+        )
+
+        right_truncation_offset = (report_date - last_training_date).days
+
+        train_disease_ed_visits = (
+            data_to_save.filter(
+                pl.col("data_type") == "train", pl.col("disease") == disease
+            )
+            .get_column("ed_visits")
+            .to_list()
+        )
+
+        train_total_ed_visits = (
+            data_to_save.filter(
+                pl.col("data_type") == "train", pl.col("disease") == "Total"
+            )
+            .get_column("ed_visits")
+            .to_list()
+        )
+
+        data_for_model_fit = {
+            "inf_to_hosp_pmf": delay_pmf,
+            "generation_interval_pmf": generation_interval_pmf,
+            "right_truncation_pmf": right_truncation_pmf,
+            "data_observed_disease_hospital_admissions": train_disease_ed_visits,
+            "data_observed_total_hospital_admissions": train_total_ed_visits,
+            "state_pop": state_pop,
+            "right_truncation_offset": right_truncation_offset,
+        }
+        if logger is not None:
+            logger.info(f"Saving {state_abb} to {state_dir}")
+
         with open(
             Path(state_dir, "data_for_model_fit.json"), "w"
         ) as json_file:
