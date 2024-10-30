@@ -7,6 +7,12 @@ from pathlib import Path
 
 import polars as pl
 
+_disease_map = {
+    "COVID-19": "COVID-19/Omicron",
+}
+
+_inverse_disease_map = {v: k for k, v in _disease_map.items()}
+
 
 def process_state_level_data(
     state_level_nssp_data: pl.LazyFrame,
@@ -25,10 +31,7 @@ def process_state_level_data(
             }
         )
 
-    disease_map = {
-        "COVID-19": "COVID-19/Omicron",
-    }
-    disease_key = disease_map.get(disease, disease)
+    disease_key = _disease_map.get(disease, disease)
 
     return (
         state_level_nssp_data.filter(
@@ -50,7 +53,7 @@ def process_state_level_data(
         .with_columns(
             disease=pl.col("disease")
             .cast(pl.Utf8)
-            .replace({v: k for k, v in disease_map.items()}),
+            .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect()
@@ -73,10 +76,7 @@ def aggregate_facility_level_nssp_to_state(
             }
         )
 
-    disease_map = {
-        "COVID-19": "COVID-19/Omicron",
-    }
-    disease_key = disease_map.get(disease, disease)
+    disease_key = _disease_map.get(disease, disease)
 
     return (
         facility_level_nssp_data.filter(
@@ -90,7 +90,7 @@ def aggregate_facility_level_nssp_to_state(
         .with_columns(
             disease=pl.col("disease")
             .cast(pl.Utf8)
-            .replace({v: k for k, v in disease_map.items()}),
+            .replace(_inverse_disease_map),
             geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
