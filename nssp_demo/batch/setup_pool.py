@@ -36,6 +36,7 @@ def main(pool_name: str) -> None:
     pool_config.mount_configuration = blob.get_node_mount_config(
         storage_containers=[
             "nssp-etl",
+            "nssp-archival-vintages",
             "prod-param-estimates",
             "pyrenew-test-output",
         ],

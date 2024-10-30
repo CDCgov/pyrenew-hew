@@ -53,7 +53,7 @@ def main(job_id, pool_id, container_image) -> None:
         "--state-level-nssp-data-dir "
         "nssp_demo/nssp-archival-vintages/gold "
         "--param-data-dir nssp_demo/params "
-        "--output-data-dir nssp_demo/private_data"
+        "--output-data-dir nssp_demo/private_data "
         "--report-date {report_date:%Y-%m-%d} "
         "--last-data-date {last_data_date:%Y-%m-%d}"
         "'"
