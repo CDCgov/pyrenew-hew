@@ -46,7 +46,7 @@ def main(job_id, pool_id, container_image) -> None:
         "python nssp_demo/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 90 "
+        "--n-training-days 180 "
         "--n-warmup 1000 "
         "--n-samples 500 "
         "--facility-level-nssp-data-dir nssp_demo/nssp-etl/gold "
@@ -72,11 +72,9 @@ def main(job_id, pool_id, container_image) -> None:
         .to_list()
     )
 
-    all_states = ["VT", "MT"]
-
     report_dates = [
         datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
-        for x in range(3)
+        for x in range(30)
     ]
 
     for disease in ["Influenza"]:
