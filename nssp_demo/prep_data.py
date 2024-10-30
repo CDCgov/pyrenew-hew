@@ -100,6 +100,14 @@ def aggregate_facility_level_nssp_to_state(
     )
 
 
+def verify_no_date_gaps(df: pl.DataFrame):
+    expected_length = df.select(
+        dur=((pl.col("date").max() - pl.col("date").min()).dt.total_days() + 1)
+    ).to_numpy()[0]
+    if not df.height == 2 * expected_length:
+        raise ValueError("Data frame appears to have date gaps")
+
+
 def process_and_save_state(
     state_abb,
     disease,
@@ -194,22 +202,14 @@ def process_and_save_state(
         first_training_date=first_training_date,
         state_level_report_date=state_level_report_date,
     )
-    print(state_level_data)
 
     if aggregated_facility_data.height > 0:
-        if state_level_data.height > 0:
-            print("Unfiltered state level data")
-            print(state_level_data)
-
         first_facility_level_data_date = aggregated_facility_data.get_column(
             "date"
         ).min()
         state_level_data = state_level_data.filter(
             pl.col("date") < first_facility_level_data_date
         )
-        if state_level_data.height > 0:
-            print("filtered state-level data")
-            print(state_level_data)
 
     data_to_save = (
         pl.concat([state_level_data, aggregated_facility_data])
@@ -222,7 +222,7 @@ def process_and_save_state(
         .sort(["date", "disease"])
     )
 
-    print(data_to_save)
+    verify_no_date_gaps(data_to_save)
 
     train_disease_ed_visits = (
         data_to_save.filter(
