@@ -99,7 +99,10 @@ def main(
             f"for {report_date}"
         )
     else:
-        state_report_date = None
+        raise ValueError(
+            "Requested report date is earlier than the first "
+            "state-level vintage. This is not currently supported"
+        )
 
     logger.info(f"Report date: {report_date}")
     if state_report_date is not None:
