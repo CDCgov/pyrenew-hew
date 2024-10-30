@@ -117,7 +117,13 @@ def process_and_save_state(
     logger=None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
+    mode="forecast",
 ) -> None:
+    if mode not in ["forecast", "eval"]:
+        raise ValueError(
+            f"Invalid mode: {mode}. Mode must be 'forecast' or 'eval'."
+        )
+
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
             "Must provide at least one "
@@ -232,26 +238,9 @@ def process_and_save_state(
         .to_list()
     )
 
-    test_disease_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "test",
-            pl.col("disease") == disease,
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
     train_total_ed_visits = (
         data_to_save.filter(
             pl.col("data_type") == "train", pl.col("disease") == "Total"
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    test_total_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "test", pl.col("disease") == "Total"
         )
         .get_column("ed_visits")
         .to_list()
@@ -262,21 +251,22 @@ def process_and_save_state(
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "data_observed_disease_hospital_admissions": train_disease_ed_visits,
-        "data_observed_disease_hospital_admissions_test": test_disease_ed_visits,
         "data_observed_total_hospital_admissions": train_total_ed_visits,
-        "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
 
     state_dir = os.path.join(model_batch_dir, state_abb)
     os.makedirs(state_dir, exist_ok=True)
-
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
-    data_to_save.write_csv(Path(state_dir, "data.csv"))
 
-    with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
-        json.dump(data_for_model_fit, json_file)
+    if mode == "forecast":
+        data_to_save.write_csv(Path(state_dir, "data.tsv"), sep="\t")
+    elif mode == "eval":
+        with open(
+            Path(state_dir, "data_for_model_fit.json"), "w"
+        ) as json_file:
+            json.dump(data_for_model_fit, json_file)
 
     return None
