@@ -79,6 +79,8 @@ def main(
     available_state_level_reports = get_available_reports(
         state_level_nssp_data_dir
     )
+    first_available_state_report = min(available_state_level_reports)
+    last_available_state_report = max(available_state_level_reports)
 
     if report_date == "latest":
         report_date = max(available_facility_level_reports)
@@ -87,11 +89,21 @@ def main(
 
     if report_date in available_state_level_reports:
         state_report_date = report_date
+    elif report_date > last_available_state_report:
+        state_report_date = last_available_state_report
+    elif report_date > first_available_state_report:
+        raise ValueError(
+            "Dataset appear to be missing some state-level "
+            f"reports. First entry is {first_available_state_report}, "
+            f"last is {last_available_state_report}, but no entry "
+            f"for {report_date}"
+        )
     else:
-        state_report_date = max(available_state_level_reports)
+        state_report_date = None
 
     logger.info(f"Report date: {report_date}")
-    logger.info(f"Using state-level data as of: {state_report_date}")
+    if state_report_date is not None:
+        logger.info(f"Using state-level data as of: {state_report_date}")
 
     # + 1 because max date in dataset is report_date - 1
     last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
@@ -122,7 +134,7 @@ def main(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
     if state_report_date in available_state_level_reports:
-        logger.info("State-level data available for the " "given report date.")
+        logger.info("State-level data available for the given report " "date.")
         state_datafile = f"{state_report_date}.parquet"
         state_level_nssp_data = pl.scan_parquet(
             Path(state_level_nssp_data_dir, state_datafile)
