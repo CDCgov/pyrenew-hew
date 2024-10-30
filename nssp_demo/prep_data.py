@@ -178,9 +178,12 @@ def process_and_save_state(
             & (pl.col("parameter") == "right_truncation")
             & (pl.col("end_date").is_null())
         )
-        .filter(
-            pl.col("reference_date") == pl.col("reference_date").max()
-        )  # estimates nearest the report date
+        .with_columns(
+            # get estimate from nearest the report date
+            diff_from_report=pl.col("reference_date") - report_date
+        )
+        .abs()
+        .filter(pl.col("diff_from_report") == pl.col("diff_from_report").min())
         .collect()
         .get_column("value")
         .to_list()[0]
