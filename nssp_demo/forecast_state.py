@@ -67,7 +67,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
-    last_training_date: str = None,
+    exclude_last_n_days: int = 0,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -93,13 +93,8 @@ def main(
     logger.info(f"Report date: {report_date}")
     logger.info(f"Using state-level data as of: {state_report_date}")
 
-    if last_training_date == "latest":
-        # + 1 because max date in dataset is report_date - 1
-        last_training_date = report_date - timedelta(days=1)
-    else:
-        last_training_date = datetime.strptime(
-            last_training_date, "%Y-%m-%d"
-        ).date()
+    # + 1 because max date in dataset is report_date - 1
+    last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
 
     if last_training_date >= report_date:
         raise ValueError(
@@ -110,7 +105,6 @@ def main(
 
     logger.info(f"last training date: {last_training_date}")
 
-    # +1 because max date in dataset is report_date - 1
     first_training_date = last_training_date - timedelta(
         days=n_training_days - 1
     )
@@ -295,12 +289,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--last-training-date",
-    type=str,
-    default="latest",
+    "--exclude-last-n-days",
+    type=int,
+    default=0,
     help=(
-        "Last date to use for model training in "
-        "YYYY-MM-DD format or 'latest' (default: latest)."
+        "Optionally exclude the final n days of available training "
+        "data (Default: 0, i.e. exclude no available data"
     ),
 )
 
