@@ -1,4 +1,5 @@
 import argparse
+import datetime
 
 import polars as pl
 from azure.batch import models
@@ -26,6 +27,10 @@ def main(job_id, pool_id, container_image) -> None:
                 "target": "/pyrenew-hew/nssp_demo/nssp-etl",
             },
             {
+                "source": "nssp-archival-vintages",
+                "target": "/pyrenew-hew/nssp_demo/nssp-archival-vintages",
+            },
+            {
                 "source": "prod-param-estimates",
                 "target": "/pyrenew-hew/nssp_demo/params",
             },
@@ -41,12 +46,16 @@ def main(job_id, pool_id, container_image) -> None:
         "python nssp_demo/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 365 "
+        "--n-training-days 180 "
         "--n-warmup 1000 "
         "--n-samples 500 "
-        "--nssp-data-dir nssp_demo/nssp-etl/gold "
+        "--facility-level-nssp-data-dir nssp_demo/nssp-etl/gold "
+        "--state-level-nssp-data-dir "
+        "nssp_demo/nssp-archival-vintages/gold "
         "--param-data-dir nssp_demo/params "
-        "--output-data-dir nssp_demo/private_data"
+        "--output-data-dir nssp_demo/private_data "
+        "--report-date {report_date:%Y-%m-%d} "
+        "--last-training-date {last_data_date:%Y-%m-%d}"
         "'"
     )
 
@@ -63,14 +72,27 @@ def main(job_id, pool_id, container_image) -> None:
         .to_list()
     )
 
-    for disease in ["COVID-19", "Influenza"]:
-        for state in all_states:
-            task = get_task_config(
-                f"{job_id}-{state}-{disease}",
-                base_call=base_call.format(state=state, disease=disease),
-                container_settings=container_settings,
-            )
-            client.task.add(job_id, task)
+    report_dates = [
+        datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
+        for x in range(30)
+    ]
+
+    for disease in ["Influenza"]:
+        for report_date in report_dates:
+            last_data_date = report_date - datetime.timedelta(days=5)
+            for state in all_states:
+                task = get_task_config(
+                    f"{job_id}-{state}-{disease}-{report_date}",
+                    base_call=base_call.format(
+                        state=state,
+                        disease=disease,
+                        report_date=report_date,
+                        last_data_date=last_data_date,
+                    ),
+                    container_settings=container_settings,
+                )
+                client.task.add(job_id, task)
+                pass
             pass
         pass
 

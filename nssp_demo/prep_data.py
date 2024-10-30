@@ -1,49 +1,129 @@
-import argparse
 import json
-import logging
 import os
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
+
+_disease_map = {
+    "COVID-19": "COVID-19/Omicron",
+}
+
+_inverse_disease_map = {v: k for k, v in _disease_map.items()}
+
+
+def process_state_level_data(
+    state_level_nssp_data: pl.LazyFrame,
+    state_abb,
+    disease: str,
+    first_training_date,
+    state_level_report_date,
+) -> pl.DataFrame:
+    if state_level_nssp_data is None:
+        return pl.DataFrame(
+            schema={
+                "date": pl.Date,
+                "geo_value": pl.Utf8,
+                "disease": pl.Utf8,
+                "ed_visits": pl.Float64,
+            }
+        )
+
+    disease_key = _disease_map.get(disease, disease)
+
+    return (
+        state_level_nssp_data.filter(
+            pl.col("disease").is_in([disease_key, "Total"]),
+            pl.col("metric") == "count_ed_visits",
+            pl.col("geo_value") == state_abb,
+            pl.col("geo_type") == "state",
+            pl.col("reference_date") >= first_training_date,
+            pl.col("report_date") == state_level_report_date,
+        )
+        .select(
+            [
+                pl.col("reference_date").alias("date"),
+                pl.col("geo_value").cast(pl.Utf8),
+                pl.col("disease").cast(pl.Utf8),
+                pl.col("value").alias("ed_visits"),
+            ]
+        )
+        .with_columns(
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
+        )
+        .sort(["date", "disease"])
+        .collect()
+    )
+
+
+def aggregate_facility_level_nssp_to_state(
+    facility_level_nssp_data: pl.LazyFrame,
+    state_abb: str,
+    disease: str,
+    first_training_date: str,
+) -> pl.DataFrame:
+    if facility_level_nssp_data is None:
+        return pl.DataFrame(
+            schema={
+                "date": pl.Date,
+                "geo_value": pl.Utf8,
+                "disease": pl.Utf8,
+                "ed_visits": pl.Float64,
+            }
+        )
+
+    disease_key = _disease_map.get(disease, disease)
+
+    return (
+        facility_level_nssp_data.filter(
+            pl.col("disease").is_in([disease_key, "Total"]),
+            pl.col("metric") == "count_ed_visits",
+            pl.col("geo_value") == state_abb,
+            pl.col("reference_date") >= first_training_date,
+        )
+        .group_by(["reference_date", "disease"])
+        .agg(pl.col("value").sum().alias("ed_visits"))
+        .with_columns(
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
+            geo_value=pl.lit(state_abb).cast(pl.Utf8),
+        )
+        .rename({"reference_date": "date"})
+        .sort(["date", "disease"])
+        .select(["date", "geo_value", "disease", "ed_visits"])
+        .collect()
+    )
+
+
+def verify_no_date_gaps(df: pl.DataFrame):
+    expected_length = df.select(
+        dur=((pl.col("date").max() - pl.col("date").min()).dt.total_days() + 1)
+    ).to_numpy()[0]
+    if not df.height == 2 * expected_length:
+        raise ValueError("Data frame appears to have date gaps")
 
 
 def process_and_save_state(
     state_abb,
     disease,
-    nssp_data,
     report_date,
+    state_level_report_date,
     first_training_date,
     last_training_date,
     param_estimates,
     model_batch_dir,
     logger=None,
+    facility_level_nssp_data: pl.LazyFrame = None,
+    state_level_nssp_data: pl.LazyFrame = None,
 ) -> None:
-    disease_map = {
-        "COVID-19": "COVID-19/Omicron",
-        "Influenza": "Influenza",
-        "RSV": "RSV",
-        "Total": "Total",
-    }
-
-    data_to_save = (
-        nssp_data.filter(
-            (pl.col("disease").is_in([disease_map[disease], "Total"]))
-            & (pl.col("metric") == "count_ed_visits")
-            & (pl.col("geo_value") == state_abb)
-            & (pl.col("reference_date") >= first_training_date)
+    if facility_level_nssp_data is None and state_level_nssp_data is None:
+        raise ValueError(
+            "Must provide at least one "
+            "of facility-level and state-level"
+            "NSSP data"
         )
-        .group_by(["reference_date", "disease"])
-        .agg(pl.col("value").sum().alias("ed_visits"))
-        .with_columns(
-            pl.when(pl.col("reference_date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("test"))
-            .alias("data_type")
-        )
-        .rename({"reference_date": "date"})
-        .sort(["date", "disease"])
-    )
 
     facts = pl.read_csv(
         "https://raw.githubusercontent.com/k5cents/usa/"
@@ -94,13 +174,13 @@ def process_and_save_state(
             & (pl.col("disease") == disease)
             & (pl.col("parameter") == "right_truncation")
             & (pl.col("end_date").is_null())
-            & (
-                pl.col("reference_date") <= report_date
-            )  # estimates nearest the report date
         )
-        .filter(
-            pl.col("reference_date") == pl.col("reference_date").max()
-        )  # estimates nearest the report date
+        .with_columns(
+            # get estimate from nearest the report date
+            diff_from_report=pl.col("reference_date") - report_date
+        )
+        .abs()
+        .filter(pl.col("diff_from_report") == pl.col("diff_from_report").min())
         .collect()
         .get_column("value")
         .to_list()[0]
@@ -108,40 +188,71 @@ def process_and_save_state(
 
     right_truncation_offset = (report_date - last_training_date).days
 
+    aggregated_facility_data = aggregate_facility_level_nssp_to_state(
+        facility_level_nssp_data=facility_level_nssp_data,
+        state_abb=state_abb,
+        disease=disease,
+        first_training_date=first_training_date,
+    )
+
+    state_level_data = process_state_level_data(
+        state_level_nssp_data=state_level_nssp_data,
+        state_abb=state_abb,
+        disease=disease,
+        first_training_date=first_training_date,
+        state_level_report_date=state_level_report_date,
+    )
+
+    if aggregated_facility_data.height > 0:
+        first_facility_level_data_date = aggregated_facility_data.get_column(
+            "date"
+        ).min()
+        state_level_data = state_level_data.filter(
+            pl.col("date") < first_facility_level_data_date
+        )
+
+    data_to_save = (
+        pl.concat([state_level_data, aggregated_facility_data])
+        .with_columns(
+            pl.when(pl.col("date") <= last_training_date)
+            .then(pl.lit("train"))
+            .otherwise(pl.lit("test"))
+            .alias("data_type"),
+        )
+        .sort(["date", "disease"])
+    )
+
+    verify_no_date_gaps(data_to_save)
+
     train_disease_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "train")
-            & (pl.col("disease") == disease_map[disease])
+            pl.col("data_type") == "train", pl.col("disease") == disease
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
 
     test_disease_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "test")
-            & (pl.col("disease") == disease_map[disease])
+            pl.col("data_type") == "test",
+            pl.col("disease") == disease,
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
 
     train_total_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "train") & (pl.col("disease") == "Total")
+            pl.col("data_type") == "train", pl.col("disease") == "Total"
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
 
     test_total_ed_visits = (
         data_to_save.filter(
-            (pl.col("data_type") == "test") & (pl.col("disease") == "Total")
+            pl.col("data_type") == "test", pl.col("disease") == "Total"
         )
-        .collect()
         .get_column("ed_visits")
         .to_list()
     )
@@ -163,141 +274,9 @@ def process_and_save_state(
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {state_dir}")
-    data_to_save.collect().write_csv(Path(state_dir, "data.csv"))
+    data_to_save.write_csv(Path(state_dir, "data.csv"))
 
     with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
 
     return None
-
-
-def main(
-    disease,
-    report_date,
-    nssp_data_dir,
-    param_data_dir,
-    output_data_dir,
-    training_day_offset,
-    n_training_days,
-):
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-
-    if report_date == "latest":
-        report_date = max(
-            f.stem for f in Path(nssp_data_dir).glob("*.parquet")
-        )
-
-    report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
-
-    logger.info(f"Report date: {report_date}")
-
-    last_training_date = report_date - timedelta(days=training_day_offset + 1)
-    # +1 because max date in dataset is report_date - 1
-    first_training_date = last_training_date - timedelta(
-        days=n_training_days - 1
-    )
-
-    datafile = f"{report_date}.parquet"
-    nssp_data = pl.scan_parquet(Path(nssp_data_dir, datafile))
-    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-
-    excluded_states = ["GU", "MO", "WY"]
-
-    all_states = (
-        nssp_data.select(pl.col("geo_value").unique())
-        .filter(~pl.col("geo_value").is_in(excluded_states))
-        .collect()
-        .get_column("geo_value")
-        .to_list()
-    )
-    all_states.sort()
-
-    model_dir_name = (
-        f"{disease.lower()}_r_{report_date}_f_"
-        f"{first_training_date}_t_{last_training_date}"
-    )
-
-    model_batch_dir = Path(output_data_dir, model_dir_name)
-
-    os.makedirs(model_batch_dir, exist_ok=True)
-
-    for state_abb in all_states:
-        logger.info(f"Processing {state_abb}")
-        process_and_save_state(
-            state_abb=state_abb,
-            disease=disease,
-            nssp_data=nssp_data,
-            report_date=report_date,
-            first_training_date=first_training_date,
-            last_training_date=last_training_date,
-            param_estimates=param_estimates,
-            model_batch_dir=model_batch_dir,
-            logger=logger,
-        )
-    logger.info("Data preparation complete.")
-
-    return None
-
-
-parser = argparse.ArgumentParser(
-    description="Create fit data for disease modeling."
-)
-parser.add_argument(
-    "--disease",
-    type=str,
-    required=True,
-    help="Disease to model (e.g., COVID-19, Influenza, RSV)",
-)
-parser.add_argument(
-    "--report-date",
-    type=str,
-    default="latest",
-    help="Report date in YYYY-MM-DD format or latest (default: latest)",
-)
-
-parser.add_argument(
-    "--nssp-data-dir",
-    type=Path,
-    default=Path("private_data", "nssp_etl_gold"),
-    help="Directory in which to look for NSSP input data.",
-)
-
-parser.add_argument(
-    "--param-data-dir",
-    type=Path,
-    default=Path("private_data", "prod_param_estimates"),
-    help=(
-        "Directory in which to look for parameter estimates"
-        "such as delay PMFs."
-    ),
-)
-
-parser.add_argument(
-    "--output-data-dir",
-    type=Path,
-    default="private_data",
-    help="Directory in which to save output data.",
-)
-
-parser.add_argument(
-    "--training-day-offset",
-    type=int,
-    default=7,
-    help=(
-        "Number of days before the reference day "
-        "to use as test data (default: 7)"
-    ),
-)
-
-parser.add_argument(
-    "--n-training-days",
-    type=int,
-    default=90,
-    help="Number of training days (default: 90)",
-)
-
-
-if __name__ == "__main__":
-    args = parser.parse_args()
-    main(**vars(args))

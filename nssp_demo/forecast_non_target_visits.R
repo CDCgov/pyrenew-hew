@@ -99,7 +99,7 @@ n_forecast_days <- argv$n_forecast_days
 n_samples <- argv$n_samples
 
 disease_name_nssp_map <- c(
-  "covid-19" = "COVID-19/Omicron",
+  "covid-19" = "COVID-19",
   "influenza" = "Influenza"
 )
 
