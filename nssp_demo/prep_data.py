@@ -177,9 +177,8 @@ def process_and_save_state(
         )
         .with_columns(
             # get estimate from nearest the report date
-            diff_from_report=pl.col("reference_date") - report_date
+            diff_from_report=(pl.col("reference_date") - report_date).abs()
         )
-        .abs()
         .filter(pl.col("diff_from_report") == pl.col("diff_from_report").min())
         .collect()
         .get_column("value")
