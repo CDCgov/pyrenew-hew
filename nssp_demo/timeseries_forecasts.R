@@ -92,7 +92,9 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     n_samples,
     target_col = "ed_visits_other", output_col = "other_ed_visits"
   )
-  forecast_baseline_count <- fit_and_forecast(target_and_other_data, n_forecast_days,
+  forecast_baseline_count <- fit_and_forecast(
+    target_and_other_data,
+    n_forecast_days,
     n_samples,
     target_col = "ed_visits_target",
     output_col = "ed_visit_baseline_count_forecast"
@@ -102,7 +104,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     dplyr::inner_join(
       forecast_other,
       forecast_baseline_count,
-      by = ".draw"
+      by = c(".draw", "date")
     ) |>
     dplyr::mutate(
       prop_disease_ed_visits =
@@ -110,13 +112,19 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
           other_ed_visits
     )
 
-  save_path_other <- path(model_run_dir, "other_ed_visits_forecast",
+  save_path_other <- path(
+    model_run_dir,
+    "other_ed_visits_forecast",
     ext = "parquet"
   )
-  save_path_baseline_count <- path(model_run_dir, "baseline_count_ed_visits_forecast",
+  save_path_baseline_count <- path(
+    model_run_dir,
+    "baseline_count_ed_visits_forecast",
     ext = "parquet"
   )
-  save_path_baseline_prop <- path(model_run_dir, "baseline_prop_ed_visits_forecast",
+  save_path_baseline_prop <- path(
+    model_run_dir,
+    "baseline_prop_ed_visits_forecast",
     ext = "parquet"
   )
   write_parquet(forecast_other, save_path_other)
