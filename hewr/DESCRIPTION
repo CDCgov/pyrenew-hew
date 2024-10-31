@@ -29,4 +29,7 @@ Imports:
     tibble,
     tidybayes,
     tidyr,
-    urca
+    urca,
+    pak,
+    epipredict,
+    epiprocess
