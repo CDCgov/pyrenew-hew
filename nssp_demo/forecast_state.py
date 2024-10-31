@@ -15,13 +15,13 @@ from fit_model import fit_and_save_model  # noqa
 from generate_predictive import generate_and_save_predictions  # noqa
 
 
-def forecast_denominator(
+def baseline_forecasts(
     model_run_dir: Path, n_forecast_days: int, n_samples: int
 ) -> None:
     subprocess.run(
         [
             "Rscript",
-            "nssp_demo/forecast_non_target_visits.R",
+            "nssp_demo/timeseries_forecasts.R",
             "--model-run-dir",
             f"{model_run_dir}",
             "--n-forecast-days",
@@ -189,7 +189,7 @@ def main(
 
     logger.info("Performing non-target pathogen forecasting...")
     n_denominator_samples = n_samples * n_chains
-    forecast_denominator(model_run_dir, n_forecast_days, n_denominator_samples)
+    baseline_forecasts(model_run_dir, n_forecast_days, n_denominator_samples)
     logger.info("Forecasting complete.")
 
     logger.info("Postprocessing forecast...")
