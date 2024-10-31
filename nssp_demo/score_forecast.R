@@ -134,7 +134,7 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     to_score |>
       filter(disease == "prop_disease_ed_visits") |>
       mutate(model = "pyrenew-hew"),
-    forecast_unit = c("date"),
+    forecast_unit = c("date", "model"),
     observed = "true_value",
     sample_id = ".draw",
     predicted = ".value",
