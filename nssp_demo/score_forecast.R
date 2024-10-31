@@ -131,9 +131,7 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     max()
 
   scored <- score_single_run(
-    to_score |>
-      filter(disease == "prop_disease_ed_visits") |>
-      mutate(model = "pyrenew-hew"),
+    to_score,
     forecast_unit = c("date", "model"),
     observed = "true_value",
     sample_id = ".draw",
@@ -145,7 +143,7 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
 }
 
 # Create a parser
-p <- arg_parser("Score a state forecast") |>
+p <- arg_parser("Score a single location forecast") |>
   add_argument(
     "model-run-dir",
     help = "Directory containing the model data and output."
