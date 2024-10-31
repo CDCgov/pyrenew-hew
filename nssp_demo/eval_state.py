@@ -2,18 +2,14 @@ import argparse
 import logging
 import os
 import subprocess
-from datetime import datetime, timedelta
 from pathlib import Path
 
-import numpyro
 import polars as pl
-from prep_data import process_and_save_state
-
-numpyro.set_host_device_count(4)
-
-from fit_model import fit_and_save_model  # noqa
-from generate_predictive import generate_and_save_predictions  # noqa
-from forecast_state import get_available_reports  # noqa
+from prep_data import (
+    _disease_map_nssp,
+    parse_model_batch_dir_name,
+    process_state_level_data,
+)
 
 
 def postprocess_forecast(model_run_dir: Path) -> None:
@@ -28,146 +24,61 @@ def postprocess_forecast(model_run_dir: Path) -> None:
     return None
 
 
+# Test values
+state = state_abb = "CA"
+model_batch_dir_name = "influenza_r_2024-10-29_f_2023-10-30_t_2024-10-28"
+latest_comprehensive_path = (
+    "private_data/nssp-archival-vintages/latest_comprehensive.parquet"
+)
+output_data_dir = "private_data/pyrenew-test-output"
+
+
 def main(
-    disease: str,
-    report_date: str,
     state: str,
     model_batch_dir_name: str,
-    facility_level_nssp_data_dir: Path | str,
-    state_level_nssp_data_dir: Path | str,
-    param_data_dir: Path | str,
+    latest_comprehensive_path: Path | str,
     output_data_dir: Path | str,
-    n_training_days: int,
-    n_forecast_days: int,
-    n_chains: int,
-    n_warmup: int,
-    n_samples: int,
-    exclude_last_n_days: int = 0,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    available_facility_level_reports = get_available_reports(
-        facility_level_nssp_data_dir
-    )
-
-    available_state_level_reports = get_available_reports(
-        state_level_nssp_data_dir
-    )
-    first_available_state_report = min(available_state_level_reports)
-    last_available_state_report = max(available_state_level_reports)
-
-    if report_date == "latest":
-        report_date = max(available_facility_level_reports)
-    else:
-        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
-
-    if report_date in available_state_level_reports:
-        state_report_date = report_date
-    elif report_date > last_available_state_report:
-        state_report_date = last_available_state_report
-    elif report_date > first_available_state_report:
-        raise ValueError(
-            "Dataset appear to be missing some state-level "
-            f"reports. First entry is {first_available_state_report}, "
-            f"last is {last_available_state_report}, but no entry "
-            f"for {report_date}"
-        )
-    else:
-        raise ValueError(
-            "Requested report date is earlier than the first "
-            "state-level vintage. This is not currently supported"
-        )
-
-    logger.info(f"Report date: {report_date}")
-    if state_report_date is not None:
-        logger.info(f"Using state-level data as of: {state_report_date}")
-
-    # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
-
-    if last_training_date >= report_date:
-        raise ValueError(
-            "Last training date must be before the report date. "
-            "Got a last training date of {last_training_date} "
-            "with a report date of {report_date}."
-        )
-
-    logger.info(f"last training date: {last_training_date}")
-
-    first_training_date = last_training_date - timedelta(
-        days=n_training_days - 1
-    )
-
-    logger.info(f"First training date {first_training_date}")
-
-    facility_level_nssp_data, state_level_nssp_data = None, None
-
-    if report_date in available_facility_level_reports:
-        logger.info(
-            "Facility level data available for " "the given report date"
-        )
-        facility_datafile = f"{report_date}.parquet"
-        facility_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, facility_datafile)
-        )
-    if state_report_date in available_state_level_reports:
-        logger.info("State-level data available for the given report " "date.")
-        state_datafile = f"{state_report_date}.parquet"
-        state_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, state_datafile)
-        )
-    if facility_level_nssp_data is None and state_level_nssp_data is None:
-        raise ValueError(
-            "No data available for the requested report date " f"{report_date}"
-        )
-
-    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-
     model_batch_dir = Path(output_data_dir, model_batch_dir_name)
-
     model_run_dir = Path(model_batch_dir, state)
 
-    os.makedirs(model_run_dir, exist_ok=True)
-
-    logger.info(f"Processing {state}")
-    process_and_save_state(
-        state_abb=state,
-        disease=disease,
-        facility_level_nssp_data=facility_level_nssp_data,
-        state_level_nssp_data=state_level_nssp_data,
-        report_date=report_date,
-        state_level_report_date=state_report_date,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        param_estimates=param_estimates,
-        model_batch_dir=model_batch_dir,
-        logger=logger,
-        mode="forecast",
+    disease, report_date, first_training_date, last_training_date = (
+        parse_model_batch_dir_name(model_batch_dir_name)
     )
-    logger.info("Data preparation complete.")
 
-    logger.info("Postprocessing forecast...")
+    state_level_nssp_data = pl.scan_parquet(latest_comprehensive_path)
+
+    state_level_data = (
+        process_state_level_data(
+            state_level_nssp_data=state_level_nssp_data,
+            state_abb=state,
+            disease=disease,
+            first_training_date=first_training_date,
+        )
+        .with_columns(
+            pl.when(pl.col("date") <= last_training_date)
+            .then(pl.lit("train"))
+            .otherwise(pl.lit("test"))
+            .alias("data_type"),
+        )
+        .sort(["date", "disease"])
+    )
+
+    state_level_data.write_csv(
+        Path(model_run_dir, "eval_data.tsv"), separator="\t"
+    )
+
     postprocess_forecast(model_run_dir)
-    logger.info("Postprocessing complete.")
-    logger.info(
-        "Single state pipeline complete "
-        f"for state {state} with "
-        f"report date {report_date}."
-    )
-
     return None
 
 
 parser = argparse.ArgumentParser(
     description="Create fit data for disease modeling."
 )
-parser.add_argument(
-    "--disease",
-    type=str,
-    required=True,
-    help="Disease to model (e.g., COVID-19, Influenza, RSV).",
-)
+
 
 parser.add_argument(
     "--state",
@@ -179,21 +90,6 @@ parser.add_argument(
     ),
 )
 
-parser.add_argument(
-    "--report-date",
-    type=str,
-    default="latest",
-    help="Report date in YYYY-MM-DD format or latest (default: latest).",
-)
-
-parser.add_argument(
-    "--facility-level-nssp-data-dir",
-    type=Path,
-    default=Path("private_data", "nssp_etl_gold"),
-    help=(
-        "Directory in which to look for facility-level NSSP " "ED visit data"
-    ),
-)
 
 parser.add_argument(
     "--state-level-nssp-data-dir",
@@ -203,13 +99,17 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--param-data-dir",
+    "--model_batch_dir_name",
     type=Path,
-    default=Path("private_data", "prod_param_estimates"),
-    help=(
-        "Directory in which to look for parameter estimates"
-        "such as delay PMFs."
-    ),
+    required=True,
+    help="todo",
+)
+
+parser.add_argument(
+    "--latest_comprehensive_path",
+    type=Path,
+    default="private_data/nssp-archival-vintages/latest_comprehensive.parquet",
+    help="File path to all comprehensive data.",
 )
 
 parser.add_argument(
@@ -217,55 +117,6 @@ parser.add_argument(
     type=Path,
     default="private_data",
     help="Directory in which to save output data.",
-)
-
-parser.add_argument(
-    "--n-training-days",
-    type=int,
-    default=180,
-    help="Number of training days (default: 180).",
-)
-
-parser.add_argument(
-    "--n-forecast-days",
-    type=int,
-    default=28,
-    help="Number of days ahead to forecast (default: 28).",
-)
-
-
-parser.add_argument(
-    "--n-chains",
-    type=int,
-    default=4,
-    help="Number of MCMC chains to run (default: 4).",
-)
-
-parser.add_argument(
-    "--n-warmup",
-    type=int,
-    default=1000,
-    help=("Number of warmup iterations per chain for NUTS" "(default: 1000)."),
-)
-
-parser.add_argument(
-    "--n-samples",
-    type=int,
-    default=1000,
-    help=(
-        "Number of posterior samples to draw per "
-        "chain using NUTS (default: 1000)."
-    ),
-)
-
-parser.add_argument(
-    "--exclude-last-n-days",
-    type=int,
-    default=0,
-    help=(
-        "Optionally exclude the final n days of available training "
-        "data (Default: 0, i.e. exclude no available data"
-    ),
 )
 
 

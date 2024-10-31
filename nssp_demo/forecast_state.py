@@ -147,6 +147,7 @@ def main(
     os.makedirs(model_run_dir, exist_ok=True)
 
     logger.info(f"Processing {state}")
+
     process_and_save_state(
         state_abb=state,
         disease=disease,
@@ -159,7 +160,6 @@ def main(
         param_estimates=param_estimates,
         model_batch_dir=model_batch_dir,
         logger=logger,
-        mode="forecast",
     )
     logger.info("Data preparation complete.")
 
