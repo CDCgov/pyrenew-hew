@@ -80,18 +80,43 @@ prep_truth_data <- function(truth_data_path) {
       values_to = "true_value"
     )
 
-  print(dat)
-
   return(dat)
 }
 
 read_and_score_location <- function(model_run_dir, data_ext = "csv") {
   message(glue::glue("Scoring {model_run_dir}..."))
-  forecast_path <- fs::path(model_run_dir, "forecast_samples.parquet")
+  forecast_path <- fs::path(
+    model_run_dir,
+    "forecast_samples.parquet"
+  )
+  baseline_path <- fs::path(
+    model_run_dir,
+    "baseline_prop_ed_visits_forecast.parquet"
+  )
+
   truth_path <- fs::path(model_run_dir, "data", ext = data_ext)
 
-  predictions <- arrow::read_parquet(forecast_path)
-  print(predictions)
+  pyrenew <- arrow::read_parquet(forecast_path) |>
+    mutate(model = "pyrenew-hew") |>
+    select(date, .draw, disease, model, .value)
+
+  baseline <- arrow::read_parquet(baseline_path) |>
+    mutate(
+      model = "baseline",
+      disease = "prop_disease_ed_visits"
+    ) |>
+    select(date,
+      .draw,
+      disease,
+      model,
+      .value = prop_disease_ed_visits
+    )
+
+  predictions <- bind_rows(
+    pyrenew,
+    baseline
+  )
+
   actual_data <- prep_truth_data(truth_path)
 
   to_score <- inner_join(predictions,
@@ -105,8 +130,6 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     pull(true_value) |>
     max()
 
-  print(to_score)
-
   scored <- score_single_run(
     to_score |>
       filter(disease == "prop_disease_ed_visits") |>
@@ -118,7 +141,6 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     offset = 1 / max_visits
   )
 
-  print(scored)
   saveRDS(scored, fs::path(model_run_dir, "score_table", ext = "rds"))
 }
 
