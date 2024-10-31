@@ -45,6 +45,17 @@ def postprocess_forecast(model_run_dir: Path) -> None:
     return None
 
 
+def score_forecast(model_run_dir: Path) -> None:
+    subprocess.run(
+        [
+            "Rscript",
+            "nssp_demo/score_forecast.R",
+            f"{model_run_dir}",
+        ]
+    )
+    return None
+
+
 def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
@@ -68,6 +79,7 @@ def main(
     n_warmup: int,
     n_samples: int,
     exclude_last_n_days: int = 0,
+    score: bool = False,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -197,12 +209,16 @@ def main(
     logger.info("Postprocessing forecast...")
     postprocess_forecast(model_run_dir)
     logger.info("Postprocessing complete.")
+
+    if score:
+        logger.info("Scoring forecast...")
+        score_forecast(model_run_dir)
+
     logger.info(
         "Single state pipeline complete "
         f"for state {state} with "
         f"report date {report_date}."
     )
-
     return None
 
 
@@ -313,6 +329,13 @@ parser.add_argument(
         "Optionally exclude the final n days of available training "
         "data (Default: 0, i.e. exclude no available data"
     ),
+)
+
+parser.add_argument(
+    "--score",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help=("If this flag is provided, will attempt to score the forecast."),
 )
 
 
