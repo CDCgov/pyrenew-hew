@@ -82,20 +82,28 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     )) |>
     pivot_wider(names_from = disease, values_from = ed_visits) |>
     mutate(Other = Total - Disease) |>
-    select(date, ed_visits_target = Disease, ed_visits_other = Other,
-        data_type) |>
+    select(date,
+      ed_visits_target = Disease, ed_visits_other = Other,
+      data_type
+    ) |>
     as_tsibble(index = date)
 
   forecast_other <- fit_and_forecast(target_and_other_data, n_forecast_days,
-    n_samples, target_col = "ed_visits_other", output_col = "other_ed_visits")
+    n_samples,
+    target_col = "ed_visits_other", output_col = "other_ed_visits"
+  )
   forecast_baseline <- fit_and_forecast(target_and_other_data, n_forecast_days,
-    n_samples, target_col = "ed_visits_target",
-    output_col = "baseline_ed_visits")
+    n_samples,
+    target_col = "ed_visits_target",
+    output_col = "baseline_ed_visits"
+  )
 
   save_path_other <- path(model_run_dir, "other_ed_visits_forecast",
-    ext = "parquet")
+    ext = "parquet"
+  )
   save_path_baseline <- path(model_run_dir, "baseline_ed_visits_forecast",
-    ext = "parquet")
+    ext = "parquet"
+  )
   write_parquet(forecast_other, save_path_other)
   write_parquet(forecast_baseline, save_path_baseline)
 }
