@@ -187,7 +187,9 @@ def main(
     logger.info("Performing posterior prediction / forecasting...")
     generate_and_save_predictions(model_run_dir, n_forecast_days)
 
-    logger.info("Performing baseline forecasting and non-target pathogen forecasting...")
+    logger.info(
+        "Performing baseline forecasting and non-target pathogen forecasting..."
+    )
     n_denominator_samples = n_samples * n_chains
     baseline_forecasts(model_run_dir, n_forecast_days, n_denominator_samples)
     logger.info("Forecasting complete.")
