@@ -141,7 +141,7 @@ make_forecast_figs <- function(model_run_dir,
     pluck(1) |>
     tail(1)
 
-  data_path <- path(model_run_dir, "data", ext = "csv")
+  data_path <- path(model_run_dir, "eval_data", ext = "tsv")
   inference_data_path <- path(model_run_dir, "inference_data",
     ext = "csv"
   )
