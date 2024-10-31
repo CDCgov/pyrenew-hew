@@ -1,14 +1,45 @@
 import json
 import os
+import re
 from pathlib import Path
 
 import polars as pl
 
-_disease_map = {
+valid_diseases = ["COVID-19", "Influenza"]
+disease_map_lower = {disease.lower(): disease for disease in valid_diseases}
+
+_disease_map_nssp = {
     "COVID-19": "COVID-19/Omicron",
 }
 
-_inverse_disease_map = {v: k for k, v in _disease_map.items()}
+_inverse_disease_map_nssp = {v: k for k, v in _disease_map_nssp.items()}
+
+
+def format_model_batch_dir_name(
+    disease, report_date, first_training_date, last_training_date
+):
+    return (
+        f"{disease.lower()}_r_{report_date}_f_"
+        f"{first_training_date}_t_{last_training_date}"
+    )
+
+
+def parse_model_batch_dir_name(model_batch_dir_name):
+    match = re.match(r"(.+)_r_(.+)_f_(.+)_t_(.+)", model_batch_dir_name)
+    if match:
+        disease, report_date, first_training_date, last_training_date = (
+            match.groups()
+        )
+    else:
+        raise ValueError(
+            f"Invalid model batch directory name format: {model_batch_dir_name}"
+        )
+    return (
+        disease_map_lower[disease],
+        report_date,
+        first_training_date,
+        last_training_date,
+    )
 
 
 def process_state_level_data(
@@ -28,7 +59,7 @@ def process_state_level_data(
             }
         )
 
-    disease_key = _disease_map.get(disease, disease)
+    disease_key = _disease_map_nssp.get(disease, disease)
 
     return (
         state_level_nssp_data.filter(
@@ -50,7 +81,7 @@ def process_state_level_data(
         .with_columns(
             disease=pl.col("disease")
             .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            .replace(_inverse_disease_map_nssp),
         )
         .sort(["date", "disease"])
         .collect()
@@ -73,7 +104,7 @@ def aggregate_facility_level_nssp_to_state(
             }
         )
 
-    disease_key = _disease_map.get(disease, disease)
+    disease_key = _disease_map_nssp.get(disease, disease)
 
     return (
         facility_level_nssp_data.filter(
@@ -87,7 +118,7 @@ def aggregate_facility_level_nssp_to_state(
         .with_columns(
             disease=pl.col("disease")
             .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            .replace(_inverse_disease_map_nssp),
             geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})

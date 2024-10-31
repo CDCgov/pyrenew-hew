@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpyro
 import polars as pl
-from prep_data import process_and_save_state
+from prep_data import format_model_batch_dir_name, process_and_save_state
 
 numpyro.set_host_device_count(4)
 
@@ -136,9 +136,8 @@ def main(
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-    model_batch_dir_name = (
-        f"{disease.lower()}_r_{report_date}_f_"
-        f"{first_training_date}_t_{last_training_date}"
+    model_batch_dir_name = format_model_batch_dir_name(
+        disease, report_date, first_training_date, last_training_date
     )
 
     model_batch_dir = Path(output_data_dir, model_batch_dir_name)
