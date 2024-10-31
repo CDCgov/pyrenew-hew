@@ -33,18 +33,6 @@ def forecast_denominator(
     return None
 
 
-def postprocess_forecast(model_run_dir: Path) -> None:
-    subprocess.run(
-        [
-            "Rscript",
-            "nssp_demo/postprocess_state_forecast.R",
-            "--model-run-dir",
-            f"{model_run_dir}",
-        ]
-    )
-    return None
-
-
 def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
@@ -193,9 +181,6 @@ def main(
     forecast_denominator(model_run_dir, n_forecast_days, n_denominator_samples)
     logger.info("Forecasting complete.")
 
-    logger.info("Postprocessing forecast...")
-    postprocess_forecast(model_run_dir)
-    logger.info("Postprocessing complete.")
     logger.info(
         "Single state pipeline complete "
         f"for state {state} with "
