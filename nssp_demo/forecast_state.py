@@ -172,6 +172,7 @@ def main(
         param_estimates=param_estimates,
         model_batch_dir=model_batch_dir,
         logger=logger,
+        mode="forecast",
     )
     logger.info("Data preparation complete.")
 
