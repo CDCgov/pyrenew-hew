@@ -1,31 +1,7 @@
-library(dplyr)
-library(scoringutils)
-library(arrow)
-
-#' Join Forecast and Actual Data
-#'
-#' This function reads forecast data from a Parquet file and actual data from a
-#' TSV file, then joins them using a specified key.
-#'
-#' @param forecast_source A character string specifying the path to the
-#' directory containing Parquet file(s) containing forecast data.
-#' @param data_path A character string specifying the path to the TSV file
-#' containing actual/truth data.
-#' @param join_key A character vector specifying the key(s) to join the forecast
-#' and actual data on. Default is NULL.
-#' @param ... Additional arguments passed to `arrow::open_dataset`.
-#'
-#' @return A data frame resulting from the left join of the forecast and actual
-#' data.
-#' @export
-join_forecast_and_data <- function(
-    forecast_source, data_path, join_key = NULL,
-    ...) {
-  predictions <- arrow::read_parquet(forecast_source, ...)
-  actual_data <- readr::read_tsv(data_path) |> rename(true_value = value)
-  joined_data <- dplyr::left_join(predictions, actual_data, by = join_key)
-  return(joined_data)
-}
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(scoringutils))
+suppressPackageStartupMessages(library(arrow))
+suppressPackageStartupMessages(library(argparser))
 
 
 #' Score Forecasts
@@ -61,11 +37,10 @@ join_forecast_and_data <- function(
 #'
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
-score_forecasts <- function(
+score_single_run <- function(
     scorable_data, forecast_unit, observed, predicted,
     sample_id = ".draw", model_col = "model", ...) {
   scored_data <- scorable_data |>
-    collect() |>
     scoringutils::as_forecast_sample(
       forecast_unit = forecast_unit,
       observed = observed,
@@ -81,29 +56,79 @@ score_forecasts <- function(
   return(scored_data)
 }
 
-base_path <- "nssp_demo/private_data/influenza_r_2024-10-31_f_2024-10-11_t_2024-10-30/MA"
-forecast_path <- fs::path(base_path, "forecast_samples.parquet")
-truth_path <- fs::path(base_path, "data.tsv")
-forecast_date <- lubridate::ymd("2024-10-31")
 
-predictions <- arrow::read_parquet(forecast_path)
+prep_truth_data <- function(truth_data_path) {
+  dat <- readr::read_csv(truth_data_path,
+    show_col_types = FALSE
+  ) |>
+    filter(data_type == "test") |>
+    rename(true_value = ed_visits) |>
+    mutate(disease = case_when(
+      disease %in% c("Influenza", "COVID-19") ~ "Disease",
+      disease == "Total" ~ "Total",
+      TRUE ~ NA
+    )) |>
+    filter(!is.na(disease)) |>
+    tidyr::pivot_wider(
+      names_from = "disease",
+      values_from = "true_value"
+    ) |>
+    mutate(prop_disease_ed_visits = Disease / Total) |>
+    tidyr::pivot_longer(
+      c(Disease, Total, prop_disease_ed_visits),
+      names_to = "disease",
+      values_to = "true_value"
+    )
 
-actual_data <- readr::read_tsv(truth_path) |>
-    rename(true_value = value) |>
-    filter(data_type == "test")
-joined_data <- dplyr::inner_join(predictions, actual_data,
-                                 by = c(disease, date))
+  print(dat)
 
-max_visits <- actual_data |>
+  return(dat)
+}
+
+read_and_score_location <- function(model_run_dir, data_ext = "csv") {
+  message(glue::glue("Scoring {model_run_dir}..."))
+  forecast_path <- fs::path(model_run_dir, "forecast_samples.parquet")
+  truth_path <- fs::path(model_run_dir, "data", ext = data_ext)
+
+  predictions <- arrow::read_parquet(forecast_path)
+  print(predictions)
+  actual_data <- prep_truth_data(truth_path)
+
+  to_score <- inner_join(predictions,
+    actual_data,
+    by = c("disease", "date")
+  ) |>
+    filter(disease == "prop_disease_ed_visits")
+
+  max_visits <- actual_data |>
     filter(disease == "Total") |>
     pull(true_value) |>
     max()
 
-scored <- score_forecasts(to_score |>
-                filter(disease == "prop_disease_ed_visits") |>
-                mutate(model = "pyrenew-hew"),
-                forecast_unit=c("date"),
-                observed="true_value",
-                sample_id="sample_id",
-                predicted=".value",
-                offset = 1 / max_visits)
+  print(to_score)
+
+  scored <- score_single_run(
+    to_score |>
+      filter(disease == "prop_disease_ed_visits") |>
+      mutate(model = "pyrenew-hew"),
+    forecast_unit = c("date"),
+    observed = "true_value",
+    sample_id = ".draw",
+    predicted = ".value",
+    offset = 1 / max_visits
+  )
+
+  print(scored)
+  saveRDS(scored, fs::path(model_run_dir, "score_table", ext = "rds"))
+}
+
+# Create a parser
+p <- arg_parser("Score a state forecast") |>
+  add_argument(
+    "model-run-dir",
+    help = "Directory containing the model data and output."
+  )
+
+argv <- parse_args(p)
+
+read_and_score_location(argv$model_run_dir)
