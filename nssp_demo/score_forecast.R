@@ -1,7 +1,6 @@
-library(arrow)
-library(readr)
 library(dplyr)
 library(scoringutils)
+library(arrow)
 
 #' Join Forecast and Actual Data
 #'
@@ -22,8 +21,8 @@ library(scoringutils)
 join_forecast_and_data <- function(
     forecast_source, data_path, join_key = NULL,
     ...) {
-  predictions <- arrow::open_dataset(forecast_source, ...)
-  actual_data <- readr::read_tsv(data_path)
+  predictions <- arrow::read_parquet(forecast_source, ...)
+  actual_data <- readr::read_tsv(data_path) |> rename(true_value = value)
   joined_data <- dplyr::left_join(predictions, actual_data, by = join_key)
   return(joined_data)
 }
@@ -81,3 +80,30 @@ score_forecasts <- function(
   }
   return(scored_data)
 }
+
+base_path <- "nssp_demo/private_data/influenza_r_2024-10-31_f_2024-10-11_t_2024-10-30/MA"
+forecast_path <- fs::path(base_path, "forecast_samples.parquet")
+truth_path <- fs::path(base_path, "data.tsv")
+forecast_date <- lubridate::ymd("2024-10-31")
+
+predictions <- arrow::read_parquet(forecast_path)
+
+actual_data <- readr::read_tsv(truth_path) |>
+    rename(true_value = value) |>
+    filter(data_type == "test")
+joined_data <- dplyr::inner_join(predictions, actual_data,
+                                 by = c(disease, date))
+
+max_visits <- actual_data |>
+    filter(disease == "Total") |>
+    pull(true_value) |>
+    max()
+
+scored <- score_forecasts(to_score |>
+                filter(disease == "prop_disease_ed_visits") |>
+                mutate(model = "pyrenew-hew"),
+                forecast_unit=c("date"),
+                observed="true_value",
+                sample_id="sample_id",
+                predicted=".value",
+                offset = 1 / max_visits)
