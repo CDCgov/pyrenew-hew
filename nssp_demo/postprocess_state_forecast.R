@@ -133,9 +133,9 @@ make_one_forecast_fig <- function(target_disease,
 }
 
 
-make_forecast_figs <- function(model_run_dir,
-                               filter_bad_chains = TRUE,
-                               good_chain_tol = 2) {
+postprocess_state_forecast <- function(model_run_dir,
+                                       filter_bad_chains = TRUE,
+                                       good_chain_tol = 2) {
   state_abb <- model_run_dir |>
     path_split() |>
     pluck(1) |>
@@ -227,11 +227,26 @@ make_forecast_figs <- function(model_run_dir,
       values_to = ".value"
     )
 
+  arrow::write_parquet(
+    posterior_predictive_samples,
+    path(model_run_dir, "forecast_samples",
+      ext = "parquet"
+    )
+  )
+
   posterior_predictive_ci <-
     posterior_predictive_samples |>
     select(date, disease, .value) |>
     group_by(date, disease) |>
     median_qi(.width = c(0.5, 0.8, 0.95))
+
+
+  arrow::write_parquet(
+    posterior_predictive_ci,
+    path(model_run_dir, "forecast_ci",
+      ext = "parquet"
+    )
+  )
 
 
   all_forecast_plots <- map(
@@ -246,7 +261,11 @@ make_forecast_figs <- function(model_run_dir,
     )
   )
 
-  return(all_forecast_plots)
+  iwalk(all_forecast_plots, ~ save_plot(
+    filename = path(model_run_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
+    plot = .x,
+    device = cairo_pdf, base_height = 6
+  ))
 }
 
 
@@ -290,14 +309,8 @@ disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
 
 
-forecast_figs <- make_forecast_figs(
+postprocess_state_forecast(
   model_run_dir,
   filter_bad_chains,
   good_chain_tol
 )
-
-iwalk(forecast_figs, ~ save_plot(
-  filename = path(model_run_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
-  plot = .x,
-  device = cairo_pdf, base_height = 6
-))
