@@ -25,8 +25,11 @@ Imports:
     purrr,
     readr,
     scales,
+    scoringutils (>= 2.0.0),
     stringr,
     tibble,
     tidybayes,
     tidyr,
     urca
+Remotes:
+    https://github.com/epiforecasts/scoringutils
