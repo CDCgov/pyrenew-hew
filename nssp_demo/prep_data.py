@@ -148,11 +148,6 @@ def process_and_save_state(
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
 ) -> None:
-    if mode not in ["forecast", "eval"]:
-        raise ValueError(
-            f"Invalid mode: {mode}. Mode must be 'forecast' or 'eval'."
-        )
-
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
             "Must provide at least one "

@@ -24,15 +24,6 @@ def postprocess_forecast(model_run_dir: Path) -> None:
     return None
 
 
-# Test values
-state = state_abb = "CA"
-model_batch_dir_name = "influenza_r_2024-10-29_f_2023-10-30_t_2024-10-28"
-latest_comprehensive_path = (
-    "private_data/nssp-archival-vintages/latest_comprehensive.parquet"
-)
-output_data_dir = "private_data/pyrenew-test-output"
-
-
 def main(
     state: str,
     model_batch_dir_name: str,
