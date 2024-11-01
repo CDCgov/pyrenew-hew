@@ -219,6 +219,7 @@ def main(
         save_eval_data(
             state=state,
             report_date=report_date,
+            disease=disease,
             first_training_date=first_training_date,
             last_training_date=last_training_date,
             latest_comprehensive_path=eval_data_path,
