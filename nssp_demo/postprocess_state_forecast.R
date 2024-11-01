@@ -302,8 +302,12 @@ p <- arg_parser("Generate forecast figures") |>
     help = "Directory containing the model data and output.",
   ) |>
   add_argument(
-    "--filter-bad-chains",
-    help = "Filter out bad chains from the samples? Default FALSE",
+    "--no-filter-bad-chains",
+    help = paste0(
+      "By default, postprocess_state_forecast.R filters ",
+      "any bad chains from the samples. Set this flag",
+      "to retain them"
+    ),
     flag = TRUE
   ) |>
   add_argument(

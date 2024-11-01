@@ -208,25 +208,31 @@ relative_wis_by_location <- function(scores,
 
 
   fig <- scoring_data |>
+    arrange(relative_wis) |>
+    mutate(location = factor(location,
+      ordered = TRUE,
+      levels = location
+    )) |>
     ggplot(
       aes(
-        x = location,
-        y = relative_wis,
+        y = location,
+        x = relative_wis,
         group = model
       )
     ) +
     geom_point(
       shape = 21,
-      size = 5,
+      size = 3,
       fill = "darkblue",
       color = "black"
     ) +
-    geom_hline(
-      yintercept = 1,
+    geom_vline(
+      xintercept = 1,
       linetype = "dashed"
     ) +
-    scale_y_continuous(trans = "log10") +
-    coord_cartesian(ylim = c(1 / max_overall, max_overall))
+    scale_x_continuous(trans = "log10") +
+    coord_cartesian(xlim = c(1 / max_overall, max_overall)) +
+    theme_minimal()
 
   return(fig)
 }
@@ -282,8 +288,8 @@ main <- function(path_to_scores) {
   )
   ggsave("rel_wis_by_location.pdf",
     rel_wis_by_location,
-    width = 8,
-    height = 4
+    height = 10,
+    width = 4
   )
 
   table_all <- summarised_scoring_table(
