@@ -40,20 +40,33 @@ suppressPackageStartupMessages(library(argparser))
 score_single_run <- function(
     scorable_data, forecast_unit, observed, predicted,
     sample_id = ".draw", model_col = "model", ...) {
-  scored_data <- scorable_data |>
+  forecast_sample_df <- scorable_data |>
     scoringutils::as_forecast_sample(
       forecast_unit = forecast_unit,
       observed = observed,
       predicted = predicted,
       sample_id = sample_id
-    ) |>
+    )
+
+  forecast_quantile_df <- forecast_sample_df |>
+    scoringutils::as_forecast_quantile()
+
+  sample_scores <- forecast_sample_df |>
+    scoringutils::transform_forecasts(...) |>
+    scoringutils::score()
+
+  quantile_scores <- forecast_quantile_df |>
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
   # Add relative skill if more than one model is present
   if (n_distinct(scorable_data[[model_col]]) != 1) {
-    scored_data <- scoringutils::add_relative_skill(scored_data)
+    sample_scores <- scoringutils::add_relative_skill(sample_scores)
+    quantile_scores <- scoringutils::add_relative_skill(quantile_scores)
   }
-  return(scored_data)
+  return(list(
+    sample_scores = sample_scores,
+    quantile_scores = quantile_scores
+  ))
 }
 
 
