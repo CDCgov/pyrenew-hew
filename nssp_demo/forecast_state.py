@@ -22,7 +22,6 @@ def baseline_forecasts(
         [
             "Rscript",
             "nssp_demo/timeseries_forecasts.R",
-            "--model-run-dir",
             f"{model_run_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",

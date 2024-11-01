@@ -24,20 +24,21 @@ purrr::walk(script_packages, \(pkg) {
 
 to_prop_forecast <- function(forecast_disease_count,
                              forecast_other_count,
-                             disease_count_column =
+                             disease_count_col =
                                "baseline_ed_visit_count_forecast",
-                             other_count_column =
-                               "other_ed_visits") {
+                             other_count_col =
+                               "other_ed_visits",
+                             output_col = "prop_diseae_ed_visits") {
   result <- dplyr::inner_join(
     forecast_disease_count,
     forecast_other_count,
     by = c(".draw", "date")
   ) |>
     dplyr::mutate(
-      !!output_column :=
-        .data[[disease_count_column]] /
-          (.data[[disease_count_column]] +
-            .data[[other_count_column]])
+      !!output_col :=
+        .data[[disease_count_col]] /
+          (.data[[disease_count_col]] +
+            .data[[other_count_col]])
     )
 
   return(result)
@@ -110,7 +111,6 @@ cdc_flat_forecast <- function(data,
                               target_col = "ed_visits_target",
                               output_col = "cdc_flat_ed_visits",
                               ...) {
-  output_sym <- rlang::sym(output_col)
   opts <- cdc_baseline_args_list(...)
   # coerce data to epiprocess::epi_df format
   epi_data <- data |>
@@ -122,12 +122,12 @@ cdc_flat_forecast <- function(data,
   # generate forecast
   cdc_flat_forecast <- cdc_flat_fit$predictions |>
     pivot_quantiles_longer(.pred_distn) |>
-    mutate("{output_col}" := .pred) |> # nolint
+    mutate(!!output_col := .pred) |>
     rename(
       quantile_level = quantile_levels, report_date = forecast_date,
       date = target_date
     ) |>
-    select(date, quantile_level, !!output_sym)
+    select(date, quantile_level, .data[[output_col]])
 
   cdc_flat_forecast
 }
@@ -158,9 +158,12 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
   ## Time series forecasting
   ## Fit and forecast other (non-target-disease) ED visits using a combination
   ## ensemble model
-  forecast_other <- fit_and_forecast(target_and_other_data, n_forecast_days,
+  forecast_other <- fit_and_forecast(
+    target_and_other_data,
+    n_forecast_days,
     n_samples,
-    target_col = "ed_visits_other", output_col = "other_ed_visits"
+    target_col = "ed_visits_other",
+    output_col = "other_ed_visits"
   )
   forecast_baseline_ts_count <- fit_and_forecast(
     target_and_other_data,
@@ -170,7 +173,8 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     output_col = "baseline_ed_visit_count_forecast"
   )
   ## Generate CDC flat forecast for the target disease number of ED visits
-  forecast_baseline_cdc_count <- cdc_flat_forecast(target_and_other_data,
+  forecast_baseline_cdc_count <- cdc_flat_forecast(
+    target_and_other_data,
     target_col = "ed_visits_target",
     output_col = "baseline_ed_visit_count_forecast",
     data_frequency = "1 day",
@@ -179,8 +183,16 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
 
   forecast_baseline_ts_prop <- forecast_baseline_ts_count |>
     to_prop_forecast(forecast_other)
-  forecast_baseline_cdc_prop <- forecast_baseline_cdc_count |>
-    to_prop_forecast(forecast_other)
+
+  forecast_baseline_cdc_prop <- cdc_flat_forecast(
+    target_and_other_data |>
+      mutate(ed_visits_prop = ed_visits_target /
+        (ed_visits_target + ed_visits_other)),
+    target_col = "ed_visits_prop",
+    output_col = "baseline_ed_visit_count_forecast",
+    data_frequency = "1 day",
+    aheads = 1:n_forecast_days
+  )
 
   save_path_other <- path(
     model_run_dir,
@@ -235,7 +247,7 @@ p <- arg_parser(
   "Forecast other (non-target-disease) ED visits for a given location."
 ) |>
   add_argument(
-    "--model-run-dir",
+    "model-run-dir",
     help = "Directory containing the model data and output.",
   ) |>
   add_argument(
