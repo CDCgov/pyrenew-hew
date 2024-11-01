@@ -199,14 +199,18 @@ def main(
     logger.info("Model fitting complete")
 
     logger.info("Performing posterior prediction / forecasting...")
-    generate_and_save_predictions(model_run_dir, n_forecast_days)
+
+    n_days_past_last_training = n_forecast_days + exclude_last_n_days
+    generate_and_save_predictions(model_run_dir, n_days_past_last_training)
 
     logger.info(
         "Performing baseline forecasting and non-target pathogen "
         "forecasting..."
     )
     n_denominator_samples = n_samples * n_chains
-    baseline_forecasts(model_run_dir, n_forecast_days, n_denominator_samples)
+    baseline_forecasts(
+        model_run_dir, n_days_past_last_training, n_denominator_samples
+    )
     logger.info("Forecasting complete.")
 
     logger.info("Postprocessing forecast...")
@@ -310,7 +314,10 @@ parser.add_argument(
     "--n-forecast-days",
     type=int,
     default=28,
-    help="Number of days ahead to forecast (default: 28).",
+    help=(
+        "Number of days ahead to forecast relative to the "
+        "report date (default: 28).",
+    ),
 )
 
 
