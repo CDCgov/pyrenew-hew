@@ -66,7 +66,7 @@ def main(job_id, pool_id, container_image) -> None:
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
-    excluded_locations = ["AS", "GU", "MO", "MP", "PR", "UM" "VI", "WY"]
+    excluded_locations = ["AS", "GU", "MO", "MP", "PR", "UM", "VI", "WY"]
 
     all_locations = (
         locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
