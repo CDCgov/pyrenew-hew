@@ -14,6 +14,13 @@ script_packages <- c(
   "epiprocess"
 )
 
+## load in packages without messages
+purrr::walk(script_packages, \(pkg) {
+  suppressPackageStartupMessages(
+    library(pkg, character.only = TRUE)
+  )
+})
+
 
 to_prop_forecast <- function(forecast_disease_count,
                              forecast_other_count,
