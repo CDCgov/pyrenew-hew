@@ -122,7 +122,7 @@ cdc_flat_forecast <- function(data,
   # generate forecast
   cdc_flat_forecast <- cdc_flat_fit$predictions |>
     pivot_quantiles_longer(.pred_distn) |>
-    mutate(!!output_col := .pred) |>
+    mutate(!!output_col := values) |>
     rename(
       quantile_level = quantile_levels, report_date = forecast_date,
       date = target_date
