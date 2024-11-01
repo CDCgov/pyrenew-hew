@@ -62,14 +62,14 @@ def main(job_id, pool_id, container_image) -> None:
         "'"
     )
 
-    states = pl.read_csv(
+    locations = pl.read_csv(
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
-    excluded_states = ["GU", "MO", "WY", "PR"]
+    excluded_locations = ["AS", "GU", "MO", "MP", "PR", "UM" "VI", "WY"]
 
-    all_states = (
-        states.filter(~pl.col("STUSAB").is_in(excluded_states))
+    all_locations = (
+        locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
         .get_column("STUSAB")
         .to_list()
     )
@@ -81,7 +81,7 @@ def main(job_id, pool_id, container_image) -> None:
 
     for disease in ["Influenza"]:
         for report_date in report_dates:
-            for state in all_states:
+            for state in all_locations:
                 task = get_task_config(
                     f"{job_id}-{state}-{disease}-{report_date}",
                     base_call=base_call.format(
