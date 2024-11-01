@@ -81,6 +81,7 @@ def main(
     exclude_last_n_days: int = 0,
     score: bool = False,
     eval_data_path: Path = None,
+    score_nowcast: bool = False,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -225,6 +226,7 @@ def main(
             latest_comprehensive_path=eval_data_path,
             output_data_dir=model_run_dir,
             last_eval_date=report_date + timedelta(days=n_forecast_days),
+            score_nowcast=score_forecast,
         )
         logger.info("Scoring forecast...")
         score_forecast(model_run_dir)
@@ -351,6 +353,16 @@ parser.add_argument(
     type=bool,
     action=argparse.BooleanOptionalAction,
     help=("If this flag is provided, will attempt to score the forecast."),
+)
+
+parser.add_argument(
+    "--score-nowcast",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help=(
+        "If this flag is provided, will score dates between"
+        "the last training date and the report date."
+    ),
 )
 
 parser.add_argument(

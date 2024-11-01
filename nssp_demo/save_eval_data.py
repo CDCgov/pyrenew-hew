@@ -16,6 +16,7 @@ def save_eval_data(
     last_training_date,
     latest_comprehensive_path: Path | str,
     output_data_dir: Path | str,
+    score_nowcast: bool = False,
     last_eval_date: datetime.date = None,
     output_file_name: str = "eval_data.tsv",
 ):
@@ -45,6 +46,11 @@ def save_eval_data(
         )
         .sort(["date", "disease"])
     )
+
+    if not score_nowcast:
+        state_level_data = state_level_data.filter(
+            pl.coL("date") >= report_date
+        )
 
     state_level_data.write_csv(
         Path(output_data_dir, output_file_name), separator="\t"
