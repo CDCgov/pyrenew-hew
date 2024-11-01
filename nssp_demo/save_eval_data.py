@@ -16,6 +16,7 @@ def save_eval_data(
     last_training_date,
     latest_comprehensive_path: Path | str,
     output_data_dir: Path | str,
+    last_eval_date: datetime.date = None,
     output_file_name: str = "eval_data.tsv",
 ):
     logging.basicConfig(level=logging.INFO)
@@ -23,6 +24,11 @@ def save_eval_data(
 
     logger.info("Reading in truth data...")
     state_level_nssp_data = pl.scan_parquet(latest_comprehensive_path)
+
+    if last_eval_date is not None:
+        state_level_nssp_data = state_level_nssp_data.filter(
+            pl.col("reference_date") <= last_eval_date
+        )
 
     state_level_data = (
         process_state_level_data(

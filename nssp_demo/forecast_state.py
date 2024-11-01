@@ -223,6 +223,7 @@ def main(
             last_training_date=last_training_date,
             latest_comprehensive_path=eval_data_path,
             output_data_dir=model_run_dir,
+            last_eval_date=report_date + timedelta(days=n_forecast_days),
         )
         logger.info("Scoring forecast...")
         score_forecast(model_run_dir)
