@@ -46,7 +46,7 @@ def main(job_id, pool_id, container_image) -> None:
         "python nssp_demo/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 180 "
+        "--n-training-days 75 "
         "--n-warmup 1000 "
         "--n-samples 500 "
         "--facility-level-nssp-data-dir nssp_demo/nssp-etl/gold "
@@ -55,20 +55,22 @@ def main(job_id, pool_id, container_image) -> None:
         "--param-data-dir nssp_demo/params "
         "--output-data-dir nssp_demo/private_data "
         "--report-date {report_date:%Y-%m-%d} "
-        "--last-training-date {last_data_date:%Y-%m-%d}"
+        "--exclude-last-n-days 5 "
+        "--score "
+        "--eval-data-path "
+        "nssp_demo/nssp-archival-vintages/latest_comprehensive.parquet"
         "'"
     )
 
     states = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/"
-        "refs/heads/master/data-raw/states.csv"
+        "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
     excluded_states = ["GU", "MO", "WY", "PR"]
 
     all_states = (
-        states.filter(~pl.col("abb").is_in(excluded_states))
-        .get_column("abb")
+        states.filter(~pl.col("STUSAB").is_in(excluded_states))
+        .get_column("STUSAB")
         .to_list()
     )
 
@@ -79,7 +81,6 @@ def main(job_id, pool_id, container_image) -> None:
 
     for disease in ["Influenza"]:
         for report_date in report_dates:
-            last_data_date = report_date - datetime.timedelta(days=5)
             for state in all_states:
                 task = get_task_config(
                     f"{job_id}-{state}-{disease}-{report_date}",
@@ -87,7 +88,6 @@ def main(job_id, pool_id, container_image) -> None:
                         state=state,
                         disease=disease,
                         report_date=report_date,
-                        last_data_date=last_data_date,
                     ),
                     container_settings=container_settings,
                 )
