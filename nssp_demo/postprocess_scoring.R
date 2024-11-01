@@ -73,7 +73,6 @@ epiweekly_scoring_plot <- function(score_table, scale = "natural") {
    epiweekly_score_fig <- score_table$quantile_scores |>
         filter(scale == !!scale) |>
         mutate(epiweek = epiweek(date), epiyear = epiyear(date)) |>
-        # summarise_scores(by = c("model", "epiweek", "epiyear")) |>
         get_pairwise_comparisons(by = c("epiweek", "epiyear"),
             baseline = "cdc_baseline") |>
         mutate(epidate = epiweek_to_date(epiweek, epiyear)) |>
