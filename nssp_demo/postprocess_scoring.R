@@ -1,23 +1,7 @@
-# Load the RDS file
-score_table <- readRDS("nssp_demo/score_table.rds")
-library(dplyr)
-library(scoringutils)
-library(lubridate)
-
 script_packages <- c(
   "dplyr",
-  "tidyr",
-  "tibble",
-  "readr",
-  "stringr",
-  "fs",
-  "fable",
-  "jsonlite",
-  "argparser",
-  "arrow",
-  "glue",
-  "epipredict",
-  "epiprocess"
+  "scoringutils",
+  "lubridate"
 )
 
 ## load in packages without messages
