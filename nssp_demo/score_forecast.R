@@ -102,9 +102,13 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     model_run_dir,
     "forecast_samples.parquet"
   )
-  baseline_path <- fs::path(
+  ts_baseline_path <- fs::path(
     model_run_dir,
-    "baseline_prop_ed_visits_forecast.parquet"
+    "baseline_ts_prop_ed_visits_forecast.parquet"
+  )
+  cdc_baseline_path <- fs::path(
+    model_run_dir,
+    "baseline_cdc_prop_ed_visits_forecast.parquet"
   )
 
   truth_path <- fs::path(model_run_dir, "data", ext = data_ext)
@@ -113,9 +117,21 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     mutate(model = "pyrenew-hew") |>
     select(date, .draw, disease, model, .value)
 
-  baseline <- arrow::read_parquet(baseline_path) |>
+  ts_baseline <- arrow::read_parquet(baseline_path) |>
     mutate(
-      model = "baseline",
+      model = "ts_baseline",
+      disease = "prop_disease_ed_visits"
+    ) |>
+    select(date,
+      .draw,
+      disease,
+      model,
+      .value = prop_disease_ed_visits
+    )
+
+  cdc_baseline <- arrow::read_parquet(baseline_path) |>
+    mutate(
+      model = "cdc_baseline",
       disease = "prop_disease_ed_visits"
     ) |>
     select(date,
@@ -127,7 +143,8 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
 
   predictions <- bind_rows(
     pyrenew,
-    baseline
+    ts_baseline,
+    cdc_baseline
   )
 
   actual_data <- prep_truth_data(truth_path)
