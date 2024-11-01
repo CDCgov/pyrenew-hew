@@ -85,7 +85,7 @@ score_single_run <- function(
 
 
 prep_truth_data <- function(truth_data_path) {
-  dat <- readr::read_csv(truth_data_path,
+  dat <- readr::read_tsv(truth_data_path,
     show_col_types = FALSE
   ) |>
     filter(data_type == "test") |>
@@ -110,7 +110,9 @@ prep_truth_data <- function(truth_data_path) {
   return(dat)
 }
 
-read_and_score_location <- function(model_run_dir, data_ext = "csv") {
+read_and_score_location <- function(model_run_dir,
+                                    eval_data_filename = "eval_data",
+                                    eval_data_file_ext = "tsv") {
   message(glue::glue("Scoring {model_run_dir}..."))
   forecast_path <- fs::path(
     model_run_dir,
@@ -125,7 +127,10 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     "baseline_cdc_prop_ed_visits_forecast.parquet"
   )
 
-  truth_path <- fs::path(model_run_dir, "data", ext = data_ext)
+  truth_path <- fs::path(model_run_dir,
+    eval_data_filename,
+    ext = eval_data_file_ext
+  )
 
   actual_data <- prep_truth_data(truth_path)
 

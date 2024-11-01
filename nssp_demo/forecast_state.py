@@ -8,6 +8,7 @@ from pathlib import Path
 import numpyro
 import polars as pl
 from prep_data import process_and_save_state
+from save_eval_data import save_eval_data
 
 numpyro.set_host_device_count(4)
 
@@ -79,6 +80,7 @@ def main(
     n_samples: int,
     exclude_last_n_days: int = 0,
     score: bool = False,
+    eval_data_path: Path = None,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -199,7 +201,8 @@ def main(
     generate_and_save_predictions(model_run_dir, n_forecast_days)
 
     logger.info(
-        "Performing baseline forecasting and non-target pathogen forecasting..."
+        "Performing baseline forecasting and non-target pathogen "
+        "forecasting..."
     )
     n_denominator_samples = n_samples * n_chains
     baseline_forecasts(model_run_dir, n_forecast_days, n_denominator_samples)
@@ -210,6 +213,17 @@ def main(
     logger.info("Postprocessing complete.")
 
     if score:
+        logger.info("Getting eval data...")
+        if eval_data_path is None:
+            raise ValueError("No path to a truth dataset provided.")
+        save_eval_data(
+            state=state,
+            report_date=report_date,
+            first_training_date=first_training_date,
+            last_training_date=last_training_date,
+            latest_comprehensive_path=eval_data_path,
+            output_data_dir=model_run_dir,
+        )
         logger.info("Scoring forecast...")
         score_forecast(model_run_dir)
 
@@ -335,6 +349,12 @@ parser.add_argument(
     type=bool,
     action=argparse.BooleanOptionalAction,
     help=("If this flag is provided, will attempt to score the forecast."),
+)
+
+parser.add_argument(
+    "--eval-data-path",
+    type=Path,
+    help=("Path to a parquet file containing compehensive truth data."),
 )
 
 
