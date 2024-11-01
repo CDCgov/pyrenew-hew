@@ -20,23 +20,35 @@ get_all_flu_forecast_dirs <- function(dir_of_forecast_date_dirs) {
 }
 
 process_loc_date_score_table <- function(model_run_dir) {
+  message(glue::glue("Processing {model_run_dir}..."))
+
   table_path <- fs::path(model_run_dir,
     "score_table",
     ext = "rds"
   )
   location <- fs::path_file(model_run_dir)
+  if (!(fs::file_exists(table_path))) {
+    warning(glue::glue(
+      "No `score_table.rds` found for location",
+      "{location} in directory {model_run_dir}"
+    ))
+    message(glue::glue("Done with {model_run_dir}."))
+    return(NULL)
+  }
   score_table <- readRDS(table_path)
   score_table$quantile_scores$location <- location
   score_table$sample_scores$location <- location
+  message(glue::glue("Done with {model_run_dir}."))
   return(score_table)
 }
 
 process_date_score_table <- function(date_fit_dir) {
+  message(glue::glue("Processing {date_fit_dir}"))
   table_path <- fs::path(date_fit_dir,
     "score_table",
     ext = "rds"
   )
-  table_dir <- fs::path_file(data_fit_dir)
+  table_dir <- fs::path_file(date_fit_dir)
 
   report_date <- stringr::str_match(
     table_dir,
@@ -47,37 +59,37 @@ process_date_score_table <- function(date_fit_dir) {
   score_table <- readRDS(table_path)
   score_table$quantile_scores$report_date <- report_date
   score_table$sample_scores$report_date <- report_date
-
+  message(glue::glue("Done with {date_fit_dir}."))
   return(score_table)
 }
 
 bind_tables <- function(list_of_table_pairs) {
-  sample_table <- purrr::map(
+  sample_scores <- purrr::map(
+    list_of_table_pairs,
     \(x) {
       x$sample_scores
-    },
-    list_of_table_pairs
+    }
   ) |>
-    data_table::rbindlist()
+    data.table::rbindlist(fill = TRUE)
 
-  quantile_table <- purrr::map(
+  quantile_scores <- purrr::map(
+    list_of_table_pairs,
     \(x) {
       x$quantile_scores
-    },
-    list_of_table_pairs
+    }
   ) |>
-    data_table::rbindlist()
+    data.table::rbindlist(fill = TRUE)
 
   return(list(
-    sample_table = sample_table,
-    quantile_table = quantile_table
+    sample_scores = sample_scores,
+    quantile_scores = quantile_scores
   ))
 }
 
 process_all_locations <- function(model_base_dir,
                                   score_file_name = "score_table",
-                                  score_file_ext = ".rds",
-                                  save = TRUE) {
+                                  score_file_ext = "rds",
+                                  save = FALSE) {
   to_process <- fs::dir_ls(model_base_dir,
     type = "directory"
   )
@@ -103,9 +115,8 @@ process_all_locations <- function(model_base_dir,
 
 process_all_dates <- function(dir_of_forecast_date_dirs,
                               score_file_name = "score_table",
-                              score_file_ext = ".rds",
-                              save = TRUE,
-                              verbose = TRUE) {
+                              score_file_ext = "rds",
+                              save = FALSE) {
   to_process <- get_all_flu_forecast_dirs(
     dir_of_forecast_date_dirs
   )
@@ -141,9 +152,9 @@ collate_all <- function(dir_of_forecast_date_dirs,
     save = save
   )
 
-  collated <- purrr::map(dir_of_forecast_date_dirs,
-    process_all_dates,
-    save = save
+  collated <- purrr::map(
+    dir_of_forecast_date_dirs,
+    process_all_dates
   )
 
   return(collated)
