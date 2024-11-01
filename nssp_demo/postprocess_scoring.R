@@ -73,14 +73,18 @@ epiweekly_scoring_plot <- function(score_table, scale = "natural") {
    epiweekly_score_fig <- score_table$quantile_scores |>
         filter(scale == !!scale) |>
         mutate(epiweek = epiweek(date), epiyear = epiyear(date)) |>
-        summarise_scores(by = c("model", "epiweek", "epiyear")) |>
+        # summarise_scores(by = c("model", "epiweek", "epiyear")) |>
+        get_pairwise_comparisons(by = c("epiweek", "epiyear"),
+            baseline = "cdc_baseline") |>
         mutate(epidate = epiweek_to_date(epiweek, epiyear)) |>
+        group_by(model, epidate) |>
+        summarise(wis = mean(wis_scaled_relative_skill)) |>
         as_tibble() |>
         ggplot(aes(x = epidate, y = wis, color = model)) +
         geom_line() +
         geom_point() +  # Add points to the line plot
         labs(title = "Epiweekly Scoring by Model",
              x = "Epiweek start dates",
-             y = "Weighted Interval Score (WIS)") +
+             y = "Relative Weighted Interval Score (WIS)") +
         theme_minimal()
 }
