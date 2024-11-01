@@ -16,7 +16,6 @@ def process_state_level_data(
     state_abb,
     disease: str,
     first_training_date,
-    state_level_report_date,
 ) -> pl.DataFrame:
     if state_level_nssp_data is None:
         return pl.DataFrame(
@@ -37,7 +36,6 @@ def process_state_level_data(
             pl.col("geo_value") == state_abb,
             pl.col("geo_type") == "state",
             pl.col("reference_date") >= first_training_date,
-            pl.col("report_date") == state_level_report_date,
         )
         .select(
             [
@@ -195,7 +193,6 @@ def process_and_save_state(
         state_abb=state_abb,
         disease=disease,
         first_training_date=first_training_date,
-        state_level_report_date=state_level_report_date,
     )
 
     if aggregated_facility_data.height > 0:
