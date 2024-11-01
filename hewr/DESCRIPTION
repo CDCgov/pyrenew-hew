@@ -30,6 +30,8 @@ Imports:
     tibble,
     tidybayes,
     tidyr,
-    urca
+    urca,
+    epipredict,
+    epiprocess
 Remotes:
     https://github.com/epiforecasts/scoringutils
