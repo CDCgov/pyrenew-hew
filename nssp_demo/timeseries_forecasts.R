@@ -28,7 +28,7 @@ to_prop_forecast <- function(forecast_disease_count,
                                "baseline_ed_visit_count_forecast",
                              other_count_col =
                                "other_ed_visits",
-                             output_col = "prop_diseae_ed_visits") {
+                             output_col = "prop_disease_ed_visits") {
   result <- dplyr::inner_join(
     forecast_disease_count,
     forecast_other_count,
@@ -189,7 +189,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
       mutate(ed_visits_prop = ed_visits_target /
         (ed_visits_target + ed_visits_other)),
     target_col = "ed_visits_prop",
-    output_col = "baseline_ed_visit_count_forecast",
+    output_col = "baseline_ed_visit_prop_forecast",
     data_frequency = "1 day",
     aheads = 1:n_forecast_days
   )

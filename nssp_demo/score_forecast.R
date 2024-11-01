@@ -38,7 +38,7 @@ suppressPackageStartupMessages(library(argparser))
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
 score_single_run <- function(
-    scorable_data, forecast_unit, observed, predicted,
+    scorable_data, quantile_only_data, forecast_unit, observed, predicted,
     sample_id = ".draw", model_col = "model", ...) {
   forecast_sample_df <- scorable_data |>
     scoringutils::as_forecast_sample(
@@ -48,7 +48,21 @@ score_single_run <- function(
       sample_id = sample_id
     )
 
-  forecast_quantile_df <- forecast_sample_df |>
+  quantile_only_df <- quantile_only_data |>
+    scoringutils::as_forecast_quantile(
+      forecast_unit = forecast_unit,
+      observed = observed,
+      predicted = predicted
+    )
+  quants <- unique(quantile_only_df$quantile_level)
+  quantiles_from_samples_df <- forecast_sample_df |>
+    scoringutils::as_forecast_quantile(probs = quants)
+
+  forecast_quantile_df <-
+    dplyr::bind_rows(
+      quantile_only_df,
+      quantiles_from_samples_df
+    ) |>
     scoringutils::as_forecast_quantile()
 
   sample_scores <- forecast_sample_df |>
@@ -113,6 +127,8 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
 
   truth_path <- fs::path(model_run_dir, "data", ext = data_ext)
 
+  actual_data <- prep_truth_data(truth_path)
+
   pyrenew <- arrow::read_parquet(forecast_path) |>
     mutate(model = "pyrenew-hew") |>
     select(date, .draw, disease, model, .value)
@@ -135,24 +151,28 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
       disease = "prop_disease_ed_visits"
     ) |>
     select(date,
-      .draw,
       disease,
-      model,
-      .value = prop_disease_ed_visits
+      quantile_level,
+      .value = baseline_ed_visit_prop_forecast,
+      model
     )
 
-  predictions <- bind_rows(
-    pyrenew,
-    ts_baseline,
-    cdc_baseline
-  )
 
-  actual_data <- prep_truth_data(truth_path)
-
-  to_score <- inner_join(predictions,
+  quantile_forecasts_to_score <- inner_join(
+    cdc_baseline,
     actual_data,
     by = c("disease", "date")
   ) |>
+    filter(disease == "prop_disease_ed_visits")
+  print(quantile_forecasts_to_score)
+
+  sample_forecasts_to_score <- bind_rows(
+    pyrenew,
+    ts_baseline
+  ) |>
+    inner_join(actual_data,
+      by = c("disease", "date")
+    ) |>
     filter(disease == "prop_disease_ed_visits")
 
   max_visits <- actual_data |>
@@ -161,7 +181,8 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     max()
 
   scored <- score_single_run(
-    to_score,
+    sample_forecasts_to_score,
+    quantile_forecasts_to_score,
     forecast_unit = c("date", "model"),
     observed = "true_value",
     sample_id = ".draw",
