@@ -117,7 +117,7 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     mutate(model = "pyrenew-hew") |>
     select(date, .draw, disease, model, .value)
 
-  ts_baseline <- arrow::read_parquet(baseline_path) |>
+  ts_baseline <- arrow::read_parquet(ts_baseline_path) |>
     mutate(
       model = "ts_baseline",
       disease = "prop_disease_ed_visits"
@@ -129,7 +129,7 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
       .value = prop_disease_ed_visits
     )
 
-  cdc_baseline <- arrow::read_parquet(baseline_path) |>
+  cdc_baseline <- arrow::read_parquet(cdc_baseline_path) |>
     mutate(
       model = "cdc_baseline",
       disease = "prop_disease_ed_visits"
