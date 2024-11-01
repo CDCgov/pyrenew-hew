@@ -164,7 +164,6 @@ read_and_score_location <- function(model_run_dir, data_ext = "csv") {
     by = c("disease", "date")
   ) |>
     filter(disease == "prop_disease_ed_visits")
-  print(quantile_forecasts_to_score)
 
   sample_forecasts_to_score <- bind_rows(
     pyrenew,

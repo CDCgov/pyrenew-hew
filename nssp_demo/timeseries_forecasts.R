@@ -127,9 +127,9 @@ cdc_flat_forecast <- function(data,
       quantile_level = quantile_levels, report_date = forecast_date,
       date = target_date
     ) |>
-    select(date, quantile_level, .data[[output_col]])
+    select(date, quantile_level, all_of(output_col))
 
-  cdc_flat_forecast
+  return(cdc_flat_forecast)
 }
 
 main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
