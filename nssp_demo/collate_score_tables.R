@@ -142,6 +142,8 @@ process_all_dates <- function(dir_of_forecast_date_dirs,
 
 
 collate_all <- function(dir_of_forecast_date_dirs,
+                        score_file_name = "score_table",
+                        score_file_ext = "rds",
                         save = FALSE) {
   dirs_to_process <- get_all_flu_forecast_dirs(
     dir_of_forecast_date_dirs
@@ -156,6 +158,15 @@ collate_all <- function(dir_of_forecast_date_dirs,
     dir_of_forecast_date_dirs,
     process_all_dates
   )
+
+  if (save) {
+    save_path <- fs::path(dir_of_forecast_date_dirs,
+      score_file_name,
+      ext = score_file_ext
+    )
+    message(glue::glue("Saving score table to {save_path}"))
+    saveRDS(collated, save_path)
+  }
 
   return(collated)
 }
