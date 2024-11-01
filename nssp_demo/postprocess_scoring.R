@@ -44,22 +44,54 @@ epiweek_to_date <- function(epiweek, epiyear) {
 #' # Assuming `score_table` is a data frame with the necessary structure:
 #' summarised_scores <- summarised_scoring_table(score_table, scale = "natural")
 #' print(summarised_scores)
-summarised_scoring_table <- function(score_table, scale = "natural") {
-  rel_wis <- score_table$quantile_scores |>
+summarised_scoring_table <- function(score_table,
+                                     scale = "natural") {
+  rel_wis <- quantile_scores |>
     filter(scale == !!scale) |>
     get_pairwise_comparisons(baseline = "cdc_baseline") |>
     group_by(model) |>
     summarise(rel_wis = mean(wis_scaled_relative_skill))
 
-  abs_wis <- score_table$quantile_scores |>
+  abs_wis <- quantile_scores |>
     filter(scale == !!scale) |>
     summarise_scores(by = "model") |>
     select(model,
-      abs_wis = wis, mae = ae_median, interval_coverage_50,
+      abs_wis = wis,
+      mae = ae_median,
+      interval_coverage_50,
       interval_coverage_90
     )
 
   summarised_scores <- left_join(abs_wis, rel_wis, by = "model")
+  return(summarised_scores)
+}
+
+
+location_summary_table <- function(score_table,
+                                   scale = "natural") {
+  rel_wis <- quantile_scores |>
+    filter(scale == !!scale) |>
+    get_pairwise_comparisons(
+      baseline = "cdc_baseline",
+      by = "location"
+    ) |>
+    group_by(model, location) |>
+    summarise(rel_wis = mean(wis_scaled_relative_skill))
+
+  abs_wis <- quantile_scores |>
+    filter(scale == !!scale) |>
+    summarise_scores(by = c("model", "location")) |>
+    select(model,
+      location,
+      abs_wis = wis,
+      mae = ae_median,
+      interval_coverage_50,
+      interval_coverage_90
+    )
+
+  summarised_scores <- left_join(abs_wis, rel_wis,
+    by = c("model", "location")
+  )
   return(summarised_scores)
 }
 
@@ -110,6 +142,10 @@ location_rel_wis_plot <- function(location, quantile_scores, ...) {
   ))
 }
 
+location_score_table <- function(location, quantile_scores, ...) {
+  return
+}
+
 #' Save a list of plots as a PDF, with a
 #' grid of `nrow` by `ncol` plots per page
 #'
@@ -151,6 +187,50 @@ plots_to_pdf <- function(list_of_plots,
   return(TRUE)
 }
 
+relative_wis_by_location <- function(scores,
+                                     baseline_model = "cdc_baseline") {
+  scoring_data <- scores |>
+    get_pairwise_comparisons(
+      by = c("date", "location"),
+      baseline = baseline_model
+    ) |>
+    group_by(model, location) |>
+    summarise(
+      relative_wis = mean(wis_scaled_relative_skill),
+      .groups = "drop"
+    ) |>
+    filter(model == "pyrenew-hew")
+
+  min_wis <- min(scoring_data$relative_wis)
+  max_wis <- max(scoring_data$relative_wis)
+  max_overall <- max(1 / min_wis, max_wis)
+  theme_minimal()
+
+
+  fig <- scoring_data |>
+    ggplot(
+      aes(
+        x = location,
+        y = relative_wis,
+        group = model
+      )
+    ) +
+    geom_point(
+      shape = 21,
+      size = 5,
+      fill = "darkblue",
+      color = "black"
+    ) +
+    geom_hline(
+      yintercept = 1,
+      linetype = "dashed"
+    ) +
+    scale_y_continuous(trans = "log10") +
+    coord_cartesian(ylim = c(1 / max_overall, max_overall))
+
+  return(fig)
+}
+
 
 main <- function(path_to_scores) {
   scores <- readRDS(path_to_scores)
@@ -169,11 +249,52 @@ main <- function(path_to_scores) {
     scale = "log"
   )
 
-  ggsave("ws_by_time_overall.pdf", overall_fig)
+  ggsave("wis_by_time_overall.pdf", overall_fig)
 
   plots_to_pdf(location_figs,
     "wis_by_time_and_location.pdf",
     width = 7,
     height = 5
   )
+
+  wis_components_by_location <-
+    scoringutils::plot_wis(
+      quantile_scores |>
+        filter(model == "pyrenew-hew"),
+      x = "location"
+    )
+  wis_components_by_model <-
+    scoringutils::plot_wis(quantile_scores,
+      x = "model"
+    )
+
+  rel_wis_by_location <- relative_wis_by_location(
+    quantile_scores
+  )
+
+  ggsave(
+    "wis__components_by_location.pdf",
+    wis_components_by_location
+  )
+  ggsave(
+    "wis_components_by_model.pdf",
+    wis_components_by_model
+  )
+  ggsave("rel_wis_by_location.pdf",
+    rel_wis_by_location,
+    width = 8,
+    height = 4
+  )
+
+  table_all <- summarised_scoring_table(
+    quantile_scores,
+    scale = "log"
+  )
+
+  table_locs <- location_summary_table(quantile_scores,
+    scale = "log"
+  )
+
+  readr::write_tsv(table_all, "overall_scores_table.tsv")
+  readr::write_tsv(table_locs, "scores_by_location_table.tsv")
 }
