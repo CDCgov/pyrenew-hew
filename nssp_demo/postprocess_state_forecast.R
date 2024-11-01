@@ -305,7 +305,7 @@ p <- arg_parser("Generate forecast figures") |>
     "--no-filter-bad-chains",
     help = paste0(
       "By default, postprocess_state_forecast.R filters ",
-      "any bad chains from the samples. Set this flag",
+      "any bad chains from the samples. Set this flag ",
       "to retain them"
     ),
     flag = TRUE
@@ -318,7 +318,7 @@ p <- arg_parser("Generate forecast figures") |>
 
 argv <- parse_args(p)
 model_run_dir <- path(argv$model_run_dir)
-filter_bad_chains <- argv$filter_bad_chains
+filter_bad_chains <- !argv$no_filter_bad_chains
 good_chain_tol <- argv$good_chain_tol
 
 base_dir <- path_dir(model_run_dir)
