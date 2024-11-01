@@ -64,6 +64,23 @@ process_date_score_table <- function(date_fit_dir) {
 }
 
 bind_tables <- function(list_of_table_pairs) {
+  sample_metrics <- purrr::map(
+    list_of_table_pairs,
+    \(x) {
+      attr(x$sample_scores, "metrics")
+    }
+  ) |>
+    unlist() |>
+    unique()
+  quantile_metrics <- purrr::map(
+    list_of_table_pairs,
+    \(x) {
+      attr(x$quantile_scores, "metrics")
+    }
+  ) |>
+    unlist() |>
+    unique()
+
   sample_scores <- purrr::map(
     list_of_table_pairs,
     \(x) {
@@ -79,6 +96,10 @@ bind_tables <- function(list_of_table_pairs) {
     }
   ) |>
     data.table::rbindlist(fill = TRUE)
+
+  attr(sample_scores, "metrics") <- sample_metrics
+  attr(quantile_scores, "metrics") <- quantile_metrics
+
 
   return(list(
     sample_scores = sample_scores,
@@ -128,15 +149,6 @@ process_all_dates <- function(dir_of_forecast_date_dirs,
 
   result <- bind_tables(date_tables)
 
-  if (save) {
-    save_path <- fs::path(model_base_dir,
-      score_file_name,
-      ext = score_file_ext
-    )
-    message(glue::glue("Saving score table to {save_path}"))
-    saveRDS(result, save_path)
-  }
-
   return(result)
 }
 
@@ -154,10 +166,7 @@ collate_all <- function(dir_of_forecast_date_dirs,
     save = save
   )
 
-  collated <- purrr::map(
-    dir_of_forecast_date_dirs,
-    process_all_dates
-  )
+  collated <- process_all_dates(dir_of_forecast_date_dirs)
 
   if (save) {
     save_path <- fs::path(dir_of_forecast_date_dirs,
