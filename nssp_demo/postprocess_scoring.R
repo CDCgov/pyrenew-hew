@@ -1,7 +1,8 @@
 script_packages <- c(
   "dplyr",
   "scoringutils",
-  "lubridate"
+  "lubridate",
+  "ggplot2"
 )
 
 ## load in packages without messages
@@ -10,6 +11,17 @@ purrr::walk(script_packages, \(pkg) {
     library(pkg, character.only = TRUE)
   )
 })
+
+epiweek_to_date <- function(epiweek, epiyear) {
+  # Create date for January 1st of the epiyear
+  jan1 <- as.Date(paste0(epiyear, "-01-01"))
+  # Calculate days to add (epiweeks start on Sunday)
+  days_to_add <- (epiweek - 1) * 7
+  # Add days and adjust to previous Sunday
+  date <- jan1 + days_to_add
+  date <- date - lubridate::wday(date, week_start = 7)
+  return(date)
+}
 
 #' Summarise Scoring Table using quantile scores
 #'
@@ -20,8 +32,8 @@ purrr::walk(script_packages, \(pkg) {
 #' and interval coverages (50% and 90%) are directly summarised from the
 #' scoring table.
 #'
-#' @param score_table A data frame containing the scoring table with quantile
-#' scores.
+#' @param score_table A scoring object containing the scoring table with
+#' quantile scores.
 #' @param scale A character string specifying the scale to filter the quantile
 #' scores. Default is "natural".
 #'
@@ -47,4 +59,28 @@ summarised_scoring_table <- function(score_table, scale = "natural") {
 
     summarised_scores <- left_join(abs_wis, rel_wis, by = "model")
     return(summarised_scores)
+}
+
+#' @title Epiweekly Scoring Plot
+#' This function generates a line plot of the weighted interval scores (WIS) for
+#' different models over epiweeks.
+#' @param score_table A scoring object containing the scoring table with
+#' quantile scores.
+#' @param scale A character string specifying the scale to filter the quantile
+#' scores. Default is "natural".
+#' @return A ggplot object representing the epiweekly scoring plot.
+epiweekly_scoring_plot <- function(score_table, scale = "natural") {
+   epiweekly_score_fig <- score_table$quantile_scores |>
+        filter(scale == !!scale) |>
+        mutate(epiweek = epiweek(date), epiyear = epiyear(date)) |>
+        summarise_scores(by = c("model", "epiweek", "epiyear")) |>
+        mutate(epidate = epiweek_to_date(epiweek, epiyear)) |>
+        as_tibble() |>
+        ggplot(aes(x = epidate, y = wis, color = model)) +
+        geom_line() +
+        geom_point() +  # Add points to the line plot
+        labs(title = "Epiweekly Scoring by Model",
+             x = "Epiweek start dates",
+             y = "Weighted Interval Score (WIS)") +
+        theme_minimal()
 }
