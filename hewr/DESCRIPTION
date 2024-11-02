@@ -17,6 +17,7 @@ Imports:
     dplyr,
     fable,
     feasts,
+    forcats,
     fs,
     ggplot2,
     glue,
