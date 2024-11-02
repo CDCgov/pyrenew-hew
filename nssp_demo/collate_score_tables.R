@@ -50,7 +50,6 @@ process_loc_date_score_table <- function(model_run_dir) {
 }
 
 process_date_score_table <- function(date_fit_dir) {
-  message(glue::glue("Processing {date_fit_dir}"))
   table_path <- fs::path(date_fit_dir,
     "score_table",
     ext = "rds"
@@ -66,7 +65,6 @@ process_date_score_table <- function(date_fit_dir) {
   score_table <- readRDS(table_path)
   score_table$quantile_scores$report_date <- report_date
   score_table$sample_scores$report_date <- report_date
-  message(glue::glue("Done with {date_fit_dir}."))
   return(score_table)
 }
 
@@ -159,6 +157,10 @@ collate_all_score_tables <- function(model_base_dir,
   )
 
   # get all dates, annotate, and combine
+  message(paste0(
+    "Combining date-specific score tables ",
+    "to create a full score table..."
+  ))
   date_tables <- purrr::map(
     date_dirs_to_process,
     process_date_score_table
@@ -171,9 +173,11 @@ collate_all_score_tables <- function(model_base_dir,
       score_file_name,
       ext = score_file_ext
     )
-    message(glue::glue("Saving full score table to {save_path}"))
+    message(glue::glue("Saving full score table to {save_path}..."))
     saveRDS(full_score_table, save_path)
   }
+
+  message("Done creating full score table")
 
   return(full_score_table)
 }
