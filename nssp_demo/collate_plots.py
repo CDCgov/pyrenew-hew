@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from pypdf import PdfWriter
-from util import get_all_forecast_dirs
+from utils import get_all_forecast_dirs
 
 
 def write_merged_pdf(
@@ -87,11 +87,20 @@ def merge_pdfs_from_subdirs(
     return None
 
 
-def main(model_base_dir: str | Path, target_filenames: list[str]) -> None:
+def main(
+    model_base_dir: str | Path, disease: str, target_filenames: list[str]
+) -> None:
+    """
+    Collate target plots for a given disease
+    from a given base directory.
+    """
+
     # define a collation function
-    def process_dir(dir_name):
+    def process_dir(dir_name, file_prefix=""):
         for file_name in target_filenames:
-            merge_pdfs_from_subdirs(dir_name, file_name)
+            merge_pdfs_from_subdirs(
+                dir_name, file_name, output_file_name=file_prefix + file_name
+            )
 
     forecast_dirs = get_all_forecast_dirs(model_base_dir)
 
@@ -99,8 +108,11 @@ def main(model_base_dir: str | Path, target_filenames: list[str]) -> None:
     for f_dir in forecast_dirs:
         process_dir(f_dir)
 
-    # then collate dates
-    process_dir(model_base_dir)
+    # then collate dates, adding the disease name
+    # as a prefix for disambiguation since the
+    # top-level directory may contain forecasts
+    # for multiple diseases.
+    process_dir(model_base_dir, file_prefix=disease)
 
     return None
 
@@ -122,6 +134,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "disease", type=str, help="Name of the disease for which to collate plots"
+)
+
+parser.add_argument(
     "--target-filenames",
     type=str,
     default=(
@@ -138,4 +154,8 @@ parser.add_argument(
 if __name__ == "__main__":
     args = parser.parse_args()
     target_filenames = args.target_filenames.split()
-    main(model_base_dir=args.model_base_dir, target_filenames=target_filenames)
+    main(
+        model_base_dir=args.model_base_dir,
+        disease=args.disease,
+        target_filenames=target_filenames,
+    )

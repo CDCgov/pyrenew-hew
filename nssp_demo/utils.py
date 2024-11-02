@@ -86,7 +86,7 @@ def get_all_forecast_dirs(
     )
 
     return [
-        f
-        for f in os.listdir(parent_dir)
-        if os.path.isdir(Path(parent_dir, f)) and f.startswith(valid_starts)
+        f.name
+        for f in os.scandir(parent_dir)
+        if f.is_dir() and f.name.startswith(valid_starts)
     ]
