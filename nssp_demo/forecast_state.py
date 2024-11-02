@@ -212,26 +212,26 @@ def main(
         model_run_dir, n_days_past_last_training, n_denominator_samples
     )
     logger.info("Forecasting complete.")
+    logger.info("Getting eval data...")
+    if eval_data_path is None:
+        raise ValueError("No path to a truth dataset provided.")
+    save_eval_data(
+        state=state,
+        report_date=report_date,
+        disease=disease,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+        latest_comprehensive_path=eval_data_path,
+        output_data_dir=model_run_dir,
+        last_eval_date=report_date + timedelta(days=n_forecast_days),
+        score_nowcast=score_forecast,
+    )
 
     logger.info("Postprocessing forecast...")
     postprocess_forecast(model_run_dir)
     logger.info("Postprocessing complete.")
 
     if score:
-        logger.info("Getting eval data...")
-        if eval_data_path is None:
-            raise ValueError("No path to a truth dataset provided.")
-        save_eval_data(
-            state=state,
-            report_date=report_date,
-            disease=disease,
-            first_training_date=first_training_date,
-            last_training_date=last_training_date,
-            latest_comprehensive_path=eval_data_path,
-            output_data_dir=model_run_dir,
-            last_eval_date=report_date + timedelta(days=n_forecast_days),
-            score_nowcast=score_forecast,
-        )
         logger.info("Scoring forecast...")
         score_forecast(model_run_dir)
 
