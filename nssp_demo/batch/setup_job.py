@@ -9,7 +9,12 @@ from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
 
 
-def main(job_id, pool_id, container_image) -> None:
+def main(
+    job_id: str,
+    pool_id: str,
+    container_image_name: str = "pyrenew-hew",
+    container_image_version: str = "latest",
+) -> None:
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
     job = models.JobAddParameter(
@@ -18,6 +23,11 @@ def main(job_id, pool_id, container_image) -> None:
     )
     create_job_if_not_exists(client, job, verbose=True)
 
+    container_image = (
+        f"{creds.azure_container_registry_account}."
+        f"{creds.azure_container_registry_domain}/"
+        f"{container_image_name}:{container_image_version}"
+    )
     container_settings = get_container_settings(
         container_image,
         working_directory="containerImageDefault",
