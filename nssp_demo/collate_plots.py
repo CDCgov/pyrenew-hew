@@ -158,7 +158,7 @@ parser.add_argument(
     help=(
         "Base directory containing subdirectories that represent "
         "individual forecast dates, each of which in turn has "
-        "subdirectories that represent individual location forecasts"
+        "subdirectories that represent individual location forecasts."
     ),
 )
 

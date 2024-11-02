@@ -1,19 +1,30 @@
 library(data.table)
 library(argparser)
 
-get_all_flu_forecast_dirs <- function(dir_of_forecast_date_dirs) {
+#' Get all the subdirectories within a parent directory
+#' that match the pattern for a forecast run for a
+#' given disease and optionally a given report date.
+#'
+#' @param parent_dir Directory in which to look for forecast subdirectories.
+#' @param diseases Names of the diseases to match, as a vector of strings,
+#' or a single disease as a string.
+#' @return A vector of paths to the forecast subdirectories.
+get_all_forecast_dirs <- function(dir_of_forecast_date_dirs,
+                                  diseases) {
+  # disease names are lowercase by convention
+  match_patterns <- stringr::str_c(tolower(diseases), "_r")
+  matches_diseases <- \(x) {
+    any(stringr::str_starts(x, pattern = match_patterns))
+  }
+
   dirs <- tibble::tibble(
-    dir_path = fs::dir_ls(dir_of_forecast_date_dirs,
-      type = "directory"
-    )
+    dir_path =
+      fs::dir_ls(dir_of_forecast_date_dirs,
+        type = "directory"
+      )
   ) |>
-    dplyr::mutate(
-      dir_name = fs::path_file(dir_path)
-    ) |>
-    dplyr::filter(stringr::str_starts(
-      dir_name,
-      "influenza_r"
-    )) |>
+    dplyr::mutate(dir_name = fs::path_file(dir_path)) |>
+    dplyr::filter(purrr::map_lgl(dir_name, matches_diseases)) |>
     dplyr::pull(dir_path)
 
   return(dirs)
@@ -134,50 +145,38 @@ process_all_locations <- function(model_base_dir,
 }
 
 
-process_all_dates <- function(dir_of_forecast_date_dirs,
-                              score_file_name = "score_table",
-                              score_file_ext = "rds",
-                              save = FALSE) {
-  to_process <- get_all_flu_forecast_dirs(
-    dir_of_forecast_date_dirs
+collate_all_score_tables <- function(model_base_dir,
+                                     disease,
+                                     score_file_name = "score_table",
+                                     score_file_ext = "rds",
+                                     save = FALSE) {
+  date_dirs_to_process <- get_all_forecast_dirs(
+    model_base_dir,
+    diseases = disease
   )
 
-  date_tables <- purrr::map(
-    to_process,
-    process_date_score_table
-  )
-
-  result <- bind_tables(date_tables)
-
-  return(result)
-}
-
-
-collate_all <- function(dir_of_forecast_date_dirs,
-                        score_file_name = "score_table",
-                        score_file_ext = "rds",
-                        save = FALSE) {
-  dirs_to_process <- get_all_flu_forecast_dirs(
-    dir_of_forecast_date_dirs
-  )
-
-  purrr::map(dirs_to_process,
+  purrr::map(date_dirs_to_process,
     process_all_locations,
     save = save
   )
 
-  collated <- process_all_dates(dir_of_forecast_date_dirs)
+  date_tables <- purrr::map(
+    date_dirs_to_process,
+    process_date_score_table
+  )
+
+  full_score_table <- bind_tables(date_tables)
 
   if (save) {
-    save_path <- fs::path(dir_of_forecast_date_dirs,
+    save_path <- fs::path(model_base_dir,
       score_file_name,
       ext = score_file_ext
     )
-    message(glue::glue("Saving score table to {save_path}"))
-    saveRDS(collated, save_path)
+    message(glue::glue("Saving full score table to {save_path}"))
+    saveRDS(full_score_table, save_path)
   }
 
-  return(collated)
+  return(full_score_table)
 }
 
 
@@ -185,15 +184,26 @@ p <- arg_parser(
   "Forecast other (non-target-disease) ED visits for a given location."
 ) |>
   add_argument(
-    "dir-of-forecast-date-dirs",
+    "model_base_dir",
     help = paste0(
-      "Top-level containing a number of ",
-      "sub-directories, each of which ",
-      "represents forecasts for a single ",
-      "forecast date across locations"
+      "Base directory containing subdirectories that represent ",
+      "individual forecast dates, each of which in turn has ",
+      "subdirectories that represent individual location forecasts."
+    )
+  ) |>
+  add_argument(
+    "disease",
+    help = paste0(
+      "Name of the disease for which to collate scores."
     )
   )
 
 argv <- parse_args(p)
 
-collate_all(argv$dir_of_forecast_date_dirs, save = TRUE)
+collate_all_score_tables(
+  argv$model_base_dir,
+  argv$disease,
+  score_file_name = glue::glue("{argv$disease}_score_table"),
+  score_file_ext = "rds",
+  save = TRUE
+)
