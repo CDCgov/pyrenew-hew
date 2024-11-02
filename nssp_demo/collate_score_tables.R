@@ -38,7 +38,7 @@ process_loc_date_score_table <- function(model_run_dir) {
   location <- fs::path_file(model_run_dir)
   if (!(fs::file_exists(table_path))) {
     warning(glue::glue(
-      "No `score_table.rds` found for location",
+      "No `score_table.rds` found for location ",
       "{location} in directory {model_run_dir}"
     ))
     return(NULL)
