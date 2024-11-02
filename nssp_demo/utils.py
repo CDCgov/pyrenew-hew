@@ -82,8 +82,10 @@ def get_all_forecast_dirs(
             f"Got {type(report_date)}."
         )
     valid_starts = tuple(
-        [f"{disease}_r_{report_date_str}" for disease in diseases]
+        [f"{disease.lower()}_r_{report_date_str}" for disease in diseases]
     )
+    # by convention, disease names are
+    # lowercase in directory patterns
 
     return [
         f.name

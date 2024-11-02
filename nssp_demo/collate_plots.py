@@ -2,6 +2,7 @@
 
 import argparse
 import fnmatch
+import logging
 import os
 from pathlib import Path
 
@@ -34,6 +35,7 @@ def merge_pdfs_from_subdirs(
     base_dir: str | Path,
     file_name: str,
     output_file_name: str = None,
+    subdirs_only: list[str] = None,
     subdir_pattern="*",
 ) -> None:
     """
@@ -57,6 +59,15 @@ def merge_pdfs_from_subdirs(
        saved within ``base_dir``. If ``None``,
        use ``file_name``. Default ``None``.
 
+    subdirs_only
+       Explicit list of subdirs to process. If
+       provided, process only subdirs found
+       within the ``base_dir`` that are named
+       in this list (and match the ``subdir_pattern``).
+       If ``None``, process all subdirs (provided
+       they match the ``subdir_pattern``).
+       Default ``None``.
+
     subdir_pattern
        Unix-shell style wildcard pattern that
        subdirectories must match to be included.
@@ -73,6 +84,10 @@ def merge_pdfs_from_subdirs(
         for f in os.scandir(base_dir)
         if f.is_dir() and fnmatch.fnmatch(f.name, subdir_pattern)
     ]
+
+    if subdirs_only is not None:
+        subdirs = [s for s in subdirs if s in subdirs_only]
+
     to_merge = [
         Path(base_dir, subdir, file_name)
         for subdir in subdirs
@@ -82,7 +97,8 @@ def merge_pdfs_from_subdirs(
     if output_file_name is None:
         output_file_name = file_name
 
-    write_merged_pdf(to_merge, Path(base_dir, output_file_name))
+    if len(to_merge) > 0:
+        write_merged_pdf(to_merge, Path(base_dir, output_file_name))
 
     return None
 
@@ -94,33 +110,46 @@ def main(
     Collate target plots for a given disease
     from a given base directory.
     """
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
     # define a collation function
-    def process_dir(dir_name, file_prefix=""):
+    def process_dir(dir_path, file_prefix="", subdirs_only=None):
         for file_name in target_filenames:
             merge_pdfs_from_subdirs(
-                dir_name, file_name, output_file_name=file_prefix + file_name
+                dir_path,
+                file_name,
+                output_file_name=file_prefix + file_name,
+                subdirs_only=subdirs_only,
             )
 
-    forecast_dirs = get_all_forecast_dirs(model_base_dir)
+    forecast_dirs = get_all_forecast_dirs(model_base_dir, diseases=disease)
 
     # first collate locations for a given date
+    logger.info(
+        "Collating plots across locations, by forecast date. "
+        f"{len(forecast_dirs)} dates to process."
+    )
     for f_dir in forecast_dirs:
-        process_dir(f_dir)
+        logger.info(f"Collating plots from {f_dir}")
+        process_dir(Path(model_base_dir, f_dir))
+    logger.info("Done collating across locations by date.")
 
     # then collate dates, adding the disease name
     # as a prefix for disambiguation since the
     # top-level directory may contain forecasts
     # for multiple diseases.
-    process_dir(model_base_dir, file_prefix=disease)
+    logger.info("Collating plots from forecast date directories...")
+    process_dir(
+        model_base_dir, file_prefix=f"{disease}_", subdirs_only=forecast_dirs
+    )
+    logger.info("Done collating plots from forecast date directories.")
 
     return None
 
 
 parser = argparse.ArgumentParser(
-    description=(
-        "Collate forecast plots from subdirectories " "into single PDFs"
-    )
+    description=("Collate forecast plots from subdirectories into single PDFs")
 )
 
 parser.add_argument(
