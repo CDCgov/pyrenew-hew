@@ -114,30 +114,31 @@ bind_tables <- function(list_of_table_pairs) {
   ))
 }
 
-process_all_locations <- function(model_base_dir,
-                                  score_file_name = "score_table",
-                                  score_file_ext = "rds",
-                                  save = FALSE) {
-  to_process <- fs::dir_ls(model_base_dir,
+collate_scores_for_date <- function(model_run_dir,
+                                    score_file_name = "score_table",
+                                    score_file_ext = "rds",
+                                    save = FALSE) {
+  message(glue::glue("Processing scores from {model_run_dir}..."))
+  locations_to_process <- fs::dir_ls(model_run_dir,
     type = "directory"
   )
-  location_tables <- purrr::map(
-    to_process,
+  location_score_tables <- purrr::map(
+    locations_to_process,
     process_loc_date_score_table
   )
 
-  result <- bind_tables(location_tables)
+  date_score_table <- bind_tables(location_score_tables)
 
   if (save) {
-    save_path <- fs::path(model_base_dir,
+    save_path <- fs::path(model_run_dir,
       score_file_name,
       ext = score_file_ext
     )
-    message(glue::glue("Saving score table to {save_path}"))
-    saveRDS(result, save_path)
+    message(glue::glue("Saving score table to {save_path}..."))
+    saveRDS(date_score_table, save_path)
   }
-
-  return(result)
+  message(glue::glue("Done processing scores for {model_run_dir}."))
+  return(date_score_table)
 }
 
 
@@ -151,11 +152,13 @@ collate_all_score_tables <- function(model_base_dir,
     diseases = disease
   )
 
+  # collate scores across locations for each date
   purrr::map(date_dirs_to_process,
-    process_all_locations,
+    collate_scores_for_date,
     save = save
   )
 
+  # get all dates, annotate, and combine
   date_tables <- purrr::map(
     date_dirs_to_process,
     process_date_score_table
