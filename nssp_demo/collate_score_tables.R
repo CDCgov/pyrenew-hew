@@ -31,8 +31,6 @@ get_all_forecast_dirs <- function(dir_of_forecast_date_dirs,
 }
 
 process_loc_date_score_table <- function(model_run_dir) {
-  message(glue::glue("Processing {model_run_dir}..."))
-
   table_path <- fs::path(model_run_dir,
     "score_table",
     ext = "rds"
@@ -43,13 +41,11 @@ process_loc_date_score_table <- function(model_run_dir) {
       "No `score_table.rds` found for location",
       "{location} in directory {model_run_dir}"
     ))
-    message(glue::glue("Done with {model_run_dir}."))
     return(NULL)
   }
   score_table <- readRDS(table_path)
   score_table$quantile_scores$location <- location
   score_table$sample_scores$location <- location
-  message(glue::glue("Done with {model_run_dir}."))
   return(score_table)
 }
 
