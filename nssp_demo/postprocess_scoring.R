@@ -2,7 +2,8 @@ script_packages <- c(
   "dplyr",
   "scoringutils",
   "lubridate",
-  "ggplot2"
+  "ggplot2",
+  "argparser"
 )
 
 ## load in packages without messages
@@ -32,7 +33,7 @@ epiweek_to_date <- function(epiweek, epiyear) {
 #' and interval coverages (50% and 90%) are directly summarised from the
 #' scoring table.
 #'
-#' @param score_table A scoring object containing the scoring table with
+#' @param qunatile_scores A scoring object containing the scoring table with
 #' quantile scores.
 #' @param scale A character string specifying the scale to filter the quantile
 #' scores. Default is "natural".
@@ -41,10 +42,13 @@ epiweek_to_date <- function(epiweek, epiyear) {
 #' relative WIS, absolute WIS, MAE, and interval coverages (50% and 90%).
 #'
 #' @examples
-#' # Assuming `score_table` is a data frame with the necessary structure:
-#' summarised_scores <- summarised_scoring_table(score_table, scale = "natural")
+#' # Assuming `quantile_scores` is a data frame with the necessary structure:
+#' summarised_scores <- summarised_scoring_table(
+#'   quantile_scores,
+#'   scale = "natural"
+#' )
 #' print(summarised_scores)
-summarised_scoring_table <- function(score_table,
+summarised_scoring_table <- function(quantile_scores,
                                      scale = "natural") {
   rel_wis <- quantile_scores |>
     filter(scale == !!scale) |>
@@ -67,7 +71,7 @@ summarised_scoring_table <- function(score_table,
 }
 
 
-location_summary_table <- function(score_table,
+location_summary_table <- function(quantile_scores,
                                    scale = "natural") {
   rel_wis <- quantile_scores |>
     filter(scale == !!scale) |>
@@ -127,6 +131,7 @@ epiweekly_scoring_plot <- function(quantile_scores, scale = "natural") {
       x = "Epiweek start dates",
       y = "Relative Weighted Interval Score (WIS)"
     ) +
+    scale_y_continuous(trans = "log10") +
     theme_minimal()
 
   return(epiweekly_score_fig)
@@ -238,69 +243,165 @@ relative_wis_by_location <- function(scores,
 }
 
 
-main <- function(path_to_scores) {
+main <- function(path_to_scores,
+                 output_directory,
+                 output_prefix = "") {
+  get_save_path <- function(filename, ext = "pdf") {
+    fs::path(output_directory,
+      glue::glue("{output_prefix}{filename}"),
+      ext = ext
+    )
+  }
+
   scores <- readRDS(path_to_scores)
 
   quantile_scores <- scores$quantile_scores
+
   locations <- unique(quantile_scores$location) |>
     purrr::set_names()
-  overall_fig <- epiweekly_scoring_plot(
+
+  message("Plotting relative WIS by forecast date across locations...")
+
+  rel_wis_by_date <- epiweekly_scoring_plot(
     quantile_scores,
     scale = "log"
   )
 
-  location_figs <- purrr::map(locations,
+  rel_wis_by_date_save_path <- get_save_path("relative_wis_by_date")
+
+  message(glue::glue("Saving figure to {rel_wis_by_date_save_path}..."))
+  ggsave(rel_wis_by_date_save_path,
+    rel_wis_by_date,
+    width = 8,
+    height = 4
+  )
+
+
+  message("Plotting relative WIS by forecast date and location...")
+  rel_wis_by_date_and_location <- purrr::map(locations,
     location_rel_wis_plot,
     quantile_scores = quantile_scores,
     scale = "log"
   )
 
-  ggsave("wis_by_time_overall.pdf", overall_fig)
-
-  plots_to_pdf(location_figs,
-    "wis_by_time_and_location.pdf",
-    width = 7,
-    height = 5
+  rel_wis_by_date_loc_save_path <- get_save_path(
+    "relative_wis_by_date_and_location"
   )
 
+  message(
+    glue::glue("Saving figure to {rel_wis_by_date_loc_save_path}...")
+  )
+
+  plots_to_pdf(rel_wis_by_date_and_location,
+    rel_wis_by_date_loc_save_path,
+    width = 8,
+    height = 4
+  )
+
+  message("Plotting WIS components by location for pyrenew-hew...")
   wis_components_by_location <-
     scoringutils::plot_wis(
       quantile_scores |>
         filter(model == "pyrenew-hew"),
       x = "location"
     )
+  wis_comp_by_loc_save_path <- get_save_path(
+    "wis_components_by_location",
+    ext = "png"
+  ) # wis components do not save well as vectors
+  ggsave(
+    wis_comp_by_loc_save_path,
+    wis_components_by_location
+  )
+
   wis_components_by_model <-
     scoringutils::plot_wis(quantile_scores,
       x = "model"
     )
 
+  wis_comp_by_model_save_path <- get_save_path(
+    "wis_components_by_model",
+    ext = "png"
+  )
+  ggsave(
+    wis_comp_by_model_save_path,
+    wis_components_by_model
+  )
+
+  message("Plotting relative WIS across dates by location")
   rel_wis_by_location <- relative_wis_by_location(
     quantile_scores
   )
 
-  ggsave(
-    "wis__components_by_location.pdf",
-    wis_components_by_location
+  rel_wis_by_location_save_path <- get_save_path(
+    "relative_wis_by_location"
   )
-  ggsave(
-    "wis_components_by_model.pdf",
-    wis_components_by_model
-  )
-  ggsave("rel_wis_by_location.pdf",
+
+  ggsave(rel_wis_by_location_save_path,
     rel_wis_by_location,
     height = 10,
     width = 4
   )
 
+  message("Making tables...")
   table_all <- summarised_scoring_table(
     quantile_scores,
     scale = "log"
   )
 
+  table_all_save_path <- get_save_path(
+    "overall_scores",
+    ext = "tsv"
+  )
+  readr::write_tsv(table_all, table_all_save_path)
+
+
   table_locs <- location_summary_table(quantile_scores,
     scale = "log"
   )
 
-  readr::write_tsv(table_all, "overall_scores_table.tsv")
-  readr::write_tsv(table_locs, "scores_by_location_table.tsv")
+  table_locs_save_path <- get_save_path(
+    "scores_by_location",
+    ext = "tsv"
+  )
+  readr::write_tsv(table_locs, table_locs_save_path)
+
+  message("Done with score postprocessing.")
 }
+
+p <- argument_parser |>
+  add_argument(
+    "path_to_scores",
+    help = paste0(
+      "Path to a file holding all scores, as an .rds ",
+      "file, in the list of scoringutils objects output ",
+      "format of collate_score_tables.R"
+    )
+  ) |>
+  add_argument("--output-directory",
+    help = paste0(
+      "Output directory in which to save the ",
+      "generated score plots and tables. ",
+      "Default '.', i.e. the current working ",
+      "directory"
+    ),
+    default = "."
+  ) |>
+  add_argument("--output-prefix",
+    help = paste0(
+      "Prefix to append to output file names, e.g. ",
+      "the name(s) of the target disease(s) ",
+      "and/or epidemiological signal(s). ",
+      "Default '' (no prefix)"
+    ),
+    default = ""
+  )
+
+
+argv <- p$parse_args()
+
+main(
+  argv$path_to_scores,
+  argv$output_directory,
+  argv$output_prefix
+)
