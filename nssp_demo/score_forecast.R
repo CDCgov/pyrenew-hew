@@ -24,7 +24,7 @@ suppressPackageStartupMessages(library(argparser))
 #' function will add relative skill metrics to the output.
 #'
 #' @param scorable_data A data frame containing the data to be scored.
-#' @param forecast_unit A character string specifying the forecast unit.
+#' @param forecast_unit A string specifying the forecast unit.
 #' @param observed A string specifying the column name for observed
 #' values.
 #' @param predicted A string specifying the column name for predicted
