@@ -214,7 +214,7 @@ def main(
     logger.info("Forecasting complete.")
     logger.info("Getting eval data...")
     if eval_data_path is None:
-        raise ValueError("No path to a truth dataset provided.")
+        raise ValueError("No path to an evaluation dataset provided.")
     save_eval_data(
         state=state,
         report_date=report_date,
