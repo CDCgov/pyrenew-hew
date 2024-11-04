@@ -29,7 +29,7 @@ suppressPackageStartupMessages(library(argparser))
 #' values.
 #' @param predicted A string vector specifying the column name for predicted
 #' values.
-#' @param sample_id A character string specifying the column name for sample
+#' @param sample_id A string specifying the column name for sample
 #' IDs. Default is ".draw".
 #' @param model_col A character string specifying the column name for models.
 #' @param ... Additional arguments passed to
