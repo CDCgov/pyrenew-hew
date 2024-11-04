@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 from pathlib import Path
@@ -11,11 +12,28 @@ _disease_map = {
 _inverse_disease_map = {v: k for k, v in _disease_map.items()}
 
 
+def aggregate_to_national(
+    data: pl.LazyFrame,
+    geo_values_to_include,
+    first_date_to_include: datetime.date,
+    national_geo_value="US",
+):
+    return (
+        data.filter(
+            pl.col("geo_value").is_in(geo_values_to_include),
+            pl.col("reference_date") >= first_date_to_include,
+        )
+        .group_by(["disease", "metric", "geo_type", "reference_date"])
+        .agg(geo_value=pl.lit(national_geo_value), value=pl.col("value").sum())
+    )
+
+
 def process_state_level_data(
     state_level_nssp_data: pl.LazyFrame,
-    state_abb,
+    state_abb: str,
     disease: str,
-    first_training_date,
+    first_training_date: datetime.date,
+    state_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
     if state_level_nssp_data is None:
         return pl.DataFrame(
@@ -28,6 +46,14 @@ def process_state_level_data(
         )
 
     disease_key = _disease_map.get(disease, disease)
+
+    if state_abb == "US":
+        state_level_nssp_data = aggregate_to_national(
+            state_level_nssp_data,
+            state_pop_df["abb"].unique(),
+            first_training_date,
+            national_geo_value="US",
+        )
 
     return (
         state_level_nssp_data.filter(
@@ -60,6 +86,7 @@ def aggregate_facility_level_nssp_to_state(
     state_abb: str,
     disease: str,
     first_training_date: str,
+    state_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
     if facility_level_nssp_data is None:
         return pl.DataFrame(
@@ -72,6 +99,14 @@ def aggregate_facility_level_nssp_to_state(
         )
 
     disease_key = _disease_map.get(disease, disease)
+
+    if state_abb == "US":
+        facility_level_nssp_data = aggregate_to_national(
+            facility_level_nssp_data,
+            state_pop_df["abb"].unique(),
+            first_training_date,
+            national_geo_value="US",
+        )
 
     return (
         facility_level_nssp_data.filter(
@@ -103,26 +138,7 @@ def verify_no_date_gaps(df: pl.DataFrame):
         raise ValueError("Data frame appears to have date gaps")
 
 
-def process_and_save_state(
-    state_abb,
-    disease,
-    report_date,
-    state_level_report_date,
-    first_training_date,
-    last_training_date,
-    param_estimates,
-    model_batch_dir,
-    logger=None,
-    facility_level_nssp_data: pl.LazyFrame = None,
-    state_level_nssp_data: pl.LazyFrame = None,
-) -> None:
-    if facility_level_nssp_data is None and state_level_nssp_data is None:
-        raise ValueError(
-            "Must provide at least one "
-            "of facility-level and state-level"
-            "NSSP data"
-        )
-
+def get_state_pop_df():
     facts = pl.read_csv(
         "https://raw.githubusercontent.com/k5cents/usa/"
         "refs/heads/master/data-raw/facts.csv"
@@ -136,12 +152,10 @@ def process_and_save_state(
         ["abb", "name", "population"]
     )
 
-    state_pop = (
-        state_pop_df.filter(pl.col("abb") == state_abb)
-        .get_column("population")
-        .to_list()[0]
-    )
+    return state_pop_df
 
+
+def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
     generation_interval_pmf = (
         param_estimates.filter(
             (pl.col("geo_value").is_null())
@@ -179,6 +193,57 @@ def process_and_save_state(
         .to_list()[0]
     )
 
+    return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
+
+
+def process_national(
+    disease: str,
+    report_date: datetime.date,
+    state_level_report_date: datetime.date,
+    first_training_date: datetime.date,
+    last_training_date: datetime.date,
+    param_estimates: pl.LazyFrame,
+    model_batch_dir: Path | str,
+    facility_level_nssp_data: pl.LazyFrame = None,
+    state_level_nssp_data: pl.LazyFrame = None,
+    logger=None,
+):
+    if logger is not None:
+        logger.info("Processing national dataset")
+
+
+def process_and_save_state(
+    state_abb,
+    disease,
+    report_date,
+    state_level_report_date,
+    first_training_date,
+    last_training_date,
+    param_estimates,
+    model_batch_dir,
+    logger=None,
+    facility_level_nssp_data: pl.LazyFrame = None,
+    state_level_nssp_data: pl.LazyFrame = None,
+) -> None:
+    if facility_level_nssp_data is None and state_level_nssp_data is None:
+        raise ValueError(
+            "Must provide at least one "
+            "of facility-level and state-level"
+            "NSSP data"
+        )
+
+    state_pop_df = get_state_pop_df()
+
+    state_pop = (
+        state_pop_df.filter(pl.col("abb") == state_abb)
+        .get_column("population")
+        .to_list()[0]
+    )
+
+    (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
+        param_estimates=param_estimates, state_abb=state_abb, disease=disease
+    )
+
     right_truncation_offset = (report_date - last_training_date).days
 
     aggregated_facility_data = aggregate_facility_level_nssp_to_state(
@@ -186,6 +251,7 @@ def process_and_save_state(
         state_abb=state_abb,
         disease=disease,
         first_training_date=first_training_date,
+        state_pop_df=state_pop_df,
     )
 
     state_level_data = process_state_level_data(
@@ -193,6 +259,7 @@ def process_and_save_state(
         state_abb=state_abb,
         disease=disease,
         first_training_date=first_training_date,
+        state_pop_df=state_pop_df,
     )
 
     if aggregated_facility_data.height > 0:
