@@ -73,7 +73,7 @@ def get_all_forecast_dirs(
     elif isinstance(report_date, str):
         report_date_str = report_date
     elif isinstance(report_date, datetime.date):
-        report_date_str = "{:%Y-%m-%d}".format(report_date)
+        report_date_str = f"{report_date:%Y-%m-%d}"
     else:
         raise ValueError(
             "report_date must be one of None, "
