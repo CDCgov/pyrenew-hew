@@ -369,7 +369,7 @@ main <- function(path_to_scores,
   message("Done with score postprocessing.")
 }
 
-p <- argument_parser |>
+p <- arg_parser |>
   add_argument(
     "path_to_scores",
     help = paste0(
