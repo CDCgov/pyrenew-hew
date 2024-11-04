@@ -13,6 +13,7 @@ purrr::walk(script_packages, \(pkg) {
   )
 })
 
+
 epiweek_to_date <- function(epiweek, epiyear) {
   # Create date for January 1st of the epiyear
   jan1 <- as.Date(paste0(epiyear, "-01-01"))
@@ -280,7 +281,8 @@ main <- function(path_to_scores,
   message("Plotting relative WIS by forecast date and location...")
   rel_wis_by_date_and_location <- purrr::map(locations,
     location_rel_wis_plot,
-    quantile_scores = quantile_scores,
+    quantile_scores =
+      quantile_scores,
     scale = "log"
   )
 
@@ -401,7 +403,7 @@ p <- arg_parser(paste0(
   )
 
 
-argv <- p$parse_args()
+argv <- parse_args(p)
 
 main(
   argv$path_to_scores,
