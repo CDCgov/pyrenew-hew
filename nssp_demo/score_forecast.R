@@ -27,7 +27,7 @@ suppressPackageStartupMessages(library(argparser))
 #' @param forecast_unit A character string specifying the forecast unit.
 #' @param observed A character string specifying the column name for observed
 #' values.
-#' @param predicted A string vector specifying the column name for predicted
+#' @param predicted A string specifying the column name for predicted
 #' values.
 #' @param sample_id A string specifying the column name for sample
 #' IDs. Default is ".draw".
