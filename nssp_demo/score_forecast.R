@@ -31,7 +31,7 @@ suppressPackageStartupMessages(library(argparser))
 #' values.
 #' @param sample_id A string specifying the column name for sample
 #' IDs. Default is ".draw".
-#' @param model_col A character string specifying the column name for models.
+#' @param model_col A string specifying the column name for models.
 #' @param ... Additional arguments passed to
 #' `scoringutils::transform_forecasts`.
 #'
