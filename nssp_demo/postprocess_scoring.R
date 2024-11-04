@@ -369,7 +369,10 @@ main <- function(path_to_scores,
   message("Done with score postprocessing.")
 }
 
-p <- arg_parser |>
+p <- arg_parser(paste0(
+  "Postprocess a raw score table, creating summary plots ",
+  "and tables."
+)) |>
   add_argument(
     "path_to_scores",
     help = paste0(
