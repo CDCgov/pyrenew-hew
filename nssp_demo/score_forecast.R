@@ -25,7 +25,7 @@ suppressPackageStartupMessages(library(argparser))
 #'
 #' @param scorable_data A data frame containing the data to be scored.
 #' @param forecast_unit A character string specifying the forecast unit.
-#' @param observed A character string specifying the column name for observed
+#' @param observed A string specifying the column name for observed
 #' values.
 #' @param predicted A string specifying the column name for predicted
 #' values.
