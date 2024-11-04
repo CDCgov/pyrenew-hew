@@ -7,12 +7,12 @@ draws_to_quantiles <- function(forecast_dir) {
   draws <- arrow::read_parquet(draws_path) |>
     dplyr::filter(disease == "prop_disease_ed_visits")
 
-  epiweekly_quantiles <-
+  epiweekly_quantiles <- draws |>
     forecasttools::daily_to_epiweekly(
       date_col = "date",
       value_col = ".value",
       id_cols = ".draw",
-      weekly_value_col = "value"
+      weekly_value_name = "value"
     ) |>
     forecasttools::trajectories_to_quantiles(
       timepoint_cols = c("epiweek", "epiyear"),
@@ -75,7 +75,7 @@ create_hubverse_table <- function(model_run_dir) {
 
 main <- function(model_run_dir,
                  output_path) {
-  creat_hubverse_table(model_run_dir) |>
+  create_hubverse_table(model_run_dir) |>
     readr::write_tsv(output_path)
 }
 
@@ -100,5 +100,5 @@ argv <- argparser::parse_args(p)
 
 main(
   argv$model_run_dir,
-  arvg$output_path
+  argv$output_path
 )
