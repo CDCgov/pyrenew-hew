@@ -49,7 +49,7 @@ def save_eval_data(
 
     if not score_nowcast:
         state_level_data = state_level_data.filter(
-            pl.coL("date") >= report_date
+            pl.col("date") >= report_date
         )
 
     state_level_data.write_csv(
