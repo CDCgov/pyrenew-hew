@@ -80,10 +80,10 @@ main <- function(model_run_dir,
 }
 
 
-p <- arg_parser(
+p <- argparser::arg_parser(
   "Create a hubverse table from location specific forecast draws."
 ) |>
-  add_argument(
+  argparser::add_argument(
     "model_run_dir",
     help = paste0(
       "Directory containing subdirectories that represent ",
@@ -91,12 +91,12 @@ p <- arg_parser(
       "that indicates the target pathogen and reference date"
     )
   ) |>
-  add_argument(
+  argparser::add_argument(
     output_path,
     help = "path to which to save the table"
   )
 
-argv <- parse_args(p)
+argv <- argparser::parse_args(p)
 
 main(
   argv$model_run_dir,
