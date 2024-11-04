@@ -142,7 +142,6 @@ make_one_forecast_fig <- function(target_disease,
     ggtitle(title, subtitle = glue("as of {data_vintage_date}")) +
     y_scale +
     scale_x_date("Date") +
-    # scale_shape_discrete("Data Type", labels = str_to_title) +
     theme(legend.position = "bottom")
 }
 
