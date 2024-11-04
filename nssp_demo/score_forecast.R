@@ -8,7 +8,7 @@ suppressPackageStartupMessages(library(argparser))
 #'
 #' This function scores forecast data using the `scoringutils` package. It takes
 #' in scorable data, that is data which has a joined truth data and forecast
-#' data, and scores this.
+#' data, and scores it.
 #'
 #' This function aims at scoring _sampled_ forecasts. Care must be taken to
 #' select the appropriate columns for the observed and predicted values, as well
