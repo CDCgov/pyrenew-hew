@@ -18,6 +18,7 @@ def aggregate_to_national(
     first_date_to_include: datetime.date,
     national_geo_value="US",
 ):
+    assert national_geo_value not in geo_values_to_include
     return (
         data.filter(
             pl.col("geo_value").is_in(geo_values_to_include),
@@ -234,11 +235,14 @@ def process_and_save_state(
 
     state_pop_df = get_state_pop_df()
 
-    state_pop = (
-        state_pop_df.filter(pl.col("abb") == state_abb)
-        .get_column("population")
-        .to_list()[0]
-    )
+    if state_abb == "US":
+        state_pop = state_pop_df["population"].sum()
+    else:
+        state_pop = (
+            state_pop_df.filter(pl.col("abb") == state_abb)
+            .get_column("population")
+            .to_list()[0]
+        )
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
