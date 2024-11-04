@@ -92,7 +92,7 @@ p <- argparser::arg_parser(
     )
   ) |>
   argparser::add_argument(
-    output_path,
+    "output_path",
     help = "path to which to save the table"
   )
 
