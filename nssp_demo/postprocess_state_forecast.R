@@ -220,7 +220,7 @@ postprocess_state_forecast <- function(model_run_dir,
     bind_rows(
       combined_dat |>
         filter(
-          data_type == "eval",
+          data_type == "train",
           disease == "Other",
           date <= last_training_date
         ) |>
