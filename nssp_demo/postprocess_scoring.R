@@ -14,17 +14,6 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-epiweek_to_date <- function(epiweek, epiyear) {
-  # Create date for January 1st of the epiyear
-  jan1 <- as.Date(paste0(epiyear, "-01-01"))
-  # Calculate days to add (epiweeks start on Sunday)
-  days_to_add <- (epiweek - 1) * 7
-  # Add days and adjust to previous Sunday
-  date <- jan1 + days_to_add
-  date <- date - lubridate::wday(date, week_start = 7)
-  return(date)
-}
-
 #' Summarise Scoring Table using quantile scores
 #'
 #' This function takes a scoring table and summarises it by calculating both
@@ -117,7 +106,11 @@ epiweekly_scoring_plot <- function(quantile_scores, scale = "natural") {
       by = c("epiweek", "epiyear"),
       baseline = "cdc_baseline"
     ) |>
-    mutate(epidate = epiweek_to_date(epiweek, epiyear)) |>
+    mutate(epidate = forecasttools::epiweek_to_date(
+      epiweek,
+      epiyear,
+      day_of_week = 1
+    )) |>
     group_by(model, epidate) |>
     summarise(
       wis = mean(wis_scaled_relative_skill),
