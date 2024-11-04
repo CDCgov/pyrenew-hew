@@ -73,7 +73,7 @@ score_single_run <- function(
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
   # Add relative skill if more than one model is present
-  if (n_distinct(scorable_data[[model_col]]) != 1) {
+  if (n_distinct(scorable_data[[model_col]]) > 1) {
     sample_scores <- scoringutils::add_relative_skill(sample_scores)
     quantile_scores <- scoringutils::add_relative_skill(quantile_scores)
   }
