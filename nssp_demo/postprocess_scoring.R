@@ -23,7 +23,7 @@ purrr::walk(script_packages, \(pkg) {
 #' and interval coverages (50% and 90%) are directly summarised from the
 #' scoring table.
 #'
-#' @param qunatile_scores A scoring object containing the scoring table with
+#' @param quantile_scores A scoring object containing the scoring table with
 #' quantile scores.
 #' @param scale A character string specifying the scale to filter the quantile
 #' scores. Default is "natural".
