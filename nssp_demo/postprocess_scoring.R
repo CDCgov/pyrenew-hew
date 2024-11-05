@@ -25,7 +25,7 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @param quantile_scores A scoring object containing the scoring table with
 #' quantile scores.
-#' @param scale A character string specifying the scale to filter the quantile
+#' @param scale A string specifying the scale to filter the quantile
 #' scores. Default is "natural".
 #'
 #' @return A data frame with summarised scores for each model, including
