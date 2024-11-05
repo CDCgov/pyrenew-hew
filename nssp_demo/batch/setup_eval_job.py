@@ -41,7 +41,7 @@ def main(
         Container Registry account associated to
         the job. Default 'pyrenew-hew'.
         The container registry account name and enpoint
-        will be obtained from local environm variables
+        will be obtained from local environment variables
         via a :class``azuretools.auth.EnvCredentialHandler`.
 
     container_image_version
