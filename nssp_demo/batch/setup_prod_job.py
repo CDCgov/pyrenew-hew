@@ -14,11 +14,13 @@ from azuretools.client import get_batch_service_client
 from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
 
+from pyrenew_hew.utils import ensure_listlike
+
 
 def main(
     job_id: str,
     pool_id: str,
-    diseases: str,
+    diseases: str | list[str],
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     excluded_locations: list[str] = [
@@ -41,8 +43,8 @@ def main(
 
     diseases
         Name(s) of disease(s) to run as part of the job,
-        as a whitespace-separated string. Supported
-        values are 'COVID-19' and 'Influenza'.
+        as a single string (one disease) or a list of strings.
+        Supported values are 'COVID-19' and 'Influenza'.
 
     container_image_name:
         Name of the container to use for the job.
@@ -68,7 +70,8 @@ def main(
     """
     supported_diseases = ["COVID-19", "Influenza"]
 
-    disease_list = diseases.split()
+    disease_list = ensure_listlike(diseases)
+
     for d in disease_list:
         if d not in supported_diseases:
             raise ValueError(
@@ -209,5 +212,6 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    args.diseases = args.diseases.split()
     args.excluded_locations = args.excluded_locations.split()
     main(**vars(args))
