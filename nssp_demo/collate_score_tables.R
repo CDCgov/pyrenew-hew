@@ -1,5 +1,16 @@
-library(data.table)
-library(argparser)
+script_packages <- c(
+  "data.table",
+  "argparser",
+  "stringr"
+)
+
+## load in packages without messages
+purrr::walk(script_packages, \(pkg) {
+  suppressPackageStartupMessages(
+    library(pkg, character.only = TRUE)
+  )
+})
+
 
 #' Get all the subdirectories within a parent directory
 #' that match the pattern for a forecast run for a
@@ -12,19 +23,18 @@ library(argparser)
 get_all_forecast_dirs <- function(dir_of_forecast_date_dirs,
                                   diseases) {
   # disease names are lowercase by convention
-  match_patterns <- stringr::str_c(tolower(diseases), "_r")
-  matches_diseases <- \(x) {
-    any(stringr::str_starts(x, pattern = match_patterns))
-  }
+  match_patterns <- str_c(tolower(diseases), "_r", collapse = "|")
 
   dirs <- tibble::tibble(
-    dir_path =
-      fs::dir_ls(dir_of_forecast_date_dirs,
-        type = "directory"
-      )
+    dir_path = fs::dir_ls(
+      dir_of_forecast_date_dirs,
+      type = "directory"
+    )
   ) |>
-    dplyr::mutate(dir_name = fs::path_file(dir_path)) |>
-    dplyr::filter(purrr::map_lgl(dir_name, matches_diseases)) |>
+    dplyr::filter(str_starts(
+      fs::path_file(dir_path),
+      match_patterns
+    )) |>
     dplyr::pull(dir_path)
 
   return(dirs)
@@ -56,7 +66,7 @@ process_date_score_table <- function(date_fit_dir) {
   )
   table_dir <- fs::path_file(date_fit_dir)
 
-  report_date <- stringr::str_match(
+  report_date <- str_match(
     table_dir,
     "r_(([0-9]|-)+)_f"
   )[2] |>
