@@ -37,12 +37,7 @@ def save_eval_data(
             first_training_date=first_training_date,
             state_pop_df=get_state_pop_df(),
         )
-        .with_columns(
-            pl.when(pl.col("date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("test"))
-            .alias("data_type"),
-        )
+        .with_columns(data_type=pl.lit("eval"))
         .sort(["date", "disease"])
     )
 
