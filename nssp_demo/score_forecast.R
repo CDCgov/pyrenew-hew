@@ -1,7 +1,16 @@
-suppressPackageStartupMessages(library(dplyr))
-suppressPackageStartupMessages(library(scoringutils))
-suppressPackageStartupMessages(library(arrow))
-suppressPackageStartupMessages(library(argparser))
+script_packages <- c(
+  "dplyr",
+  "scoringutils",
+  "arrow",
+  "argparser"
+)
+
+## load in packages without messages
+purrr::walk(script_packages, \(pkg) {
+  suppressPackageStartupMessages(
+    library(pkg, character.only = TRUE)
+  )
+})
 
 
 #' Score Forecasts
