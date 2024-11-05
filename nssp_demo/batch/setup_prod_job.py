@@ -6,7 +6,6 @@ on Azure Batch.
 """
 
 import argparse
-import datetime
 
 import polars as pl
 from azure.batch import models
@@ -22,6 +21,16 @@ def main(
     diseases: str,
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
+    excluded_locations: list[str] = [
+        "AS",
+        "GU",
+        "MO",
+        "MP",
+        "PR",
+        "UM",
+        "VI",
+        "WY",
+    ],
 ) -> None:
     """
     job_id
@@ -46,6 +55,12 @@ def main(
 
     container_image_version
         Version of the container to use. Default 'latest'.
+
+    excluded_locations
+        List of two letter USPS location abbreviations to
+        exclude from the job. Defaults to locations for which
+        we typically do not have available NSSP ED visit data:
+        ``["AS", "GU", "MO", "MP", "PR", "UM", "VI", "WY"]``.
 
     Returns
     -------
@@ -122,8 +137,6 @@ def main(
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
-    excluded_locations = ["AS", "GU", "MO", "MP", "PR", "UM", "VI", "WY"]
-
     all_locations = (
         locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
         .get_column("STUSAB")
@@ -180,6 +193,21 @@ parser.add_argument(
     default="latest",
 )
 
+parser.add_argument(
+    "--excluded_locations",
+    type=str,
+    help=(
+        "Two-letter USPS location abbreviations to "
+        "exclude from the job, as a whitespace-separated "
+        "string. Defaults to a set of locations for which "
+        "we typically do not have available NSSP ED visit "
+        "data: 'AS GU MO MP PR UM VI WY'."
+    ),
+    default="AS GU MO MP PR UM VI WY",
+)
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
+    args.excluded_locations = args.excluded_locations.split()
     main(**vars(args))
