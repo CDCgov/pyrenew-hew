@@ -1,0 +1,103 @@
+---
+title: "Worldwide Development"
+author: "Gapminder Analytics"
+format: dashboard
+---
+
+```{python}
+#| tags: [parameters]
+model_dir_raw = "~/pyrenew-hew/nssp_demo/private_data/pyrenew-test-output/influenza_r_2024-02-28_f_2023-02-26_t_2024-02-25/SD"
+```
+
+
+## {.sidebar}
+
+
+```{python}
+# | results: asis
+from IPython.display import display, HTML
+
+all_locations = [
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "DC",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "AS",
+    "GU",
+    "MP",
+    "PR",
+    "UM",
+    "VI",
+]
+
+html_list = ""
+for location in all_locations:
+    html_list += f"<h3>{location}</h3>"
+
+display(HTML(html_list))
+```
+
+# Page 1
+
+```{python}
+from pathlib import Path
+import polars as pl
+from itables import show
+
+model_dir = Path(model_dir_raw)
+
+dat = pl.read_csv(Path(model_dir_raw, "data.csv"))
+
+show(dat)
+```
+
+# Page 2
+
+Bye
