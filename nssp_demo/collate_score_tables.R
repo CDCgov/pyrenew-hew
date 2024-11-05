@@ -142,9 +142,7 @@ collate_scores_for_date <- function(model_run_dir,
 
 collate_all_score_tables <- function(model_base_dir,
                                      disease,
-                                     score_file_name = "score_table",
-                                     score_file_ext = "rds",
-                                     save = FALSE) {
+                                     score_file_save_path = NULL) {
   date_dirs_to_process <- get_all_forecast_dirs(
     model_base_dir,
     diseases = disease
@@ -168,13 +166,12 @@ collate_all_score_tables <- function(model_base_dir,
 
   full_score_table <- bind_tables(date_tables)
 
-  if (save) {
-    save_path <- fs::path(model_base_dir,
-      score_file_name,
-      ext = score_file_ext
-    )
-    message(glue::glue("Saving full score table to {save_path}..."))
-    saveRDS(full_score_table, save_path)
+  if (!is.null(score_file_save_path)) {
+    message(glue::glue(paste0(
+      "Saving full score table to ",
+      "{score_file_save_path}..."
+    )))
+    readr::save_rds(full_score_table, save_path)
   }
 
   message("Done creating full score table")
