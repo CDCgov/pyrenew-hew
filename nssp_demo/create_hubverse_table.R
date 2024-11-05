@@ -1,15 +1,23 @@
-draws_to_quantiles <- function(forecast_dir) {
+draws_to_quantiles <- function(forecast_dir,
+                               report_date) {
+  message(glue::glue("Processing {forecast_dir}..."))
   draws_path <- fs::path(forecast_dir,
     "forecast_samples",
     ext = "parquet"
   )
   location <- fs::path_file(forecast_dir)
 
-  draws <- arrow::read_parquet(draws_path)
+  draws <- arrow::read_parquet(draws_path) |>
+    dplyr::filter(date >= lubridate::ymd(report_date))
 
-  epiweekly_disease_draws <- dplyr::filter(
-    disease == "Disease"
-  ) |>
+  if (nrow(draws) < 1) {
+    return(NULL)
+  }
+
+  epiweekly_disease_draws <- draws |>
+    dplyr::filter(
+      disease == "Disease"
+    ) |>
     forecasttools::daily_to_epiweekly(
       date_col = "date",
       value_col = ".value",
@@ -17,7 +25,8 @@ draws_to_quantiles <- function(forecast_dir) {
       weekly_value_name = "epiweekly_disease"
     )
 
-  epiweekly_total_draws <- dplyr::filter(disease == "Total") |>
+  epiweekly_total_draws <- draws |>
+    dplyr::filter(disease == "Other") |>
     forecasttools::daily_to_epiweekly(
       date_col = "date",
       value_col = ".value",
@@ -29,7 +38,8 @@ draws_to_quantiles <- function(forecast_dir) {
     epiweekly_disease_draws,
     epiweekly_total_draws,
     by = c(
-      "date",
+      "epiweek",
+      "epiyear",
       ".draw"
     )
   ) |>
@@ -39,16 +49,16 @@ draws_to_quantiles <- function(forecast_dir) {
     )
 
 
-
-  forecasttools::trajectories_to_quantiles(
-    timepoint_cols = c("epiweek", "epiyear"),
-    value_col = "epiweekly_proportion"
-  ) |>
+  epiweekly_quantiles <- epiweekly_prop_draws |>
+    forecasttools::trajectories_to_quantiles(
+      timepoint_cols = c("epiweek", "epiyear"),
+      value_col = "epiweekly_proportion"
+    ) |>
     dplyr::mutate(
       location = !!location
     )
 
-
+  message(glue::glue("Done processing {forecast_dir}"))
   return(epiweekly_quantiles)
 }
 
@@ -76,7 +86,7 @@ create_hubverse_table <- function(model_run_dir) {
 
   hubverse_table <- purrr::map(
     locations_to_process,
-    draws_to_quantiles
+    \(x) draws_to_quantiles(x, report_date = report_date)
   ) |>
     dplyr::bind_rows() |>
     forecasttools::get_flusight_table(
