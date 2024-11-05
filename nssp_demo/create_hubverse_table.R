@@ -74,11 +74,11 @@ create_hubverse_table <- function(model_run_dir) {
 
   disease <- dplyr::case_when(
     stringr::str_starts(
-      model_run_dir,
+      fs::path_file(model_run_dir),
       "covid-19"
     ) ~ "covid",
     stringr::str_starts(
-      model_run_dir,
+      fs::path_file(model_run_dir),
       "influenza"
     ) ~ "flu",
     TRUE ~ NA
