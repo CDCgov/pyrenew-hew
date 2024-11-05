@@ -97,14 +97,27 @@ prep_truth_data <- function(truth_data_path) {
   dat <- readr::read_tsv(truth_data_path,
     show_col_types = FALSE
   ) |>
-    filter(data_type == "test") |>
-    rename(true_value = ed_visits) |>
-    mutate(disease = case_when(
-      disease %in% c("Influenza", "COVID-19") ~ "Disease",
-      disease == "Total" ~ "Total",
-      TRUE ~ NA
-    )) |>
-    filter(!is.na(disease)) |>
+    filter(data_type == "eval") |>
+    rename(true_value = ed_visits)
+
+  truth_data_valid <- (
+    dplyr::n_distinct(dat$disease) == 2 &
+      "Total" %in% dat$disease &
+      xor(
+        "COVID-19" %in% dat$disease,
+        "Influenza" %in% dat$disease
+      ))
+
+  if (!truth_data_valid) {
+    err_dis <- paste(unique(dat$disease), collapse = "', ")
+    stop(
+      "Evaluation data 'disease' column must ",
+      "have exactly two uniques entries: 'Total' ",
+      "and exactly one of 'COVID-19', 'Influenza'. ",
+      glue::glue("Got: '{err_dis}")
+    )
+  }
+  filter(!is.na(disease)) |>
     tidyr::pivot_wider(
       names_from = "disease",
       values_from = "true_value"

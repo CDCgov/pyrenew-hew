@@ -243,9 +243,5 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    target_filenames = args.target_filenames.split()
-    main(
-        model_base_dir=args.model_base_dir,
-        disease=args.disease,
-        target_filenames=target_filenames,
-    )
+    args.target_filenames = args.target_filenames.split()
+    main(**vars(args))
