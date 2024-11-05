@@ -80,9 +80,7 @@ def merge_pdfs_from_subdirs(
     None
     """
     subdirs = [
-        f.name
-        for f in os.scandir(base_dir)
-        if f.is_dir() and fnmatch.fnmatch(f.name, subdir_pattern)
+        f.name for f in Path(base_dir).glob(subdir_pattern) if f.is_dir()
     ]
 
     if subdirs_only is not None:
