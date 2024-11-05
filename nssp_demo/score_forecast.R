@@ -203,7 +203,10 @@ read_and_score_location <- function(model_run_dir,
     offset = 1 / max_visits
   )
 
-  saveRDS(scored, fs::path(model_run_dir, "score_table", ext = "rds"))
+  readr::write_rds(scored, fs::path(model_run_dir,
+    "score_table",
+    ext = "rds"
+  ))
 }
 
 # Create a parser
