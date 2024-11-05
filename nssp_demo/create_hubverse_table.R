@@ -8,7 +8,7 @@ draws_to_quantiles <- function(forecast_dir,
   location <- fs::path_file(forecast_dir)
 
   draws <- arrow::read_parquet(draws_path) |>
-    dplyr::filter(date >= lubridate::ymd(report_date))
+    dplyr::filter(date >= lubridate::ymd(report_date) - lubridate::days(8))
 
   if (nrow(draws) < 1) {
     return(NULL)
@@ -22,7 +22,8 @@ draws_to_quantiles <- function(forecast_dir,
       date_col = "date",
       value_col = ".value",
       id_cols = ".draw",
-      weekly_value_name = "epiweekly_disease"
+      weekly_value_name = "epiweekly_disease",
+      strict = TRUE
     )
 
   epiweekly_total_draws <- draws |>
@@ -31,7 +32,8 @@ draws_to_quantiles <- function(forecast_dir,
       date_col = "date",
       value_col = ".value",
       id_cols = ".draw",
-      weekly_value_name = "epiweekly_total"
+      weekly_value_name = "epiweekly_total",
+      strict = TRUE
     )
 
   epiweekly_prop_draws <- dplyr::inner_join(
@@ -72,6 +74,14 @@ create_hubverse_table <- function(model_run_dir) {
     "r_(([0-9]|-)+)_f"
   )[2]
 
+  report_epiweek <- lubridate::epiweek(report_date)
+  report_epiyear <- lubridate::epiyear(report_date)
+  report_epiweek_end <- forecasttools::epiweek_to_date(
+    report_epiweek,
+    report_epiyear,
+    day_of_week = 7
+  )
+
   disease <- dplyr::case_when(
     stringr::str_starts(
       fs::path_file(model_run_dir),
@@ -90,7 +100,7 @@ create_hubverse_table <- function(model_run_dir) {
   ) |>
     dplyr::bind_rows() |>
     forecasttools::get_flusight_table(
-      report_date
+      report_epiweek_end
     ) |>
     dplyr::mutate(
       target =
