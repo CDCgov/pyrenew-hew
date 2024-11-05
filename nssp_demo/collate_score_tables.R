@@ -97,11 +97,13 @@ bind_tables <- function(list_of_table_pairs) {
     unique()
 
   sample_scores <- purrr::map(
-    list_of_table_pairs, "sample_scores") |>
+    list_of_table_pairs, "sample_scores"
+  ) |>
     data.table::rbindlist(fill = TRUE)
 
   quantile_scores <- purrr::map(
-    list_of_table_pairs, "quantile_scores") |>
+    list_of_table_pairs, "quantile_scores"
+  ) |>
     data.table::rbindlist(fill = TRUE)
 
   attr(sample_scores, "metrics") <- sample_metrics
