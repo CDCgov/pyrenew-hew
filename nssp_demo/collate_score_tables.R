@@ -157,10 +157,10 @@ collate_all_score_tables <- function(model_base_dir,
   )
 
   # get all dates, annotate, and combine
-  message(paste0(
+  message(
     "Combining date-specific score tables ",
     "to create a full score table..."
-  ))
+  )
   date_tables <- purrr::map(
     date_dirs_to_process,
     process_date_score_table
