@@ -4,20 +4,46 @@ draws_to_quantiles <- function(forecast_dir) {
     ext = "parquet"
   )
   location <- fs::path_file(forecast_dir)
-  draws <- arrow::read_parquet(draws_path) |>
-    dplyr::filter(disease == "prop_disease_ed_visits")
 
-  epiweekly_quantiles <- draws |>
+  draws <- arrow::read_parquet(draws_path)
+
+  epiweekly_disease_draws <- dplyr::filter(
+    disease == "Disease"
+  ) |>
     forecasttools::daily_to_epiweekly(
       date_col = "date",
       value_col = ".value",
       id_cols = ".draw",
-      weekly_value_name = "value"
-    ) |>
-    forecasttools::trajectories_to_quantiles(
-      timepoint_cols = c("epiweek", "epiyear"),
-      value_col = "value"
-    ) |>
+      weekly_value_name = "epiweekly_disease"
+    )
+
+  epiweekly_total_draws <- dplyr::filter(disease == "Total") |>
+    forecasttools::daily_to_epiweekly(
+      date_col = "date",
+      value_col = ".value",
+      id_cols = ".draw",
+      weekly_value_name = "epiweekly_total"
+    )
+
+  epiweekly_prop_draws <- dplyr::inner_join(
+    epiweekly_disease_draws,
+    epiweekly_total_draws,
+    by = c(
+      "date",
+      ".draw"
+    )
+  ) |>
+    dplyr::mutate(
+      epiweekly_proportion =
+        epiweekly_disease / epiweekly_total
+    )
+
+
+
+  forecasttools::trajectories_to_quantiles(
+    timepoint_cols = c("epiweek", "epiyear"),
+    value_col = "epiweekly_proportion"
+  ) |>
     dplyr::mutate(
       location = !!location
     )
