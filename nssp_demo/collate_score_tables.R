@@ -43,7 +43,7 @@ process_loc_date_score_table <- function(model_run_dir) {
     ))
     return(NULL)
   }
-  score_table <- readRDS(table_path)
+  score_table <- readr::read_rds(table_path)
   score_table$quantile_scores$location <- location
   score_table$sample_scores$location <- location
   return(score_table)
@@ -62,7 +62,7 @@ process_date_score_table <- function(date_fit_dir) {
   )[2] |>
     lubridate::ymd()
 
-  score_table <- readRDS(table_path)
+  score_table <- readr::read_rds(table_path)
   score_table$quantile_scores$report_date <- report_date
   score_table$sample_scores$report_date <- report_date
   return(score_table)
