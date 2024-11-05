@@ -181,7 +181,7 @@ collate_all_score_tables <- function(model_base_dir,
       "Saving full score table to ",
       "{score_file_save_path}..."
     )))
-    readr::save_rds(full_score_table, save_path)
+    readr::write_rds(full_score_table, save_path)
   }
 
   message("Done creating full score table")
