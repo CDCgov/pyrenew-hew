@@ -40,7 +40,7 @@ def main(
         This container should exist within the Azure
         Container Registry account associated to
         the job. Default 'pyrenew-hew'.
-        The container registry account name and enpoint
+        The container registry account name and endpoint
         will be obtained from local environment variables
         via a :class``azuretools.auth.EnvCredentialHandler`.
 
