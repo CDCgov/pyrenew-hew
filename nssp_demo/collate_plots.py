@@ -10,7 +10,7 @@ from pypdf import PdfWriter
 from utils import get_all_forecast_dirs
 
 
-def write_merged_pdf(
+def merge_pdfs_and_save(
     to_merge: list[Path | str], output_path: Path | str
 ) -> None:
     """
@@ -98,7 +98,7 @@ def merge_pdfs_from_subdirs(
         output_file_name = file_name
 
     if len(to_merge) > 0:
-        write_merged_pdf(to_merge, Path(base_dir, output_file_name))
+        merge_pdfs_and_save(to_merge, Path(base_dir, output_file_name))
 
     return None
 
