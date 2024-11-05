@@ -11,7 +11,7 @@ env:
 jobs:
 
   build-dependencies-image:
-    runs-on: ubuntu-latest
+    runs-on: cfa-cdcgov
     name: Build dependencies image
 
     outputs:
@@ -89,7 +89,7 @@ jobs:
     name: Build pipeline image
 
     needs: build-dependencies-image
-    runs-on: ubuntu-latest
+    runs-on: cfa-cdcgov
 
     outputs:
       tag: ${{ needs.build-dependencies-image.outputs.tag }}
