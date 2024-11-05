@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
-import fnmatch
 import logging
 import os
 from pathlib import Path
 
 from pypdf import PdfWriter
 from utils import get_all_forecast_dirs
+
+from pyrenew_hew.utils import ensure_listlike
 
 
 def merge_pdfs_and_save(
@@ -24,11 +25,17 @@ def merge_pdfs_and_save(
 
     output_path
         Where to write the merged PDF.
+
+    Returns
+    -------
+    None
     """
     pdf_writer = PdfWriter()
     for pdf_file in to_merge:
         pdf_writer.append(pdf_file)
     pdf_writer.write(output_path)
+
+    return None
 
 
 def merge_pdfs_from_subdirs(
@@ -101,25 +108,75 @@ def merge_pdfs_from_subdirs(
     return None
 
 
+def process_dir(
+    dir_path: Path | str,
+    target_filenames: str | list[str],
+    file_prefix: str = "",
+    subdirs_only: list[str] = None,
+) -> None:
+    """
+    Merge groups of PDFs from the subdirectories of
+    a given base directory, saving the resulting
+    merged PDFs in the base directory.
+
+    Parameters
+    ----------
+    dir_path
+        Path to the base directory, in which the merged
+        PDFs will be saved.
+
+    target_filenames
+        One or more PDFs filenames to look for in the
+        subdirectories and merge.
+
+    file_prefix
+        Prefix to append to the names in `target_filenames`
+        when naming the merged files.
+
+    subdirs_only
+        Only look for files to merge in these specific
+        named subdirectories. If ``None``, look in all
+        subdirectories of ``base_dir``. Default ``None``.
+    """
+    for file_name in ensure_listlike(target_filenames):
+        merge_pdfs_from_subdirs(
+            dir_path,
+            file_name,
+            output_file_name=file_prefix + file_name,
+            subdirs_only=subdirs_only,
+        )
+
+
 def main(
-    model_base_dir: str | Path, disease: str, target_filenames: list[str]
+    model_base_dir: str | Path, disease: str, target_filenames: str | list[str]
 ) -> None:
     """
     Collate target plots for a given disease
     from a given base directory.
+
+    Parameters
+    ----------
+    model_base_dir
+        Path to the base directory in whose subdirectories
+        the script will look for PDFs to merge and in which
+        the merged PDFs will be saved.
+
+    disease
+        Name of the target disease. Merged PDFs will be named
+        with the disease as a prefix.
+
+    target_filenames
+        One or more PDFs filenames to look for in the
+        subdirectories and merge.
+
+    Returns
+    -------
+    None
     """
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    # define a collation function
-    def process_dir(dir_path, file_prefix="", subdirs_only=None):
-        for file_name in target_filenames:
-            merge_pdfs_from_subdirs(
-                dir_path,
-                file_name,
-                output_file_name=file_prefix + file_name,
-                subdirs_only=subdirs_only,
-            )
+    target_filenames = ensure_listlike(target_filenames)
 
     forecast_dirs = get_all_forecast_dirs(model_base_dir, diseases=disease)
 
@@ -130,7 +187,10 @@ def main(
     )
     for f_dir in forecast_dirs:
         logger.info(f"Collating plots from {f_dir}")
-        process_dir(Path(model_base_dir, f_dir))
+        process_dir(
+            base_dir=Path(model_base_dir, f_dir),
+            target_filenames=target_filenames,
+        )
     logger.info("Done collating across locations by date.")
 
     # then collate dates, adding the disease name
@@ -139,7 +199,10 @@ def main(
     # for multiple diseases.
     logger.info("Collating plots from forecast date directories...")
     process_dir(
-        model_base_dir, file_prefix=f"{disease}_", subdirs_only=forecast_dirs
+        base_dir=model_base_dir,
+        target_filenames=target_filenames,
+        file_prefix=f"{disease}_",
+        subdirs_only=forecast_dirs,
     )
     logger.info("Done collating plots from forecast date directories.")
 
