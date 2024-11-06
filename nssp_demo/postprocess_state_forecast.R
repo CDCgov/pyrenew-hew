@@ -278,8 +278,18 @@ postprocess_state_forecast <- function(model_run_dir,
     )
   )
 
+  all_forecast_plots_log <- map(
+    all_forecast_plots,
+    \(x) x + scale_y_continuous(transform = "log10")
+  )
+
   iwalk(all_forecast_plots, ~ save_plot(
     filename = path(model_run_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
+    plot = .x,
+    device = cairo_pdf, base_height = 6
+  ))
+  iwalk(all_forecast_plots_log, ~ save_plot(
+    filename = path(model_run_dir, glue("{.y}_forecast_plot_log"), ext = "pdf"),
     plot = .x,
     device = cairo_pdf, base_height = 6
   ))
