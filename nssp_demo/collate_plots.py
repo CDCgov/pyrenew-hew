@@ -213,7 +213,7 @@ def main(
     target_filenames: list[str],
     disease: str,
 ) -> None:
-    if not (model_base_dir is None ^ single_forecast_dir is None):
+    if not ((model_base_dir is None) ^ (single_forecast_dir is None)):
         raise ValueError(
             "Must provide exactly one of "
             "'--model-base-dir' (to process multiple "
