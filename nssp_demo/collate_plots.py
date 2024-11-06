@@ -145,7 +145,7 @@ def process_dir(
         )
 
 
-def main(
+def collate_from_all_subdirs(
     model_base_dir: str | Path, disease: str, target_filenames: str | list[str]
 ) -> None:
     """
@@ -207,18 +207,46 @@ def main(
     return None
 
 
+def main(
+    model_base_dir: str | Path,
+    single_forecast_dir: str | Path,
+    target_filenames: list[str],
+) -> None:
+    if not (model_base_dir is None ^ single_forecast_dir is None):
+        raise ValueError(
+            "Must provide exactly one of "
+            "'--model-base-dir' (to process multiple "
+            "groups of forecasts) or "
+            "'--single-forecast-dir' "
+            "(to process a single set of forecasts"
+        )
+    elif model_base_dir is not None:
+        collate_from_all_subdirs(model_base_dir, target_filenames)
+    elif single_forecast_dir is not None:
+        process_dir(single_forecast_dir, target_filenames)
+    return None
+
+
 parser = argparse.ArgumentParser(
     description=("Collate forecast plots from subdirectories into single PDFs")
 )
 
 parser.add_argument(
-    "model_base_dir",
+    "--model-base-dir",
     type=Path,
     help=(
         "Base directory containing subdirectories that represent "
         "individual forecast dates, each of which in turn has "
         "subdirectories that represent individual location forecasts."
     ),
+    default=None,
+)
+
+parser.add_argument(
+    "--single-forecast-dir",
+    type=Path,
+    help="Path to a single directory to process",
+    default=None,
 )
 
 parser.add_argument(
