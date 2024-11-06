@@ -211,6 +211,7 @@ def main(
     model_base_dir: str | Path,
     single_forecast_dir: str | Path,
     target_filenames: list[str],
+    disease: str,
 ) -> None:
     if not (model_base_dir is None ^ single_forecast_dir is None):
         raise ValueError(
@@ -221,7 +222,7 @@ def main(
             "(to process a single set of forecasts"
         )
     elif model_base_dir is not None:
-        collate_from_all_subdirs(model_base_dir, target_filenames)
+        collate_from_all_subdirs(model_base_dir, disease, target_filenames)
     elif single_forecast_dir is not None:
         process_dir(single_forecast_dir, target_filenames)
     return None
