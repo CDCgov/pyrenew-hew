@@ -200,7 +200,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--excluded_locations",
+    "--excluded-locations",
     type=str,
     help=(
         "Two-letter USPS location abbreviations to "

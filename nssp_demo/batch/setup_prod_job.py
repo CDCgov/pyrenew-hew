@@ -14,8 +14,6 @@ from azuretools.client import get_batch_service_client
 from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
 
-from pyrenew_hew.utils import ensure_listlike
-
 
 def main(
     job_id: str,
@@ -70,7 +68,7 @@ def main(
     """
     supported_diseases = ["COVID-19", "Influenza"]
 
-    disease_list = ensure_listlike(diseases)
+    disease_list = diseases
 
     for d in disease_list:
         if d not in supported_diseases:
@@ -197,7 +195,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--excluded_locations",
+    "--excluded-locations",
     type=str,
     help=(
         "Two-letter USPS location abbreviations to "
