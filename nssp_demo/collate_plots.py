@@ -6,9 +6,7 @@ import os
 from pathlib import Path
 
 from pypdf import PdfWriter
-from utils import get_all_forecast_dirs
-
-from pyrenew_hew.utils import ensure_listlike
+from utils import ensure_listlike, get_all_forecast_dirs
 
 
 def merge_pdfs_and_save(
@@ -188,7 +186,7 @@ def main(
     for f_dir in forecast_dirs:
         logger.info(f"Collating plots from {f_dir}")
         process_dir(
-            base_dir=Path(model_base_dir, f_dir),
+            dir_path=Path(model_base_dir, f_dir),
             target_filenames=target_filenames,
         )
     logger.info("Done collating across locations by date.")
@@ -199,7 +197,7 @@ def main(
     # for multiple diseases.
     logger.info("Collating plots from forecast date directories...")
     process_dir(
-        base_dir=model_base_dir,
+        dir_path=model_base_dir,
         target_filenames=target_filenames,
         file_prefix=f"{disease}_",
         subdirs_only=forecast_dirs,
@@ -232,7 +230,9 @@ parser.add_argument(
     type=str,
     default=(
         "Disease_forecast_plot.pdf Other_forecast_plot.pdf "
-        "prop_disease_ed_visits_forecast_plot.pdf"
+        "prop_disease_ed_visits_forecast_plot.pdf "
+        "Disease_forecast_plot_log.pdf Other_forecast_plot_log.pdf "
+        "prop_disease_ed_visits_forecast_plot_log.pdf"
     ),
     help=(
         "Exact filenames of PDF files to find and merge, including "
