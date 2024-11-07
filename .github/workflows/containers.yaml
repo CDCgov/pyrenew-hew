@@ -81,8 +81,10 @@ jobs:
           push: true
           no-cache: true
           tags: |
-            ${{ env.REGISTRY}}/${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
           file: ./Containerfile.dependencies
+          build-args: |
+            pyrenew_version=v0.1.1
 
   build-pipeline-image:
 
