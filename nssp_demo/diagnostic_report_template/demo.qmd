@@ -44,9 +44,26 @@ formatted_available_states <-
 cat(formatted_available_states)
 ```
 
-# Page 1
-This state is `r this_state`.
+# Run Info
 
+::: {.card title="Model Metadata"}
+This state is `r this_state`.
+:::
+
+# Forecasts
+
+```{r Example Forecast}
+#| title: A Forecast
+library(cowplot)
+theme_set(cowplot::theme_cowplot())
+eval_dat <- read_tsv(path(model_dir, "eval_data", ext = "tsv"))
+
+ggplot(eval_dat, aes(date, ed_visits, color = data_type)) +
+  facet_wrap(~disease, scale = "free_y") +
+  geom_point()
+```
+
+# MCMC Diagnostics
 
 ```{python Load InferenceData}
 from pathlib import Path
@@ -65,7 +82,3 @@ library(DT)
 datatable(py$idata_summary)
 # highlight or exclusively show bad rhats and ess?
 ```
-
-# Page 2
-
-Bye
