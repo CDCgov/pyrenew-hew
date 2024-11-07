@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: cfaprdbatchcr.azurecr.io
   IMAGE_NAME: pyrenew-hew
+  PYRENEW_VERSION: v0.1.1
 
 jobs:
 
@@ -84,7 +85,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
           file: ./Containerfile.dependencies
           build-args: |
-            pyrenew_version=v0.1.1
+            pyrenew_version=${{ env.PYRENEW_VERSION }}
 
   build-pipeline-image:
 
