@@ -1,4 +1,4 @@
-ARG pyrenew_version=v0.1.1
+ARG PYRENEW_VERSION=v0.1.1
 
 FROM python:3.12
 
@@ -7,6 +7,6 @@ RUN apt-get install -y r-base
 RUN apt-get install -y cmake
 RUN pip install --root-user-action=ignore -U pip
 RUN pip install --root-user-action=ignore \
-    git+https://github.com/cdcgov/pyrenew.git@${pyrenew_version}
+    git+https://github.com/cdcgov/pyrenew.git@${PYRENEW_VERSION}
 
 CMD ["bash"]
