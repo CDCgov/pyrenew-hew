@@ -25,7 +25,7 @@ purrr::walk(script_packages, \(pkg) {
 
 
 # To be replaced with reading tidy data from forecasttools
-read_pyrenew_samples <- function(inference_train_data_path,
+read_pyrenew_samples <- function(inference_data_path,
                                  filter_bad_chains = TRUE,
                                  good_chain_tol = 2) {
   arviz_split <- function(x) {
@@ -35,7 +35,7 @@ read_pyrenew_samples <- function(inference_train_data_path,
   }
 
   pyrenew_samples <-
-    read_csv(inference_train_data_path,
+    read_csv(inference_data_path,
       show_col_types = FALSE
     ) |>
     rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
@@ -154,9 +154,9 @@ postprocess_state_forecast <- function(model_run_dir,
     pluck(1) |>
     tail(1)
 
-  train_data_path <- path(model_run_dir, "data", ext = "csv")
+  inference_data_path <- path(model_run_dir, "data", ext = "csv")
   eval_data_path <- path(model_run_dir, "eval_data", ext = "tsv")
-  inference_train_data_path <- path(model_run_dir, "inference_data",
+  inference_data_path <- path(model_run_dir, "inference_data",
     ext = "csv"
   )
   other_ed_visits_path <- path(
@@ -165,7 +165,7 @@ postprocess_state_forecast <- function(model_run_dir,
     ext = "parquet"
   )
 
-  train_dat <- read_csv(train_data_path, show_col_types = FALSE)
+  train_dat <- read_csv(inference_data_path, show_col_types = FALSE)
 
   data_vintage_date <- max(train_dat$date) + 1
   # this should be stored as metadata somewhere else, instead of being
@@ -206,7 +206,7 @@ postprocess_state_forecast <- function(model_run_dir,
     pull(date) |>
     max()
 
-  pyrenew_samples <- read_pyrenew_samples(inference_train_data_path,
+  pyrenew_samples <- read_pyrenew_samples(inference_data_path,
     filter_bad_chains = filter_bad_chains,
     good_chain_tol = good_chain_tol
   )
