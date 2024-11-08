@@ -6,6 +6,7 @@ on Azure Batch.
 """
 
 import argparse
+import itertools
 
 import polars as pl
 from azure.batch import models
@@ -144,20 +145,17 @@ def main(
         .to_list()
     )
 
-    for disease in disease_list:
-        for state in all_locations:
-            task = get_task_config(
-                f"{job_id}-{state}-{disease}-prod",
-                base_call=base_call.format(
-                    state=state,
-                    disease=disease,
-                    report_date="latest",
-                ),
-                container_settings=container_settings,
-            )
-            client.task.add(job_id, task)
-            pass
-        pass
+    for disease, state in itertools.product(disease_list, all_locations):
+        task = get_task_config(
+            f"{job_id}-{state}-{disease}-prod",
+            base_call=base_call.format(
+                state=state,
+                disease=disease,
+                report_date="latest",
+            ),
+            container_settings=container_settings,
+        )
+        client.task.add(job_id, task)
 
     return None
 
