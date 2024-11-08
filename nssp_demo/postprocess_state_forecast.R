@@ -81,13 +81,18 @@ make_one_forecast_fig <- function(target_disease,
                                   last_training_date,
                                   data_vintage_date,
                                   posterior_predictive_ci,
-                                  state_abb) {
+                                  state_abb,
+                                  y_transform = "identity") {
   y_scale <- if (str_starts(target_disease, "prop")) {
     scale_y_continuous("Proportion of Emergency Department Visits",
-      labels = percent
+      labels = percent,
+      transform = y_transform
     )
   } else {
-    scale_y_continuous("Emergency Department Visits", labels = comma)
+    scale_y_continuous("Emergency Department Visits",
+      labels = comma,
+      transform = y_transform
+    )
   }
 
   title <- if (target_disease == "Other") {
@@ -274,13 +279,21 @@ postprocess_state_forecast <- function(model_run_dir,
       last_training_date,
       data_vintage_date,
       posterior_predictive_ci,
-      state_abb
+      state_abb,
     )
   )
 
   all_forecast_plots_log <- map(
-    all_forecast_plots,
-    \(x) x + coord_trans(y = "log10")
+    set_names(unique(combined_dat$disease)),
+    ~ make_one_forecast_fig(
+      .x,
+      combined_dat,
+      last_training_date,
+      data_vintage_date,
+      posterior_predictive_ci,
+      state_abb,
+      y_transform = "log10"
+    )
   )
 
   iwalk(all_forecast_plots, ~ save_plot(
