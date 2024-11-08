@@ -113,12 +113,11 @@ collate_scores_for_date <- function(model_run_dir,
   locations_to_process <- fs::dir_ls(model_run_dir,
     type = "directory"
   )
-  location_score_tables <- purrr::map(
+  date_score_table <- purrr::map(
     locations_to_process,
     process_loc_date_score_table
-  )
-
-  date_score_table <- bind_tables(location_score_tables)
+  ) |>
+    bind_tables()
 
   if (save) {
     save_path <- fs::path(model_run_dir,
@@ -142,9 +141,14 @@ collate_all_score_tables <- function(model_base_dir,
   )
 
   # collate scores across locations for each date
-  date_score_table <- purrr::map(date_dirs_to_process,
-    collate_scores_for_date,
-    save = save
+  date_score_table <- purrr::map(
+    date_dirs_to_process,
+    \(x) {
+      collate_scores_for_date(
+        x,
+        save = save
+      )
+    }
   )
 
   # get all dates, annotate, and combine
