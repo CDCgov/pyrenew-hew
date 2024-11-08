@@ -127,7 +127,7 @@ collate_scores_for_date <- function(model_run_dir,
       ext = score_file_ext
     )
     message(glue::glue("Saving score table to {save_path}..."))
-    saveRDS(date_score_table, save_path)
+    readr::write_rds(date_score_table, save_path)
   }
   message(glue::glue("Done processing scores for {model_run_dir}."))
   return(date_score_table)
