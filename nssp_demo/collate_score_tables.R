@@ -57,6 +57,8 @@ process_loc_date_score_table <- function(model_run_dir) {
   }
   score_table <- readr::read_rds(table_path)
 
+  ## add parsed metadata to both quantile and sample
+  ## score tables
   for (x in names(parsed)) {
     score_table$quantile_scores[[x]] <- parsed[[x]]
     score_table$sample_scores[[x]] <- parsed[[x]]
