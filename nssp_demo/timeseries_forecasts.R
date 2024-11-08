@@ -181,7 +181,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     aheads = 1:n_forecast_days
   )
 
-  baseline_ts_prop <- forecast_baseline_ts_count |>
+  baseline_ts_prop <- baseline_ts_count |>
     to_prop_forecast(forecast_other)
 
   baseline_cdc_prop <- cdc_flat_forecast(
