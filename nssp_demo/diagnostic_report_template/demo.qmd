@@ -5,6 +5,7 @@ format:
     theme:
     - flatly
     - custom.scss
+    embed-resources: true
 params:
   model_dir_raw: "/home/xum8/pyrenew-hew/nssp_demo/private_data/pyrenew-test-output/influenza_r_2024-11-06_f_2024-08-18_t_2024-10-31/CA/" # pragma: allowlist-secret
 ---
