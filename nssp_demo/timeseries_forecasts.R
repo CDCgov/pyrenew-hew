@@ -165,7 +165,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     target_col = "ed_visits_other",
     output_col = "other_ed_visits"
   )
-  forecast_baseline_ts_count <- fit_and_forecast(
+  baseline_ts_count <- fit_and_forecast(
     target_and_other_data,
     n_forecast_days,
     n_samples,
@@ -173,7 +173,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     output_col = "baseline_ed_visit_count_forecast"
   )
   ## Generate CDC flat forecast for the target disease number of ED visits
-  forecast_baseline_cdc_count <- cdc_flat_forecast(
+  baseline_cdc_count <- cdc_flat_forecast(
     target_and_other_data,
     target_col = "ed_visits_target",
     output_col = "baseline_ed_visit_count_forecast",
@@ -181,10 +181,10 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     aheads = 1:n_forecast_days
   )
 
-  forecast_baseline_ts_prop <- forecast_baseline_ts_count |>
+  baseline_ts_prop <- forecast_baseline_ts_count |>
     to_prop_forecast(forecast_other)
 
-  forecast_baseline_cdc_prop <- cdc_flat_forecast(
+  baseline_cdc_prop <- cdc_flat_forecast(
     target_and_other_data |>
       mutate(ed_visits_prop = ed_visits_target /
         (ed_visits_target + ed_visits_other)),
@@ -194,27 +194,13 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     aheads = 1:n_forecast_days
   )
 
-  to_save <- dplyr::bind_rows(
-    list(
-      basename = "other_ed_visits_forecast",
-      value = forecast_other
-    ),
-    list(
-      basename = "baseline_ts_count_ed_visits_forecast",
-      value = forecast_baseline_ts_count
-    ),
-    list(
-      basename = "baseline_ts_prop_ed_visits_forecast",
-      value = forecast_baseline_ts_prop
-    ),
-    list(
-      basename = "baseline_cdc_count_ed_visits_forecast",
-      value = forecast_baseline_cdc_count
-    ),
-    list(
-      basename = "baseline_cdc_prop_ed_visits_forecast",
-      value = forecast_basline_cdc_prop
-    )
+  to_save <- tibble::tribble(
+    ~basename, ~value,
+    "other_ed_visits_forecast", forecast_other,
+    "baseline_ts_count_ed_visits_forecast", baseline_ts_count,
+    "baseline_ts_prop_ed_visits_forecast", baseline_ts_prop,
+    "baseline_cdc_count_ed_visits_forecast", baseline_cdc_count,
+    "baseline_cdc_prop_ed_visits_forecast", baseline_cdc_prop
   ) |>
     dplyr::mutate(save_path = path(
       !!model_run_dir, basename,
