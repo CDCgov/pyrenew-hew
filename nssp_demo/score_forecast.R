@@ -142,19 +142,24 @@ prep_truth_data <- function(truth_data_path) {
 
 read_and_score_location <- function(model_run_dir,
                                     eval_data_filename = "eval_data",
-                                    eval_data_file_ext = "tsv") {
+                                    eval_data_file_ext = "tsv",
+                                    parquet_file_ext = "parquet",
+                                    rds_file_ext = "rds") {
   message(glue::glue("Scoring {model_run_dir}..."))
   forecast_path <- fs::path(
     model_run_dir,
-    "forecast_samples.parquet"
+    "forecast_samples",
+    ext = parquet_file_ext
   )
   ts_baseline_path <- fs::path(
     model_run_dir,
-    "baseline_ts_prop_ed_visits_forecast.parquet"
+    "baseline_ts_prop_ed_visits_forecast",
+    ext = parquet_file_ext
   )
   cdc_baseline_path <- fs::path(
     model_run_dir,
-    "baseline_cdc_prop_ed_visits_forecast.parquet"
+    "baseline_cdc_prop_ed_visits_forecast",
+    ext = parquet_file_ext
   )
 
   truth_path <- fs::path(model_run_dir,
@@ -224,7 +229,7 @@ read_and_score_location <- function(model_run_dir,
 
   readr::write_rds(scored, fs::path(model_run_dir,
     "score_table",
-    ext = "rds"
+    ext = rds_file_ext
   ))
 }
 
