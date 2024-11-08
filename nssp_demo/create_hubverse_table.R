@@ -1,5 +1,6 @@
 draws_to_quantiles <- function(forecast_dir,
-                               report_date) {
+                               report_date,
+                               max_lookback_days) {
   message(glue::glue("Processing {forecast_dir}..."))
   draws_path <- fs::path(forecast_dir,
     "forecast_samples",
@@ -8,7 +9,8 @@ draws_to_quantiles <- function(forecast_dir,
   location <- fs::path_file(forecast_dir)
 
   draws <- arrow::read_parquet(draws_path) |>
-    dplyr::filter(date >= lubridate::ymd(report_date) - lubridate::days(8))
+    dplyr::filter(date >= lubridate::ymd(report_date) -
+      lubridate::days(max_lookback_days))
 
   if (nrow(draws) < 1) {
     return(NULL)
@@ -96,7 +98,16 @@ create_hubverse_table <- function(model_run_dir) {
 
   hubverse_table <- purrr::map(
     locations_to_process,
-    \(x) draws_to_quantiles(x, report_date = report_date)
+    \(x) {
+      draws_to_quantiles(
+        x,
+        report_date = report_date,
+        max_lookback_days = 8
+      )
+    }
+    ## ensures we get the full -1 horizon but do not
+    ## waste time quantilizing draws that will not be
+    ## included in the final table.
   ) |>
     dplyr::bind_rows() |>
     forecasttools::get_flusight_table(
