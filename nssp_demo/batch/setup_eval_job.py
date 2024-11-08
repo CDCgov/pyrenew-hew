@@ -71,12 +71,12 @@ def main(
     supported_diseases = ["COVID-19", "Influenza"]
 
     disease_list = diseases.split()
-    for d in disease_list:
-        if d not in supported_diseases:
-            raise ValueError(
-                f"Unsupported disease '{d}'; supported diseases "
-                f"are {supported_diseases}"
-            )
+    invalid_diseases = set(disease_list) - set(supported_diseases)
+    if invalid_diseases:
+        raise ValueError(
+            f"Unsupported diseases: {', '.join(invalid_diseases)}; "
+            f"supported diseases are: {', '.join(supported_diseases)}"
+        )
 
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
