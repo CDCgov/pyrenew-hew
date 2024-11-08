@@ -63,9 +63,12 @@ score_single_run <- function(
       observed = observed,
       predicted = predicted
     )
+
   quants <- unique(quantile_only_df$quantile_level)
   quantiles_from_samples_df <- forecast_sample_df |>
     scoringutils::as_forecast_quantile(probs = quants)
+
+
 
   forecast_quantile_df <-
     dplyr::bind_rows(
@@ -117,7 +120,12 @@ prep_truth_data <- function(truth_data_path) {
       glue::glue("Got: '{err_dis}")
     )
   }
-  filter(!is.na(disease)) |>
+
+  prepped_dat <- dat |>
+    mutate(disease = ifelse(disease %in% c("COVID-19", "Influenza"),
+      "Disease",
+      disease
+    )) |>
     tidyr::pivot_wider(
       names_from = "disease",
       values_from = "true_value"
@@ -129,7 +137,7 @@ prep_truth_data <- function(truth_data_path) {
       values_to = "true_value"
     )
 
-  return(dat)
+  return(prepped_dat)
 }
 
 read_and_score_location <- function(model_run_dir,
@@ -184,13 +192,11 @@ read_and_score_location <- function(model_run_dir,
       model
     )
 
-
   quantile_forecasts_to_score <- inner_join(
     cdc_baseline,
     actual_data,
     by = c("disease", "date")
-  ) |>
-    filter(disease == "prop_disease_ed_visits")
+  )
 
   sample_forecasts_to_score <- bind_rows(
     pyrenew,
