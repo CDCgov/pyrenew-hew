@@ -8,6 +8,7 @@ from pathlib import Path
 import numpyro
 import polars as pl
 from prep_data import process_and_save_state
+from save_eval_data import save_eval_data
 
 numpyro.set_host_device_count(4)
 
@@ -22,7 +23,6 @@ def baseline_forecasts(
         [
             "Rscript",
             "nssp_demo/timeseries_forecasts.R",
-            "--model-run-dir",
             f"{model_run_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",
@@ -39,6 +39,17 @@ def postprocess_forecast(model_run_dir: Path) -> None:
             "Rscript",
             "nssp_demo/postprocess_state_forecast.R",
             "--model-run-dir",
+            f"{model_run_dir}",
+        ]
+    )
+    return None
+
+
+def score_forecast(model_run_dir: Path) -> None:
+    subprocess.run(
+        [
+            "Rscript",
+            "nssp_demo/score_forecast.R",
             f"{model_run_dir}",
         ]
     )
@@ -68,6 +79,8 @@ def main(
     n_warmup: int,
     n_samples: int,
     exclude_last_n_days: int = 0,
+    score: bool = False,
+    eval_data_path: Path = None,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -185,24 +198,46 @@ def main(
     logger.info("Model fitting complete")
 
     logger.info("Performing posterior prediction / forecasting...")
-    generate_and_save_predictions(model_run_dir, n_forecast_days)
+
+    n_days_past_last_training = n_forecast_days + exclude_last_n_days
+    generate_and_save_predictions(model_run_dir, n_days_past_last_training)
 
     logger.info(
-        "Performing baseline forecasting and non-target pathogen forecasting..."
+        "Performing baseline forecasting and non-target pathogen "
+        "forecasting..."
     )
     n_denominator_samples = n_samples * n_chains
-    baseline_forecasts(model_run_dir, n_forecast_days, n_denominator_samples)
+    baseline_forecasts(
+        model_run_dir, n_days_past_last_training, n_denominator_samples
+    )
     logger.info("Forecasting complete.")
+    logger.info("Getting eval data...")
+    if eval_data_path is None:
+        raise ValueError("No path to an evaluation dataset provided.")
+    save_eval_data(
+        state=state,
+        report_date=report_date,
+        disease=disease,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+        latest_comprehensive_path=eval_data_path,
+        output_data_dir=model_run_dir,
+        last_eval_date=report_date + timedelta(days=n_forecast_days),
+    )
 
     logger.info("Postprocessing forecast...")
     postprocess_forecast(model_run_dir)
     logger.info("Postprocessing complete.")
+
+    if score:
+        logger.info("Scoring forecast...")
+        score_forecast(model_run_dir)
+
     logger.info(
         "Single state pipeline complete "
         f"for state {state} with "
         f"report date {report_date}."
     )
-
     return None
 
 
@@ -277,7 +312,10 @@ parser.add_argument(
     "--n-forecast-days",
     type=int,
     default=28,
-    help="Number of days ahead to forecast (default: 28).",
+    help=(
+        "Number of days ahead to forecast relative to the "
+        "report date (default: 28).",
+    ),
 )
 
 
@@ -313,6 +351,20 @@ parser.add_argument(
         "Optionally exclude the final n days of available training "
         "data (Default: 0, i.e. exclude no available data"
     ),
+)
+
+parser.add_argument(
+    "--score",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help=("If this flag is provided, will attempt to score the forecast."),
+)
+
+
+parser.add_argument(
+    "--eval-data-path",
+    type=Path,
+    help=("Path to a parquet file containing compehensive truth data."),
 )
 
 

@@ -9,7 +9,7 @@ License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Imports:
     argparser,
     arrow,
@@ -17,6 +17,7 @@ Imports:
     dplyr,
     fable,
     feasts,
+    forcats,
     fs,
     ggplot2,
     glue,
@@ -25,6 +26,7 @@ Imports:
     purrr,
     readr,
     scales,
+    scoringutils (>= 2.0.0),
     stringr,
     tibble,
     tidybayes,

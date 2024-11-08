@@ -14,8 +14,8 @@ pyyaml = "^6.0.2"
 jupyter = "^1.0.0"
 ipykernel = "^6.29.5"
 polars = "^1.5.0"
+pypdf = "^5.1.0"
 pyarrow = "^18.0.0"
-
 
 [tool.poetry.group.azurebatch.dependencies]
 azuretools = {git = "https://github.com/cdcent/cfa-stf-azuretools"}

@@ -12,7 +12,8 @@ script_packages <- c(
   "arrow",
   "tidyr",
   "readr",
-  "here"
+  "here",
+  "forcats"
 )
 
 ## load in packages without messages
@@ -76,17 +77,22 @@ read_pyrenew_samples <- function(inference_data_path,
 }
 
 make_one_forecast_fig <- function(target_disease,
-                                  dat,
+                                  combined_dat,
                                   last_training_date,
-                                  last_data_date,
+                                  data_vintage_date,
                                   posterior_predictive_ci,
-                                  state_abb) {
+                                  state_abb,
+                                  y_transform = "identity") {
   y_scale <- if (str_starts(target_disease, "prop")) {
     scale_y_continuous("Proportion of Emergency Department Visits",
-      labels = percent
+      labels = percent,
+      transform = y_transform
     )
   } else {
-    scale_y_continuous("Emergency Department Visits", labels = comma)
+    scale_y_continuous("Emergency Department Visits",
+      labels = comma,
+      transform = y_transform
+    )
   }
 
   title <- if (target_disease == "Other") {
@@ -99,11 +105,28 @@ make_one_forecast_fig <- function(target_disease,
     geom_lineribbon(
       data = posterior_predictive_ci |> filter(disease == target_disease),
       mapping = aes(ymin = .lower, ymax = .upper),
-      color = "#08519c", key_glyph = draw_key_rect, step = "mid"
+      color = "#08519c",
+      key_glyph = draw_key_rect,
+      step = "mid"
+    ) +
+    scale_fill_brewer(
+      name = "Credible Interval Width",
+      labels = ~ percent(as.numeric(.))
     ) +
     geom_point(
-      mapping = aes(shape = data_type),
-      data = dat |> filter(disease == target_disease)
+      mapping = aes(color = data_type), size = 1.5,
+      data = combined_dat |>
+        filter(
+          disease == target_disease,
+          date <= max(posterior_predictive_ci$date)
+        ) |>
+        mutate(data_type = fct_rev(data_type)) |>
+        arrange(desc(data_type))
+    ) +
+    scale_color_manual(
+      name = "Data Type",
+      values = c("olivedrab1", "deeppink"),
+      labels = str_to_title
     ) +
     geom_vline(xintercept = last_training_date, linetype = "dashed") +
     annotate(
@@ -121,27 +144,23 @@ make_one_forecast_fig <- function(target_disease,
       hjust = "left",
       vjust = "bottom",
     ) +
-    ggtitle(title, subtitle = glue("as of {last_data_date}")) +
+    ggtitle(title, subtitle = glue("as of {data_vintage_date}")) +
     y_scale +
     scale_x_date("Date") +
-    scale_shape_discrete("Data Type", labels = str_to_title) +
-    scale_fill_brewer(
-      name = "Credible Interval Width",
-      labels = ~ percent(as.numeric(.))
-    ) +
     theme(legend.position = "bottom")
 }
 
 
-make_forecast_figs <- function(model_run_dir,
-                               filter_bad_chains = TRUE,
-                               good_chain_tol = 2) {
+postprocess_state_forecast <- function(model_run_dir,
+                                       filter_bad_chains = TRUE,
+                                       good_chain_tol = 2) {
   state_abb <- model_run_dir |>
     path_split() |>
     pluck(1) |>
     tail(1)
 
-  data_path <- path(model_run_dir, "data", ext = "csv")
+  train_data_path <- path(model_run_dir, "data", ext = "csv")
+  eval_data_path <- path(model_run_dir, "eval_data", ext = "tsv")
   inference_data_path <- path(model_run_dir, "inference_data",
     ext = "csv"
   )
@@ -151,15 +170,21 @@ make_forecast_figs <- function(model_run_dir,
     ext = "parquet"
   )
 
-  dat <- read_csv(
-    data_path,
-    col_types = cols(
-      disease = col_character(),
-      data_type = col_character(),
-      ed_visits = col_double(),
-      date = col_date()
-    )
-  ) |>
+  train_dat <- read_csv(train_data_path, show_col_types = FALSE)
+
+  data_vintage_date <- max(train_dat$date) + 1
+  # this should be stored as metadata somewhere else, instead of being
+  # computed like this
+
+  eval_dat <- read_tsv(eval_data_path, show_col_types = FALSE) |>
+    mutate(data_type = "eval")
+
+  combined_dat <-
+    bind_rows(
+      train_dat |>
+        filter(data_type == "train"),
+      eval_dat
+    ) |>
     mutate(
       disease = if_else(
         disease == disease_name_nssp,
@@ -180,12 +205,9 @@ make_forecast_figs <- function(model_run_dir,
       values_to = ".value"
     )
 
-  last_training_date <- dat |>
-    filter(data_type == "train") |>
-    pull(date) |>
-    max()
 
-  last_data_date <- dat |>
+  last_training_date <- combined_dat |>
+    filter(data_type == "train") |>
     pull(date) |>
     max()
 
@@ -198,11 +220,11 @@ make_forecast_figs <- function(model_run_dir,
     read_parquet(other_ed_visits_path) |>
     rename(Other = other_ed_visits)
 
-
   other_ed_visits_samples <-
     bind_rows(
-      dat |>
+      combined_dat |>
         filter(
+          data_type == "train",
           disease == "Other",
           date <= last_training_date
         ) |>
@@ -217,7 +239,7 @@ make_forecast_figs <- function(model_run_dir,
     pivot_wider(names_from = .variable, values_from = .value) |>
     rename(Disease = observed_hospital_admissions) |>
     ungroup() |>
-    mutate(date = min(dat$date) + time) |>
+    mutate(date = min(combined_dat$date) + time) |>
     left_join(other_ed_visits_samples,
       by = c(".draw", "date")
     ) |>
@@ -227,6 +249,13 @@ make_forecast_figs <- function(model_run_dir,
       values_to = ".value"
     )
 
+  arrow::write_parquet(
+    posterior_predictive_samples,
+    path(model_run_dir, "forecast_samples",
+      ext = "parquet"
+    )
+  )
+
   posterior_predictive_ci <-
     posterior_predictive_samples |>
     select(date, disease, .value) |>
@@ -234,19 +263,49 @@ make_forecast_figs <- function(model_run_dir,
     median_qi(.width = c(0.5, 0.8, 0.95))
 
 
-  all_forecast_plots <- map(
-    set_names(unique(dat$disease)),
-    ~ make_one_forecast_fig(
-      .x,
-      dat,
-      last_training_date,
-      last_data_date,
-      posterior_predictive_ci,
-      state_abb
+  arrow::write_parquet(
+    posterior_predictive_ci,
+    path(model_run_dir, "forecast_ci",
+      ext = "parquet"
     )
   )
 
-  return(all_forecast_plots)
+
+  all_forecast_plots <- map(
+    set_names(unique(combined_dat$disease)),
+    ~ make_one_forecast_fig(
+      .x,
+      combined_dat,
+      last_training_date,
+      data_vintage_date,
+      posterior_predictive_ci,
+      state_abb,
+    )
+  )
+
+  all_forecast_plots_log <- map(
+    set_names(unique(combined_dat$disease)),
+    ~ make_one_forecast_fig(
+      .x,
+      combined_dat,
+      last_training_date,
+      data_vintage_date,
+      posterior_predictive_ci,
+      state_abb,
+      y_transform = "log10"
+    )
+  )
+
+  iwalk(all_forecast_plots, ~ save_plot(
+    filename = path(model_run_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
+    plot = .x,
+    device = cairo_pdf, base_height = 6
+  ))
+  iwalk(all_forecast_plots_log, ~ save_plot(
+    filename = path(model_run_dir, glue("{.y}_forecast_plot_log"), ext = "pdf"),
+    plot = .x,
+    device = cairo_pdf, base_height = 6
+  ))
 }
 
 
@@ -265,8 +324,12 @@ p <- arg_parser("Generate forecast figures") |>
     help = "Directory containing the model data and output.",
   ) |>
   add_argument(
-    "--filter-bad-chains",
-    help = "Filter out bad chains from the samples? Default TRUE.",
+    "--no-filter-bad-chains",
+    help = paste0(
+      "By default, postprocess_state_forecast.R filters ",
+      "any bad chains from the samples. Set this flag ",
+      "to retain them"
+    ),
     flag = TRUE
   ) |>
   add_argument(
@@ -277,7 +340,7 @@ p <- arg_parser("Generate forecast figures") |>
 
 argv <- parse_args(p)
 model_run_dir <- path(argv$model_run_dir)
-filter_bad_chains <- argv$filter_bad_chains
+filter_bad_chains <- !argv$no_filter_bad_chains
 good_chain_tol <- argv$good_chain_tol
 
 base_dir <- path_dir(model_run_dir)
@@ -290,14 +353,8 @@ disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
 
 
-forecast_figs <- make_forecast_figs(
+postprocess_state_forecast(
   model_run_dir,
   filter_bad_chains,
   good_chain_tol
 )
-
-iwalk(forecast_figs, ~ save_plot(
-  filename = path(model_run_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
-  plot = .x,
-  device = cairo_pdf, base_height = 6
-))

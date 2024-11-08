@@ -9,6 +9,7 @@
 *.bin
 *.xls
 *.xlsx
+*.rds
 
 # Documents
 *.doc
