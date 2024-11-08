@@ -40,12 +40,14 @@ get_all_forecast_dirs <- function(dir_of_forecast_date_dirs,
   return(dirs)
 }
 
+
 process_loc_date_score_table <- function(model_run_dir) {
   table_path <- fs::path(model_run_dir,
     "score_table",
     ext = "rds"
   )
-  location <- fs::path_file(model_run_dir)
+  parsed <- hewr::parse_model_run_dir(model_run_dir)
+
   if (!(fs::file_exists(table_path))) {
     warning(glue::glue(
       "No `score_table.rds` found for location ",
@@ -54,29 +56,16 @@ process_loc_date_score_table <- function(model_run_dir) {
     return(NULL)
   }
   score_table <- readr::read_rds(table_path)
-  score_table$quantile_scores$location <- location
-  score_table$sample_scores$location <- location
+
+  for (x in names(parsed)) {
+    score_table$quantile_scores[[x]] <- parsed[[x]]
+    score_table$sample_scores[[x]] <- parsed[[x]]
+  }
+
   return(score_table)
 }
 
-process_date_score_table <- function(date_fit_dir) {
-  table_path <- fs::path(date_fit_dir,
-    "score_table",
-    ext = "rds"
-  )
-  table_dir <- fs::path_file(date_fit_dir)
 
-  report_date <- str_match(
-    table_dir,
-    "r_(([0-9]|-)+)_f"
-  )[2] |>
-    lubridate::ymd()
-
-  score_table <- readr::read_rds(table_path)
-  score_table$quantile_scores$report_date <- report_date
-  score_table$sample_scores$report_date <- report_date
-  return(score_table)
-}
 
 bind_tables <- function(list_of_table_pairs) {
   sample_metrics <- purrr::map(
@@ -153,7 +142,7 @@ collate_all_score_tables <- function(model_base_dir,
   )
 
   # collate scores across locations for each date
-  purrr::map(date_dirs_to_process,
+  date_score_table <- purrr::map(date_dirs_to_process,
     collate_scores_for_date,
     save = save
   )
@@ -162,10 +151,6 @@ collate_all_score_tables <- function(model_base_dir,
   message(
     "Combining date-specific score tables ",
     "to create a full score table..."
-  )
-  date_tables <- purrr::map(
-    date_dirs_to_process,
-    process_date_score_table
   )
 
   full_score_table <- bind_tables(date_tables)
@@ -178,14 +163,14 @@ collate_all_score_tables <- function(model_base_dir,
     readr::write_rds(full_score_table, save_path)
   }
 
-  message("Done creating full score table")
+  message("Done creating full score table.")
 
   return(full_score_table)
 }
 
 
 p <- arg_parser(
-  "Forecast other (non-target-disease) ED visits for a given location."
+  "Collate tables of scores into a single table across locations and dates."
 ) |>
   add_argument(
     "model_base_dir",
