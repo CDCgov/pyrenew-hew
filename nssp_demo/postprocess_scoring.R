@@ -303,7 +303,10 @@ main <- function(path_to_scores,
   wis_comp_by_loc_save_path <- get_save_path(
     "wis_components_by_location",
     ext = "png"
-  ) # wis components do not save well as vectors
+  )
+  ## scoringutils wis component plots do not save well
+  ## as vector images on some devices, so we rasterize
+  ## them to PNGs
   ggsave(
     wis_comp_by_loc_save_path,
     wis_components_by_location
