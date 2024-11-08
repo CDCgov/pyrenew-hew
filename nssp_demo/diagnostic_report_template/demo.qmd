@@ -30,13 +30,7 @@ available_states <- model_dir %>%
 library(htmltools)
 formatted_available_states <-
   available_states %>%
-  map(\(.x) {
-    if (.x == this_state) {
-      strong(.x)
-    } else {
-      .x
-    }
-  }) %>%
+  map(\(x) a(x, href = path(x, ext = "html"))) %>%
   map(p) %>%
   map_chr(as.character) %>%
   str_c(collapse = "")
