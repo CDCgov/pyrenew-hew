@@ -280,7 +280,7 @@ postprocess_state_forecast <- function(model_run_dir,
 
   all_forecast_plots_log <- map(
     all_forecast_plots,
-    \(x) x + coord_trans(x = "log10")
+    \(x) x + coord_trans(y = "log10")
   )
 
   iwalk(all_forecast_plots, ~ save_plot(
