@@ -168,9 +168,7 @@ plots_to_pdf <- function(list_of_plots,
                          ncol = 1,
                          width = 8.5,
                          height = 11) {
-  if (!stringr::str_ends(
-    save_path, ".pdf"
-  )) {
+  if (!(tolower(fs::path_ext(save_path)) == ".pdf")) {
     cli::cli_abort("Filepath must end with `.pdf`")
   }
   cli::cli_inform("Saving plots to {save_path}")
