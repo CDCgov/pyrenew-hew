@@ -194,51 +194,38 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     aheads = 1:n_forecast_days
   )
 
-  save_path_other <- path(
-    model_run_dir,
-    "other_ed_visits_forecast",
-    ext = "parquet"
-  )
-  save_path_baseline_ts_count <- path(
-    model_run_dir,
-    "baseline_ts_count_ed_visits_forecast",
-    ext = "parquet"
-  )
-  save_path_baseline_ts_prop <- path(
-    model_run_dir,
-    "baseline_ts_prop_ed_visits_forecast",
-    ext = "parquet"
-  )
-  save_path_baseline_cdc_count <- path(
-    model_run_dir,
-    "baseline_cdc_count_ed_visits_forecast",
-    ext = "parquet"
-  )
-  save_path_baseline_cdc_prop <- path(
-    model_run_dir,
-    "baseline_cdc_prop_ed_visits_forecast",
-    ext = "parquet"
-  )
+  to_save <- dplyr::bind_rows(
+    list(
+      basename = "other_ed_visits_forecast",
+      value = forecast_other
+    ),
+    list(
+      basename = "baseline_ts_count_ed_visits_forecast",
+      value = forecast_baseline_ts_count
+    ),
+    list(
+      basename = "baseline_ts_prop_ed_visits_forecast",
+      value = forecast_baseline_ts_prop
+    ),
+    list(
+      basename = "baseline_cdc_count_ed_visits_forecast",
+      value = forecast_baseline_cdc_count
+    ),
+    list(
+      basename = "baseline_cdc_prop_ed_visits_forecast",
+      value = forecast_basline_cdc_prop
+    )
+  ) |>
+    dplyr::mutate(save_path = path(
+      !!model_run_dir, basename,
+      ext = "parquet"
+    ))
 
-  write_parquet(
-    forecast_other,
-    save_path_other
-  )
-  write_parquet(
-    forecast_baseline_ts_count,
-    save_path_baseline_ts_count
-  )
-  write_parquet(
-    forecast_baseline_ts_prop,
-    save_path_baseline_ts_prop
-  )
-  write_parquet(
-    forecast_baseline_cdc_count,
-    save_path_baseline_cdc_count
-  )
-  write_parquet(
-    forecast_baseline_cdc_prop,
-    save_path_baseline_cdc_prop
+
+  purrr::walk2(
+    to_save$value,
+    to_save$save_path,
+    write_parquet
   )
 }
 
