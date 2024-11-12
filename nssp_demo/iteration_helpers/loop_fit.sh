@@ -13,5 +13,5 @@ BASE_DIR="$1"
 for SUBDIR in "$BASE_DIR"/*/; do
     # Run the Python script with the current subdirectory as the model_dir argument
     echo "$SUBDIR"
-    python fit_model.py --model_dir "$SUBDIR"
+    python fit_model.py --model_run_dir "$SUBDIR"
 done
