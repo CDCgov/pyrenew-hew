@@ -54,7 +54,7 @@ if __name__ == "__main__":
         description="Fit the hospital-only wastewater model."
     )
     parser.add_argument(
-        "model-run-dir",
+        "--model_dir",
         type=Path,
         help=(
             "Path to a directory containing model fitting data. "
