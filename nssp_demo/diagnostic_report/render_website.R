@@ -1,13 +1,13 @@
 library(tidyverse)
 library(fs)
 
-diagnostic_report_dir <- path("nssp_demo", "diagnostic_report_template")
+diagnostic_report_dir <- path("nssp_demo", "diagnostic_report")
 
 base_dir <- path(
   "~/pyrenew-hew", "nssp_demo",
   "private_data",
   "pyrenew-test-output",
-  "influenza_r_2024-11-06_f_2024-08-18_t_2024-10-31"
+  "influenza_r_2024-11-12_f_2024-08-29_t_2024-11-11"
 )
 # parse this from CLI
 
@@ -20,11 +20,9 @@ quarto_render_tbl <-
   mutate(qmd_path = path(site_output_dir, path_file(state_dirs), ext = "qmd") |>
     path_rel(diagnostic_report_dir))
 
-
-
 original_wd <- getwd()
 setwd(diagnostic_report_dir)
-quarto_template_path <- path("demo", ext = "qmd")
+quarto_template_path <- path("template", ext = "qmd")
 walk(quarto_render_tbl$qmd_path, \(x) file_copy(quarto_template_path, x))
 pwalk(
   quarto_render_tbl,
