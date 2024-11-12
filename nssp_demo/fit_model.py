@@ -83,7 +83,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--n-chains",
         type=int,
-        default=1000,
+        default=4,
         help=("Number of duplicate MCMC chains to run " "(Default 4)."),
     )
     parser.add_argument(
