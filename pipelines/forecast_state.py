@@ -22,7 +22,7 @@ def baseline_forecasts(
     subprocess.run(
         [
             "Rscript",
-            "nssp_demo/timeseries_forecasts.R",
+            "pipelines/timeseries_forecasts.R",
             f"{model_run_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",
@@ -37,7 +37,7 @@ def postprocess_forecast(model_run_dir: Path) -> None:
     subprocess.run(
         [
             "Rscript",
-            "nssp_demo/postprocess_state_forecast.R",
+            "pipelines/postprocess_state_forecast.R",
             "--model-run-dir",
             f"{model_run_dir}",
         ]
@@ -49,7 +49,7 @@ def score_forecast(model_run_dir: Path) -> None:
     subprocess.run(
         [
             "Rscript",
-            "nssp_demo/score_forecast.R",
+            "pipelines/score_forecast.R",
             f"{model_run_dir}",
         ]
     )
