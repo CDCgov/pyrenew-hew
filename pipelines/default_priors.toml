@@ -1,0 +1,25 @@
+i0_first_obs_n_prior_a = 1
+i0_first_obs_n_prior_b = 10
+
+initialization_rate_prior_mean = 0
+initialization_rate_prior_sd = 0.01
+
+r_mu_intercept_prior_mode_exp = 1
+r_mu_intercept_prior_sd_exp = 1.41
+
+sd_log_r_prior_mode = 0.04
+sd_log_r_prior_sd = 0.02
+
+autoreg_rt_prior_a = 2
+autoreg_rt_prior_b = 40
+
+inf_feedback_prior_mode_exp = 50
+inf_feedback_prior_sd_exp = 2
+
+log_phi_prior_mean = 6
+log_phi_prior_sd = 1
+
+p_ed_visit_prior_median = 0.005
+logit_p_ed_visit_prior_sd = 0.3
+
+ed_visit_wday_effect_prior_certainty = 5

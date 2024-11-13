@@ -38,34 +38,63 @@ def parametrize_priors(model_data: dict) -> dict:
     prior_dict = dict(
         i0_first_obs_n_rv=DistributionalVariable(
             "i0_first_obs_n_rv",
-            dist.Beta(1, 10),
+            dist.Beta(
+                model_data["i0_first_obs_n_prior_a"],
+                model_data["i0_first_obs_n_prior_b"],
+            ),
         ),
         initialization_rate_rv=DistributionalVariable(
-            "rate", dist.Normal(0, 0.01), reparam=LocScaleReparam(0)
+            "rate",
+            dist.Normal(
+                model_data["initialization_rate_prior_mean"],
+                model_data["initialization_rate_prior_sd"],
+            ),
+            reparam=LocScaleReparam(0),
         ),
         log_r_mu_intercept_rv=DistributionalVariable(
             "log_r_mu_intercept_rv",
-            dist.Normal(jnp.log(1), jnp.log(jnp.sqrt(2))),
+            dist.Normal(
+                jnp.log(model_data["r_mu_intercept_prior_mode_exp"]),
+                jnp.log(model_data["r_mu_intercept_prior_sd_exp"]),
+            ),
         ),
         eta_sd_rv=DistributionalVariable(
-            "eta_sd", dist.TruncatedNormal(0.04, 0.02, low=0)
+            "eta_sd",
+            dist.TruncatedNormal(
+                model_data["sd_log_r_prior_mode"],
+                model_data["sd_log_r_prior_sd"],
+                low=0,
+            ),
         ),
-        autoreg_rt_rv=DistributionalVariable("autoreg_rt", dist.Beta(2, 40)),
+        autoreg_rt_rv=DistributionalVariable(
+            "autoreg_rt",
+            dist.Beta(
+                model_data["autoreg_rt_prior_a"],
+                model_data["autoreg_rt_prior_b"],
+            ),
+        ),
         inf_feedback_strength_rv=TransformedVariable(
             "inf_feedback",
             DistributionalVariable(
                 "inf_feedback_raw",
-                dist.LogNormal(jnp.log(50), jnp.log(2)),
+                dist.LogNormal(
+                    jnp.log(model_data["inf_feedback_prior_mode_exp"]),
+                    jnp.log(model_data["inf_feedback_prior_sd_exp"]),
+                ),
             ),
             transforms=transformation.AffineTransform(loc=0, scale=-1),
         ),
         p_ed_visit_mean_rv=DistributionalVariable(
             "p_ed_visit_mean",
             dist.Normal(
-                transformation.SigmoidTransform().inv(0.005),
-                0.3,
+                transformation.SigmoidTransform().inv(
+                    model_data["p_ed_visit_prior_median"]
+                ),
+                model_data["logit_p_ed_visit_prior_sd"],
             ),  # logit-Normal prior
         ),
+        # these are hard-coded to make the rate in effect
+        # non-time-varying
         p_ed_visit_w_sd_rv=DistributionalVariable(
             "p_ed_visit_w_sd_sd", dist.TruncatedNormal(0, 0.01, low=0)
         ),
@@ -73,15 +102,24 @@ def parametrize_priors(model_data: dict) -> dict:
             "autoreg_p_ed_visit", dist.Beta(1, 100)
         ),
         ed_visit_wday_effect_rv=TransformedVariable(
-            "hosp_wday_effect",
+            "ed_visit_wday_effect",
             DistributionalVariable(
                 "hosp_wday_effect_raw",
-                dist.Dirichlet(jnp.array([5, 5, 5, 5, 5, 5, 5])),
+                dist.Dirichlet(
+                    model_data["ed_visit_wday_effect_prior_certainty"]
+                    * jnp.ones(7)
+                ),
             ),
             transformation.AffineTransform(loc=0, scale=7),
         ),
         # Based on looking at some historical posteriors.
-        phi_rv=DistributionalVariable("phi", dist.LogNormal(6, 1)),
+        phi_rv=DistributionalVariable(
+            "phi",
+            dist.LogNormal(
+                model_data["log_phi_prior_mean"],
+                model_data["log_phi_prior_sd"],
+            ),
+        ),
     )
 
     return prior_dict
