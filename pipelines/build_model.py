@@ -10,7 +10,6 @@ from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.randomvariable import (
     DistributionalVariable,
-    RandomVariable,
     TransformedVariable,
 )
 
@@ -31,7 +30,8 @@ def parametrize_priors(model_data: dict) -> dict:
     Returns
     -------
     dict
-        A dictionary containing the parameterized :class:`RandomVariable`s.
+        A dictionary containing the parameterized
+        :class:`pyrenew.metaclass.RandomVariable`s.
         as its values.
     """
 
