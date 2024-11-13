@@ -108,11 +108,11 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-prod-output",
+                "source": "pyrenew-hew-prod-output",
                 "target": "/pyrenew-hew/output",
             },
             {
-                "source": "pyrenew-config",
+                "source": "pyrenew-hew-config",
                 "target": "/pyrenew-hew/config",
             },
         ],
