@@ -1,10 +1,7 @@
-FROM python:3.12
+ARG TAG=local
 
-RUN apt-get update
-RUN apt-get install -y r-base
-RUN apt-get install -y cmake
-RUN pip install --root-user-action=ignore -U pip
-RUN pip install --root-user-action=ignore git+https://github.com/cdcgov/pyrenew
+FROM cfaprdbatchcr.azurecr.io/pyrenew-hew-dependencies:${TAG}
+
 COPY ./hewr ./pyrenew-hew/hewr
 
 WORKDIR pyrenew-hew
