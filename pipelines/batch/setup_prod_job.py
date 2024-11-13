@@ -97,44 +97,50 @@ def main(
         mount_pairs=[
             {
                 "source": "nssp-etl",
-                "target": "/pyrenew-hew/nssp_demo/nssp-etl",
+                "target": "/pyrenew-hew/nssp-etl",
             },
             {
                 "source": "nssp-archival-vintages",
-                "target": "/pyrenew-hew/nssp_demo/nssp-archival-vintages",
+                "target": "/pyrenew-hew/nssp-archival-vintages",
             },
             {
                 "source": "prod-param-estimates",
-                "target": "/pyrenew-hew/nssp_demo/params",
+                "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-test-output",
-                "target": "/pyrenew-hew/nssp_demo/private_data",
+                "source": "pyrenew-prod-output",
+                "target": "/pyrenew-hew/output",
+            },
+            {
+                "source": "pyrenew-config",
+                "target": "/pyrenew-hew/config",
             },
         ],
     )
 
     base_call = (
         "/bin/bash -c '"
-        "python nssp_demo/forecast_state.py "
+        "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
         "--n-training-days 75 "
         "--n-warmup 1000 "
         "--n-samples 500 "
-        "--facility-level-nssp-data-dir nssp_demo/nssp-etl/gold "
+        "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
-        "nssp_demo/nssp-archival-vintages/gold "
-        "--param-data-dir nssp_demo/params "
-        "--output-data-dir nssp_demo/private_data "
+        "nssp-archival-vintages/gold "
+        "--param-data-dir params "
+        "--output-data-dir output "
+        "--prior-param-path config/prod_priors.toml "
         "--report-date {report_date} "
         "--exclude-last-n-days 5 "
-        "--score "
+        "--no-score "
         "--eval-data-path "
-        "nssp_demo/nssp-archival-vintages/latest_comprehensive.parquet"
+        "nssp-archival-vintages/latest_comprehensive.parquet"
         "'"
     )
 
+    # to be replaced by forecasttools-py table
     locations = pl.read_csv(
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
