@@ -73,7 +73,7 @@ def main(
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
-    prior_data_path: Path | str,
+    prior_param_path: Path | str,
     output_data_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
@@ -163,7 +163,7 @@ def main(
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-    with open(prior_data_path, "r") as priors:
+    with open(prior_param_path, "r") as priors:
         prior_params = tomllib.load(priors)
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
@@ -297,7 +297,16 @@ parser.add_argument(
         "Directory in which to look for parameter estimates"
         "such as delay PMFs."
     ),
+    required=True,
 )
+
+parser.add_argument(
+    "--prior-param-path",
+    type=Path,
+    help=("Path to a TOML file containing parameters for priors."),
+    required=True,
+)
+
 
 parser.add_argument(
     "--output-data-dir",
