@@ -238,6 +238,7 @@ cython_debug/
 
 # RStudio files
 .Rproj.user/
+*.Rproj
 
 # produced vignettes
 vignettes/*.html
@@ -393,4 +394,5 @@ notebooks/*_files/
 notebooks/*.md
 
 nssp_demo/private_data/*
+*_files/
 .vscode/settings.json

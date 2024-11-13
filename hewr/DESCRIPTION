@@ -15,16 +15,21 @@ Imports:
     arrow,
     cowplot,
     dplyr,
+    DT,
     fable,
     feasts,
     forcats,
+    forecasttools (>= 0.0.0.9000),
     fs,
     ggplot2,
     glue,
     here,
+    htmltools,
     jsonlite,
     purrr,
+    quarto,
     readr,
+    reticulate,
     scales,
     scoringutils (>= 2.0.0),
     stringr,
@@ -32,3 +37,5 @@ Imports:
     tidybayes,
     tidyr,
     urca
+Remotes:
+    https://github.com/cdcgov/forecasttools
