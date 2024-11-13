@@ -19,6 +19,7 @@ Imports:
     fable,
     feasts,
     forcats,
+    forecasttools (>= 0.0.0.9000),
     fs,
     ggplot2,
     glue,
@@ -36,3 +37,5 @@ Imports:
     tidybayes,
     tidyr,
     urca
+Remotes:
+    https://github.com/cdcgov/forecasttools
