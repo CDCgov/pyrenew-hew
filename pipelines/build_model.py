@@ -127,7 +127,7 @@ def build_model_from_dir(model_dir):
         - 1
     )
 
-    priors = parameterize_priors(model_data)
+    priors = parametrize_priors(model_data)
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
