@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpyro
 import polars as pl
+import tomllib
 from prep_data import process_and_save_state
 from save_eval_data import save_eval_data
 
@@ -72,6 +73,7 @@ def main(
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
+    prior_data_path: Path | str,
     output_data_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
@@ -161,6 +163,8 @@ def main(
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
+    with open(prior_data_path, "r") as priors:
+        prior_params = tomllib.load(priors)
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -183,6 +187,7 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         param_estimates=param_estimates,
+        prior_params=prior_params,
         model_batch_dir=model_batch_dir,
         logger=logger,
     )

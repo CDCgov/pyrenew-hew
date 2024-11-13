@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+from logging import Logger
 from pathlib import Path
 
 import polars as pl
@@ -207,22 +208,23 @@ def process_national(
     model_batch_dir: Path | str,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
-    logger=None,
+    logger: Logger = None,
 ):
     if logger is not None:
         logger.info("Processing national dataset")
 
 
 def process_and_save_state(
-    state_abb,
-    disease,
-    report_date,
-    state_level_report_date,
-    first_training_date,
-    last_training_date,
-    param_estimates,
-    model_batch_dir,
-    logger=None,
+    state_abb: str,
+    disease: str,
+    report_date: datetime.date,
+    state_level_report_date: datetime.date,
+    first_training_date: datetime.date,
+    last_training_date: datetime.date,
+    param_estimates: pl.LazyFrame,
+    prior_params: dict,
+    model_batch_dir: Path,
+    logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
 ) -> None:
@@ -330,6 +332,7 @@ def process_and_save_state(
         "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
+        **prior_params,
     }
 
     state_dir = os.path.join(model_batch_dir, state_abb)
