@@ -163,7 +163,7 @@ def main(
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-    with open(prior_param_path, "r") as priors:
+    with open(prior_param_path, "rb") as priors:
         prior_params = tomllib.load(priors)
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"

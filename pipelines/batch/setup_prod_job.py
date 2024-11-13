@@ -143,7 +143,7 @@ def main(
         locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
         .get_column("STUSAB")
         .to_list()
-    )
+    ) + ["US"]
 
     for disease, state in itertools.product(disease_list, all_locations):
         task = get_task_config(
