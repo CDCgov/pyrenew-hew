@@ -4,7 +4,7 @@ ENGINE := docker
 CONTAINER_NAME := pyrenew-hew
 CONTAINER_REMOTE_NAME := $(ACR_TAG_PREFIX)$(CONTAINER_NAME)":latest"
 
-container_build:
+container_build: acr_login
 	$(ENGINE) build . -t $(CONTAINER_NAME)
 
 container_tag:
