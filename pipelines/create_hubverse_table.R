@@ -66,10 +66,17 @@ draws_to_quantiles <- function(forecast_dir,
   return(epiweekly_quantiles)
 }
 
-create_hubverse_table <- function(model_run_dir) {
+create_hubverse_table <- function(model_run_dir,
+                                  exclude = NULL) {
   locations_to_process <- fs::dir_ls(model_run_dir,
     type = "directory"
   )
+
+  if (!is.null(exclude)) {
+    locations_to_process <- locations_to_process[
+      !(fs::path_file(locations_to_process) %in% exclude)
+    ]
+  }
 
   report_date <- stringr::str_match(
     model_run_dir,
@@ -131,8 +138,9 @@ create_hubverse_table <- function(model_run_dir) {
 
 
 main <- function(model_run_dir,
-                 output_path) {
-  create_hubverse_table(model_run_dir) |>
+                 output_path,
+                 exclude = NULL) {
+  create_hubverse_table(model_run_dir, exclude = exclude) |>
     readr::write_tsv(output_path)
 }
 
@@ -151,11 +159,16 @@ p <- argparser::arg_parser(
   argparser::add_argument(
     "output_path",
     help = "path to which to save the table"
+  ) |>
+  argparser::add_argument(
+    "--exclude",
+    help = "locations to exclude, as a whitespace-separated string",
+    default = ""
   )
-
 argv <- argparser::parse_args(p)
 
 main(
   argv$model_run_dir,
-  argv$output_path
+  argv$output_path,
+  stringr::str_split_1(argv$exclude, " ")
 )
