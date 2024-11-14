@@ -10,10 +10,10 @@ read_pyrenew_samples <- function(inference_data_path,
       select(-distribution) |>
       split(f = as.factor(x$distribution))
   }
-  
+
   pyrenew_samples <-
     read_csv(inference_data_path,
-             show_col_types = FALSE
+      show_col_types = FALSE
     ) |>
     rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
     rename(
@@ -26,12 +26,12 @@ read_pyrenew_samples <- function(inference_data_path,
       .after = .iteration
     ) |>
     pivot_longer(-starts_with("."),
-                 names_sep = ", ",
-                 names_to = c("distribution", "name")
+      names_sep = ", ",
+      names_to = c("distribution", "name")
     ) |>
     arviz_split() |>
     map(\(x) pivot_wider(x, names_from = name) |> tidy_draws())
-  
+
   if (filter_bad_chains) {
     good_chains <-
       pyrenew_samples$log_likelihood |>
@@ -45,7 +45,7 @@ read_pyrenew_samples <- function(inference_data_path,
   } else {
     good_chains <- unique(pyrenew_samples$log_likelihood$.chain)
   }
-  
+
   good_pyrenew_samples <- map(
     pyrenew_samples,
     \(x) filter(x, .chain %in% good_chains)
