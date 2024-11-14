@@ -2,9 +2,9 @@ ARG TAG=local
 
 FROM cfaprdbatchcr.azurecr.io/pyrenew-hew-dependencies:${TAG}
 
-COPY ./hewr ./pyrenew-hew/hewr
+COPY ./hewr /pyrenew-hew/hewr
 
-WORKDIR pyrenew-hew
+WORKDIR /pyrenew-hew
 
 COPY .ContainerBuildRprofile .Rprofile
 
