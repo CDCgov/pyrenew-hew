@@ -1,4 +1,4 @@
-ARG TAG=latest
+ARG TAG=local
 
 FROM cfaprdbatchcr.azurecr.io/pyrenew-hew-dependencies:${TAG}
 
