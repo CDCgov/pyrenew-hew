@@ -1,132 +1,15 @@
 import json
+import runpy
 
 import jax.numpy as jnp
-import numpyro.distributions as dist
-import pyrenew.transformation as transformation
-from numpyro.infer.reparam import LocScaleReparam
-
-# load priors
-# have to run this from the right directory
 from pyrenew.deterministic import DeterministicVariable
-from pyrenew.randomvariable import (
-    DistributionalVariable,
-    TransformedVariable,
-)
 
 from pyrenew_hew.hosp_only_ww_model import hosp_only_ww_model
 
 
-def parametrize_priors(model_data: dict) -> dict:
-    """
-    Parameterize prior distribution RVs
-    from a model data dictionary.
-
-    Parameters
-    ----------
-    model_data
-       Dictionary of model data from which to parametrize
-       prior distribution random variables. Ignored currently.
-
-    Returns
-    -------
-    dict
-        A dictionary containing the parameterized
-        :class:`pyrenew.metaclass.RandomVariable`s.
-        as its values.
-    """
-
-    prior_dict = dict(
-        i0_first_obs_n_rv=DistributionalVariable(
-            "i0_first_obs_n_rv",
-            dist.Beta(
-                model_data["i0_first_obs_n_prior_a"],
-                model_data["i0_first_obs_n_prior_b"],
-            ),
-        ),
-        initialization_rate_rv=DistributionalVariable(
-            "rate",
-            dist.Normal(
-                model_data["initialization_rate_prior_mean"],
-                model_data["initialization_rate_prior_sd"],
-            ),
-            reparam=LocScaleReparam(0),
-        ),
-        log_r_mu_intercept_rv=DistributionalVariable(
-            "log_r_mu_intercept_rv",
-            dist.Normal(
-                jnp.log(model_data["r_mu_intercept_prior_mode_exp"]),
-                jnp.log(model_data["r_mu_intercept_prior_sd_exp"]),
-            ),
-        ),
-        eta_sd_rv=DistributionalVariable(
-            "eta_sd",
-            dist.TruncatedNormal(
-                model_data["sd_log_r_prior_mode"],
-                model_data["sd_log_r_prior_sd"],
-                low=0,
-            ),
-        ),
-        autoreg_rt_rv=DistributionalVariable(
-            "autoreg_rt",
-            dist.Beta(
-                model_data["autoreg_rt_prior_a"],
-                model_data["autoreg_rt_prior_b"],
-            ),
-        ),
-        inf_feedback_strength_rv=TransformedVariable(
-            "inf_feedback",
-            DistributionalVariable(
-                "inf_feedback_raw",
-                dist.LogNormal(
-                    jnp.log(model_data["inf_feedback_prior_mode_exp"]),
-                    jnp.log(model_data["inf_feedback_prior_sd_exp"]),
-                ),
-            ),
-            transforms=transformation.AffineTransform(loc=0, scale=-1),
-        ),
-        p_ed_visit_mean_rv=DistributionalVariable(
-            "p_ed_visit_mean",
-            dist.Normal(
-                transformation.SigmoidTransform().inv(
-                    model_data["p_ed_visit_prior_median"]
-                ),
-                model_data["logit_p_ed_visit_prior_sd"],
-            ),  # logit-Normal prior
-        ),
-        # these are hard-coded to make the rate in effect
-        # non-time-varying
-        p_ed_visit_w_sd_rv=DistributionalVariable(
-            "p_ed_visit_w_sd_sd", dist.TruncatedNormal(0, 0.01, low=0)
-        ),
-        autoreg_p_ed_visit_rv=DistributionalVariable(
-            "autoreg_p_ed_visit", dist.Beta(1, 100)
-        ),
-        ed_visit_wday_effect_rv=TransformedVariable(
-            "ed_visit_wday_effect",
-            DistributionalVariable(
-                "hosp_wday_effect_raw",
-                dist.Dirichlet(
-                    model_data["ed_visit_wday_effect_prior_certainty"]
-                    * jnp.ones(7)
-                ),
-            ),
-            transformation.AffineTransform(loc=0, scale=7),
-        ),
-        # Based on looking at some historical posteriors.
-        phi_rv=DistributionalVariable(
-            "phi",
-            dist.LogNormal(
-                model_data["log_phi_prior_mean"],
-                model_data["log_phi_prior_sd"],
-            ),
-        ),
-    )
-
-    return prior_dict
-
-
 def build_model_from_dir(model_dir):
     data_path = model_dir / "data_for_model_fit.json"
+    prior_path = model_dir / "priors.py"
 
     with open(
         data_path,
@@ -165,7 +48,7 @@ def build_model_from_dir(model_dir):
         - 1
     )
 
-    priors = parametrize_priors(model_data)
+    priors = runpy.run_path(prior_path)
 
     right_truncation_offset = model_data["right_truncation_offset"]
 

@@ -1,13 +1,13 @@
 import argparse
 import logging
 import os
+import shutil
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpyro
 import polars as pl
-import tomllib
 from prep_data import process_and_save_state
 from save_eval_data import save_eval_data
 
@@ -73,7 +73,7 @@ def main(
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
-    prior_param_path: Path | str,
+    priors_path: Path | str,
     output_data_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
@@ -163,8 +163,6 @@ def main(
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-    with open(prior_param_path, "rb") as priors:
-        prior_params = tomllib.load(priors)
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -175,6 +173,9 @@ def main(
     model_run_dir = Path(model_batch_dir, state)
 
     os.makedirs(model_run_dir, exist_ok=True)
+
+    logger.info(f"Using priors from {priors_path}...")
+    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
 
     logger.info(f"Processing {state}")
     process_and_save_state(
@@ -187,7 +188,6 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         param_estimates=param_estimates,
-        prior_params=prior_params,
         model_batch_dir=model_batch_dir,
         logger=logger,
     )
@@ -301,9 +301,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--prior-param-path",
+    "--priors-path",
     type=Path,
-    help=("Path to a TOML file containing parameters for priors."),
+    help=(
+        "Path to an executible python file defining random variables "
+        "that require priors as pyrenew RandomVariable objects."
+    ),
     required=True,
 )
 

@@ -222,7 +222,6 @@ def process_and_save_state(
     first_training_date: datetime.date,
     last_training_date: datetime.date,
     param_estimates: pl.LazyFrame,
-    prior_params: dict,
     model_batch_dir: Path,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
@@ -332,7 +331,6 @@ def process_and_save_state(
         "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        **prior_params,
     }
 
     state_dir = os.path.join(model_batch_dir, state_abb)
