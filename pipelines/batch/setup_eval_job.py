@@ -131,7 +131,7 @@ def main(
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
         "--output-data-dir output "
-        "--prior-param-path config/eval_priors.toml "
+        "--priors-path config/eval_priors.py "
         "--report-date {report_date:%Y-%m-%d} "
         "--exclude-last-n-days 2 "
         "--score "
