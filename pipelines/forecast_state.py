@@ -34,6 +34,18 @@ def baseline_forecasts(
     return None
 
 
+def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
+    subprocess.run(
+        [
+            "Rscript",
+            "pipelines/convert_inferencedata_to_parquet.R",
+            "--model-run-dir",
+            f"{model_run_dir}",
+        ]
+    )
+    return None
+
+
 def postprocess_forecast(model_run_dir: Path) -> None:
     subprocess.run(
         [
@@ -229,6 +241,10 @@ def main(
         output_data_dir=model_run_dir,
         last_eval_date=report_date + timedelta(days=n_forecast_days),
     )
+
+    logger.info("Converting inferencedata to parquet...")
+    convert_inferencedata_to_parquet
+    logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
     postprocess_forecast(model_run_dir)
