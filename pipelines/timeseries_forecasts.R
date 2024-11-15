@@ -71,14 +71,20 @@ fit_and_forecast <- function(data,
   forecast_horizon <- glue::glue("{n_forecast_days} days")
   target_sym <- rlang::sym(target_col)
   output_sym <- rlang::sym(output_col)
+
+  max_visits <- data |>
+    pull(!!target_sym) |>
+    max(na.rm = TRUE)
+  offset <- 1 / max_visits
+
   fit <-
     data |>
     as_tsibble(index = date) |>
     filter(data_type == "train") |>
     model(
       comb_model = combination_ensemble(
-        ETS(log(!!target_sym) ~ trend(method = c("N", "M", "A"))),
-        ARIMA(log(!!target_sym))
+        ETS(log(!!target_sym + offset) ~ trend(method = c("N", "M", "A"))),
+        ARIMA(log(!!target_sym + offset))
       )
     )
 
