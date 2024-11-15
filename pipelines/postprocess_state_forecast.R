@@ -23,7 +23,6 @@ purrr::walk(script_packages, \(pkg) {
   )
 })
 
-# Load posterior
 
 make_one_forecast_fig <- function(target_disease,
                                   combined_dat,
@@ -100,9 +99,7 @@ make_one_forecast_fig <- function(target_disease,
 }
 
 
-postprocess_state_forecast <- function(model_run_dir,
-                                       filter_bad_chains = TRUE,
-                                       good_chain_tol = 2) {
+postprocess_state_forecast <- function(model_run_dir) {
   state_abb <- model_run_dir |>
     path_split() |>
     pluck(1) |>
@@ -110,8 +107,9 @@ postprocess_state_forecast <- function(model_run_dir,
 
   train_data_path <- path(model_run_dir, "data", ext = "csv")
   eval_data_path <- path(model_run_dir, "eval_data", ext = "tsv")
-  inference_data_path <- path(model_run_dir, "inference_data",
-    ext = "csv"
+  posterior_predictive_path <- path(model_run_dir, "mcmc_tidy",
+    "pyrenew_posterior_predictive",
+    ext = "parquet"
   )
   other_ed_visits_path <- path(
     model_run_dir,
@@ -160,10 +158,7 @@ postprocess_state_forecast <- function(model_run_dir,
     pull(date) |>
     max()
 
-  pyrenew_samples <- read_pyrenew_samples(inference_data_path,
-    filter_bad_chains = filter_bad_chains,
-    good_chain_tol = good_chain_tol
-  )
+  posterior_predictive <- read_parquet(posterior_predictive_path)
 
   other_ed_visits_forecast <-
     read_parquet(other_ed_visits_path) |>
@@ -183,7 +178,7 @@ postprocess_state_forecast <- function(model_run_dir,
     )
 
   posterior_predictive_samples <-
-    pyrenew_samples$posterior_predictive |>
+    posterior_predictive |>
     gather_draws(observed_hospital_admissions[time]) |>
     pivot_wider(names_from = .variable, values_from = .value) |>
     rename(Disease = observed_hospital_admissions) |>
@@ -269,28 +264,12 @@ disease_name_nssp_map <- c(
 # Create a parser
 p <- arg_parser("Generate forecast figures") |>
   add_argument(
-    "--model-run-dir",
+    "model-run-dir",
     help = "Directory containing the model data and output.",
-  ) |>
-  add_argument(
-    "--no-filter-bad-chains",
-    help = paste0(
-      "By default, postprocess_state_forecast.R filters ",
-      "any bad chains from the samples. Set this flag ",
-      "to retain them"
-    ),
-    flag = TRUE
-  ) |>
-  add_argument(
-    "--good-chain-tol",
-    help = "Tolerance level for determining good chains.",
-    default = 2L
   )
 
 argv <- parse_args(p)
 model_run_dir <- path(argv$model_run_dir)
-filter_bad_chains <- !argv$no_filter_bad_chains
-good_chain_tol <- argv$good_chain_tol
 
 base_dir <- path_dir(model_run_dir)
 
@@ -301,9 +280,4 @@ disease_name_raw <- base_dir |>
 disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
 
-
-postprocess_state_forecast(
-  model_run_dir,
-  filter_bad_chains,
-  good_chain_tol
-)
+postprocess_state_forecast(model_run_dir)
