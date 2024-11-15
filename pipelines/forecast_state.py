@@ -241,7 +241,7 @@ def main(
     )
 
     logger.info("Converting inferencedata to parquet...")
-    convert_inferencedata_to_parquet
+    convert_inferencedata_to_parquet(model_run_dir)
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
