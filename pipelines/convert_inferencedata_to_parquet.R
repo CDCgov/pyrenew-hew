@@ -49,7 +49,7 @@ tidy_and_save_mcmc <- function(model_run_dir,
 
 p <- arg_parser("Tidy InferenceData to Parquet files") |>
   add_argument(
-    "--model-run-dir",
+    "model_run_dir",
     help = "Directory containing the model data and output.",
   ) |>
   add_argument(

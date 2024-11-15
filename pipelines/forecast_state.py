@@ -39,7 +39,6 @@ def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
         [
             "Rscript",
             "pipelines/convert_inferencedata_to_parquet.R",
-            "--model-run-dir",
             f"{model_run_dir}",
         ]
     )
@@ -51,7 +50,6 @@ def postprocess_forecast(model_run_dir: Path) -> None:
         [
             "Rscript",
             "pipelines/postprocess_state_forecast.R",
-            "--model-run-dir",
             f"{model_run_dir}",
         ]
     )

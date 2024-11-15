@@ -264,7 +264,7 @@ disease_name_nssp_map <- c(
 # Create a parser
 p <- arg_parser("Generate forecast figures") |>
   add_argument(
-    "model-run-dir",
+    "model_run_dir",
     help = "Directory containing the model data and output.",
   )
 
