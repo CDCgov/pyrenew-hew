@@ -55,7 +55,7 @@ p <- arg_parser("Tidy InferenceData to Parquet files") |>
   add_argument(
     "--no-filter-bad-chains",
     help = paste0(
-      "By default, postprocess_state_forecast.R filters ",
+      "By default, tidy_and_save_mcmc.R filters ",
       "any bad chains from the samples. Set this flag ",
       "to retain them"
     ),
