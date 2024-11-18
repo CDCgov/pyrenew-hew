@@ -82,8 +82,8 @@ def main(
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
     )
-    n_warmup = 10 if test else 1000
-    n_samples = 10 if test else 500
+    n_warmup = 200 if test else 1000
+    n_samples = 200 if test else 500
 
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
