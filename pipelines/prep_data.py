@@ -38,6 +38,9 @@ def process_state_level_data(
     first_training_date: datetime.date,
     state_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     if state_level_nssp_data is None:
         return pl.DataFrame(
             schema={
@@ -51,6 +54,7 @@ def process_state_level_data(
     disease_key = _disease_map.get(disease, disease)
 
     if state_abb == "US":
+        logger.info("Aggregating state-level data to national")
         state_level_nssp_data = aggregate_to_national(
             state_level_nssp_data,
             state_pop_df["abb"].unique(),
@@ -133,7 +137,11 @@ def aggregate_facility_level_nssp_to_state(
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
         .select(["date", "geo_value", "disease", "ed_visits"])
-        .collect()
+        .collect(streaming=True)
+        # setting streaming = True explicitly
+        # avoids an `Option::unwrap()` on a `None` value
+        # error. Cause of error not known but presumably
+        # related to how parquets are processed.
     )
 
 
