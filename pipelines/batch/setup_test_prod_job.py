@@ -78,4 +78,5 @@ if __name__ == "__main__":
         container_image_name="pyrenew-hew",
         container_image_version=current_branch,
         excluded_locations=locs_to_exclude,
+        test=True,
     )
