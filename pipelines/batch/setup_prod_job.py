@@ -79,10 +79,12 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
-    if test:
-        pyrenew_hew_output_container = "pyrenew-test-output"
-    else:
-        pyrenew_hew_output_container = "pyrenew-hew-prod-output"
+    pyrenew_hew_output_container = (
+        "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
+    )
+    n_warmup = 10 if test else 1000
+    n_samples = 10 if test else 500
+
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
     job = models.JobAddParameter(
@@ -129,8 +131,8 @@ def main(
         "--disease {disease} "
         "--state {state} "
         "--n-training-days 75 "
-        "--n-warmup 1000 "
-        "--n-samples 500 "
+        f"--n-warmup {n_warmup} "
+        f"--n-samples 500 {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
