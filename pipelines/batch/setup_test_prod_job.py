@@ -15,7 +15,7 @@ from setup_prod_job import main
 if __name__ == "__main__":
     current_datetime = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%SZ")
     current_branch = Path(Repository(os.getcwd()).head.name).stem
-    locs_to_exclude = [  # keep CA, MN, SD
+    locs_to_exclude = [  # keep CA, MN, SD, and US
         "AS",
         "GU",
         "MO",
