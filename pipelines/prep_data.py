@@ -15,11 +15,11 @@ _inverse_disease_map = {v: k for k, v in _disease_map.items()}
 
 
 def aggregate_to_national(
-    data: pl.LazyFrame,
+    data: pl.DataFrame,
     geo_values_to_include,
     first_date_to_include: datetime.date,
     national_geo_value="US",
-) -> pl.LazyFrame:
+) -> pl.DataFrame:
     assert national_geo_value not in geo_values_to_include
     result = (
         data.filter(
@@ -31,13 +31,13 @@ def aggregate_to_national(
         .agg(geo_value=pl.lit(national_geo_value), value=pl.col("value").sum())
     )
 
-    assert isinstance(result, pl.LazyFrame)
+    assert isinstance(result, pl.DataFrame)
 
     return result
 
 
 def process_state_level_data(
-    state_level_nssp_data: pl.LazyFrame,
+    state_level_nssp_data: pl.DataFrame,
     state_abb: str,
     disease: str,
     first_training_date: datetime.date,
@@ -85,12 +85,11 @@ def process_state_level_data(
             .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
-        .collect()
     )
 
 
 def aggregate_facility_level_nssp_to_state(
-    facility_level_nssp_data: pl.LazyFrame,
+    facility_level_nssp_data: pl.DataFrame,
     state_abb: str,
     disease: str,
     first_training_date: str,
@@ -138,7 +137,6 @@ def aggregate_facility_level_nssp_to_state(
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
         .select(["date", "geo_value", "disease", "ed_visits"])
-        .collect()
     )
 
 
@@ -167,7 +165,7 @@ def get_state_pop_df():
     return state_pop_df
 
 
-def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
+def get_pmfs(param_estimates: pl.DataFrame, state_abb: str, disease: str):
     generation_interval_pmf = (
         param_estimates.filter(
             (pl.col("geo_value").is_null())
@@ -175,7 +173,6 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("parameter") == "generation_interval")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -187,7 +184,6 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("parameter") == "delay")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -200,7 +196,6 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("end_date").is_null())
         )
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect()
         .get_column("value")
         .to_list()[0]
     )
@@ -215,11 +210,11 @@ def process_and_save_state(
     state_level_report_date: datetime.date,
     first_training_date: datetime.date,
     last_training_date: datetime.date,
-    param_estimates: pl.LazyFrame,
+    param_estimates: pl.DataFrame,
     model_batch_dir: Path,
     logger: Logger = None,
-    facility_level_nssp_data: pl.LazyFrame = None,
-    state_level_nssp_data: pl.LazyFrame = None,
+    facility_level_nssp_data: pl.DataFrame = None,
+    state_level_nssp_data: pl.DataFrame = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
