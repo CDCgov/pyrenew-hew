@@ -21,7 +21,7 @@ def aggregate_to_national(
     national_geo_value="US",
 ) -> pl.DataFrame:
     assert national_geo_value not in geo_values_to_include
-    result = (
+    result = pl.DataFrame(
         data.filter(
             pl.col("geo_value").is_in(geo_values_to_include),
             pl.col("reference_date") >= first_date_to_include,
