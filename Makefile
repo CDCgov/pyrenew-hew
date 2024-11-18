@@ -11,13 +11,13 @@ CONTAINER_REMOTE_NAME := $(ACR_TAG_PREFIX)$(CONTAINER_NAME):latest
 dep_container_build:
 	$(ENGINE) build . -t $(DEP_CONTAINER_NAME) -f $(DEP_CONTAINERFILE)
 
-dep_container_tag: dep_container_build
+dep_container_tag:
 	$(ENGINE) tag $(DEP_CONTAINER_NAME) $(DEP_CONTAINER_REMOTE_NAME)
 
 container_build: acr_login
 	$(ENGINE) build . -t $(CONTAINER_NAME) -f $(CONTAINERFILE)
 
-container_tag: container_build
+container_tag:
 	$(ENGINE) tag $(CONTAINER_NAME) $(CONTAINER_REMOTE_NAME)
 
 acr_login:
