@@ -180,7 +180,7 @@ def main(
 
     model_batch_dir = Path(output_data_dir, model_batch_dir_name)
 
-    model_run_dir = Path(model_batch_dir, state)
+    model_run_dir = Path(model_batch_dir, "model_runs", state)
 
     os.makedirs(model_run_dir, exist_ok=True)
 
@@ -198,7 +198,7 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         param_estimates=param_estimates,
-        model_batch_dir=model_batch_dir,
+        model_run_dir=model_run_dir,
         logger=logger,
     )
     logger.info("Data preparation complete.")
