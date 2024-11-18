@@ -19,7 +19,7 @@ def aggregate_to_national(
     geo_values_to_include,
     first_date_to_include: datetime.date,
     national_geo_value="US",
-):
+) -> pl.DataFrame:
     assert national_geo_value not in geo_values_to_include
     return (
         data.filter(
@@ -28,6 +28,7 @@ def aggregate_to_national(
         )
         .group_by(["disease", "metric", "geo_type", "reference_date"])
         .agg(geo_value=pl.lit(national_geo_value), value=pl.col("value").sum())
+        .collect()
     )
 
 
