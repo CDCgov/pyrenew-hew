@@ -29,7 +29,7 @@ def aggregate_to_national(
         )
         .group_by(["disease", "metric", "geo_type", "reference_date"])
         .agg(geo_value=pl.lit(national_geo_value), value=pl.col("value").sum())
-    ).collect()
+    )
 
     assert isinstance(result, pl.DataFrame)
 
