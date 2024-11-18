@@ -130,7 +130,7 @@ def main(
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 75 "
+        "--n-training-days 90 "
         "--n-warmup {n_warmup} "
         "--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
