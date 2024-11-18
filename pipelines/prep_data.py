@@ -31,8 +31,6 @@ def aggregate_to_national(
         .agg(geo_value=pl.lit(national_geo_value), value=pl.col("value").sum())
     )
 
-    assert isinstance(result, pl.DataFrame)
-
     return result
 
 
