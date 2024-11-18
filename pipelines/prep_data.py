@@ -15,13 +15,13 @@ _inverse_disease_map = {v: k for k, v in _disease_map.items()}
 
 
 def aggregate_to_national(
-    data: pl.DataFrame,
+    data: pl.LazyFrame,
     geo_values_to_include,
     first_date_to_include: datetime.date,
     national_geo_value="US",
 ) -> pl.DataFrame:
     assert national_geo_value not in geo_values_to_include
-    result = pl.DataFrame(
+    result = (
         data.filter(
             pl.col("geo_value").is_in(geo_values_to_include),
             pl.col("reference_date") >= first_date_to_include,
@@ -29,7 +29,9 @@ def aggregate_to_national(
         )
         .group_by(["disease", "metric", "geo_type", "reference_date"])
         .agg(geo_value=pl.lit(national_geo_value), value=pl.col("value").sum())
-    )
+    ).collect()
+
+    assert isinstance(result, pl.DataFrame)
 
     return result
 
