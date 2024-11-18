@@ -131,8 +131,8 @@ def main(
         "--disease {disease} "
         "--state {state} "
         "--n-training-days 75 "
-        f"--n-warmup {n_warmup} "
-        f"--n-samples 500 {n_samples} "
+        "--n-warmup {n_warmup} "
+        "--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
@@ -165,6 +165,8 @@ def main(
                 state=state,
                 disease=disease,
                 report_date="latest",
+                n_warmup=n_warmup,
+                n_samples=n_samples,
             ),
             container_settings=container_settings,
         )
