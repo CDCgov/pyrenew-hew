@@ -267,7 +267,9 @@ def process_and_save_state(
         )
 
     data_to_save = (
-        pl.concat([state_level_data, aggregated_facility_data])
+        pl.concat(
+            [state_level_data.collect(), aggregated_facility_data.collect()]
+        )
         .with_columns(
             pl.when(pl.col("date") <= last_training_date)
             .then(pl.lit("train"))
