@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import os
 from logging import Logger
 from pathlib import Path
@@ -37,6 +38,9 @@ def process_state_level_data(
     first_training_date: datetime.date,
     state_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     if state_level_nssp_data is None:
         return pl.DataFrame(
             schema={
@@ -50,6 +54,7 @@ def process_state_level_data(
     disease_key = _disease_map.get(disease, disease)
 
     if state_abb == "US":
+        logger.info("Aggregating state-level data to national")
         state_level_nssp_data = aggregate_to_national(
             state_level_nssp_data,
             state_pop_df["abb"].unique(),
@@ -74,9 +79,7 @@ def process_state_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect()
@@ -90,6 +93,9 @@ def aggregate_facility_level_nssp_to_state(
     first_training_date: str,
     state_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     if facility_level_nssp_data is None:
         return pl.DataFrame(
             schema={
@@ -103,6 +109,7 @@ def aggregate_facility_level_nssp_to_state(
     disease_key = _disease_map.get(disease, disease)
 
     if state_abb == "US":
+        logger.info("Aggregating facility-level data to national")
         facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
             state_pop_df["abb"].unique(),
@@ -120,15 +127,17 @@ def aggregate_facility_level_nssp_to_state(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
             geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
         .select(["date", "geo_value", "disease", "ed_visits"])
-        .collect()
+        .collect(streaming=True)
+        # setting streaming = True explicitly
+        # avoids an `Option::unwrap()` on a `None` value
+        # error. Cause of error not known but presumably
+        # related to how parquets are processed.
     )
 
 
@@ -150,9 +159,7 @@ def get_state_pop_df():
         "refs/heads/master/data-raw/states.csv"
     )
 
-    state_pop_df = facts.join(states, on="name").select(
-        ["abb", "name", "population"]
-    )
+    state_pop_df = facts.join(states, on="name").select(["abb", "name", "population"])
 
     return state_pop_df
 
@@ -227,11 +234,12 @@ def process_and_save_state(
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
 ) -> None:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one "
-            "of facility-level and state-level"
-            "NSSP data"
+            "Must provide at least one " "of facility-level and state-level" "NSSP data"
         )
 
     state_pop_df = get_state_pop_df()
@@ -314,9 +322,7 @@ def process_and_save_state(
     )
 
     test_total_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "test", pl.col("disease") == "Total"
-        )
+        data_to_save.filter(pl.col("data_type") == "test", pl.col("disease") == "Total")
         .get_column("ed_visits")
         .to_list()
     )
@@ -339,9 +345,7 @@ def process_and_save_state(
         logger.info(f"Saving {state_abb} to {model_run_dir}")
     data_to_save.write_csv(Path(model_run_dir, "data.csv"))
 
-    with open(
-        Path(model_run_dir, "data_for_model_fit.json"), "w"
-    ) as json_file:
+    with open(Path(model_run_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
 
     return None

@@ -117,11 +117,9 @@ create_hubverse_table <- function(model_run_dir,
     ## included in the final table.
   ) |>
     dplyr::bind_rows() |>
-    forecasttools::get_flusight_table(
-      report_epiweek_end
-    ) |>
-    dplyr::mutate(
-      target =
+    forecasttools::get_hubverse_table(
+      report_epiweek_end,
+      target_name =
         glue::glue("wk inc {disease} prop ed visits")
     ) |>
     dplyr::arrange(
