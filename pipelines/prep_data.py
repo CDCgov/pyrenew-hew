@@ -132,7 +132,6 @@ def aggregate_facility_level_nssp_to_state(
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
         .select(["date", "geo_value", "disease", "ed_visits"])
-        .collect()
     )
 
 
