@@ -82,8 +82,8 @@ def main(
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
     )
-    n_warmup = 10 if test else 1000
-    n_samples = 10 if test else 500
+    n_warmup = 200 if test else 1000
+    n_samples = 200 if test else 500
 
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
@@ -115,6 +115,7 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
+                "source": pyrenew_hew_output_container,
                 "source": pyrenew_hew_output_container,
                 "target": "/pyrenew-hew/output",
             },
@@ -157,6 +158,11 @@ def main(
         for loc in locations.get_column("STUSAB").to_list() + ["US"]
         if loc not in excluded_locations
     ]
+    all_locations = [
+        loc
+        for loc in locations.get_column("STUSAB").to_list() + ["US"]
+        if loc not in excluded_locations
+    ]
 
     for disease, state in itertools.product(disease_list, all_locations):
         task = get_task_config(
@@ -165,6 +171,8 @@ def main(
                 state=state,
                 disease=disease,
                 report_date="latest",
+                n_warmup=n_warmup,
+                n_samples=n_samples,
                 n_warmup=n_warmup,
                 n_samples=n_samples,
             ),
