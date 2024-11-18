@@ -79,7 +79,9 @@ def process_state_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect()
@@ -127,7 +129,9 @@ def aggregate_facility_level_nssp_to_state(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
             geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -159,7 +163,9 @@ def get_state_pop_df():
         "refs/heads/master/data-raw/states.csv"
     )
 
-    state_pop_df = facts.join(states, on="name").select(["abb", "name", "population"])
+    state_pop_df = facts.join(states, on="name").select(
+        ["abb", "name", "population"]
+    )
 
     return state_pop_df
 
@@ -239,7 +245,9 @@ def process_and_save_state(
 
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one " "of facility-level and state-level" "NSSP data"
+            "Must provide at least one "
+            "of facility-level and state-level"
+            "NSSP data"
         )
 
     state_pop_df = get_state_pop_df()
@@ -322,7 +330,9 @@ def process_and_save_state(
     )
 
     test_total_ed_visits = (
-        data_to_save.filter(pl.col("data_type") == "test", pl.col("disease") == "Total")
+        data_to_save.filter(
+            pl.col("data_type") == "test", pl.col("disease") == "Total"
+        )
         .get_column("ed_visits")
         .to_list()
     )
@@ -345,7 +355,9 @@ def process_and_save_state(
         logger.info(f"Saving {state_abb} to {model_run_dir}")
     data_to_save.write_csv(Path(model_run_dir, "data.csv"))
 
-    with open(Path(model_run_dir, "data_for_model_fit.json"), "w") as json_file:
+    with open(
+        Path(model_run_dir, "data_for_model_fit.json"), "w"
+    ) as json_file:
         json.dump(data_for_model_fit, json_file)
 
     return None
