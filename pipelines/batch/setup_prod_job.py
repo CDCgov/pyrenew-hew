@@ -152,7 +152,7 @@ def main(
 
     all_locations = [
         loc
-        for loc in locations.get_column("STUSAB").to_list()
+        for loc in locations.get_column("STUSAB").to_list() + ["US"]
         if loc not in excluded_locations
     ]
 
