@@ -32,6 +32,7 @@ def main(
         "VI",
         "WY",
     ],
+    test: bool = False,
 ) -> None:
     """
     job_id
@@ -78,6 +79,10 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
+    if test:
+        pyrenew_hew_output_container = "pyrenew-hew-test-output"
+    else:
+        pyrenew_hew_output_container = "pyrenew-hew-prod-output"
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
     job = models.JobAddParameter(
@@ -108,7 +113,7 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-hew-prod-output",
+                "source": pyrenew_hew_output_container,
                 "target": "/pyrenew-hew/output",
             },
             {
