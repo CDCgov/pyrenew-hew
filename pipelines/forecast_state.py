@@ -159,20 +159,24 @@ def main(
         )
         facility_datafile = f"{report_date}.parquet"
         facility_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, facility_datafile)
+            Path(facility_level_nssp_data_dir, facility_datafile),
+            parallel="none",
         )
     if state_report_date in available_state_level_reports:
         logger.info("State-level data available for the given report " "date.")
         state_datafile = f"{state_report_date}.parquet"
         state_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, state_datafile)
+            Path(state_level_nssp_data_dir, state_datafile),
+            parallel="none",
         )
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
             "No data available for the requested report date " f"{report_date}"
         )
 
-    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
+    param_estimates = pl.scan_parquet(
+        Path(param_data_dir, "prod.parquet"), parallel="none"
+    )
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
