@@ -72,7 +72,7 @@ if __name__ == "__main__":
         "WV",
     ]
     main(
-        job_id=current_datetime,
+        job_id=f"pyrenew-hew-test-{current_datetime}",
         pool_id="pyrenew-pool",
         diseases=["COVID-19", "Influenza"],
         container_image_name="pyrenew-hew",
