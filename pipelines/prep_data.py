@@ -25,6 +25,7 @@ def aggregate_to_national(
         data.filter(
             pl.col("geo_value").is_in(geo_values_to_include),
             pl.col("reference_date") >= first_date_to_include,
+            ~pl.col("value").is_null(),
         )
         .group_by(["disease", "metric", "geo_type", "reference_date"])
         .agg(geo_value=pl.lit(national_geo_value), value=pl.col("value").sum())
