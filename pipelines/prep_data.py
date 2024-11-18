@@ -80,6 +80,7 @@ def process_state_level_data(
             .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
+        .collect()
     )
 
 
@@ -267,9 +268,7 @@ def process_and_save_state(
         )
 
     data_to_save = (
-        pl.concat(
-            [state_level_data.collect(), aggregated_facility_data.collect()]
-        )
+        pl.concat([state_level_data, aggregated_facility_data])
         .with_columns(
             pl.when(pl.col("date") <= last_training_date)
             .then(pl.lit("train"))
