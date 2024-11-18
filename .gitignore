@@ -11,6 +11,7 @@
 *.xlsx
 *.rds
 *.pickle
+*.nc
 
 # Documents
 *.doc
