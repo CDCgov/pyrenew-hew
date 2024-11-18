@@ -10,6 +10,7 @@
 *.xls
 *.xlsx
 *.rds
+*.pickle
 
 # Documents
 *.doc
