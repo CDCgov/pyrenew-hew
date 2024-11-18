@@ -80,7 +80,7 @@ def main(
         )
 
     if test:
-        pyrenew_hew_output_container = "pyrenew-hew-test-output"
+        pyrenew_hew_output_container = "pyrenew-test-output"
     else:
         pyrenew_hew_output_container = "pyrenew-hew-prod-output"
     creds = EnvCredentialHandler()
