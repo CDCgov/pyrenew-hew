@@ -40,6 +40,7 @@ def main(pool_name: str) -> None:
             "prod-param-estimates",
             "pyrenew-hew-prod-output",
             "pyrenew-hew-config",
+            "pyrenew-test-output",
         ],
         account_names=creds.azure_blob_storage_account,
         identity_references=node_id_ref,
