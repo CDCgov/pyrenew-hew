@@ -150,11 +150,11 @@ def main(
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
-    all_locations = (
-        locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
-        .get_column("STUSAB")
-        .to_list()
-    ) + ["US"]
+    all_locations = [
+        loc
+        for loc in locations.get_column("STUSAB").to_list()
+        if loc not in excluded_locations
+    ]
 
     for disease, state in itertools.product(disease_list, all_locations):
         task = get_task_config(
