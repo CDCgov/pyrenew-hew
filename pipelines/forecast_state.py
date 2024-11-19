@@ -29,7 +29,8 @@ def baseline_forecasts(
             f"{n_forecast_days}",
             "--n-samples",
             f"{n_samples}",
-        ]
+        ],
+        check=True,
     )
     return None
 
@@ -40,7 +41,8 @@ def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
             "Rscript",
             "pipelines/convert_inferencedata_to_parquet.R",
             f"{model_run_dir}",
-        ]
+        ],
+        check=True,
     )
     return None
 
@@ -51,7 +53,8 @@ def postprocess_forecast(model_run_dir: Path) -> None:
             "Rscript",
             "pipelines/postprocess_state_forecast.R",
             f"{model_run_dir}",
-        ]
+        ],
+        check=True,
     )
     return None
 
@@ -62,7 +65,8 @@ def score_forecast(model_run_dir: Path) -> None:
             "Rscript",
             "pipelines/score_forecast.R",
             f"{model_run_dir}",
-        ]
+        ],
+        check=True,
     )
     return None
 
