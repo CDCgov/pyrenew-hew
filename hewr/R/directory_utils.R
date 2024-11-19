@@ -64,8 +64,8 @@ parse_model_run_dir_path <- function(model_run_dir_path) {
   location <- fs::path_file(model_run_dir_path)
 
   return(c(
-    list(location = location),
-    parse_model_batch_dir(batch_dir)
+    location = location,
+    parse_model_batch_dir_name(batch_dir)
   ))
 }
 
@@ -76,14 +76,14 @@ parse_model_run_dir_path <- function(model_run_dir_path) {
 #' that match the pattern for a forecast run for a
 #' given disease and optionally a given report date.
 #'
-#' @param dir_of_forecast_dirs Directory in which to look for
-#' subdirectories representing individual forecast date / pathogen /
-#' dataset combinations.
+#' @param dir_of_batch_dirs Directory in which to look for
+#' "model batch" directories, each of which represents an
+#' individual forecast date / pathogen / dataset combination.
 #' @param diseases Names of the diseases to match, as a vector of strings,
 #' or a single disease as a string.
 #' @return A vector of paths to the forecast subdirectories.
-get_all_forecast_dirs <- function(dir_of_forecast_dirs,
-                                  diseases) {
+get_all_model_batch_dirs <- function(dir_of_batch_dirs,
+                                     diseases) {
   # disease names are lowercase by convention
   match_patterns <- stringr::str_c(tolower(diseases),
     "_r",
@@ -92,11 +92,11 @@ get_all_forecast_dirs <- function(dir_of_forecast_dirs,
 
   dirs <- tibble::tibble(
     dir_path = fs::dir_ls(
-      dir_of_forecast_dirs,
+      dir_of_batch_dirs,
       type = "directory"
     )
   ) |>
-    dplyr::filter(str_starts(
+    dplyr::filter(stringr::str_starts(
       fs::path_file(dir_path),
       match_patterns
     )) |>
