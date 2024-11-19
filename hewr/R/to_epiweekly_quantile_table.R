@@ -32,7 +32,7 @@ to_epiweekly_quantiles <- function(model_run_dir,
 
   epiweekly_disease_draws <- draws |>
     dplyr::filter(
-      disease == "Disease"
+      .data$disease == "Disease"
     ) |>
     forecasttools::daily_to_epiweekly(
       date_col = "date",

@@ -6,7 +6,7 @@
 \title{Utilities for handling and parsing directory names
 based on pyrenew-hew pipeline conventions.}
 \format{
-An object of class \code{list} of length 2.
+An object of class \code{character} of length 2.
 }
 \usage{
 disease_map_lower
