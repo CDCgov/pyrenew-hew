@@ -25,6 +25,7 @@ Imports:
     here,
     htmltools,
     jsonlite,
+    lubridate,
     purrr,
     quarto,
     readr,
