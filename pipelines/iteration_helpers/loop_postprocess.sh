@@ -13,5 +13,5 @@ BASE_DIR="$1"
 for SUBDIR in "$BASE_DIR"/*/; do
     # Run the R script with the current subdirectory as the model_dir argument
     echo "$SUBDIR"
-    Rscript postprocess_state_forecast.R --model-run-dir "$SUBDIR"
+    Rscript postprocess_state_forecast.R "$SUBDIR"
 done
