@@ -104,8 +104,8 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     ]
   }
 
-  batch_params <- hewr::parse_model_batch_dir_name(
-    fs::path_file(model_batch_dir)
+  batch_params <- hewr::parse_model_batch_dir_path(
+    model_batch_dir
   )
   report_date <- batch_params$report_date
   disease <- batch_params$disease

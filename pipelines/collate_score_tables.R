@@ -17,7 +17,7 @@ process_loc_date_score_table <- function(model_run_dir) {
     "score_table",
     ext = "rds"
   )
-  parsed <- hewr::parse_model_run_dir(model_run_dir)
+  parsed <- hewr::parse_model_run_dir_path(model_run_dir)
 
   if (!(fs::file_exists(table_path))) {
     warning(glue::glue(
@@ -108,7 +108,7 @@ collate_scores_for_date <- function(model_run_dir,
 collate_all_score_tables <- function(model_base_dir,
                                      disease,
                                      score_file_save_path = NULL) {
-  date_dirs_to_process <- hewr::get_all_forecast_dirs(
+  date_dirs_to_process <- hewr::get_all_model_batch_dirs(
     model_base_dir,
     diseases = disease
   )
