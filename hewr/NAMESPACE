@@ -2,3 +2,5 @@
 
 export(parse_model_batch_dir_name)
 export(parse_model_run_dir_path)
+export(to_epiweekly_quantile_table)
+export(to_epiweekly_quantiles)
