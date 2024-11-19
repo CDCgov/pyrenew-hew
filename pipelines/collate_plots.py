@@ -216,9 +216,9 @@ def main(
     if not ((dir_of_forecast_dirs is None) ^ (single_forecast_dir is None)):
         raise ValueError(
             "Must provide exactly one of "
-            "'--model-base-dir' (to process multiple "
+            "'dir_of_forecast_dirs' (to process multiple "
             "groups of forecasts) or "
-            "'--single-forecast-dir' "
+            "'single_forecast_dir' "
             "(to process a single set of forecasts"
         )
     elif dir_of_forecast_dirs is not None:
