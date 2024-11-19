@@ -53,7 +53,7 @@ if __name__ == "__main__":
         description=("Do posterior prediction from a pyrenew-hew fit.")
     )
     parser.add_argument(
-        "model-run-dir",
+        "model_run_dir",
         type=Path,
         help=(
             "Path to a directory containing the model fitting data "
