@@ -252,11 +252,11 @@ disease_name_nssp_map <- c(
 
 # replace this with functionality from hewr
 disease_name_raw <- model_run_dir |>
-  path_split() |>
-  pluck(1) |>
+  fs::path_split() |>
+  purrr::pluck(1) |>
   tail(3) |>
   head(1) |>
-  str_extract("^.+(?=_r_)")
+  stringr::str_extract("^.+(?=_r_)")
 
 disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 
