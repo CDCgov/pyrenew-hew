@@ -66,9 +66,9 @@ draws_to_quantiles <- function(forecast_dir,
   return(epiweekly_quantiles)
 }
 
-create_hubverse_table <- function(model_run_dir,
+create_hubverse_table <- function(model_batch_dir,
                                   exclude = NULL) {
-  locations_to_process <- fs::dir_ls(model_run_dir,
+  locations_to_process <- fs::dir_ls(model_batch_dir,
     type = "directory"
   )
 
@@ -78,10 +78,9 @@ create_hubverse_table <- function(model_run_dir,
     ]
   }
 
-  report_date <- stringr::str_match(
-    model_run_dir,
-    "r_(([0-9]|-)+)_f"
-  )[2]
+  batch_params <- hewr::parse_model_batch_dir_name(model_batch_dir)
+  report_date <- batch_params$report_date
+  disease <- batch_params$disease
 
   report_epiweek <- lubridate::epiweek(report_date)
   report_epiyear <- lubridate::epiyear(report_date)
@@ -89,18 +88,6 @@ create_hubverse_table <- function(model_run_dir,
     report_epiweek,
     report_epiyear,
     day_of_week = 7
-  )
-
-  disease <- dplyr::case_when(
-    stringr::str_starts(
-      fs::path_file(model_run_dir),
-      "covid-19"
-    ) ~ "covid",
-    stringr::str_starts(
-      fs::path_file(model_run_dir),
-      "influenza"
-    ) ~ "flu",
-    TRUE ~ NA
   )
 
   hubverse_table <- purrr::map(
@@ -135,10 +122,10 @@ create_hubverse_table <- function(model_run_dir,
 }
 
 
-main <- function(model_run_dir,
+main <- function(model_batch_dir,
                  output_path,
                  exclude = NULL) {
-  create_hubverse_table(model_run_dir, exclude = exclude) |>
+  create_hubverse_table(model_batch_dir, exclude = exclude) |>
     readr::write_tsv(output_path)
 }
 
@@ -147,7 +134,7 @@ p <- argparser::arg_parser(
   "Create a hubverse table from location specific forecast draws."
 ) |>
   argparser::add_argument(
-    "model_run_dir",
+    "model_batch_dir",
     help = paste0(
       "Directory containing subdirectories that represent ",
       "individual forecast locations, with a directory name ",
@@ -166,7 +153,7 @@ p <- argparser::arg_parser(
 argv <- argparser::parse_args(p)
 
 main(
-  argv$model_run_dir,
+  argv$model_batch_dir,
   argv$output_path,
   stringr::str_split_1(argv$exclude, " ")
 )
