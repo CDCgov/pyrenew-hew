@@ -273,9 +273,14 @@ model_run_dir <- path(argv$model_run_dir)
 
 base_dir <- path_dir(model_run_dir)
 
-disease_name_raw <- base_dir |>
-  path_file() |>
+# replace this with functionality from hewr
+disease_name_raw <- model_run_dir |>
+  path_split() |>
+  pluck(1) |>
+  tail(3) |>
+  head(1) |>
   str_extract("^.+(?=_r_)")
+
 
 disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
