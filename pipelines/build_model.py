@@ -48,7 +48,7 @@ def build_model_from_dir(model_dir):
         - 1
     )
 
-    priors = runpy.run_path(prior_path)
+    priors = runpy.run_path(str(prior_path))
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
