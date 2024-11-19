@@ -6,6 +6,7 @@ import jax
 import numpy as np
 from build_model import build_model_from_dir
 
+
 def fit_and_save_model(
     model_run_dir: str,
     n_warmup: int = 1000,
