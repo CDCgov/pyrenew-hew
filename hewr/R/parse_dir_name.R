@@ -15,7 +15,7 @@ disease_map_lower <- list(
 #' @return A list of quantities: `disease`, `report_date`,
 #' `first_training_date`, and `last_training_date`.
 #' @export
-parse_model_batch_dir <- function(model_batch_dir_name) {
+parse_model_batch_dir_name <- function(model_batch_dir_name) {
   pattern <- "(.+)_r_(.+)_f_(.+)_t_(.+)"
 
   matches <- stringr::str_match(
@@ -51,13 +51,13 @@ parse_model_batch_dir <- function(model_batch_dir_name) {
 #' `first_training_date`, and `last_training_date`.
 #'
 #' @export
-parse_model_run_dir <- function(model_run_dir_path) {
+parse_model_run_dir_name <- function(model_run_dir_path) {
   batch_dir <- fs::path_dir(model_run_dir_path) |>
     fs::path_file()
   location <- fs::path_file(model_run_dir_path)
 
   return(c(
     list(location = location),
-    parse_model_batch_dir(batch_dir)
+    parse_model_batch_dir_name(batch_dir)
   ))
 }
