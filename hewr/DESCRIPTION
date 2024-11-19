@@ -29,6 +29,7 @@ Imports:
     quarto,
     readr,
     reticulate,
+    rlang,
     scales,
     scoringutils (>= 2.0.0),
     stringr,
