@@ -78,9 +78,16 @@ create_hubverse_table <- function(model_batch_dir,
     ]
   }
 
-  batch_params <- hewr::parse_model_batch_dir_name(model_batch_dir)
+  batch_params <- hewr::parse_model_batch_dir_name(
+    fs::path_file(model_batch_dir)
+  )
   report_date <- batch_params$report_date
   disease <- batch_params$disease
+  disease_abbr <- dplyr::case_when(
+    disease == "Influenza" ~ "flu",
+    disease == "COVID-19" ~ "covid",
+    TRUE ~ disease
+  )
 
   report_epiweek <- lubridate::epiweek(report_date)
   report_epiyear <- lubridate::epiyear(report_date)
@@ -107,7 +114,7 @@ create_hubverse_table <- function(model_batch_dir,
     forecasttools::get_hubverse_table(
       report_epiweek_end,
       target_name =
-        glue::glue("wk inc {disease} prop ed visits")
+        glue::glue("wk inc {disease_abbr} prop ed visits")
     ) |>
     dplyr::arrange(
       target,
