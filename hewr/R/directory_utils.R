@@ -118,10 +118,10 @@ get_all_model_batch_dirs <- function(dir_of_batch_dirs,
     )
   ) |>
     dplyr::filter(stringr::str_starts(
-      fs::path_file(dir_path),
-      match_patterns
+      fs::path_file(.data$dir_path),
+      !!match_patterns
     )) |>
-    dplyr::pull(dir_path)
+    dplyr::pull(.data$dir_path)
 
   return(dirs)
 }
