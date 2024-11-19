@@ -12,41 +12,12 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-#' Get all the subdirectories within a parent directory
-#' that match the pattern for a forecast run for a
-#' given disease and optionally a given report date.
-#'
-#' @param parent_dir Directory in which to look for forecast subdirectories.
-#' @param diseases Names of the diseases to match, as a vector of strings,
-#' or a single disease as a string.
-#' @return A vector of paths to the forecast subdirectories.
-get_all_forecast_dirs <- function(dir_of_forecast_date_dirs,
-                                  diseases) {
-  # disease names are lowercase by convention
-  match_patterns <- str_c(tolower(diseases), "_r", collapse = "|")
-
-  dirs <- tibble::tibble(
-    dir_path = fs::dir_ls(
-      dir_of_forecast_date_dirs,
-      type = "directory"
-    )
-  ) |>
-    dplyr::filter(str_starts(
-      fs::path_file(dir_path),
-      match_patterns
-    )) |>
-    dplyr::pull(dir_path)
-
-  return(dirs)
-}
-
-
 process_loc_date_score_table <- function(model_run_dir) {
   table_path <- fs::path(model_run_dir,
     "score_table",
     ext = "rds"
   )
-  parsed <- hewr::parse_model_run_dir(model_run_dir)
+  parsed <- hewr::parse_model_run_dir_path(model_run_dir)
 
   if (!(fs::file_exists(table_path))) {
     warning(glue::glue(
@@ -137,7 +108,7 @@ collate_scores_for_date <- function(model_run_dir,
 collate_all_score_tables <- function(model_base_dir,
                                      disease,
                                      score_file_save_path = NULL) {
-  date_dirs_to_process <- get_all_forecast_dirs(
+  date_dirs_to_process <- hewr::get_all_model_batch_dirs(
     model_base_dir,
     diseases = disease
   )

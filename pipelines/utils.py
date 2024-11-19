@@ -5,8 +5,11 @@ pipeline.
 
 import datetime
 import os
+import re
 from collections.abc import MutableSequence
 from pathlib import Path
+
+disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
 
 
 def ensure_listlike(x):
@@ -34,6 +37,44 @@ def ensure_listlike(x):
         ``x``.
     """
     return x if isinstance(x, MutableSequence) else [x]
+
+
+def parse_model_batch_dir_name(model_batch_dir_name):
+    """
+    Parse the name of a model batch directory,
+    returning a dictionary of parsed values.
+
+    Parameters
+    ----------
+    model_batch_dir_name
+       Model batch directory name to parse.
+
+    Returns
+    -------
+    dict
+       A dictionary with keys 'disease', 'report_date',
+       'first_training_date', and 'last_training_date'.
+    """
+    regex_match = re.match(r"(.+)_r_(.+)_f_(.+)_t_(.+)", model_batch_dir_name)
+    if regex_match:
+        disease, report_date, first_training_date, last_training_date = (
+            regex_match.groups()
+        )
+    else:
+        raise ValueError(
+            "Invalid model batch directory name format: "
+            f"{model_batch_dir_name}"
+        )
+    return dict(
+        disease=disease_map_lower_[disease],
+        report_date=datetime.strptime(report_date, "%Y-%m-%d").date(),
+        first_training_date=datetime.strptime(
+            first_training_date, "%Y-%m-%d"
+        ).date(),
+        last_training_date=datetime.strptime(
+            last_training_date, "%Y-%m-%d"
+        ).date(),
+    )
 
 
 def get_all_forecast_dirs(
