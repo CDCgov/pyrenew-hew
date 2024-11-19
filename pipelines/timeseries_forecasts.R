@@ -226,7 +226,7 @@ p <- arg_parser(
   "Forecast other (non-target-disease) ED visits for a given location."
 ) |>
   add_argument(
-    "model-run-dir",
+    "model_run_dir",
     help = "Directory containing the model data and output.",
   ) |>
   add_argument(
