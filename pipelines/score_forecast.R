@@ -236,7 +236,7 @@ read_and_score_location <- function(model_run_dir,
 # Create a parser
 p <- arg_parser("Score a single location forecast") |>
   add_argument(
-    "model-run-dir",
+    "model_run_dir",
     help = "Directory containing the model data and output."
   )
 
