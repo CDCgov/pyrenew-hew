@@ -1,7 +1,7 @@
 #' Utilities for handling and parsing directory names
 #' based on pyrenew-hew pipeline conventions.
 
-disease_map_lower <- list(
+disease_map_lower <- c(
   "covid-19" = "COVID-19",
   "influenza" = "Influenza"
 )
@@ -37,23 +37,27 @@ parse_model_batch_dir_path <- function(model_batch_dir_path) {
   }
 
   result <- list(
-    disease = disease_map_lower[[matches[2]]],
+    disease = disease_map_lower[matches[2]] |> unname(),
+    # disease_map_lower
+    # is a named vector
+    # but we want disease
+    # just to be a string
     report_date = lubridate::ymd(matches[3], quiet = TRUE),
     first_training_date = lubridate::ymd(matches[4], quiet = TRUE),
     last_training_date = lubridate::ymd(matches[5], quiet = TRUE)
   )
 
-  if (any(sapply(result, is.null)) || any(sapply(result, is.na))) {
+  if (any(is.na(result))) {
     stop(
       "Could not parse extracted disease and/or date ",
       "values expected 'disease' to be one of 'covid-19' ",
       "and 'influenza' and all dates to be valid dates in ",
       "YYYY-MM-DD format. Got: ",
       glue::glue(
-        "disease: {matches[[2]]}, ",
-        "report_date: {matches[[3]]}, ",
-        "first_training_date: {matches[[4]]}, ",
-        "last_training_date: {matches[[5]]}."
+        "disease: {matches[2]}, ",
+        "report_date: {matches[3]}, ",
+        "first_training_date: {matches[4]}, ",
+        "last_training_date: {matches[5]}."
       )
     )
   }
