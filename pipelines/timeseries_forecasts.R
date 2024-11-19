@@ -18,7 +18,7 @@ script_packages <- c(
 )
 
 ## load in packages without messages
-walk(script_packages, \(pkg) {
+purrr::walk(script_packages, \(pkg) {
   suppressPackageStartupMessages(
     library(pkg, character.only = TRUE)
   )
