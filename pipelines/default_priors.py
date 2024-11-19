@@ -4,10 +4,6 @@ import pyrenew.transformation as transformation
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-# many of these should probably be different depending
-# on if we are modeling flu
-# or covid
-
 i0_first_obs_n_rv = DistributionalVariable(
     "i0_first_obs_n_rv",
     dist.Beta(1, 10),
@@ -41,10 +37,8 @@ inf_feedback_strength_rv = TransformedVariable(
 )
 # Could be reparameterized?
 
-# Note: multiplied by 1/2 from hosp model
-# this actually represents ed visits
-p_hosp_mean_rv = DistributionalVariable(
-    "p_hosp_mean",
+p_ed_visit_mean_rv = DistributionalVariable(
+    "p_ed_visit_mean",
     dist.Normal(
         transformation.SigmoidTransform().inv(0.005),
         0.3,
@@ -52,17 +46,19 @@ p_hosp_mean_rv = DistributionalVariable(
 )  # logit scale
 
 
-p_hosp_w_sd_rv = DistributionalVariable(
-    "p_hosp_w_sd_sd", dist.TruncatedNormal(0, 0.01, low=0)
+p_ed_visit_w_sd_rv = DistributionalVariable(
+    "p_ed_visit_w_sd_sd", dist.TruncatedNormal(0, 0.01, low=0)
 )
 
 
-autoreg_p_hosp_rv = DistributionalVariable("autoreg_p_hosp", dist.Beta(1, 100))
+autoreg_p_ed_visit_rv = DistributionalVariable(
+    "autoreg_p_ed_visit_rv", dist.Beta(1, 100)
+)
 
-hosp_wday_effect_rv = TransformedVariable(
-    "hosp_wday_effect",
+ed_visit_wday_effect_rv = TransformedVariable(
+    "ed_visit_wday_effect",
     DistributionalVariable(
-        "hosp_wday_effect_raw",
+        "ed_visit_wday_effect_raw",
         dist.Dirichlet(jnp.array([5, 5, 5, 5, 5, 5, 5])),
     ),
     transformation.AffineTransform(loc=0, scale=7),

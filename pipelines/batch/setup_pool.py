@@ -38,6 +38,8 @@ def main(pool_name: str) -> None:
             "nssp-etl",
             "nssp-archival-vintages",
             "prod-param-estimates",
+            "pyrenew-hew-prod-output",
+            "pyrenew-hew-config",
             "pyrenew-test-output",
         ],
         account_names=creds.azure_blob_storage_account,
