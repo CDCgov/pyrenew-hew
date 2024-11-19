@@ -82,6 +82,7 @@ parse_model_run_dir_path <- function(model_run_dir_path) {
 #' @param diseases Names of the diseases to match, as a vector of strings,
 #' or a single disease as a string.
 #' @return A vector of paths to the forecast subdirectories.
+#' @export
 get_all_model_batch_dirs <- function(dir_of_batch_dirs,
                                      diseases) {
   # disease names are lowercase by convention
