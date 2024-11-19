@@ -271,8 +271,6 @@ p <- arg_parser("Generate forecast figures") |>
 argv <- parse_args(p)
 model_run_dir <- path(argv$model_run_dir)
 
-base_dir <- path_dir(model_run_dir)
-
 # replace this with functionality from hewr
 disease_name_raw <- model_run_dir |>
   path_split() |>
