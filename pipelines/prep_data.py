@@ -1,6 +1,8 @@
 import datetime
 import json
+import logging
 import os
+from logging import Logger
 from pathlib import Path
 
 import polars as pl
@@ -36,6 +38,9 @@ def process_state_level_data(
     first_training_date: datetime.date,
     state_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     if state_level_nssp_data is None:
         return pl.DataFrame(
             schema={
@@ -49,6 +54,7 @@ def process_state_level_data(
     disease_key = _disease_map.get(disease, disease)
 
     if state_abb == "US":
+        logger.info("Aggregating state-level data to national")
         state_level_nssp_data = aggregate_to_national(
             state_level_nssp_data,
             state_pop_df["abb"].unique(),
@@ -89,6 +95,9 @@ def aggregate_facility_level_nssp_to_state(
     first_training_date: str,
     state_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     if facility_level_nssp_data is None:
         return pl.DataFrame(
             schema={
@@ -102,6 +111,7 @@ def aggregate_facility_level_nssp_to_state(
     disease_key = _disease_map.get(disease, disease)
 
     if state_abb == "US":
+        logger.info("Aggregating facility-level data to national")
         facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
             state_pop_df["abb"].unique(),
@@ -127,7 +137,11 @@ def aggregate_facility_level_nssp_to_state(
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
         .select(["date", "geo_value", "disease", "ed_visits"])
-        .collect()
+        .collect(streaming=True)
+        # setting streaming = True explicitly
+        # avoids an `Option::unwrap()` on a `None` value
+        # error. Cause of error not known but presumably
+        # related to how parquets are processed.
     )
 
 
@@ -197,35 +211,22 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
 
 
-def process_national(
+def process_and_save_state(
+    state_abb: str,
     disease: str,
     report_date: datetime.date,
     state_level_report_date: datetime.date,
     first_training_date: datetime.date,
     last_training_date: datetime.date,
     param_estimates: pl.LazyFrame,
-    model_batch_dir: Path | str,
-    facility_level_nssp_data: pl.LazyFrame = None,
-    state_level_nssp_data: pl.LazyFrame = None,
-    logger=None,
-):
-    if logger is not None:
-        logger.info("Processing national dataset")
-
-
-def process_and_save_state(
-    state_abb,
-    disease,
-    report_date,
-    state_level_report_date,
-    first_training_date,
-    last_training_date,
-    param_estimates,
-    model_batch_dir,
-    logger=None,
+    model_batch_dir: Path,
+    logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
 ) -> None:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
             "Must provide at least one "
@@ -335,8 +336,7 @@ def process_and_save_state(
     state_dir = os.path.join(model_batch_dir, state_abb)
     os.makedirs(state_dir, exist_ok=True)
 
-    if logger is not None:
-        logger.info(f"Saving {state_abb} to {state_dir}")
+    logger.info(f"Saving {state_abb} to {state_dir}")
     data_to_save.write_csv(Path(state_dir, "data.csv"))
 
     with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:

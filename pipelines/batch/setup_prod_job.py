@@ -32,6 +32,7 @@ def main(
         "VI",
         "WY",
     ],
+    test: bool = False,
 ) -> None:
     """
     job_id
@@ -78,6 +79,12 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
+    pyrenew_hew_output_container = (
+        "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
+    )
+    n_warmup = 200 if test else 1000
+    n_samples = 200 if test else 500
+
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
     job = models.JobAddParameter(
@@ -97,53 +104,59 @@ def main(
         mount_pairs=[
             {
                 "source": "nssp-etl",
-                "target": "/pyrenew-hew/nssp_demo/nssp-etl",
+                "target": "/pyrenew-hew/nssp-etl",
             },
             {
                 "source": "nssp-archival-vintages",
-                "target": "/pyrenew-hew/nssp_demo/nssp-archival-vintages",
+                "target": "/pyrenew-hew/nssp-archival-vintages",
             },
             {
                 "source": "prod-param-estimates",
-                "target": "/pyrenew-hew/nssp_demo/params",
+                "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-test-output",
-                "target": "/pyrenew-hew/nssp_demo/private_data",
+                "source": pyrenew_hew_output_container,
+                "target": "/pyrenew-hew/output",
+            },
+            {
+                "source": "pyrenew-hew-config",
+                "target": "/pyrenew-hew/config",
             },
         ],
     )
 
     base_call = (
         "/bin/bash -c '"
-        "python nssp_demo/forecast_state.py "
+        "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 75 "
-        "--n-warmup 1000 "
-        "--n-samples 500 "
-        "--facility-level-nssp-data-dir nssp_demo/nssp-etl/gold "
+        "--n-training-days 90 "
+        "--n-warmup {n_warmup} "
+        "--n-samples {n_samples} "
+        "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
-        "nssp_demo/nssp-archival-vintages/gold "
-        "--param-data-dir nssp_demo/params "
-        "--output-data-dir nssp_demo/private_data "
+        "nssp-archival-vintages/gold "
+        "--param-data-dir params "
+        "--output-data-dir output "
+        "--priors-path config/prod_priors.py "
         "--report-date {report_date} "
         "--exclude-last-n-days 5 "
-        "--score "
+        "--no-score "
         "--eval-data-path "
-        "nssp_demo/nssp-archival-vintages/latest_comprehensive.parquet"
+        "nssp-archival-vintages/latest_comprehensive.parquet"
         "'"
     )
 
+    # to be replaced by forecasttools-py table
     locations = pl.read_csv(
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
-    all_locations = (
-        locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
-        .get_column("STUSAB")
-        .to_list()
-    )
+    all_locations = [
+        loc
+        for loc in locations.get_column("STUSAB").to_list() + ["US"]
+        if loc not in excluded_locations
+    ]
 
     for disease, state in itertools.product(disease_list, all_locations):
         task = get_task_config(
@@ -152,6 +165,8 @@ def main(
                 state=state,
                 disease=disease,
                 report_date="latest",
+                n_warmup=n_warmup,
+                n_samples=n_samples,
             ),
             container_settings=container_settings,
         )

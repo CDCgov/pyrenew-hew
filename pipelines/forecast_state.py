@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import shutil
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -22,7 +23,7 @@ def baseline_forecasts(
     subprocess.run(
         [
             "Rscript",
-            "nssp_demo/timeseries_forecasts.R",
+            "pipelines/timeseries_forecasts.R",
             f"{model_run_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",
@@ -33,12 +34,22 @@ def baseline_forecasts(
     return None
 
 
+def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
+    subprocess.run(
+        [
+            "Rscript",
+            "pipelines/convert_inferencedata_to_parquet.R",
+            f"{model_run_dir}",
+        ]
+    )
+    return None
+
+
 def postprocess_forecast(model_run_dir: Path) -> None:
     subprocess.run(
         [
             "Rscript",
-            "nssp_demo/postprocess_state_forecast.R",
-            "--model-run-dir",
+            "pipelines/postprocess_state_forecast.R",
             f"{model_run_dir}",
         ]
     )
@@ -49,7 +60,7 @@ def score_forecast(model_run_dir: Path) -> None:
     subprocess.run(
         [
             "Rscript",
-            "nssp_demo/score_forecast.R",
+            "pipelines/score_forecast.R",
             f"{model_run_dir}",
         ]
     )
@@ -72,6 +83,7 @@ def main(
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
+    priors_path: Path | str,
     output_data_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
@@ -172,6 +184,9 @@ def main(
 
     os.makedirs(model_run_dir, exist_ok=True)
 
+    logger.info(f"Using priors from {priors_path}...")
+    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
+
     logger.info(f"Processing {state}")
     process_and_save_state(
         state_abb=state,
@@ -224,6 +239,10 @@ def main(
         output_data_dir=model_run_dir,
         last_eval_date=report_date + timedelta(days=n_forecast_days),
     )
+
+    logger.info("Converting inferencedata to parquet...")
+    convert_inferencedata_to_parquet(model_run_dir)
+    logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
     postprocess_forecast(model_run_dir)
@@ -292,7 +311,19 @@ parser.add_argument(
         "Directory in which to look for parameter estimates"
         "such as delay PMFs."
     ),
+    required=True,
 )
+
+parser.add_argument(
+    "--priors-path",
+    type=Path,
+    help=(
+        "Path to an executible python file defining random variables "
+        "that require priors as pyrenew RandomVariable objects."
+    ),
+    required=True,
+)
+
 
 parser.add_argument(
     "--output-data-dir",
