@@ -14,21 +14,20 @@ disease_map_lower <- list(
 #' with fits for multiple locations), returning
 #' a named list of quantities of interest.
 #'
-#' @param model_batch_dir_name Name of the model batch
-#' directory (not the full path to it, just the directory
-#' base name) to parse.
+#' @param model_batch_dir_path Path to the model batch
+#' directory to parse. Will parse only the basename.
 #' @return A list of quantities: `disease`, `report_date`,
 #' `first_training_date`, and `last_training_date`.
 #' @export
-parse_model_batch_dir_name <- function(model_batch_dir_name) {
+parse_model_batch_dir_path <- function(model_batch_dir_path) {
   pattern <- "(.+)_r_(.+)_f_(.+)_t_(.+)"
-
+  model_batch_dir_name <- fs::path_file(model_batch_dir_path)
   matches <- stringr::str_match(
     model_batch_dir_name,
     pattern
   )
 
-  if (is.na(matches[1])) {
+  if (any(is.na(matches))) {
     stop(
       "Invalid format for model batch directory name; ",
       "could not parse. Expected ",
@@ -37,12 +36,29 @@ parse_model_batch_dir_name <- function(model_batch_dir_name) {
     )
   }
 
-  return(list(
+  result <- list(
     disease = disease_map_lower[[matches[2]]],
-    report_date = lubridate::ymd(matches[3]),
-    first_training_date = lubridate::ymd(matches[4]),
-    last_training_date = lubridate::ymd(matches[5])
-  ))
+    report_date = lubridate::ymd(matches[3], quiet = TRUE),
+    first_training_date = lubridate::ymd(matches[4], quiet = TRUE),
+    last_training_date = lubridate::ymd(matches[5], quiet = TRUE)
+  )
+
+  if (any(sapply(result, is.null)) || any(sapply(result, is.na))) {
+    stop(
+      "Could not parse extracted disease and/or date ",
+      "values expected 'disease' to be one of 'covid-19' ",
+      "and 'influenza' and all dates to be valid dates in ",
+      "YYYY-MM-DD format. Got: ",
+      glue::glue(
+        "disease: {matches[[2]]}, ",
+        "report_date: {matches[[3]]}, ",
+        "first_training_date: {matches[[4]]}, ",
+        "last_training_date: {matches[[5]]}."
+      )
+    )
+  }
+
+  return(result)
 }
 
 #' Parse model run directory path.
@@ -65,7 +81,7 @@ parse_model_run_dir_path <- function(model_run_dir_path) {
 
   return(c(
     location = location,
-    parse_model_batch_dir_name(batch_dir)
+    parse_model_batch_dir_path(batch_dir)
   ))
 }
 
