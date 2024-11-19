@@ -208,21 +208,28 @@ def collate_from_all_subdirs(
 
 
 def main(
-    model_base_dir: str | Path,
+    dir_of_forecast_dirs: str | Path,
     single_forecast_dir: str | Path,
     target_filenames: list[str],
-    disease: str,
+    disease: str = None,
 ) -> None:
-    if not ((model_base_dir is None) ^ (single_forecast_dir is None)):
+    if not ((dir_of_forecast_dirs is None) ^ (single_forecast_dir is None)):
         raise ValueError(
             "Must provide exactly one of "
-            "'--model-base-dir' (to process multiple "
+            "'dir_of_forecast_dirs' (to process multiple "
             "groups of forecasts) or "
-            "'--single-forecast-dir' "
+            "'single_forecast_dir' "
             "(to process a single set of forecasts"
         )
-    elif model_base_dir is not None:
-        collate_from_all_subdirs(model_base_dir, disease, target_filenames)
+    elif dir_of_forecast_dirs is not None:
+        if disease is None:
+            raise ValueError(
+                "'disease' must not be None when collating plots "
+                "from multiple forecast subdirectories"
+            )
+        collate_from_all_subdirs(
+            dir_of_forecast_dirs, disease, target_filenames
+        )
     elif single_forecast_dir is not None:
         process_dir(single_forecast_dir, target_filenames)
     return None
@@ -233,7 +240,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument(
-    "--model-base-dir",
+    "--dir-of-forecast-dirs",
     type=Path,
     help=(
         "Base directory containing subdirectories that represent "
@@ -251,7 +258,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "disease", type=str, help="Name of the disease for which to collate plots"
+    "--disease",
+    type=str,
+    help="Name of the disease for which to collate plots.",
+    default=None,
 )
 
 parser.add_argument(

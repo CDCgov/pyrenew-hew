@@ -39,3 +39,7 @@ Imports:
     urca
 Remotes:
     https://github.com/cdcgov/forecasttools
+Suggests:
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
