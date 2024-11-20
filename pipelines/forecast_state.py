@@ -20,7 +20,7 @@ from generate_predictive import generate_and_save_predictions  # noqa
 def baseline_forecasts(
     model_run_dir: Path, n_forecast_days: int, n_samples: int
 ) -> None:
-    subprocess.run(
+    result = subprocess.run(
         [
             "Rscript",
             "pipelines/timeseries_forecasts.R",
@@ -29,41 +29,55 @@ def baseline_forecasts(
             f"{n_forecast_days}",
             "--n-samples",
             f"{n_samples}",
-        ]
+        ],
+        capture_output=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"baseline_forecasts: {result.stderr}")
     return None
 
 
 def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
-    subprocess.run(
+    result = subprocess.run(
         [
             "Rscript",
             "pipelines/convert_inferencedata_to_parquet.R",
             f"{model_run_dir}",
-        ]
+        ],
+        capture_output=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"convert_inferencedata_to_parquet: {result.stderr}"
+        )
     return None
 
 
 def postprocess_forecast(model_run_dir: Path) -> None:
-    subprocess.run(
+    result = subprocess.run(
         [
             "Rscript",
             "pipelines/postprocess_state_forecast.R",
             f"{model_run_dir}",
-        ]
+        ],
+        capture_output=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"postprocess_forecast: {result.stderr}")
     return None
 
 
 def score_forecast(model_run_dir: Path) -> None:
-    subprocess.run(
+    result = subprocess.run(
         [
             "Rscript",
             "pipelines/score_forecast.R",
             f"{model_run_dir}",
-        ]
+        ],
+        capture_output=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"score_forecast: {result.stderr}")
     return None
 
 
