@@ -1,11 +1,24 @@
-library(forecasttools)
-library(readr)
-library(arrow)
-library(fs)
-library(argparser)
-library(dplyr)
-library(stringr)
-library(tidyr)
+script_packages <- c(
+  "argparser",
+  "arrow",
+  "dplyr",
+  "forecasttools",
+  "fs",
+  "ggplot2",
+  "lubridate",
+  "readr",
+  "scoringutils",
+  "stringr",
+  "tidyr"
+)
+
+## load in packages without messages
+purrr::walk(script_packages, \(pkg) {
+  suppressPackageStartupMessages(
+    library(pkg, character.only = TRUE)
+  )
+})
+
 
 tidy_and_save_mcmc <- function(model_run_dir,
                                file_name_prefix = "",
