@@ -13,7 +13,8 @@ script_packages <- c(
   "tidyr",
   "readr",
   "here",
-  "forcats"
+  "forcats",
+  "hewr"
 )
 
 ## load in packages without messages
@@ -255,12 +256,6 @@ postprocess_state_forecast <- function(model_run_dir) {
 
 theme_set(theme_minimal_grid())
 
-disease_name_formatter <- c("covid-19" = "COVID-19", "influenza" = "Flu")
-disease_name_nssp_map <- c(
-  "covid-19" = "COVID-19",
-  "influenza" = "Influenza"
-)
-
 # Create a parser
 p <- arg_parser("Generate forecast figures") |>
   add_argument(
@@ -271,13 +266,10 @@ p <- arg_parser("Generate forecast figures") |>
 argv <- parse_args(p)
 model_run_dir <- path(argv$model_run_dir)
 
-base_dir <- path_dir(model_run_dir)
 
-disease_name_raw <- base_dir |>
-  path_file() |>
-  str_extract("^.+(?=_r_)")
+disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
 
-disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
-disease_name_pretty <- unname(disease_name_formatter[disease_name_raw])
+disease_name_formatter <- c("COVID-19" = "COVID-19", "Influenza" = "Flu")
+disease_name_pretty <- unname(disease_name_formatter[disease_name_nssp])
 
 postprocess_state_forecast(model_run_dir)
