@@ -62,7 +62,7 @@ def merge_pdfs_from_subdirs(
 
     save_dir
        Directory in which to save the merged PDF.
-       If ``None``, use the parent directory of ``base_dir``.
+       If ``None``, use a "figures" directory in the parent directory of ``base_dir``.
        Default ``None``.
 
     output_file_name
@@ -92,7 +92,10 @@ def merge_pdfs_from_subdirs(
     """
 
     if save_dir is None:
-        save_dir = Path(base_dir).parent
+        save_dir = Path(base_dir).parent / "figures"
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
     subdirs = [
         f.name for f in Path(base_dir).glob(subdir_pattern) if f.is_dir()
@@ -139,7 +142,7 @@ def process_dir(
 
     save_dir
         Directory in which to save the merged PDFs.
-        If ``None``, use the parent directory of ``base_dir``. Default ``None``.
+        If ``None``, use a "figures" directory in the parent directory of ``base_dir``. Default ``None``.
 
     file_prefix
         Prefix to append to the names in `target_filenames`
@@ -151,7 +154,7 @@ def process_dir(
         subdirectories of ``base_dir``. Default ``None``.
     """
     if save_dir is None:
-        save_dir = Path(base_dir).parent
+        save_dir = Path(base_dir).parent / "figures"
 
     for file_name in ensure_listlike(target_filenames):
         merge_pdfs_from_subdirs(
@@ -189,14 +192,14 @@ def collate_from_all_subdirs(
 
     save_dir
         Directory in which to save the merged PDFs.
-        If ``None``, use the parent directory of ``model_base_dir``. Default ``None``.
+        If ``None``, use a "figures" directory in the parent directory of ``model_base_dir``. Default ``None``.
 
     Returns
     -------
     None
     """
     if save_dir is None:
-        save_dir = Path(model_base_dir).parent
+        save_dir = Path(model_base_dir).parent / "figures"
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
