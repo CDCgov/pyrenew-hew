@@ -79,11 +79,8 @@ parse_model_batch_dir_path <- function(model_batch_dir_path) {
 #'
 #' @export
 parse_model_run_dir_path <- function(model_run_dir_path) {
-  batch_dir <- model_run_dir_path |>
-    fs::path_dir() |>
-    fs::path_dir() |>
+  batch_dir <- fs::path_dir(model_run_dir_path) |>
     fs::path_file()
-
   location <- fs::path_file(model_run_dir_path)
 
   return(c(

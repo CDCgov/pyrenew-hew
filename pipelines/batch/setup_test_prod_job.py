@@ -18,7 +18,7 @@ if __name__ == "__main__":
         description="Test production pipeline on small subset of locations"
     )
     parser.add_argument(
-        "--tag",
+        "tag",
         type=str,
         help="The tag name to use for the container image version",
         default=Path(Repository(os.getcwd()).head.name).stem,
