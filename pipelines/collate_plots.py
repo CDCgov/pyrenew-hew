@@ -62,7 +62,7 @@ def merge_pdfs_from_subdirs(
 
     save_dir
        Directory in which to save the merged PDF.
-       If ``None``, use ``base_dir``.
+       If ``None``, use the parent directory of ``base_dir``.
        Default ``None``.
 
     output_file_name
@@ -92,7 +92,7 @@ def merge_pdfs_from_subdirs(
     """
 
     if save_dir is None:
-        save_dir = base_dir
+        save_dir = Path(base_dir).parent
 
     subdirs = [
         f.name for f in Path(base_dir).glob(subdir_pattern) if f.is_dir()
@@ -139,7 +139,7 @@ def process_dir(
 
     save_dir
         Directory in which to save the merged PDFs.
-        If ``None``, use ``dir_path``. Default ``None``.
+        If ``None``, use the parent directory of ``base_dir``. Default ``None``.
 
     file_prefix
         Prefix to append to the names in `target_filenames`
@@ -151,7 +151,7 @@ def process_dir(
         subdirectories of ``base_dir``. Default ``None``.
     """
     if save_dir is None:
-        save_dir = base_dir
+        save_dir = Path(base_dir).parent
 
     for file_name in ensure_listlike(target_filenames):
         merge_pdfs_from_subdirs(
@@ -189,14 +189,14 @@ def collate_from_all_subdirs(
 
     save_dir
         Directory in which to save the merged PDFs.
-        If ``None``, use ``model_base_dir``. Default ``None``.
+        If ``None``, use the parent directory of ``model_base_dir``. Default ``None``.
 
     Returns
     -------
     None
     """
     if save_dir is None:
-        save_dir = model_base_dir
+        save_dir = Path(model_base_dir).parent
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -213,7 +213,7 @@ def collate_from_all_subdirs(
     for f_dir in forecast_dirs:
         logger.info(f"Collating plots from {f_dir}")
         process_dir(
-            dir_path=Path(model_base_dir, f_dir),
+            base_dir=Path(model_base_dir, f_dir),
             target_filenames=target_filenames,
             save_dir=save_dir,
         )
