@@ -83,7 +83,7 @@ collate_scores_for_date <- function(model_run_dir,
                                     score_file_ext = "rds",
                                     save = FALSE) {
   message(glue::glue("Processing scores from {model_run_dir}..."))
-  locations_to_process <- fs::dir_ls(model_run_dir,
+  locations_to_process <- fs::dir_ls(model_run_dir, "model_runs",
     type = "directory"
   )
   date_score_table <- purrr::map(
