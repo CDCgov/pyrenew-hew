@@ -14,7 +14,8 @@ script_packages <- c(
   "epiprocess",
   "purrr",
   "rlang",
-  "glue"
+  "glue",
+  "hewr"
 )
 
 ## load in packages without messages
@@ -253,14 +254,6 @@ disease_name_nssp_map <- c(
   "influenza" = "Influenza"
 )
 
-# replace this with functionality from hewr
-disease_name_raw <- model_run_dir |>
-  path_split() |>
-  pluck(1) |>
-  tail(3) |>
-  head(1) |>
-  str_extract("^.+(?=_r_)")
-
-disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
+disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
 
 main(model_run_dir, n_forecast_days, n_samples)
