@@ -39,6 +39,7 @@ def merge_pdfs_and_save(
 def merge_pdfs_from_subdirs(
     base_dir: str | Path,
     file_name: str,
+    save_dir: str | Path = None,
     output_file_name: str = None,
     subdirs_only: list[str] = None,
     subdir_pattern="*",
@@ -58,6 +59,11 @@ def merge_pdfs_from_subdirs(
     file_name
        Name of the files to merge. Must be an
        exact match.
+
+    save_dir
+       Directory in which to save the merged PDF.
+       If ``None``, use ``base_dir``.
+       Default ``None``.
 
     output_file_name
        Name for the merged PDF file, which will be
@@ -84,6 +90,10 @@ def merge_pdfs_from_subdirs(
     -------
     None
     """
+
+    if save_dir is None:
+        save_dir = base_dir
+
     subdirs = [
         f.name for f in Path(base_dir).glob(subdir_pattern) if f.is_dir()
     ]
@@ -101,14 +111,15 @@ def merge_pdfs_from_subdirs(
         output_file_name = file_name
 
     if len(to_merge) > 0:
-        merge_pdfs_and_save(to_merge, Path(base_dir, output_file_name))
+        merge_pdfs_and_save(to_merge, Path(save_dir, output_file_name))
 
     return None
 
 
 def process_dir(
-    dir_path: Path | str,
+    base_dir: Path | str,
     target_filenames: str | list[str],
+    save_dir: Path | str = None,
     file_prefix: str = "",
     subdirs_only: list[str] = None,
 ) -> None:
@@ -119,13 +130,16 @@ def process_dir(
 
     Parameters
     ----------
-    dir_path
-        Path to the base directory, in which the merged
-        PDFs will be saved.
+    base_dir
+        Path to the base directory in which to look
 
     target_filenames
         One or more PDFs filenames to look for in the
         subdirectories and merge.
+
+    save_dir
+        Directory in which to save the merged PDFs.
+        If ``None``, use ``dir_path``. Default ``None``.
 
     file_prefix
         Prefix to append to the names in `target_filenames`
@@ -136,17 +150,24 @@ def process_dir(
         named subdirectories. If ``None``, look in all
         subdirectories of ``base_dir``. Default ``None``.
     """
+    if save_dir is None:
+        save_dir = base_dir
+
     for file_name in ensure_listlike(target_filenames):
         merge_pdfs_from_subdirs(
-            dir_path,
+            base_dir,
             file_name,
+            save_dir,
             output_file_name=file_prefix + file_name,
             subdirs_only=subdirs_only,
         )
 
 
 def collate_from_all_subdirs(
-    model_base_dir: str | Path, disease: str, target_filenames: str | list[str]
+    model_base_dir: str | Path,
+    disease: str,
+    target_filenames: str | list[str],
+    save_dir: str | Path = None,
 ) -> None:
     """
     Collate target plots for a given disease
@@ -156,8 +177,7 @@ def collate_from_all_subdirs(
     ----------
     model_base_dir
         Path to the base directory in whose subdirectories
-        the script will look for PDFs to merge and in which
-        the merged PDFs will be saved.
+        the script will look for PDFs to merge.
 
     disease
         Name of the target disease. Merged PDFs will be named
@@ -167,10 +187,17 @@ def collate_from_all_subdirs(
         One or more PDFs filenames to look for in the
         subdirectories and merge.
 
+    save_dir
+        Directory in which to save the merged PDFs.
+        If ``None``, use ``model_base_dir``. Default ``None``.
+
     Returns
     -------
     None
     """
+    if save_dir is None:
+        save_dir = model_base_dir
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -188,6 +215,7 @@ def collate_from_all_subdirs(
         process_dir(
             dir_path=Path(model_base_dir, f_dir),
             target_filenames=target_filenames,
+            save_dir=save_dir,
         )
     logger.info("Done collating across locations by date.")
 
@@ -197,11 +225,13 @@ def collate_from_all_subdirs(
     # for multiple diseases.
     logger.info("Collating plots from forecast date directories...")
     process_dir(
-        dir_path=model_base_dir,
+        base_dir=model_base_dir,
         target_filenames=target_filenames,
+        save_dir=save_dir,
         file_prefix=f"{disease}_",
         subdirs_only=forecast_dirs,
     )
+
     logger.info("Done collating plots from forecast date directories.")
 
     return None
