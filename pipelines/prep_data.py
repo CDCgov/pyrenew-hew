@@ -219,7 +219,7 @@ def process_and_save_state(
     first_training_date: datetime.date,
     last_training_date: datetime.date,
     param_estimates: pl.LazyFrame,
-    model_run_dir: Path,
+    model_batch_dir: Path,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
@@ -333,15 +333,13 @@ def process_and_save_state(
         "right_truncation_offset": right_truncation_offset,
     }
 
-    os.makedirs(model_run_dir, exist_ok=True)
+    state_dir = os.path.join(model_batch_dir, state_abb)
+    os.makedirs(state_dir, exist_ok=True)
 
-    if logger is not None:
-        logger.info(f"Saving {state_abb} to {model_run_dir}")
-    data_to_save.write_csv(Path(model_run_dir, "data.csv"))
+    logger.info(f"Saving {state_abb} to {state_dir}")
+    data_to_save.write_csv(Path(state_dir, "data.csv"))
 
-    with open(
-        Path(model_run_dir, "data_for_model_fit.json"), "w"
-    ) as json_file:
+    with open(Path(state_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
 
     return None

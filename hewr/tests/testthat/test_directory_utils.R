@@ -26,7 +26,7 @@ invalid_model_batch_dirs <- c(
 
 to_valid_run_dir <- function(valid_batch_dir_entry, location) {
   x <- valid_batch_dir_entry
-  x$dirpath <- fs::path(x$dirname, "model_runs", location)
+  x$dirpath <- fs::path(x$dirname, location)
   x$expected <- c(
     location = location,
     x$expected

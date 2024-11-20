@@ -11,11 +11,7 @@ script_packages <- c(
   "arrow",
   "glue",
   "epipredict",
-  "epiprocess",
-  "purrr",
-  "rlang",
-  "glue",
-  "hewr"
+  "epiprocess"
 )
 
 ## load in packages without messages
@@ -33,12 +29,12 @@ to_prop_forecast <- function(forecast_disease_count,
                              other_count_col =
                                "other_ed_visits",
                              output_col = "prop_disease_ed_visits") {
-  result <- inner_join(
+  result <- dplyr::inner_join(
     forecast_disease_count,
     forecast_other_count,
     by = c(".draw", "date")
   ) |>
-    mutate(
+    dplyr::mutate(
       !!output_col :=
         .data[[disease_count_col]] /
           (.data[[disease_count_col]] +
@@ -72,9 +68,9 @@ fit_and_forecast <- function(data,
                              n_samples = 2000,
                              target_col = "ed_visits",
                              output_col = "other_ed_visits") {
-  forecast_horizon <- glue("{n_forecast_days} days")
-  target_sym <- sym(target_col)
-  output_sym <- sym(output_col)
+  forecast_horizon <- glue::glue("{n_forecast_days} days")
+  target_sym <- rlang::sym(target_col)
+  output_sym <- rlang::sym(output_col)
 
   max_visits <- data |>
     pull(!!target_sym) |>
@@ -204,7 +200,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     aheads = 1:n_forecast_days
   )
 
-  to_save <- tribble(
+  to_save <- tibble::tribble(
     ~basename, ~value,
     "other_ed_visits_forecast", forecast_other,
     "baseline_ts_count_ed_visits_forecast", baseline_ts_count,
@@ -212,13 +208,13 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     "baseline_cdc_count_ed_visits_forecast", baseline_cdc_count,
     "baseline_cdc_prop_ed_visits_forecast", baseline_cdc_prop
   ) |>
-    mutate(save_path = path(
+    dplyr::mutate(save_path = path(
       !!model_run_dir, basename,
       ext = "parquet"
     ))
 
 
-  walk2(
+  purrr::walk2(
     to_save$value,
     to_save$save_path,
     write_parquet
@@ -254,6 +250,12 @@ disease_name_nssp_map <- c(
   "influenza" = "Influenza"
 )
 
-disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
+base_dir <- path_dir(model_run_dir)
+
+disease_name_raw <- base_dir |>
+  path_file() |>
+  str_extract("^.+(?=_r_)")
+
+disease_name_nssp <- unname(disease_name_nssp_map[disease_name_raw])
 
 main(model_run_dir, n_forecast_days, n_samples)
