@@ -24,8 +24,10 @@ purrr::walk(script_packages, \(pkg) {
   )
 })
 
+disease_name_formatter <- c("COVID-19" = "COVID-19", "Influenza" = "Flu")
 
 make_one_forecast_fig <- function(target_disease,
+                                  disease_name_pretty,
                                   combined_dat,
                                   last_training_date,
                                   data_vintage_date,
@@ -101,10 +103,11 @@ make_one_forecast_fig <- function(target_disease,
 
 
 postprocess_state_forecast <- function(model_run_dir) {
-  state_abb <- model_run_dir |>
-    path_split() |>
-    pluck(1) |>
-    tail(1)
+  parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
+  disease_name_nssp <- parsed_model_run_dir$disease
+  state_abb <- parsed_model_run_dir$location
+
+  disease_name_pretty <- unname(disease_name_formatter[disease_name_nssp])
 
   train_data_path <- path(model_run_dir, "data", ext = "csv")
   eval_data_path <- path(model_run_dir, "eval_data", ext = "tsv")
@@ -153,6 +156,13 @@ postprocess_state_forecast <- function(model_run_dir) {
       values_to = ".value"
     )
 
+  arrow::write_parquet(
+    combined_dat,
+    path(model_run_dir,
+      "combined_training_eval_data",
+      ext = "parquet"
+    )
+  )
 
   last_training_date <- combined_dat |>
     filter(data_type == "train") |>
@@ -220,6 +230,7 @@ postprocess_state_forecast <- function(model_run_dir) {
     set_names(unique(combined_dat$disease)),
     ~ make_one_forecast_fig(
       .x,
+      disease_name_pretty,
       combined_dat,
       last_training_date,
       data_vintage_date,
@@ -232,6 +243,7 @@ postprocess_state_forecast <- function(model_run_dir) {
     set_names(unique(combined_dat$disease)),
     ~ make_one_forecast_fig(
       .x,
+      disease_name_pretty,
       combined_dat,
       last_training_date,
       data_vintage_date,
@@ -264,12 +276,7 @@ p <- arg_parser("Generate forecast figures") |>
   )
 
 argv <- parse_args(p)
+
 model_run_dir <- path(argv$model_run_dir)
-
-
-disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
-
-disease_name_formatter <- c("COVID-19" = "COVID-19", "Influenza" = "Flu")
-disease_name_pretty <- unname(disease_name_formatter[disease_name_nssp])
 
 postprocess_state_forecast(model_run_dir)
