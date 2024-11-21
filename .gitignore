@@ -399,5 +399,5 @@ private_data/*
 .vscode/settings.json
 
 # Test data exceptions to the general data exclusion
-!pipelines/tests/covid-19_r_run_test_inference/TestDir/data.csv
-!pipelines/tests/covid-19_r_run_test_inference/TestDir/eval_data.tsv
+!pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/data.csv
+!pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/eval_data.tsv
