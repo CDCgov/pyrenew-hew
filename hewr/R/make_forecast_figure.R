@@ -81,14 +81,14 @@ make_forecast_figure <- function(target_disease,
       geom = "text",
       x = last_training_date,
       y = -Inf,
-      label = "Fit Period ←\n",
+      label = "Fit Period \u2190\n",
       hjust = "right",
       vjust = "bottom"
     ) +
     ggplot2::annotate(
       geom = "text",
       x = last_training_date,
-      y = -Inf, label = "→ Forecast Period\n",
+      y = -Inf, label = "\u2192 Forecast Period\n",
       hjust = "left",
       vjust = "bottom",
     ) +

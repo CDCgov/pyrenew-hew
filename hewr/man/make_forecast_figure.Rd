@@ -14,7 +14,8 @@ make_forecast_figure(
 )
 }
 \arguments{
-\item{target_disease}{a disease matching the disease columns in combined_dat and forecast_ci}
+\item{target_disease}{a disease matching the disease columns in combined_dat
+and forecast_ci}
 
 \item{combined_dat}{\code{combined_dat} from the result of process_state_forecast}
 
