@@ -10,6 +10,8 @@
 *.xls
 *.xlsx
 *.rds
+*.pickle
+*.nc
 
 # Documents
 *.doc
@@ -395,3 +397,7 @@ notebooks/*.md
 private_data/*
 *_files/
 .vscode/settings.json
+
+# Test data exceptions to the general data exclusion
+!pipelines/tests/covid-19_r_run_test_inference/TestDir/data.csv
+!pipelines/tests/covid-19_r_run_test_inference/TestDir/eval_data.tsv
