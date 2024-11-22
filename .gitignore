@@ -391,8 +391,8 @@ docs/site/
 poetry.lock
 
 
-notebooks/*_files/
-notebooks/*.md
+demos/*_files/
+demos/*.md
 
 private_data/*
 *_files/

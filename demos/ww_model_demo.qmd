@@ -15,7 +15,7 @@ import numpyro.distributions.transforms as transforms
 from pyrenew.deterministic import DeterministicVariable, DeterministicPMF
 
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
-from pyrenew_hew.site_level_dynamics_model import ww_site_level_dynamics_model
+from pyrenew_hew.ww_site_level_dynamics_model import ww_site_level_dynamics_model
 from pyrenew_hew.utils import convert_to_logmean_log_sd
 import pyrenew_hew.plotting as plotting
 
