@@ -33,12 +33,13 @@ convert_daily_to_epiweekly <- function(model_run_dir, strict = TRUE,
   if (!ext %in% c("csv", "tsv")) {
     stop("Invalid file extension. Only 'csv' and 'tsv' are allowed.")
   }
+
+
   delim <- if (ext == "csv") "," else "\t"
   message(glue::glue("Generating epi-weekly data {model_run_dir}..."))
 
   data_path <- path(model_run_dir, dataname, ext = ext)
 
-  # Read the daily data from the CSV file
   daily_data <- read_delim(
     data_path,
     delim = delim,
@@ -51,7 +52,12 @@ convert_daily_to_epiweekly <- function(model_run_dir, strict = TRUE,
   ) |>
   mutate(.draw = 1)
 
-  # Group by disease and apply daily_to_epiweekly to each group
+  the_data_type <- daily_data$data_type[1]
+  if (any(daily_data$data_type != the_data_type)) {
+    stop(glue::glue("The data_type column must contain only {the_data_type}
+        values."))
+  }
+
   epiweekly_data <- daily_data |>
     group_by(disease) |>
     group_modify(~ forecasttools::daily_to_epiweekly(.x,
@@ -61,12 +67,27 @@ convert_daily_to_epiweekly <- function(model_run_dir, strict = TRUE,
     mutate(date = epiweek_to_date(epiweek, epiyear,
         day_of_week = day_of_week)) |>
     select(date, disease, ed_visits) |>
-    mutate(data_type = "train")
+    mutate(data_type = the_data_type)
 
-
-  # Write the epiweekly data to a new file with appropriate delimiter
   output_file <- path(model_run_dir, glue::glue("epiweekly_{dataname}"),
     ext = ext)
 
   write_delim(epiweekly_data, output_file, delim = delim)
 }
+
+main <- function(model_run_dir){
+    convert_daily_to_epiweekly(model_run_dir, dataname = "data", ext = "csv")
+    convert_daily_to_epiweekly(model_run_dir, dataname = "eval_data",
+        ext = "tsv")
+}
+
+# Create a parser
+p <- arg_parser("Create epiweekly data") |>
+  add_argument(
+    "model_run_dir",
+    help = "Directory containing the model data and output."
+  )
+
+argv <- parse_args(p)
+
+main(argv$model_run_dir)
