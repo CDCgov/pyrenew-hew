@@ -3,7 +3,8 @@ script_packages <- c(
   "arrow",
   "dplyr",
   "forecasttools",
-  "scoringutils"
+  "scoringutils",
+  "tidyr"
 )
 
 ## load in packages without messages
