@@ -20,6 +20,7 @@ Imports:
     forcats,
     forecasttools (>= 0.0.0.9000),
     fs,
+    ggdist,
     ggplot2,
     glue,
     here,
