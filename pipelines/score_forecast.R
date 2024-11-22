@@ -1,8 +1,9 @@
 script_packages <- c(
-  "dplyr",
-  "scoringutils",
+  "argparser",
   "arrow",
-  "argparser"
+  "dplyr",
+  "forecasttools",
+  "scoringutils"
 )
 
 ## load in packages without messages
@@ -141,11 +142,24 @@ prep_truth_data <- function(truth_data_path) {
 }
 
 read_and_score_location <- function(model_run_dir,
+                                    epiweekly = FALSE,
                                     eval_data_filename = "eval_data",
                                     eval_data_file_ext = "tsv",
                                     parquet_file_ext = "parquet",
-                                    rds_file_ext = "rds") {
-  message(glue::glue("Scoring {model_run_dir}..."))
+                                    rds_file_ext = "rds",
+                                    strict = TRUE,
+                                    day_of_week = 1) {
+  if (epiweekly) {
+    message(glue::glue("Scoring epiweekly {model_run_dir}..."))
+  } else {
+    message(glue::glue("Scoring daily  {model_run_dir}..."))
+  }
+  prefix <- ""
+  if (epiweekly) {
+    prefix <- "epiweekly_"
+    eval_data_filename <- glue::glue("{prefix}{eval_data_filename}")
+  }
+
   forecast_path <- fs::path(
     model_run_dir,
     "forecast_samples",
@@ -153,12 +167,12 @@ read_and_score_location <- function(model_run_dir,
   )
   ts_baseline_path <- fs::path(
     model_run_dir,
-    "baseline_ts_prop_ed_visits_forecast",
+    glue::glue("{prefix}baseline_ts_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
   cdc_baseline_path <- fs::path(
     model_run_dir,
-    "baseline_cdc_prop_ed_visits_forecast",
+    glue::glue("{prefix}baseline_cdc_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
 
@@ -169,7 +183,29 @@ read_and_score_location <- function(model_run_dir,
 
   actual_data <- prep_truth_data(truth_path)
 
-  pyrenew <- arrow::read_parquet(forecast_path) |>
+  pyrenew <- arrow::read_parquet(forecast_path)
+  # Collate pyrenew forecasts by epiweek. NB default is strict weeks.
+  if (epiweekly) {
+    pyrenew <- pyrenew |>
+      filter(disease != "prop_disease_ed_visits") |>
+      group_by(disease) |>
+      group_modify(~ forecasttools::daily_to_epiweekly(.x,
+        value_col = ".value", weekly_value_name = ".value",
+        strict = strict
+      )) |>
+      ungroup() |>
+      pivot_wider(names_from = disease, values_from = .value) |>
+      mutate(prop_disease_ed_visits = Disease / (Disease + Other)) |>
+      pivot_longer(c(Disease, Other, prop_disease_ed_visits),
+        names_to = "disease",
+        values_to = ".value"
+      ) |>
+      mutate(date = epiweek_to_date(epiweek, epiyear,
+        day_of_week = day_of_week
+      ))
+  }
+
+  pyrenew <- pyrenew |>
     mutate(model = "pyrenew-hew") |>
     select(date, .draw, disease, model, .value)
 
@@ -228,7 +264,7 @@ read_and_score_location <- function(model_run_dir,
   )
 
   readr::write_rds(scored, fs::path(model_run_dir,
-    "score_table",
+    glue::glue("{prefix}score_table"),
     ext = rds_file_ext
   ))
 }
@@ -243,3 +279,4 @@ p <- arg_parser("Score a single location forecast") |>
 argv <- parse_args(p)
 
 read_and_score_location(argv$model_run_dir)
+read_and_score_location(argv$model_run_dir, epiweekly = TRUE)
