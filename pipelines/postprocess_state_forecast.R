@@ -1,20 +1,6 @@
 script_packages <- c(
-  "dplyr",
-  "stringr",
-  "purrr",
-  "ggplot2",
-  "tidybayes",
-  "fs",
-  "cowplot",
-  "glue",
-  "scales",
-  "argparser",
-  "arrow",
-  "tidyr",
-  "readr",
-  "here",
-  "forcats",
-  "hewr"
+  "argparser", "cowplot", "dplyr", "fs", "glue", "hewr", "purrr",
+  "tidyr"
 )
 
 ## load in packages without messages
@@ -25,238 +11,48 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-make_one_forecast_fig <- function(target_disease,
-                                  combined_dat,
-                                  last_training_date,
-                                  data_vintage_date,
-                                  posterior_predictive_ci,
-                                  state_abb,
-                                  y_transform = "identity") {
-  y_scale <- if (str_starts(target_disease, "prop")) {
-    scale_y_continuous("Proportion of Emergency Department Visits",
-      labels = percent,
-      transform = y_transform
-    )
-  } else {
-    scale_y_continuous("Emergency Department Visits",
-      labels = comma,
-      transform = y_transform
-    )
-  }
+save_forecast_figures <- function(model_run_dir) {
+  parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
+  processed_forecast <- process_state_forecast(model_run_dir)
 
-  title <- if (target_disease == "Other") {
-    glue("Other ED Visits in {state_abb}")
-  } else {
-    glue("{disease_name_pretty} ED Visits in {state_abb}")
-  }
-
-  ggplot(mapping = aes(date, .value)) +
-    geom_lineribbon(
-      data = posterior_predictive_ci |> filter(disease == target_disease),
-      mapping = aes(ymin = .lower, ymax = .upper),
-      color = "#08519c",
-      key_glyph = draw_key_rect,
-      step = "mid"
-    ) +
-    scale_fill_brewer(
-      name = "Credible Interval Width",
-      labels = ~ percent(as.numeric(.))
-    ) +
-    geom_point(
-      mapping = aes(color = data_type), size = 1.5,
-      data = combined_dat |>
-        filter(
-          disease == target_disease,
-          date <= max(posterior_predictive_ci$date)
-        ) |>
-        mutate(data_type = fct_rev(data_type)) |>
-        arrange(desc(data_type))
-    ) +
-    scale_color_manual(
-      name = "Data Type",
-      values = c("olivedrab1", "deeppink"),
-      labels = str_to_title
-    ) +
-    geom_vline(xintercept = last_training_date, linetype = "dashed") +
-    annotate(
-      geom = "text",
-      x = last_training_date,
-      y = -Inf,
-      label = "Fit Period ←\n",
-      hjust = "right",
-      vjust = "bottom"
-    ) +
-    annotate(
-      geom = "text",
-      x = last_training_date,
-      y = -Inf, label = "→ Forecast Period\n",
-      hjust = "left",
-      vjust = "bottom",
-    ) +
-    ggtitle(title, subtitle = glue("as of {data_vintage_date}")) +
-    y_scale +
-    scale_x_date("Date") +
-    theme(legend.position = "bottom")
-}
-
-
-postprocess_state_forecast <- function(model_run_dir) {
-  state_abb <- model_run_dir |>
-    path_split() |>
-    pluck(1) |>
-    tail(1)
-
-  train_data_path <- path(model_run_dir, "data", ext = "csv")
-  eval_data_path <- path(model_run_dir, "eval_data", ext = "tsv")
-  posterior_predictive_path <- path(model_run_dir, "mcmc_tidy",
-    "pyrenew_posterior_predictive",
-    ext = "parquet"
-  )
-  other_ed_visits_path <- path(
-    model_run_dir,
-    "other_ed_visits_forecast",
-    ext = "parquet"
-  )
-
-  train_dat <- read_csv(train_data_path, show_col_types = FALSE)
-
-  data_vintage_date <- max(train_dat$date) + 1
-  # this should be stored as metadata somewhere else, instead of being
-  # computed like this
-
-  eval_dat <- read_tsv(eval_data_path, show_col_types = FALSE) |>
-    mutate(data_type = "eval")
-
-  combined_dat <-
-    bind_rows(
-      train_dat |>
-        filter(data_type == "train"),
-      eval_dat
+  figure_save_tbl <-
+    expand_grid(
+      target_disease = unique(processed_forecast$combined_dat$disease),
+      y_transform = c("identity", "log10")
     ) |>
-    mutate(
-      disease = if_else(
-        disease == disease_name_nssp,
-        "Disease", # assign a common name for
-        # use in plotting functions
-        disease
+    mutate(path_suffix = c("identity" = "", "log10" = "_log")[y_transform]) |>
+    mutate(figure_path = path(model_run_dir,
+      glue("{target_disease}_forecast_plot{path_suffix}"),
+      ext = "pdf"
+    )) |>
+    mutate(figure = map2(
+      target_disease, y_transform,
+      \(target_disease, y_transform) {
+        make_forecast_figure(
+          target_disease = target_disease,
+          combined_dat = processed_forecast$combined_dat,
+          forecast_ci = processed_forecast$forecast_ci,
+          disease_name = parsed_model_run_dir$disease,
+          data_vintage_date = parsed_model_run_dir$report_date,
+          y_transform = y_transform
+        )
+      }
+    ))
+
+
+  walk2(
+    figure_save_tbl$figure, figure_save_tbl$figure_path,
+    \(figure, figure_path) {
+      save_plot(
+        filename = figure_path,
+        plot = figure,
+        device = cairo_pdf, base_height = 6
       )
-    ) |>
-    pivot_wider(names_from = disease, values_from = ed_visits) |>
-    mutate(
-      Other = Total - Disease,
-      prop_disease_ed_visits = Disease / Total
-    ) |>
-    select(-Total) |>
-    mutate(time = dense_rank(date)) |>
-    pivot_longer(c(Disease, Other, prop_disease_ed_visits),
-      names_to = "disease",
-      values_to = ".value"
-    )
-
-
-  last_training_date <- combined_dat |>
-    filter(data_type == "train") |>
-    pull(date) |>
-    max()
-
-  posterior_predictive <- read_parquet(posterior_predictive_path)
-
-  other_ed_visits_forecast <-
-    read_parquet(other_ed_visits_path) |>
-    rename(Other = other_ed_visits)
-
-  other_ed_visits_samples <-
-    bind_rows(
-      combined_dat |>
-        filter(
-          data_type == "train",
-          disease == "Other",
-          date <= last_training_date
-        ) |>
-        select(date, Other = .value) |>
-        expand_grid(.draw = 1:max(other_ed_visits_forecast$.draw)),
-      other_ed_visits_forecast
-    )
-
-  posterior_predictive_samples <-
-    posterior_predictive |>
-    gather_draws(observed_hospital_admissions[time]) |>
-    pivot_wider(names_from = .variable, values_from = .value) |>
-    rename(Disease = observed_hospital_admissions) |>
-    ungroup() |>
-    mutate(date = min(combined_dat$date) + time) |>
-    left_join(other_ed_visits_samples,
-      by = c(".draw", "date")
-    ) |>
-    mutate(prop_disease_ed_visits = Disease / (Disease + Other)) |>
-    pivot_longer(c(Other, Disease, prop_disease_ed_visits),
-      names_to = "disease",
-      values_to = ".value"
-    )
-
-  arrow::write_parquet(
-    posterior_predictive_samples,
-    path(model_run_dir, "forecast_samples",
-      ext = "parquet"
-    )
+    }
   )
-
-  posterior_predictive_ci <-
-    posterior_predictive_samples |>
-    select(date, disease, .value) |>
-    group_by(date, disease) |>
-    median_qi(.width = c(0.5, 0.8, 0.95))
-
-
-  arrow::write_parquet(
-    posterior_predictive_ci,
-    path(model_run_dir, "forecast_ci",
-      ext = "parquet"
-    )
-  )
-
-
-  all_forecast_plots <- map(
-    set_names(unique(combined_dat$disease)),
-    ~ make_one_forecast_fig(
-      .x,
-      combined_dat,
-      last_training_date,
-      data_vintage_date,
-      posterior_predictive_ci,
-      state_abb,
-    )
-  )
-
-  all_forecast_plots_log <- map(
-    set_names(unique(combined_dat$disease)),
-    ~ make_one_forecast_fig(
-      .x,
-      combined_dat,
-      last_training_date,
-      data_vintage_date,
-      posterior_predictive_ci,
-      state_abb,
-      y_transform = "log10"
-    )
-  )
-
-  iwalk(all_forecast_plots, ~ save_plot(
-    filename = path(model_run_dir, glue("{.y}_forecast_plot"), ext = "pdf"),
-    plot = .x,
-    device = cairo_pdf, base_height = 6
-  ))
-  iwalk(all_forecast_plots_log, ~ save_plot(
-    filename = path(model_run_dir, glue("{.y}_forecast_plot_log"), ext = "pdf"),
-    plot = .x,
-    device = cairo_pdf, base_height = 6
-  ))
 }
 
 
-theme_set(theme_minimal_grid())
-
-# Create a parser
 p <- arg_parser("Generate forecast figures") |>
   add_argument(
     "model_run_dir",
@@ -264,12 +60,6 @@ p <- arg_parser("Generate forecast figures") |>
   )
 
 argv <- parse_args(p)
+
 model_run_dir <- path(argv$model_run_dir)
-
-
-disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
-
-disease_name_formatter <- c("COVID-19" = "COVID-19", "Influenza" = "Flu")
-disease_name_pretty <- unname(disease_name_formatter[disease_name_nssp])
-
-postprocess_state_forecast(model_run_dir)
+save_forecast_figures(model_run_dir)
