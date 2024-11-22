@@ -1,0 +1,79 @@
+---
+title: "PyRenew-HEW Model Diagnostics"
+format:
+  dashboard:
+    theme:
+    - flatly
+    - custom.scss
+    embed-resources: false
+params:
+  model_dir_raw: "/home/xum8/pyrenew-hew/nssp_demo/private_data/pyrenew-test-output/influenza_r_2024-11-06_f_2024-08-18_t_2024-10-31/CA/" # pragma: allowlist-secret
+---
+<!-- Would like mebed-resources to be true, but the current version is problematic with blobfuse -->
+
+```{r Parse Params}
+library(reticulate)
+library(tidyverse)
+library(fs)
+
+model_dir <- path(params$model_dir_raw)
+this_state <- path_file(model_dir)
+available_states <- model_dir %>%
+  path_dir() %>%
+  dir_ls(type = "directory") %>%
+  path_file()
+```
+
+## {.sidebar}
+
+```{r Render Sidebar}
+#| output: asis
+library(htmltools)
+formatted_available_states <-
+  available_states %>%
+  map(\(x) a(x, href = path(x, ext = "html"))) %>%
+  map(p) %>%
+  map_chr(as.character) %>%
+  str_c(collapse = "")
+
+cat(formatted_available_states)
+```
+
+# Run Info
+
+::: {.card title="Model Metadata"}
+This state is `r this_state`.
+:::
+
+# Forecasts
+
+```{r Example Forecast}
+#| title: A Forecast
+library(cowplot)
+theme_set(cowplot::theme_cowplot())
+eval_dat <- read_tsv(path(model_dir, "eval_data", ext = "tsv"))
+
+ggplot(eval_dat, aes(date, ed_visits, color = data_type)) +
+  facet_wrap(~disease, scale = "free_y") +
+  geom_point()
+```
+
+# MCMC Diagnostics
+
+```{python Load InferenceData}
+from pathlib import Path
+import polars as pl
+from itables import to_html_datatable
+import arviz as az
+
+model_dir = Path(r.params["model_dir_raw"])
+idata = az.from_netcdf(Path(model_dir, "inference_data.nc"))
+idata_summary = az.summary(idata)
+```
+
+```{r Render InferenceData}
+#| title: MCMC Summary
+library(DT)
+datatable(py$idata_summary)
+# highlight or exclusively show bad rhats and ess?
+```

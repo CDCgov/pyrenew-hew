@@ -1,0 +1,48 @@
+Package: hewr
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R:
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: What the package does (one paragraph).
+License: Apache License (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    argparser,
+    arrow,
+    cowplot,
+    dplyr,
+    DT,
+    fable,
+    feasts,
+    forcats,
+    forecasttools (>= 0.0.0.9000),
+    fs,
+    ggplot2,
+    glue,
+    here,
+    htmltools,
+    jsonlite,
+    lubridate,
+    purrr,
+    quarto,
+    readr,
+    reticulate,
+    rlang,
+    scales,
+    scoringutils (>= 2.0.0),
+    stringr,
+    tibble,
+    tidybayes,
+    tidyr,
+    urca
+Remotes:
+    https://github.com/cdcgov/forecasttools
+Suggests:
+    rcmdcheck,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Config/Needs/check: rcmdcheck, testthat

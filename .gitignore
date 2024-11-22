@@ -9,6 +9,9 @@
 *.bin
 *.xls
 *.xlsx
+*.rds
+*.pickle
+*.nc
 
 # Documents
 *.doc
@@ -212,6 +215,8 @@ cython_debug/
 # R
 # https://github.com/github/gitignore/blob/main/R.gitignore
 
+.Rprofile
+
 # History files
 .Rhistory
 .Rapp.history
@@ -234,6 +239,7 @@ cython_debug/
 
 # RStudio files
 .Rproj.user/
+*.Rproj
 
 # produced vignettes
 vignettes/*.html
@@ -388,4 +394,10 @@ poetry.lock
 notebooks/*_files/
 notebooks/*.md
 
-nssp_demo/private_data/*
+private_data/*
+*_files/
+.vscode/settings.json
+
+# Test data exceptions to the general data exclusion
+!pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/data.csv
+!pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/eval_data.tsv
