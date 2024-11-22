@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         r-version: ["4.4.0", "release"]
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest, macos-13]
     runs-on:  ${{matrix.os}}
     steps:
     - uses: actions/checkout@v4
