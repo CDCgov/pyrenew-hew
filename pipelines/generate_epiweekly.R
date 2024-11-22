@@ -28,7 +28,8 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @return None. The function writes the epiweekly data to a CSV file in the
 #'  specified directory.
-convert_daily_to_epiweekly <- function(model_run_dir, strict = TRUE,
+convert_daily_to_epiweekly <- function(
+    model_run_dir, strict = TRUE,
     day_of_week = 1, dataname = "data", ext = "csv") {
   if (!ext %in% c("csv", "tsv")) {
     stop("Invalid file extension. Only 'csv' and 'tsv' are allowed.")
@@ -44,13 +45,13 @@ convert_daily_to_epiweekly <- function(model_run_dir, strict = TRUE,
     data_path,
     delim = delim,
     col_types = cols(
-    disease = col_character(),
-    data_type = col_character(),
-    ed_visits = col_double(),
-    date = col_date()
+      disease = col_character(),
+      data_type = col_character(),
+      ed_visits = col_double(),
+      date = col_date()
     )
   ) |>
-  mutate(.draw = 1)
+    mutate(.draw = 1)
 
   the_data_type <- daily_data$data_type[1]
   if (any(daily_data$data_type != the_data_type)) {
@@ -61,24 +62,29 @@ convert_daily_to_epiweekly <- function(model_run_dir, strict = TRUE,
   epiweekly_data <- daily_data |>
     group_by(disease) |>
     group_modify(~ forecasttools::daily_to_epiweekly(.x,
-        value_col = "ed_visits", weekly_value_name = "ed_visits",
-        strict = strict)) |>
+      value_col = "ed_visits", weekly_value_name = "ed_visits",
+      strict = strict
+    )) |>
     ungroup() |>
     mutate(date = epiweek_to_date(epiweek, epiyear,
-        day_of_week = day_of_week)) |>
+      day_of_week = day_of_week
+    )) |>
     select(date, disease, ed_visits) |>
     mutate(data_type = the_data_type)
 
   output_file <- path(model_run_dir, glue::glue("epiweekly_{dataname}"),
-    ext = ext)
+    ext = ext
+  )
 
   write_delim(epiweekly_data, output_file, delim = delim)
 }
 
-main <- function(model_run_dir){
-    convert_daily_to_epiweekly(model_run_dir, dataname = "data", ext = "csv")
-    convert_daily_to_epiweekly(model_run_dir, dataname = "eval_data",
-        ext = "tsv")
+main <- function(model_run_dir) {
+  convert_daily_to_epiweekly(model_run_dir, dataname = "data", ext = "csv")
+  convert_daily_to_epiweekly(model_run_dir,
+    dataname = "eval_data",
+    ext = "tsv"
+  )
 }
 
 # Create a parser
