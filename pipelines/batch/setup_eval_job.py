@@ -152,13 +152,13 @@ def main(
 
     report_dates = [
         datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
-        for x in range(30)
+        for x in range(5)
     ]
 
     for disease, report_date, loc in itertools.product(
         disease_list, report_dates, all_locations
     ):
-        n_training = (report_date - datetime.date(2023, 9, 1)).days
+        n_training = max((21, report_date - datetime.date(2023, 10, 1)).days)
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-{report_date}",
             base_call=base_call.format(
