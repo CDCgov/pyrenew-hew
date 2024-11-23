@@ -28,6 +28,8 @@ def merge_pdfs_and_save(
     -------
     None
     """
+    logger = logging.getLogger(__name__)
+    logger.info(f"Merging and saving to {output_path}")
     pdf_writer = PdfWriter()
     for pdf_file in to_merge:
         pdf_writer.append(pdf_file)
@@ -216,9 +218,9 @@ def collate_from_all_subdirs(
     for f_dir in forecast_dirs:
         logger.info(f"Collating plots from {f_dir}")
         process_dir(
-            base_dir=Path(model_base_dir, f_dir),
+            base_dir=Path(model_base_dir, f_dir, "model_runs"),
             target_filenames=target_filenames,
-            save_dir=save_dir,
+            save_dir=Path(model_base_dir, f_dir),
         )
     logger.info("Done collating across locations by date.")
 

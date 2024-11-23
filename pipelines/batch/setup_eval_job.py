@@ -123,7 +123,7 @@ def main(
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 90 "
+        "--n-training-days {n_training} "
         "--n-warmup 1000 "
         "--n-samples 500 "
         "--facility-level-nssp-data-dir nssp-etl/gold "
@@ -152,18 +152,20 @@ def main(
 
     report_dates = [
         datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
-        for x in range(4, 30)
+        for x in range(30)
     ]
 
     for disease, report_date, loc in itertools.product(
         disease_list, report_dates, all_locations
     ):
+        n_training = (report_date - datetime.date(2023, 9, 1)).days
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-{report_date}",
             base_call=base_call.format(
                 state=loc,
                 disease=disease,
                 report_date=report_date,
+                n_training=n_training,
             ),
             container_settings=container_settings,
         )
