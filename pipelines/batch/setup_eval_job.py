@@ -108,7 +108,7 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-hew-prod-output",
+                "source": "pyrenew-test-output/eval2",
                 "target": "/pyrenew-hew/output",
             },
             {
@@ -123,7 +123,7 @@ def main(
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 365 "
+        "--n-training-days 90 "
         "--n-warmup 1000 "
         "--n-samples 500 "
         "--facility-level-nssp-data-dir nssp-etl/gold "
@@ -133,7 +133,7 @@ def main(
         "--output-data-dir output "
         "--priors-path config/eval_priors.py "
         "--report-date {report_date:%Y-%m-%d} "
-        "--exclude-last-n-days 2 "
+        "--exclude-last-n-days 5 "
         "--score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
@@ -152,7 +152,7 @@ def main(
 
     report_dates = [
         datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
-        for x in range(30)
+        for x in range(4, 30)
     ]
 
     for disease, report_date, loc in itertools.product(

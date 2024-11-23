@@ -229,8 +229,21 @@ def main(
         model_run_dir=model_run_dir,
         logger=logger,
     )
+    logger.info("Getting eval data...")
+    if eval_data_path is None:
+        raise ValueError("No path to an evaluation dataset provided.")
+    save_eval_data(
+        state=state,
+        report_date=report_date,
+        disease=disease,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+        latest_comprehensive_path=eval_data_path,
+        output_data_dir=model_run_dir,
+        last_eval_date=report_date + timedelta(days=n_forecast_days),
+    )
 
-    logger.info("Generating epiweekly data...")
+    logger.info("Generating epiweekly datasets from daily datasets...")
     generate_epiweekly(model_run_dir)
 
     logger.info("Data preparation complete.")
@@ -258,19 +271,6 @@ def main(
         model_run_dir, n_days_past_last_training, n_denominator_samples
     )
     logger.info("All forecasting complete.")
-    logger.info("Getting eval data...")
-    if eval_data_path is None:
-        raise ValueError("No path to an evaluation dataset provided.")
-    save_eval_data(
-        state=state,
-        report_date=report_date,
-        disease=disease,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        latest_comprehensive_path=eval_data_path,
-        output_data_dir=model_run_dir,
-        last_eval_date=report_date + timedelta(days=n_forecast_days),
-    )
 
     logger.info("Converting inferencedata to parquet...")
     convert_inferencedata_to_parquet(model_run_dir)

@@ -95,7 +95,7 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
     dplyr::group_by(disease) |>
     dplyr::group_modify(~ forecasttools::daily_to_epiweekly(.x,
       value_col = ".value", weekly_value_name = ".value",
-      strict = strict
+      strict = TRUE
     )) |>
     dplyr::ungroup() |>
     tidyr::pivot_wider(

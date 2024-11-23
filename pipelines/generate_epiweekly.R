@@ -30,7 +30,7 @@ purrr::walk(script_packages, \(pkg) {
 #'  specified directory.
 convert_daily_to_epiweekly <- function(
     model_run_dir, strict = TRUE,
-    day_of_week = 1, dataname = "data", ext = "csv") {
+    day_of_week = 7, dataname = "data", ext = "csv") {
   if (!ext %in% c("csv", "tsv")) {
     stop("Invalid file extension. Only 'csv' and 'tsv' are allowed.")
   }
@@ -53,12 +53,6 @@ convert_daily_to_epiweekly <- function(
   ) |>
     mutate(.draw = 1)
 
-  the_data_type <- daily_data$data_type[1]
-  if (any(daily_data$data_type != the_data_type)) {
-    stop(glue::glue("The data_type column must contain only {the_data_type}
-        values."))
-  }
-
   epiweekly_data <- daily_data |>
     group_by(disease) |>
     group_modify(~ forecasttools::daily_to_epiweekly(.x,
@@ -70,7 +64,10 @@ convert_daily_to_epiweekly <- function(
       day_of_week = day_of_week
     )) |>
     select(date, disease, ed_visits) |>
-    mutate(data_type = the_data_type)
+    inner_join(daily_data |> select(date, disease, data_type),
+      by = c("date", "disease")
+    )
+  # epiweek end date determines data_type classification
 
   output_file <- path(model_run_dir, glue::glue("epiweekly_{dataname}"),
     ext = ext
