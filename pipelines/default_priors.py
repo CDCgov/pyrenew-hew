@@ -13,7 +13,7 @@ initialization_rate_rv = DistributionalVariable(
     "rate", dist.Normal(0, 0.01), reparam=LocScaleReparam(0)
 )
 
-r_logmean = jnp.log(1)
+r_logmean = jnp.log(1.2)
 r_logsd = jnp.log(jnp.sqrt(2))
 
 log_r_mu_intercept_rv = DistributionalVariable(
@@ -21,7 +21,7 @@ log_r_mu_intercept_rv = DistributionalVariable(
 )
 
 eta_sd_rv = DistributionalVariable(
-    "eta_sd", dist.TruncatedNormal(0.04, 0.02, low=0)
+    "eta_sd", dist.TruncatedNormal(0.15, 0.05, low=0)
 )
 
 autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(2, 40))
@@ -31,7 +31,7 @@ inf_feedback_strength_rv = TransformedVariable(
     "inf_feedback",
     DistributionalVariable(
         "inf_feedback_raw",
-        dist.LogNormal(jnp.log(50), jnp.log(2)),
+        dist.LogNormal(jnp.log(50), jnp.log(1.5)),
     ),
     transforms=transformation.AffineTransform(loc=0, scale=-1),
 )

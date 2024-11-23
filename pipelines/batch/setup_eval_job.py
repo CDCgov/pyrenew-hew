@@ -139,7 +139,7 @@ def main(
         "--output-data-dir output "
         "--priors-path config/eval_priors.py "
         "--report-date {report_date:%Y-%m-%d} "
-        "--exclude-last-n-days 5 "
+        "--exclude-last-n-days 1 "
         "--score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
@@ -158,13 +158,15 @@ def main(
 
     report_dates = [
         datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
-        for x in range(5)
+        for x in range(30)
     ]
 
     for disease, report_date, loc in itertools.product(
         disease_list, report_dates, all_locations
     ):
-        n_training = max(21, (report_date - datetime.date(2023, 10, 1)).days)
+        n_training = min(
+            100, max(35, (report_date - datetime.date(2023, 10, 1)).days)
+        )
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-{report_date}",
             base_call=base_call.format(
