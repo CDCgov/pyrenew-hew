@@ -171,9 +171,9 @@ read_and_score_location <- function(model_run_dir,
     eval_data_filename <- glue::glue("{prefix}{eval_data_filename}")
   }
 
-  forecast_date <- hewr::parse_model_run_dir_path(
+  report_date <- hewr::parse_model_run_dir_path(
     model_run_dir
-  )$forecast_date
+  )$report_date
 
   forecast_path <- fs::path(
     model_run_dir,
@@ -241,7 +241,7 @@ read_and_score_location <- function(model_run_dir,
     ) |>
     filter(
       disease == "prop_disease_ed_visits",
-      date >= !!forecast_date
+      date >= !!report_date
     )
 
   max_visits <- actual_data |>
