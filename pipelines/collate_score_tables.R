@@ -12,17 +12,19 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-process_loc_date_score_table <- function(model_run_dir) {
+process_loc_date_score_table <- function(model_run_dir,
+                                         score_file_name,
+                                         score_file_ext) {
   table_path <- fs::path(model_run_dir,
-    "score_table",
-    ext = "rds"
+    score_file_name,
+    ext = score_file_ext
   )
   parsed <- hewr::parse_model_run_dir_path(model_run_dir)
   location <- parsed$location
 
   if (!(fs::file_exists(table_path))) {
     warning(glue::glue(
-      "No `score_table.rds` found for location ",
+      "No {score_file_name}.{score_file_ext} found for location ",
       "{location} in directory {model_run_dir}"
     ))
     return(NULL)
@@ -91,7 +93,12 @@ collate_scores_for_date <- function(model_run_dir,
 
   date_score_table <- purrr::map(
     locations_to_process,
-    process_loc_date_score_table
+    \(x) {
+      process_loc_date_score_table(x,
+        score_file_name = score_file_name,
+        score_file_ext = score_file_ext
+      )
+    }
   ) |>
     bind_tables()
 
@@ -145,7 +152,7 @@ collate_all_score_tables <- function(model_base_dir,
       "Saving full score table to ",
       "{score_file_save_path}..."
     )))
-    readr::write_rds(full_score_table, save_path)
+    readr::write_rds(full_score_table, score_file_save_path)
   }
 
   message("Done creating full score table.")
@@ -182,7 +189,7 @@ p <- arg_parser(
   add_argument(
     "--score-file-ext",
     help = "File extension for score files.",
-    default = ".rds"
+    default = "rds"
   ) |>
   add_argument(
     "--save-batch-scores",
@@ -202,7 +209,7 @@ collate_all_score_tables(
   score_file_ext = argv$score_file_ext,
   score_file_save_path =
     fs::path(argv$model_base_dir,
-      glue::glue("{argv$disease}_score_table"),
+      glue::glue("{argv$disease}_{argv$score_file_name}"),
       ext = argv$score_file_ext
     ),
   save_batch_scores = argv$save_batch_scores
