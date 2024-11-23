@@ -17,7 +17,21 @@ from fit_model import fit_and_save_model  # noqa
 from generate_predictive import generate_and_save_predictions  # noqa
 
 
-def baseline_forecasts(
+def generate_epiweekly(model_run_dir: Path) -> None:
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/generate_epiweekly.R",
+            f"{model_run_dir}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"generate_epiweekly: {result.stderr}")
+    return None
+
+
+def timeseries_forecasts(
     model_run_dir: Path, n_forecast_days: int, n_samples: int
 ) -> None:
     result = subprocess.run(
@@ -33,7 +47,7 @@ def baseline_forecasts(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"baseline_forecasts: {result.stderr}")
+        raise RuntimeError(f"timeseries_forecasts: {result.stderr}")
     return None
 
 
@@ -215,6 +229,10 @@ def main(
         model_run_dir=model_run_dir,
         logger=logger,
     )
+
+    logger.info("Generating epiweekly data...")
+    generate_epiweekly(model_run_dir)
+
     logger.info("Data preparation complete.")
 
     logger.info("Fitting model")
@@ -236,10 +254,10 @@ def main(
         "forecasting..."
     )
     n_denominator_samples = n_samples * n_chains
-    baseline_forecasts(
+    timeseries_forecasts(
         model_run_dir, n_days_past_last_training, n_denominator_samples
     )
-    logger.info("Forecasting complete.")
+    logger.info("All forecasting complete.")
     logger.info("Getting eval data...")
     if eval_data_path is None:
         raise ValueError("No path to an evaluation dataset provided.")
