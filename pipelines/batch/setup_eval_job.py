@@ -108,7 +108,7 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-test-output/eval2",
+                "source": "pyrenew-test-output/eval3",
                 "target": "/pyrenew-hew/output",
             },
             {
