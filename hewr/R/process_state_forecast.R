@@ -104,15 +104,16 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
     ) |>
     dplyr::mutate(prop_disease_ed_visits = Disease /
       (Disease + Other)) |>
-    pivot_longer(c(Disease, Other, prop_disease_ed_visits),
+    tidyr::pivot_longer(c(Disease, Other, prop_disease_ed_visits),
       names_to = "disease",
       values_to = ".value"
     ) |>
-    mutate(date = foreacsttools::epiweek_to_date(
+    dplyr::mutate(date = forecasttools::epiweek_to_date(
       epiweek,
       epiyear,
       day_of_week = 7
     ))
+
   forecast_ci <-
     forecast_samples |>
     dplyr::select(date, disease, .value) |>
