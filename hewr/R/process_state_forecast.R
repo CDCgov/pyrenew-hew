@@ -90,7 +90,29 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
       values_to = ".value"
     )
 
-
+  epiweekly_forecast_samples <- forecast_samples |>
+    dplyr::filter(disease != "prop_disease_ed_visits") |>
+    dplyr::group_by(disease) |>
+    dplyr::group_modify(~ forecasttools::daily_to_epiweekly(.x,
+      value_col = ".value", weekly_value_name = ".value",
+      strict = strict
+    )) |>
+    dplyr::ungroup() |>
+    tidyr::pivot_wider(
+      names_from = disease,
+      values_from = .value
+    ) |>
+    dplyr::mutate(prop_disease_ed_visits = Disease /
+      (Disease + Other)) |>
+    pivot_longer(c(Disease, Other, prop_disease_ed_visits),
+      names_to = "disease",
+      values_to = ".value"
+    ) |>
+    mutate(date = foreacsttools::epiweek_to_date(
+      epiweek,
+      epiyear,
+      day_of_week = 7
+    ))
   forecast_ci <-
     forecast_samples |>
     dplyr::select(date, disease, .value) |>
@@ -113,6 +135,12 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
         ext = "parquet"
       )
     )
+    arrow::write_parquet(
+      epiweekly_forecast_samples,
+      fs::path(model_run_dir, "epiweekly_forecast_samples",
+        ext = "parquet"
+      )
+    )
 
     arrow::write_parquet(
       forecast_ci,
@@ -124,6 +152,7 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
   return(list(
     combined_dat = combined_dat,
     forecast_samples = forecast_samples,
+    epiweekly_forecast_samples = epiweekly_forecast_samples,
     forecast_ci = forecast_ci
   ))
 }

@@ -163,7 +163,7 @@ read_and_score_location <- function(model_run_dir,
 
   forecast_path <- fs::path(
     model_run_dir,
-    "forecast_samples",
+    glue::glue("{prefix}forecast_samples"),
     ext = parquet_file_ext
   )
   ts_baseline_path <- fs::path(
@@ -184,29 +184,7 @@ read_and_score_location <- function(model_run_dir,
 
   actual_data <- prep_truth_data(truth_path)
 
-  pyrenew <- arrow::read_parquet(forecast_path)
-  # Collate pyrenew forecasts by epiweek. NB default is strict weeks.
-  if (epiweekly) {
-    pyrenew <- pyrenew |>
-      filter(disease != "prop_disease_ed_visits") |>
-      group_by(disease) |>
-      group_modify(~ forecasttools::daily_to_epiweekly(.x,
-        value_col = ".value", weekly_value_name = ".value",
-        strict = strict
-      )) |>
-      ungroup() |>
-      pivot_wider(names_from = disease, values_from = .value) |>
-      mutate(prop_disease_ed_visits = Disease / (Disease + Other)) |>
-      pivot_longer(c(Disease, Other, prop_disease_ed_visits),
-        names_to = "disease",
-        values_to = ".value"
-      ) |>
-      mutate(date = epiweek_to_date(epiweek, epiyear,
-        day_of_week = day_of_week
-      ))
-  }
-
-  pyrenew <- pyrenew |>
+  pyrenew <- arrow::read_parquet(forecast_path) |>
     mutate(model = "pyrenew-hew") |>
     select(date, .draw, disease, model, .value)
 
