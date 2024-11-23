@@ -230,7 +230,11 @@ read_and_score_location <- function(model_run_dir,
     cdc_baseline,
     actual_data,
     by = c("disease", "date")
-  )
+  ) |>
+    filter(
+      disease == "prop_disease_ed_visits",
+      date >= !!report_date
+    )
 
   sample_forecasts_to_score <- bind_rows(
     pyrenew,
