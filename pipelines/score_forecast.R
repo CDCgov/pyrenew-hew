@@ -48,9 +48,13 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
-score_single_run <- function(
-    scorable_data, quantile_only_data, forecast_unit, observed, predicted,
-    sample_id = ".draw", model_col = "model", ...) {
+score_single_run <- function(scorable_data,
+                             quantile_only_data,
+                             forecast_unit,
+                             observed,
+                             predicted,
+                             sample_id = ".draw",
+                             model_col = "model", ...) {
   forecast_sample_df <- scorable_data |>
     scoringutils::as_forecast_sample(
       forecast_unit = forecast_unit,
@@ -69,7 +73,6 @@ score_single_run <- function(
   quants <- unique(quantile_only_df$quantile_level)
   quantiles_from_samples_df <- forecast_sample_df |>
     scoringutils::as_forecast_quantile(probs = quants)
-
 
 
   forecast_quantile_df <-
@@ -156,18 +159,21 @@ read_and_score_location <- function(model_run_dir,
                                     eval_data_file_ext = "tsv",
                                     parquet_file_ext = "parquet",
                                     rds_file_ext = "rds",
-                                    strict = TRUE,
-                                    day_of_week = 1) {
+                                    strict = TRUE) {
   if (epiweekly) {
     message(glue::glue("Scoring epiweekly {model_run_dir}..."))
   } else {
-    message(glue::glue("Scoring daily  {model_run_dir}..."))
+    message(glue::glue("Scoring daily {model_run_dir}..."))
   }
   prefix <- ""
   if (epiweekly) {
     prefix <- "epiweekly_"
     eval_data_filename <- glue::glue("{prefix}{eval_data_filename}")
   }
+
+  forecast_date <- hewr::parse_model_run_dir_path(
+    model_run_dir
+  )$forecast_date
 
   forecast_path <- fs::path(
     model_run_dir,
@@ -233,7 +239,10 @@ read_and_score_location <- function(model_run_dir,
     inner_join(actual_data,
       by = c("disease", "date")
     ) |>
-    filter(disease == "prop_disease_ed_visits")
+    filter(
+      disease == "prop_disease_ed_visits",
+      date >= !!forecast_date
+    )
 
   max_visits <- actual_data |>
     filter(disease == "Total") |>
