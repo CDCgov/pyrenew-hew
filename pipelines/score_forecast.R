@@ -83,9 +83,17 @@ score_single_run <- function(
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
 
+  interval_coverage_95 <- purrr::partial(scoringutils::interval_coverage,
+    interval_range = 95
+  )
+
+  quantile_metrics <- c(get_metrics(forecast_quantile_df),
+    interval_coverage_95 = interval_coverage_95
+  )
+
   quantile_scores <- forecast_quantile_df |>
     scoringutils::transform_forecasts(...) |>
-    scoringutils::score()
+    scoringutils::score(metrics = quantile_metrics)
   # Add relative skill if more than one model is present
   if (n_distinct(scorable_data[[model_col]]) > 1) {
     sample_scores <- scoringutils::add_relative_skill(sample_scores)
