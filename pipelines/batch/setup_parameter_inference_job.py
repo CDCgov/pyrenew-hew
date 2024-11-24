@@ -1,6 +1,6 @@
 """
-Set up a multi-location,  multi-disease production run
-of pyrenew-hew on Azure Batch.
+Set up a multi-location,  multi-disease parameter
+inference run for pyrenew-hew on Azure Batch.
 """
 
 import argparse
@@ -32,7 +32,6 @@ def main(
         "VI",
         "WY",
     ],
-    test: bool = False,
 ) -> None:
     """
     job_id
@@ -68,9 +67,6 @@ def main(
         we typically do not have available NSSP ED visit data:
         ``["AS", "GU", "MO", "MP", "PR", "UM", "VI", "WY"]``.
 
-    test
-        Is this a testing run? Default ``False``.
-
     Returns
     -------
     None
@@ -86,11 +82,9 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
-    pyrenew_hew_output_container = (
-        "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
-    )
-    n_warmup = 200 if test else 1000
-    n_samples = 200 if test else 500
+    pyrenew_hew_output_container = "pyrenew-test-output"
+    n_warmup = 1000
+    n_samples = 500
 
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
@@ -137,7 +131,7 @@ def main(
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 90 "
+        "--n-training-days 450 "
         "--n-warmup {n_warmup} "
         "--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
@@ -161,7 +155,7 @@ def main(
 
     all_locations = [
         loc
-        for loc in locations.get_column("STUSAB").to_list() + ["US"]
+        for loc in ["US"] + locations.get_column("STUSAB").to_list()
         if loc not in excluded_locations
     ]
 
