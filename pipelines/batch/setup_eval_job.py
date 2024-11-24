@@ -49,8 +49,9 @@ def main(
         values are 'COVID-19' and 'Influenza'.
 
     output_subdir
-       Output subdirectory, relative to the output blog storage
-       container.
+        Subdirectory of the output blob storage container
+        in which to save results.
+
 
     container_image_name:
         Name of the container to use for the job.
@@ -114,7 +115,7 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
-                "source": str(Path("pyrenew-test-output", output_subdir)),
+                "source": "pyrenew-test-output",
                 "target": "/pyrenew-hew/output",
             },
             {
@@ -136,10 +137,10 @@ def main(
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--output-data-dir output "
+        "--output-dir {output_dir} "
         "--priors-path config/eval_priors.py "
         "--report-date {report_date:%Y-%m-%d} "
-        "--exclude-last-n-days 1 "
+        "--exclude-last-n-days {exclude_last_n} "
         "--score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
@@ -164,7 +165,8 @@ def main(
     for disease, report_date, loc in itertools.product(
         disease_list, report_dates, all_locations
     ):
-        n_training = 75
+        n_training = 90
+        exclude_last_n = 3
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-{report_date}",
             base_call=base_call.format(
@@ -172,6 +174,8 @@ def main(
                 disease=disease,
                 report_date=report_date,
                 n_training=n_training,
+                exclude_last_n=exclude_last_n,
+                output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
         )

@@ -7,6 +7,7 @@ on Azure Batch.
 
 import argparse
 import itertools
+from pathlib import Path
 
 import polars as pl
 from azure.batch import models
@@ -20,6 +21,7 @@ def main(
     job_id: str,
     pool_id: str,
     diseases: str | list[str],
+    output_subdir: str | Path = "./",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     excluded_locations: list[str] = [
@@ -45,6 +47,10 @@ def main(
         Name(s) of disease(s) to run as part of the job,
         as a single string (one disease) or a list of strings.
         Supported values are 'COVID-19' and 'Influenza'.
+
+     output_subdir
+        Subdirectory of the output blob storage container
+        in which to save results.
 
     container_image_name:
         Name of the container to use for the job.
@@ -137,7 +143,7 @@ def main(
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--output-data-dir output "
+        "--output-dir {output_dir} "
         "--priors-path config/prod_priors.py "
         "--report-date {report_date} "
         "--exclude-last-n-days 5 "
@@ -167,6 +173,7 @@ def main(
                 report_date="latest",
                 n_warmup=n_warmup,
                 n_samples=n_samples,
+                output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
         )
@@ -191,6 +198,16 @@ parser.add_argument(
         "as a whitespace-separated string. Supported "
         "values are 'COVID-19' and 'Influenza'."
     ),
+)
+
+parser.add_argument(
+    "--output-subdir",
+    type=str,
+    help=(
+        "Subdirectory of the output blob storage container "
+        "in which to save results."
+    ),
+    default="./",
 )
 
 parser.add_argument(

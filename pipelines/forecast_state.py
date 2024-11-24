@@ -112,7 +112,7 @@ def main(
     state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
     priors_path: Path | str,
-    output_data_dir: Path | str,
+    output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
     n_chains: int,
@@ -206,7 +206,7 @@ def main(
         f"{first_training_date}_t_{last_training_date}"
     )
 
-    model_batch_dir = Path(output_data_dir, model_batch_dir_name)
+    model_batch_dir = Path(output_dir, model_batch_dir_name)
 
     model_run_dir = Path(model_batch_dir, "model_runs", state)
 
@@ -361,10 +361,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--output-data-dir",
+        "--output-dir",
         type=Path,
         default="private_data",
-        help="Directory in which to save output data.",
+        help="Directory in which to save output.",
     )
 
     parser.add_argument(
