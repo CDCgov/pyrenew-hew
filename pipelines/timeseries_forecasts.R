@@ -83,17 +83,17 @@ fit_and_forecast <- function(data,
     filter(data_type == "train") |>
     model(
       comb_model = combination_ensemble(
-        ETS(log(!!target_sym + offset) ~ trend(
+        ETS(log(!!target_sym + !!offset) ~ trend(
           method = c("N", "M", "A")
         )),
-        ARIMA(log(!!target_sym + offset))
+        ARIMA(log(!!target_sym + !!offset))
       )
     )
 
   forecast_samples <- fit |>
     generate(h = forecast_horizon, times = n_samples) |>
     as_tibble() |>
-    mutate(!!output_col := pmax(data$.sim, 0), # clip values
+    mutate(!!output_col := pmax(.data$.sim, 0), # clip values
       .draw = as.integer(.data$.rep)
     ) |>
     select("date", ".draw", all_of(output_col))
