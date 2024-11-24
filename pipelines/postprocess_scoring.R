@@ -145,44 +145,6 @@ location_score_table <- function(location, quantile_scores, ...) {
   return
 }
 
-#' Save a list of plots as a PDF, with a
-#' grid of `nrow` by `ncol` plots per page
-#'
-#' @param list_of_plots list of plots to save to PDF
-#' @param save_path path to which to save the plots
-#' @param nrow Number of rows of plots per page
-#' (passed to [gridExtra::marrangeGrob()])
-#' Default `1`.
-#' @param ncol Number of columns of plots per page
-#' (passed to [gridExtra::marrangeGrob()]).
-#' Default `1`.
-#' @param width page width in device units (passed to
-#' [ggplot2::ggsave()]). Default `8.5`.
-#' @param height page height in device units (passed to
-#' [ggplot2::ggsave()]). Default `11`.
-#' @return `TRUE` on success.
-#' @export
-plots_to_pdf <- function(list_of_plots,
-                         save_path,
-                         nrow = 1,
-                         ncol = 1,
-                         width = 8.5,
-                         height = 11) {
-  if (!(tolower(fs::path_ext(save_path)) == ".pdf")) {
-    cli::cli_abort("Filepath must end with `.pdf`")
-  }
-  cli::cli_inform("Saving plots to {save_path}")
-  ggplot2::ggsave(
-    filename = save_path,
-    plot = gridExtra::marrangeGrob(list_of_plots,
-      nrow = nrow,
-      ncol = ncol
-    ),
-    width = width,
-    height = height
-  )
-  return(TRUE)
-}
 
 relative_wis_by_location <- function(scores,
                                      baseline_model = "cdc_baseline") {
@@ -285,7 +247,7 @@ main <- function(path_to_scores,
     glue::glue("Saving figure to {rel_wis_by_date_loc_save_path}...")
   )
 
-  plots_to_pdf(rel_wis_by_date_and_location,
+  forecasttools::plots_to_pdf(rel_wis_by_date_and_location,
     rel_wis_by_date_loc_save_path,
     width = 8,
     height = 4
