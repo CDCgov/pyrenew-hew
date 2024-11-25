@@ -124,6 +124,7 @@ def merge_pdfs_from_subdirs(
 def process_dir(
     base_dir: Path | str,
     target_filenames: str | list[str],
+    model_run_subdir_name: str = "model_runs",
     save_dir: Path | str = None,
     file_prefix: str = "",
     subdirs_only: list[str] = None,
@@ -136,7 +137,7 @@ def process_dir(
     Parameters
     ----------
     base_dir
-        Path to the base directory in which to look
+        Path to the base directory in which to look.
 
     target_filenames
         One or more PDFs filenames to look for in the
@@ -144,7 +145,13 @@ def process_dir(
 
     save_dir
         Directory in which to save the merged PDFs.
-        If ``None``, use a "figures" directory in the parent directory of ``base_dir``. Default ``None``.
+        If ``None``, use a "figures" directory in
+        the parent directory of ``base_dir``. Default ``None``.
+
+    model_run_subdir_name
+        Name of the subdirectory of that base directory.
+        containing individual model runs directories.
+        Default `"model_runs"`.
 
     file_prefix
         Prefix to append to the names in `target_filenames`
@@ -156,11 +163,11 @@ def process_dir(
         subdirectories of ``base_dir``. Default ``None``.
     """
     if save_dir is None:
-        save_dir = Path(base_dir).parent / "figures"
+        save_dir = Path(base_dir) / "figures"
 
     for file_name in ensure_listlike(target_filenames):
         merge_pdfs_from_subdirs(
-            base_dir,
+            Path(base_dir, model_run_subdir_name),
             file_name,
             save_dir,
             output_file_name=file_prefix + file_name,
@@ -194,14 +201,15 @@ def collate_from_all_subdirs(
 
     save_dir
         Directory in which to save the merged PDFs.
-        If ``None``, use a "figures" directory in the parent directory of ``model_base_dir``. Default ``None``.
+        If ``None``, use a "figures" subdirectory in
+        ``model_base_dir``. Default ``None``.
 
     Returns
     -------
     None
     """
     if save_dir is None:
-        save_dir = Path(model_base_dir).parent / "figures"
+        save_dir = Path(model_base_dir) / "figures"
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
