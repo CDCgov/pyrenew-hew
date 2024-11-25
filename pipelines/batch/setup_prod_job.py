@@ -147,7 +147,7 @@ def main(
         "--output-dir {output_dir} "
         "--priors-path config/prod_priors.py "
         "--report-date {report_date} "
-        "--exclude-last-n-days 5 "
+        "--exclude-last-n-days 1 "
         "--no-score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
