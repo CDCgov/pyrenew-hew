@@ -1,12 +1,11 @@
 """
-Set up a multi-location, multi-date,
-potentially multi-disease end to end
-retrospective evaluation run for pyrenew-hew
-on Azure Batch.
+Set up a multi-location,  multi-disease production run
+of pyrenew-hew on Azure Batch.
 """
 
 import argparse
 import itertools
+from pathlib import Path
 
 import polars as pl
 from azure.batch import models
@@ -20,6 +19,7 @@ def main(
     job_id: str,
     pool_id: str,
     diseases: str | list[str],
+    output_subdir: str | Path = "./",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     excluded_locations: list[str] = [
@@ -46,6 +46,10 @@ def main(
         as a single string (one disease) or a list of strings.
         Supported values are 'COVID-19' and 'Influenza'.
 
+     output_subdir
+        Subdirectory of the output blob storage container
+        in which to save results.
+
     container_image_name:
         Name of the container to use for the job.
         This container should exist within the Azure
@@ -63,6 +67,9 @@ def main(
         exclude from the job. Defaults to locations for which
         we typically do not have available NSSP ED visit data:
         ``["AS", "GU", "MO", "MP", "PR", "UM", "VI", "WY"]``.
+
+    test
+        Is this a testing run? Default ``False``.
 
     Returns
     -------
@@ -137,10 +144,10 @@ def main(
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--output-data-dir output "
+        "--output-dir {output_dir} "
         "--priors-path config/prod_priors.py "
         "--report-date {report_date} "
-        "--exclude-last-n-days 5 "
+        "--exclude-last-n-days 1 "
         "--no-score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
@@ -167,6 +174,7 @@ def main(
                 report_date="latest",
                 n_warmup=n_warmup,
                 n_samples=n_samples,
+                output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
         )
@@ -191,6 +199,16 @@ parser.add_argument(
         "as a whitespace-separated string. Supported "
         "values are 'COVID-19' and 'Influenza'."
     ),
+)
+
+parser.add_argument(
+    "--output-subdir",
+    type=str,
+    help=(
+        "Subdirectory of the output blob storage container "
+        "in which to save results."
+    ),
+    default="./",
 )
 
 parser.add_argument(

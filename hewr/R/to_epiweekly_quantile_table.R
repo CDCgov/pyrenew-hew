@@ -94,7 +94,9 @@ to_epiweekly_quantiles <- function(model_run_dir,
 #' @export
 to_epiweekly_quantile_table <- function(model_batch_dir,
                                         exclude = NULL) {
-  locations_to_process <- fs::dir_ls(model_batch_dir,
+  model_runs_path <- fs::path(model_batch_dir, "model_runs")
+
+  locations_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
   )
 

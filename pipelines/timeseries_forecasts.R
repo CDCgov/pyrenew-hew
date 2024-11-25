@@ -76,27 +76,31 @@ fit_and_forecast <- function(data,
   target_sym <- sym(target_col)
   output_sym <- sym(output_col)
 
-  max_visits <- data |>
-    pull(!!target_sym) |>
-    max(na.rm = TRUE)
-  offset <- 1 / max_visits
+  offset <- 1
 
-  fit <-
-    data |>
+  fit <- data |>
     as_tsibble(index = date) |>
     filter(data_type == "train") |>
     model(
       comb_model = combination_ensemble(
-        ETS(log(!!target_sym + offset) ~ trend(method = c("N", "M", "A"))),
-        ARIMA(log(!!target_sym + offset))
+        ETS(log(!!target_sym + !!offset) ~ trend(
+          method = c("N", "M", "A")
+        )),
+        ARIMA(log(!!target_sym + !!offset))
       )
     )
 
   forecast_samples <- fit |>
     generate(h = forecast_horizon, times = n_samples) |>
     as_tibble() |>
-    mutate("{output_col}" := .sim, .draw = as.integer(.rep)) |> # nolint
-    select(date, .draw, !!output_sym)
+    mutate(!!output_col := pmax(.data$.sim, 0), # clip values
+      .draw = as.integer(.data$.rep)
+    ) |>
+    select("date", ".draw", all_of(output_col))
+
+  if (any(forecast_samples[[output_col]] < 0)) {
+    stop(glue::glue("Negative count forecast for {output_col}"))
+  }
 
   forecast_samples
 }

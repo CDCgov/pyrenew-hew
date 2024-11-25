@@ -65,4 +65,4 @@ ed_visit_wday_effect_rv = TransformedVariable(
 )
 
 # Based on looking at some historical posteriors.
-phi_rv = DistributionalVariable("phi", dist.LogNormal(6, 1))
+phi_rv = DistributionalVariable("phi", dist.LogNormal(4, 1))

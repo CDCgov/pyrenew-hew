@@ -82,6 +82,17 @@ score_single_run <- function(scorable_data,
     ) |>
     scoringutils::as_forecast_quantile()
 
+  scoringutils::assert_forecast(forecast_quantile_df)
+
+  negatives <- forecast_quantile_df |>
+    dplyr::filter(predicted < 0 | observed < 0) |>
+    dplyr::select(date, model, predicted, observed)
+
+  if (nrow(negatives) > 0) {
+    print(negatives)
+    stop("Unexpected negative values in forecast_quantile_df.")
+  }
+
   sample_scores <- forecast_sample_df |>
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
