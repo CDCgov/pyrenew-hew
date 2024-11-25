@@ -165,11 +165,8 @@ read_and_score_location <- function(model_run_dir,
   } else {
     message(glue::glue("Scoring daily {model_run_dir}..."))
   }
-  prefix <- ""
-  if (epiweekly) {
-    prefix <- "epiweekly_"
-    eval_data_filename <- glue::glue("{prefix}{eval_data_filename}")
-  }
+  prefix <- if_else(epiweekly, "epiweekly_", "")
+  eval_data_filename <- glue::glue("{prefix}{eval_data_filename}")
 
   report_date <- hewr::parse_model_run_dir_path(
     model_run_dir
