@@ -9,7 +9,7 @@ format:
 params:
   model_dir_raw: "/home/xum8/pyrenew-hew/private_data/pyrenew-test-output/covid-19_r_2024-11-22_f_2024-08-19_t_2024-11-16/model_runs/SC" # pragma: allowlist-secret
 ---
-<!-- Would like mebed-resources to be true, but the current version is problematic with blobfuse -->
+<!-- Would like embed-resources to be true, but the current version is problematic with blobfuse -->
 
 ```{r Parse Params}
 library(arrow)
@@ -56,6 +56,7 @@ cat(formatted_available_states)
 
 
 ```{r Model Metadata}
+#| title: Model Info
 model_info |>
   enframe() |>
   mutate(value = map_chr(value, as.character)) |>
@@ -64,8 +65,6 @@ model_info |>
 
 # Forecasts {scrolling="true"}
 ```{r Example Forecast}
-#| title: A Forecast
-
 theme_set(cowplot::theme_cowplot())
 forecast_ci <- read_parquet(
   path(model_dir, "forecast_ci", ext = "parquet")
@@ -168,8 +167,8 @@ figure_save_tbl |>
 
 # Parameters
 
-```{r}
-#| fill: false
+```{r Rt Plot}
+#| title: Posterior Rt
 date_time_map <- combined_dat |>
   filter(data_type == "train") |>
   distinct(time, date)
