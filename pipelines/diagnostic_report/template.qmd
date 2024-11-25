@@ -6,7 +6,6 @@ format:
     - flatly
     - custom.scss
     embed-resources: false
-    scrolling: true
 params:
   model_dir_raw: "/home/xum8/pyrenew-hew/private_data/pyrenew-test-output/covid-19_r_2024-11-22_f_2024-08-19_t_2024-11-16/model_runs/SC" # pragma: allowlist-secret
 ---
@@ -18,6 +17,12 @@ library(tidyverse)
 library(fs)
 library(hewr)
 library(knitr)
+library(cowplot)
+library(arrow)
+library(DT)
+library(htmltools)
+library(tidybayes)
+library(latex2exp)
 
 model_dir <- path(params$model_dir_raw)
 model_info <- parse_model_run_dir_path(model_dir)
@@ -32,7 +37,6 @@ available_states <- model_dir %>%
 
 ```{r Render Sidebar}
 #| output: asis
-library(htmltools)
 formatted_available_states <-
   available_states %>%
   map(\(x) a(x, href = path(x, ext = "html"))) %>%
@@ -53,12 +57,9 @@ model_info |>
   kable()
 ```
 
-# Forecasts
-
+# Forecasts {scrolling="true"}
 ```{r Example Forecast}
 #| title: A Forecast
-library(cowplot)
-library(arrow)
 
 theme_set(cowplot::theme_cowplot())
 forecast_ci <- read_parquet(
@@ -160,6 +161,43 @@ figure_save_tbl |>
   pluck(1)
 ```
 
+# Parameters
+
+```{r}
+#| fill: false
+date_time_map <- combined_dat |>
+  filter(data_type == "train") |>
+  distinct(time, date)
+
+pyrenew_posterior <- read_parquet(
+  path(model_dir, "mcmc_tidy", "pyrenew_posterior", ext = "parquet")
+) |>
+  tidy_draws()
+
+rt_ci <- pyrenew_posterior |>
+  gather_draws(rt[time]) |>
+  median_qi(.width = c(0.5, 0.8, 0.95)) |>
+  mutate(time = time + 1) |>
+  left_join(date_time_map, by = "time")
+
+
+ggplot(rt_ci, aes(date, .value, ymin = .lower, ymax = .upper)) +
+  geom_lineribbon(
+    color = "#08519c",
+    key_glyph = ggplot2::draw_key_rect,
+    step = "mid"
+  ) +
+  ggplot2::scale_fill_brewer(
+    name = "Credible Interval Width",
+    labels = ~ scales::label_percent()(as.numeric(.))
+  ) +
+  scale_y_log10(TeX("$R_t$")) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  cowplot::theme_minimal_grid() +
+  ggtitle(TeX("Posterior $R_t$")) +
+  theme(legend.position = "bottom")
+```
+
 
 # MCMC Diagnostics
 
@@ -176,7 +214,6 @@ idata_summary = az.summary(idata)
 
 ```{r Render InferenceData}
 #| title: MCMC Summary
-library(DT)
 datatable(py$idata_summary)
 # highlight or exclusively show bad rhats and ess?
 ```
