@@ -215,5 +215,4 @@ idata_summary = az.summary(idata)
 ```{r Render InferenceData}
 #| title: MCMC Summary
 datatable(py$idata_summary)
-# highlight or exclusively show bad rhats and ess?
 ```

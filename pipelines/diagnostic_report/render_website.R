@@ -17,11 +17,12 @@ template_dir <- dir <- path("pipelines", "diagnostic_report")
 css_file_name <- path("custom", ext = "scss")
 
 template_css_path <- path(template_dir, css_file_name) |> path_real()
+site_output_css_path <- path(site_output_dir, css_file_name)
 template_qmd_path <- path(template_dir, "template", ext = "qmd")
 
 
-wd_css <- tryCatch(
-  path_real(css_file_name),
+site_output_css_path_real <- tryCatch(
+  path_real(site_output_css_path),
   error = function(e) {
     message("An error occurred: ", e$message)
     FALSE
@@ -30,8 +31,8 @@ wd_css <- tryCatch(
 
 # Temporarily create template css in working directory
 # otherwise quarto_render won't be able to find it
-if (template_css_path != wd_css) {
-  file_copy(template_css_path, css_file_name, overwrite = TRUE)
+if (template_css_path != site_output_css_path_real) {
+  file_copy(template_css_path, site_output_css_path, overwrite = TRUE)
 }
 
 
@@ -63,6 +64,6 @@ pwalk(
 file_delete(quarto_render_tbl$qmd_path)
 
 # Clean up css in working directory
-if (template_css_path != wd_css) {
-  file_delete(css_file_name)
+if (template_css_path != site_output_css_path_real) {
+  file_delete(site_output_css_path)
 }
