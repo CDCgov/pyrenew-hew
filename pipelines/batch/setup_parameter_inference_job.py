@@ -165,7 +165,7 @@ def main(
             base_call=base_call.format(
                 state=state,
                 disease=disease,
-                report_date="latest",
+                report_date="2024-04-01",
                 n_warmup=n_warmup,
                 n_samples=n_samples,
                 output_dir=str(Path("output", output_subdir)),
