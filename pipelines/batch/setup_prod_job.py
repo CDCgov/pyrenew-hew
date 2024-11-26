@@ -1,5 +1,5 @@
 """
-Set up a multi-location,  multi-disease production run
+Set up a multi-location, multi-disease production run
 of pyrenew-hew on Azure Batch.
 """
 
