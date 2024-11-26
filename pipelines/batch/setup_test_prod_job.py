@@ -87,6 +87,7 @@ if __name__ == "__main__":
         "WI",
         "WV",
     ]
+
     main(
         job_id=f"pyrenew-hew-test-{current_datetime}",
         pool_id="pyrenew-pool",
