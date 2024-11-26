@@ -178,7 +178,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("parameter") == "generation_interval")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect()
+        .collect(streaming=True)
         .get_column("value")
         .to_list()[0]
     )
@@ -190,7 +190,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("parameter") == "delay")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect()
+        .collect(streaming=True)
         .get_column("value")
         .to_list()[0]
     )
@@ -203,7 +203,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("end_date").is_null())
         )
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect()
+        .collect(streaming=True)
         .get_column("value")
         .to_list()[0]
     )
