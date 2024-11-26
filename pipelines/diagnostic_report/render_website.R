@@ -13,7 +13,7 @@ base_dir <- path(
 # The site should be contained in a single directory for easy linking between
 # pages and sharing html files
 site_output_dir <- path(base_dir, "diagnostic_report")
-template_dir <- dir <- path("pipelines", "diagnostic_report")
+template_dir <- path("pipelines", "diagnostic_report")
 css_file_name <- path("custom", ext = "scss")
 
 template_css_path <- path(template_dir, css_file_name) |> path_real()
