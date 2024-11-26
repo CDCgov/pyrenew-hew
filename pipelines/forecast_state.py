@@ -81,6 +81,20 @@ def score_forecast(model_run_dir: Path) -> None:
     return None
 
 
+def render_webpage(model_run_dir: Path) -> None:
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/render_webpage.R",
+            f"{model_run_dir}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"render_webpage: {result.stderr}")
+    return None
+
+
 def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
@@ -261,6 +275,10 @@ def main(
     logger.info("Postprocessing forecast...")
     postprocess_forecast(model_run_dir)
     logger.info("Postprocessing complete.")
+
+    logger.info("Rendering webpage...")
+    render_webpage(model_run_dir)
+    logger.info("Rendering complete.")
 
     if score:
         logger.info("Scoring forecast...")
