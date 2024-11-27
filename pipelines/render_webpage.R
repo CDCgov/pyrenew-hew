@@ -13,6 +13,8 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 render_webpage <- function(model_run_dir, template_qmd_path) {
+  model_run_dir <- path_real(model_run_dir)
+  template_qmd_path <- path_real(template_qmd_path)
   location <- parse_model_run_dir_path(model_run_dir)$location
 
   model_batch_dir <- model_run_dir |>
