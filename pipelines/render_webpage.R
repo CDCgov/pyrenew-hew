@@ -41,7 +41,7 @@ render_webpage <- function(model_run_dir, template_qmd_path) {
   )
   message("rendered ", page_html)
 
-  # file_delete(page_qmd) # nolint
+  file_delete(page_qmd)
 }
 
 p <- arg_parser("Render diagnostic dashboard for a single location forecast") |>
