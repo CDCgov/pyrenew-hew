@@ -36,7 +36,6 @@ render_webpage <- function(model_run_dir, template_qmd_path) {
 
   quarto_render(
     input = page_qmd,
-    debug = TRUE,
     execute_params = list(model_dir_raw = model_run_dir)
   )
   message("rendered ", page_html)
