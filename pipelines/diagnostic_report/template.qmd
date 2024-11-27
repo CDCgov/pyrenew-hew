@@ -208,7 +208,6 @@ ggplot(rt_ci, aes(date, .value, ymin = .lower, ymax = .upper)) +
 ```{python Load InferenceData}
 from pathlib import Path
 import polars as pl
-from itables import to_html_datatable
 import arviz as az
 
 model_dir = Path(r.params["model_dir_raw"])
