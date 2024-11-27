@@ -82,16 +82,20 @@ def score_forecast(model_run_dir: Path) -> None:
 
 
 def render_webpage(model_run_dir: Path) -> None:
-    result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/render_webpage.R",
-            f"{model_run_dir}",
-        ],
-        capture_output=True,
-    )
+    with open(Path(model_run_dir, "render_webpage.log"), "w") as log_file:
+        result = subprocess.run(
+            [
+                "Rscript",
+                "pipelines/render_webpage.R",
+                f"{model_run_dir}",
+            ],
+            stdout=log_file,
+            stderr=log_file,
+        )
     if result.returncode != 0:
-        raise RuntimeError(f"render_webpage: {result.stderr}")
+        raise RuntimeError(
+            f"render_webpage: see render_webpage.log for details"
+        )
     return None
 
 
