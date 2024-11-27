@@ -149,14 +149,9 @@ cdc_flat_forecast <- function(data,
 main <- function(
     model_run_dir, n_forecast_days = 28, n_samples = 2000,
     epiweekly = FALSE) {
-  prefix <- ""
-  dataname <- "data"
-  data_frequency <- "1 day"
-  if (epiweekly) {
-    dataname <- glue::glue("epiweekly_{dataname}")
-    prefix <- "epiweekly_"
-    data_frequency <- "1 week"
-  }
+  prefix <- if_else(epiweekly, "epiweekly_", "")
+  data_frequency <- if_else(epiweekly, "1 week", "1 day")
+  dataname <- if_else(epiweekly, "epiweekly_data", "data")
   # to do: do this with json data that has dates
   data_path <- path(model_run_dir, dataname, ext = "csv")
 
