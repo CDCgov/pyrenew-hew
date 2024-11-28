@@ -6,58 +6,87 @@ categories <- arrow::read_parquet(path_categories) |>
   transmute(
     disease,
     location = state_abb,
+    prop_lower_bound = 0,
     prop_low = perc_level_low / 100,
     prop_moderate = perc_level_moderate / 100,
     prop_high = perc_level_high / 100,
-    prop_very_high = perc_level_very_high / 100
+    prop_very_high = perc_level_very_high / 100,
+    prop_upper_bound = 1,
+    very_low_name = "very low",
+    low_name = "low",
+    moderate_name = "moderate",
+    high_name = "high",
+    very_high_name = "very high"
   ) |>
   tidyr::nest(
     bin_breaks = c(
+      prop_lower_bound,
       prop_low,
       prop_moderate,
       prop_high,
-      prop_very_high
+      prop_very_high,
+      prop_upper_bound
     ),
     bin_names = c(
-      "very low", "low", "moderate", "high"
+      very_low_name,
+      low_name,
+      moderate_name,
+      high_name,
+      very_high_name
     )
   )
 
 
 
 with_category_cutpoints <- function(df,
-                                    disease,
-                                    location_column = "location") {
+                                    disease) {
   with_cutpoints <- df |>
     mutate(disease = !!disease) |>
-    inner_join(categories, by = c(
-      !!location_column == "location",
-      "disease"
-    ))
+    inner_join(categories, by = c("location", "disease"))
   return(with_cutpoints)
 }
 
-to_categorized_iqr <- function(hub_table, disease) {
+categorize_vec <- function(values, break_sets, label_sets) {
+  return(purrr::pmap_vec(
+    list(
+      x = values,
+      breaks = break_sets,
+      labels = label_sets,
+      include.lowest = TRUE,
+      order = TRUE,
+      right = TRUE
+    ),
+    cut
+  ))
+}
+
+to_categorized_iqr <- function(hub_table,
+                               disease,
+                               .keep = FALSE) {
   result <- hub_table |>
     pivot_hubverse_quantiles_wider() |>
     with_category_cutpoints(disease = disease) |>
     mutate(
-      category_point = cut(.data$point,
-        breaks = .data$bin_breaks,
-        labels = .data$bin_names,
-        include.lowest = TRUE
+      category_point = categorize_vec(
+        .data$point,
+        .data$bin_breaks,
+        .data$bin_names
       ),
-      category_lower = cut(.data$lower,
-        breaks = .data$bin_breaks,
-        labels = .data$bin_names,
-        include.lowest = TRUE
+      category_lower = categorize_vec(
+        .data$lower,
+        .data$bin_breaks,
+        .data$bin_names
       ),
-      category_upper = cut(.data$upper,
-        breaks = .data$bin_breaks,
-        labels = .data$bin_names,
-        include.lowest = TRUE
-      )
+      category_upper = categorize_vec(
+        .data$upper,
+        .data$bin_breaks,
+        .data$bin_names
+      ),
     )
+
+  if (!.keep) {
+    result <- result |> select(-c(bin_breaks, bin_names))
+  }
 
   return(result)
 }
@@ -157,5 +186,5 @@ plots_to_pdf(
     covid_plot_1wk,
     covid_plot_2wk
   ),
-  "2024-11-20_pointinterval_plots.pdf"
+  "2024-11-27_pointinterval_plots.pdf"
 )
