@@ -6,19 +6,29 @@
 and output a set of epiweekly quantiles, as a
 \code{\link[tibble:tibble]{tibbble}}.}
 \usage{
-to_epiweekly_quantiles(model_run_dir, report_date, max_lookback_days)
+to_epiweekly_quantiles(
+  model_run_dir,
+  report_date,
+  max_lookback_days,
+  epiweekly_denominator = FALSE
+)
 }
 \arguments{
 \item{model_run_dir}{Path to a directory containing
 forecast draws to process, whose basename is the forecasted
 location.}
 
-\item{report_date}{Report date for which to generate epiweekly quantiles.}
+\item{report_date}{Report date for which to generate epiweekly
+quantiles.}
 
 \item{max_lookback_days}{How many days before the report date
 to look back when generating epiweekly quantiles (determines how
 many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 quantiles will be generated.}
+
+\item{epiweekly_denominator}{Use an epiweekly instead of a daily
+denominator (along with the daily numerator samples). Boolean,
+default \code{FALSE}.}
 }
 \value{
 A \code{\link[tibble:tibble]{tibble}} of quantiles.
