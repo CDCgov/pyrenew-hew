@@ -10,7 +10,7 @@ to_epiweekly_quantiles(
   model_run_dir,
   report_date,
   max_lookback_days,
-  epiweekly_denominator = FALSE
+  epiweekly_other = FALSE
 )
 }
 \arguments{
@@ -26,9 +26,9 @@ to look back when generating epiweekly quantiles (determines how
 many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 quantiles will be generated.}
 
-\item{epiweekly_denominator}{Use an epiweekly instead of a daily
-denominator (along with the daily numerator samples). Boolean,
-default \code{FALSE}.}
+\item{epiweekly_other}{Use an expressly epiweekly forecast
+for non-target ED visits instead of a daily forecast aggregated
+to epiweekly? Boolean, default \code{FALSE}.}
 }
 \value{
 A \code{\link[tibble:tibble]{tibble}} of quantiles.

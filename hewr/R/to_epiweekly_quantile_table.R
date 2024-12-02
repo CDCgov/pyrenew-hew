@@ -11,16 +11,15 @@
 #' to look back when generating epiweekly quantiles (determines how
 #' many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 #' quantiles will be generated.
-#' @param epiweekly_denominator Use an epiweekly instead of a daily
-#' denominator (along with the daily numerator samples). Boolean,
-#' default `FALSE`.
-#'
+#' @param epiweekly_other Use an expressly epiweekly forecast
+#' for non-target ED visits instead of a daily forecast aggregated
+#' to epiweekly? Boolean, default `FALSE`.
 #' @return A [`tibble`][tibble::tibble()] of quantiles.
 #' @export
 to_epiweekly_quantiles <- function(model_run_dir,
                                    report_date,
                                    max_lookback_days,
-                                   epiweekly_denominator = FALSE) {
+                                   epiweekly_other = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
   draws_path <- fs::path(model_run_dir,
     "forecast_samples",
@@ -49,7 +48,7 @@ to_epiweekly_quantiles <- function(model_run_dir,
       strict = TRUE
     )
 
-  if (!epiweekly_denominator) {
+  if (!epiweekly_other) {
     epiweekly_other_draws <- draws |>
       dplyr::filter(.data$disease == "Other") |>
       forecasttools::daily_to_epiweekly(
@@ -113,11 +112,14 @@ to_epiweekly_quantiles <- function(model_run_dir,
 #' `{disease}_r_{reference_date}_f_{first_data_date}_t_{last_data_date}`.
 #' @param exclude Locations to exclude, if any, as a list of strings.
 #' Default `NULL` (exclude nothing).
-#'
+#' @param epiweekly_other Use an expressly epiweekly forecast
+#' for non-target ED visits instead of a daily forecast aggregated
+#' to epiweekly? Boolean, default `FALSE`.
+#' @return The complete hubverse-format [`tibble`][tibble::tibble()].
 #' @export
 to_epiweekly_quantile_table <- function(model_batch_dir,
                                         exclude = NULL,
-                                        epiweekly_denominator = FALSE) {
+                                        epiweekly_other = FALSE) {
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
 
   locations_to_process <- fs::dir_ls(model_runs_path,
@@ -156,7 +158,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
         x,
         report_date = report_date,
         max_lookback_days = 8,
-        epiweekly_denominator = epiweekly_denominator
+        epiweekly_other = epiweekly_other
       )
     }
     ## max_lookback_days = 8 ensures we get
