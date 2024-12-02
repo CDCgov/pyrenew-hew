@@ -21,6 +21,8 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @param model_run_dir A string specifying the directory containing the model
 #'  run data.
+#' @param dataname A string specifying the name of the daily data file. Default
+#'
 #' @param strict A logical value indicating whether to enforce strict inclusion
 #' of only full epiweeks. Default is TRUE.
 #' @param day_of_week An integer specifying the day of the week to use for the
@@ -28,18 +30,17 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @return None. The function writes the epiweekly data to a CSV file in the
 #'  specified directory.
-convert_daily_to_epiweekly <- function(
-    model_run_dir, strict = TRUE,
-    day_of_week = 7, dataname = "data", ext = "csv") {
+convert_daily_to_epiweekly <- function(model_run_dir, dataname = "data.csv",
+    strict = TRUE, day_of_week = 7) {
+  ext <- path_ext(dataname)
   if (!ext %in% c("csv", "tsv")) {
     stop("Invalid file extension. Only 'csv' and 'tsv' are allowed.")
   }
 
-
   delim <- if (ext == "csv") "," else "\t"
   message(glue::glue("Generating epi-weekly data {model_run_dir}..."))
 
-  data_path <- path(model_run_dir, dataname, ext = ext)
+  data_path <- path(model_run_dir, dataname)
 
   daily_data <- read_delim(
     data_path,
@@ -77,11 +78,8 @@ convert_daily_to_epiweekly <- function(
 }
 
 main <- function(model_run_dir) {
-  convert_daily_to_epiweekly(model_run_dir, dataname = "data", ext = "csv")
-  convert_daily_to_epiweekly(model_run_dir,
-    dataname = "eval_data",
-    ext = "tsv"
-  )
+  convert_daily_to_epiweekly(model_run_dir, dataname = "data.csv")
+  convert_daily_to_epiweekly(model_run_dir, dataname = "eval_data.tsv")
 }
 
 # Create a parser
