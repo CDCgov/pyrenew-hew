@@ -17,7 +17,21 @@ from fit_model import fit_and_save_model  # noqa
 from generate_predictive import generate_and_save_predictions  # noqa
 
 
-def baseline_forecasts(
+def generate_epiweekly(model_run_dir: Path) -> None:
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/generate_epiweekly.R",
+            f"{model_run_dir}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"generate_epiweekly: {result.stderr}")
+    return None
+
+
+def timeseries_forecasts(
     model_run_dir: Path, n_forecast_days: int, n_samples: int
 ) -> None:
     result = subprocess.run(
@@ -33,7 +47,7 @@ def baseline_forecasts(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"baseline_forecasts: {result.stderr}")
+        raise RuntimeError(f"timeseries_forecasts: {result.stderr}")
     return None
 
 
@@ -98,7 +112,7 @@ def main(
     state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
     priors_path: Path | str,
-    output_data_dir: Path | str,
+    output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
     n_chains: int,
@@ -192,7 +206,7 @@ def main(
         f"{first_training_date}_t_{last_training_date}"
     )
 
-    model_batch_dir = Path(output_data_dir, model_batch_dir_name)
+    model_batch_dir = Path(output_dir, model_batch_dir_name)
 
     model_run_dir = Path(model_batch_dir, "model_runs", state)
 
@@ -215,6 +229,23 @@ def main(
         model_run_dir=model_run_dir,
         logger=logger,
     )
+    logger.info("Getting eval data...")
+    if eval_data_path is None:
+        raise ValueError("No path to an evaluation dataset provided.")
+    save_eval_data(
+        state=state,
+        report_date=report_date,
+        disease=disease,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+        latest_comprehensive_path=eval_data_path,
+        output_data_dir=model_run_dir,
+        last_eval_date=report_date + timedelta(days=n_forecast_days),
+    )
+
+    logger.info("Generating epiweekly datasets from daily datasets...")
+    generate_epiweekly(model_run_dir)
+
     logger.info("Data preparation complete.")
 
     logger.info("Fitting model")
@@ -236,23 +267,10 @@ def main(
         "forecasting..."
     )
     n_denominator_samples = n_samples * n_chains
-    baseline_forecasts(
+    timeseries_forecasts(
         model_run_dir, n_days_past_last_training, n_denominator_samples
     )
-    logger.info("Forecasting complete.")
-    logger.info("Getting eval data...")
-    if eval_data_path is None:
-        raise ValueError("No path to an evaluation dataset provided.")
-    save_eval_data(
-        state=state,
-        report_date=report_date,
-        disease=disease,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        latest_comprehensive_path=eval_data_path,
-        output_data_dir=model_run_dir,
-        last_eval_date=report_date + timedelta(days=n_forecast_days),
-    )
+    logger.info("All forecasting complete.")
 
     logger.info("Converting inferencedata to parquet...")
     convert_inferencedata_to_parquet(model_run_dir)
@@ -343,10 +361,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--output-data-dir",
+        "--output-dir",
         type=Path,
         default="private_data",
-        help="Directory in which to save output data.",
+        help="Directory in which to save output.",
     )
 
     parser.add_argument(
