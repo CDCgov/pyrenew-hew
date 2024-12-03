@@ -18,7 +18,7 @@
 #' `fun` argument to [scoringutils::transform_forecasts()].
 #' Default [scoringutils::log_shift()].
 #' @param offset Offset for the transform passed to
-#' [scoringutils::transform_forcasts()]
+#' [scoringutils::transform_forecasts()]
 #' transforming forecasts for scoring. Default 1.
 #' @param observed_value_column Name of the column containing
 #' observed values in the `observed` table, as a string.
@@ -30,7 +30,7 @@
 #' date values in the `observed` table, as a string.
 #' Default `"reference_date"`
 #' @param ... Other keyword arguments passed to
-#' [scoringutils::tranform_forecasts()].
+#' [scoringutils::transform_forecasts()].
 #' @return A table of scores, as the output of
 #' [scoringutils::score()], filtered to include only the
 #' transformed_scale.

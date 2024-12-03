@@ -4,9 +4,9 @@ get_hubverse_table_paths <- function(dir,
                                      disease) {
   path_df <- tibble::tibble(
     path = fs::dir_ls(
-      dir,
+      path = dir,
       type = "file",
-      glob = "*-{disease}-hubverse-table.tsv"
+      glob = glue::glue("*-{disease}-hubverse-table.tsv")
     ),
     disease = disease
   )
@@ -32,6 +32,18 @@ score_and_save <- function(truth_data_path,
       covid_table_dir,
       "covid-19"
     )
+  )
+
+  message(
+    "Scoring the following hubverse table files: ",
+    all_paths$path,
+    "..."
+  )
+
+  message(
+    "Scoring against observed data from the file: ",
+    truth_data_path,
+    "..."
   )
 
   truth_data <- readr::read_tsv(
@@ -62,6 +74,8 @@ score_and_save <- function(truth_data_path,
   full_scores <- all_paths |>
     purrr::pmap(read_and_score) |>
     dplyr::bind_rows()
+
+  print(full_scores)
 
   desired_summaries <- list(
     summary_overall = c("horizon", "target"),
