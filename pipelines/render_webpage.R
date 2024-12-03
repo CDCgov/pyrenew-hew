@@ -48,7 +48,7 @@ p <- arg_parser("Render diagnostic dashboard for a single location forecast") |>
     "model_run_dir",
     help = "Directory containing the model data and output."
   ) |>
-  add_argument("--template_qmd_path",
+  add_argument("--template-qmd-path",
     help = "Path to template qmd",
     default = "pipelines/diagnostic_report/template.qmd"
   )
