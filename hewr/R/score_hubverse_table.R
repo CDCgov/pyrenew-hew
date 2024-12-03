@@ -46,7 +46,7 @@ score_hubverse <- function(forecast,
   obs <- observed |>
     dplyr::select(
       location = .data[[observed_location_column]],
-      target_end_date = .data[[oberved_date_column]],
+      target_end_date = .data[[observed_date_column]],
       observed = .data[[observed_value_column]]
     )
 
