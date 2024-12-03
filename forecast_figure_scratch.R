@@ -4,8 +4,8 @@ library(arrow)
 library(hewr)
 library(forecasttools)
 pyrenew_hew_config_dir <- path("private_data/pyrenew-hew-config")
-prism_thresholds <- read_parquet(path(pyrenew_hew_config_dir, "prism_thresholds", ext = "parquet"))
-model_run_dir <- path("~/pyrenew-hew/private_data/pyrenew-test-output/influenza_r_2024-11-27_f_2024-08-24_t_2024-11-21/model_runs/CA")
+prism_thresholds <- read_parquet(path(pyrenew_hew_config_dir, "prism_thresholds", ext = "parquet")) # nolint
+model_run_dir <- path("~/pyrenew-hew/private_data/pyrenew-test-output/influenza_r_2024-11-27_f_2024-08-24_t_2024-11-21/model_runs/CA") # nolint
 
 parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
 
@@ -15,18 +15,42 @@ data_vintage_date <- parsed_model_run_dir$report_date
 
 target_disease <- "prop_disease_ed_visits"
 forecast_ci <- read_parquet(path(model_run_dir, "forecast_ci", ext = "parquet"))
-combined_dat <- read_parquet(path(model_run_dir, "combined_training_eval_data", ext = "parquet"))
+combined_dat <- read_parquet(path(model_run_dir, "combined_training_eval_data",
+  ext = "parquet"
+))
 
 y_transform <- "identity"
 
-data_vintage_date <- today()
 
 horizon_weeks <- 1
-highlight_forecast_date <- epiweek_to_date(epiweek = epiweek(data_vintage_date), epiyear = epiyear(data_vintage_date), day_of_week = 7) + horizon_weeks * 7
+highlight_forecast_date <- epiweek_to_date(
+  epiweek = epiweek(data_vintage_date),
+  epiyear = epiyear(data_vintage_date),
+  day_of_week = 7
+) + horizon_weeks * 7
+
 prism_color_scale <- c(
-  Minimal = "#D2EBE9", Low = "#BADCAB", Moderate = "#F9A731",
-  High = "#F05C54", `Very high` = "#A03069"
+  Minimal = "#D7F2ED", Low = "#B8E5AC", Moderate = "#FEA82F",
+  High = "#F05C54", `Very High` = "#A03169", `Data Unavailable` = "#EBEBEB"
 )
+
+
+get_prism_thresholds <- function(disease, state_abb) {
+  prism_thresholds |>
+    filter(
+      disease == !!disease,
+      state_abb == !!state_abb
+    ) |>
+    select(starts_with("perc_")) |>
+    pivot_longer(everything()) |>
+    mutate(value = value / 100) |>
+    mutate(name = name |>
+      str_remove("^perc_level_") |>
+      str_replace_all("_", " ") |>
+      str_to_title()) |>
+    deframe()
+}
+
 
 disease_name_pretty <- c(
   "COVID-19" = "COVID-19",
@@ -58,15 +82,7 @@ last_training_date <- combined_dat |>
   dplyr::pull(date) |>
   max()
 
-state_prism_thresholds <- prism_thresholds |>
-  filter(
-    disease == disease_name,
-    state_abb == !!state_abb
-  ) |>
-  select(starts_with("perc_")) |>
-  pivot_longer(everything()) |>
-  mutate(value = value / 100) |>
-  deframe()
+state_prism_thresholds <- get_prism_thresholds(disease_name, state_abb)
 
 ggplot2::ggplot(mapping = ggplot2::aes(date, .value)) +
   ggdist::geom_lineribbon(
@@ -100,14 +116,14 @@ ggplot2::ggplot(mapping = ggplot2::aes(date, .value)) +
     geom = "text",
     x = last_training_date,
     y = Inf,
-    label = "Fit Period \u2190\n",
+    label = "\nFit Period \u2190",
     hjust = "right",
     vjust = "top"
   ) +
   ggplot2::annotate(
     geom = "text",
     x = last_training_date,
-    y = Inf, label = "\u2192 Forecast Period\n",
+    y = Inf, label = "\n\u2192 Forecast Period",
     hjust = "left",
     vjust = "top",
   ) +
@@ -118,15 +134,24 @@ ggplot2::ggplot(mapping = ggplot2::aes(date, .value)) +
   ggplot2::scale_x_date("Date") +
   cowplot::theme_minimal_grid() +
   ggplot2::theme(legend.position = "bottom") +
-  geom_hline(yintercept = state_prism_thresholds, color = prism_color_scale[-1]) +
+  geom_hline(
+    yintercept = state_prism_thresholds,
+    color = prism_color_scale[names(state_prism_thresholds)]
+  ) +
   annotate(
     geom = "text",
     x = min(combined_dat$date),
     y = state_prism_thresholds,
-    label = state_prism_thresholds |>
-      names() |>
-      str_remove("^perc_level_") |>
-      str_replace("_", " ") |>
-      str_to_title(), hjust = "left", vjust = "bottom", color = prism_color_scale[-1]
+    label = names(state_prism_thresholds),
+    hjust = "left",
+    vjust = "bottom",
+    color = prism_color_scale[names(state_prism_thresholds)]
   ) +
-  geom_vline(xintercept = highlight_forecast_date)
+  geom_vline(xintercept = highlight_forecast_date) +
+  annotate(
+    geom = "text",
+    x = highlight_forecast_date,
+    y = Inf,
+    label = "\n\nTarget Forecast Horizon",
+    vjust = "top"
+  )
