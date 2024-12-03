@@ -52,7 +52,6 @@ save_forecast_figures <- function(model_run_dir) {
   )
 }
 
-
 p <- arg_parser("Generate forecast figures") |>
   add_argument(
     "model_run_dir",

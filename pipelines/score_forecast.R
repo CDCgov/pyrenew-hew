@@ -1,8 +1,10 @@
 script_packages <- c(
-  "dplyr",
-  "scoringutils",
+  "argparser",
   "arrow",
-  "argparser"
+  "dplyr",
+  "forecasttools",
+  "scoringutils",
+  "tidyr"
 )
 
 ## load in packages without messages
@@ -46,9 +48,13 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
-score_single_run <- function(
-    scorable_data, quantile_only_data, forecast_unit, observed, predicted,
-    sample_id = ".draw", model_col = "model", ...) {
+score_single_run <- function(scorable_data,
+                             quantile_only_data,
+                             forecast_unit,
+                             observed,
+                             predicted,
+                             sample_id = ".draw",
+                             model_col = "model", ...) {
   forecast_sample_df <- scorable_data |>
     scoringutils::as_forecast_sample(
       forecast_unit = forecast_unit,
@@ -69,7 +75,6 @@ score_single_run <- function(
     scoringutils::as_forecast_quantile(probs = quants)
 
 
-
   forecast_quantile_df <-
     dplyr::bind_rows(
       quantile_only_df,
@@ -77,13 +82,32 @@ score_single_run <- function(
     ) |>
     scoringutils::as_forecast_quantile()
 
+  scoringutils::assert_forecast(forecast_quantile_df)
+
+  negatives <- forecast_quantile_df |>
+    dplyr::filter(predicted < 0 | observed < 0) |>
+    dplyr::select(date, model, predicted, observed)
+
+  if (nrow(negatives) > 0) {
+    print(negatives)
+    stop("Unexpected negative values in forecast_quantile_df.")
+  }
+
   sample_scores <- forecast_sample_df |>
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
 
+  interval_coverage_95 <- purrr::partial(scoringutils::interval_coverage,
+    interval_range = 95
+  )
+
+  quantile_metrics <- c(get_metrics(forecast_quantile_df),
+    interval_coverage_95 = interval_coverage_95
+  )
+
   quantile_scores <- forecast_quantile_df |>
     scoringutils::transform_forecasts(...) |>
-    scoringutils::score()
+    scoringutils::score(metrics = quantile_metrics)
   # Add relative skill if more than one model is present
   if (n_distinct(scorable_data[[model_col]]) > 1) {
     sample_scores <- scoringutils::add_relative_skill(sample_scores)
@@ -141,24 +165,37 @@ prep_truth_data <- function(truth_data_path) {
 }
 
 read_and_score_location <- function(model_run_dir,
+                                    epiweekly = FALSE,
                                     eval_data_filename = "eval_data",
                                     eval_data_file_ext = "tsv",
                                     parquet_file_ext = "parquet",
-                                    rds_file_ext = "rds") {
-  message(glue::glue("Scoring {model_run_dir}..."))
+                                    rds_file_ext = "rds",
+                                    strict = TRUE) {
+  if (epiweekly) {
+    message(glue::glue("Scoring epiweekly {model_run_dir}..."))
+  } else {
+    message(glue::glue("Scoring daily {model_run_dir}..."))
+  }
+  prefix <- if_else(epiweekly, "epiweekly_", "")
+  eval_data_filename <- glue::glue("{prefix}{eval_data_filename}")
+
+  report_date <- hewr::parse_model_run_dir_path(
+    model_run_dir
+  )$report_date
+
   forecast_path <- fs::path(
     model_run_dir,
-    "forecast_samples",
+    glue::glue("{prefix}forecast_samples"),
     ext = parquet_file_ext
   )
   ts_baseline_path <- fs::path(
     model_run_dir,
-    "baseline_ts_prop_ed_visits_forecast",
+    glue::glue("{prefix}baseline_ts_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
   cdc_baseline_path <- fs::path(
     model_run_dir,
-    "baseline_cdc_prop_ed_visits_forecast",
+    glue::glue("{prefix}baseline_cdc_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
 
@@ -201,7 +238,11 @@ read_and_score_location <- function(model_run_dir,
     cdc_baseline,
     actual_data,
     by = c("disease", "date")
-  )
+  ) |>
+    filter(
+      disease == "prop_disease_ed_visits",
+      date >= !!report_date
+    )
 
   sample_forecasts_to_score <- bind_rows(
     pyrenew,
@@ -210,7 +251,10 @@ read_and_score_location <- function(model_run_dir,
     inner_join(actual_data,
       by = c("disease", "date")
     ) |>
-    filter(disease == "prop_disease_ed_visits")
+    filter(
+      disease == "prop_disease_ed_visits",
+      date >= !!report_date
+    )
 
   max_visits <- actual_data |>
     filter(disease == "Total") |>
@@ -228,7 +272,7 @@ read_and_score_location <- function(model_run_dir,
   )
 
   readr::write_rds(scored, fs::path(model_run_dir,
-    "score_table",
+    glue::glue("{prefix}score_table"),
     ext = rds_file_ext
   ))
 }
@@ -243,3 +287,4 @@ p <- arg_parser("Score a single location forecast") |>
 argv <- parse_args(p)
 
 read_and_score_location(argv$model_run_dir)
+read_and_score_location(argv$model_run_dir, epiweekly = TRUE)

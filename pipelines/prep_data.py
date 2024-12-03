@@ -84,7 +84,7 @@ def process_state_level_data(
             .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
-        .collect()
+        .collect(streaming=True)
     )
 
 
