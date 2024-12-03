@@ -1,12 +1,9 @@
 """
-Set up a multi-location, multi-date,
-potentially multi-disease end to end
-retrospective evaluation run for pyrenew-hew
-on Azure Batch.
+Set up a multi-location,  multi-disease parameter
+inference run for pyrenew-hew on Azure Batch.
 """
 
 import argparse
-import datetime
 import itertools
 from pathlib import Path
 
@@ -21,7 +18,7 @@ from azuretools.task import get_container_settings, get_task_config
 def main(
     job_id: str,
     pool_id: str,
-    diseases: str,
+    diseases: str | list[str],
     output_subdir: str | Path = "./",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
@@ -45,21 +42,20 @@ def main(
 
     diseases
         Name(s) of disease(s) to run as part of the job,
-        as a whitespace-separated string. Supported
-        values are 'COVID-19' and 'Influenza'.
+        as a single string (one disease) or a list of strings.
+        Supported values are 'COVID-19' and 'Influenza'.
 
-    output_subdir
+     output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
-
 
     container_image_name:
         Name of the container to use for the job.
         This container should exist within the Azure
         Container Registry account associated to
         the job. Default 'pyrenew-hew'.
-        The container registry account name and endpoint
-        will be obtained from local environment variables
+        The container registry account name and enpoint
+        will be obtained from local environm variables
         via a :class``azuretools.auth.EnvCredentialHandler`.
 
     container_image_version
@@ -77,13 +73,18 @@ def main(
     """
     supported_diseases = ["COVID-19", "Influenza"]
 
-    disease_list = diseases.split()
+    disease_list = diseases
+
     invalid_diseases = set(disease_list) - set(supported_diseases)
     if invalid_diseases:
         raise ValueError(
             f"Unsupported diseases: {', '.join(invalid_diseases)}; "
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
+
+    pyrenew_hew_output_container = "pyrenew-test-output"
+    n_warmup = 1000
+    n_samples = 500
 
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
@@ -115,7 +116,7 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-test-output",
+                "source": pyrenew_hew_output_container,
                 "target": "/pyrenew-hew/output",
             },
             {
@@ -130,51 +131,43 @@ def main(
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days {n_training} "
-        "--n-warmup 1000 "
-        "--n-samples 500 "
+        "--n-training-days 450 "
+        "--n-warmup {n_warmup} "
+        "--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
         "--output-dir {output_dir} "
-        "--priors-path config/eval_priors.py "
-        "--report-date {report_date:%Y-%m-%d} "
-        "--exclude-last-n-days {exclude_last_n} "
-        "--score "
+        "--priors-path config/parameter_inference_priors.py "
+        "--report-date {report_date} "
+        "--exclude-last-n-days 5 "
+        "--no-score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
         "'"
     )
 
+    # to be replaced by forecasttools-py table
     locations = pl.read_csv(
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
-    all_locations = (
-        locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
-        .get_column("STUSAB")
-        .to_list()
-    ) + ["US"]
-
-    report_dates = [
-        datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
-        for x in range(30)
+    all_locations = [
+        loc
+        for loc in ["US"] + locations.get_column("STUSAB").to_list()
+        if loc not in excluded_locations
     ]
 
-    for disease, report_date, loc in itertools.product(
-        disease_list, report_dates, all_locations
-    ):
-        n_training = 90
-        exclude_last_n = 3
+    for disease, state in itertools.product(disease_list, all_locations):
         task = get_task_config(
-            f"{job_id}-{loc}-{disease}-{report_date}",
+            f"{job_id}-{state}-{disease}-prod",
             base_call=base_call.format(
-                state=loc,
+                state=state,
                 disease=disease,
-                report_date=report_date,
-                n_training=n_training,
-                exclude_last_n=exclude_last_n,
+                report_date="2024-04-01",
+                n_warmup=n_warmup,
+                n_samples=n_samples,
                 output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
@@ -212,7 +205,6 @@ parser.add_argument(
     default="./",
 )
 
-
 parser.add_argument(
     "--container-image-name",
     type=str,
@@ -243,5 +235,6 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    args.diseases = args.diseases.split()
     args.excluded_locations = args.excluded_locations.split()
     main(**vars(args))

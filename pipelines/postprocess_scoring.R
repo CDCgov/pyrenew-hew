@@ -53,7 +53,8 @@ summarised_scoring_table <- function(quantile_scores,
       abs_wis = wis,
       mae = ae_median,
       interval_coverage_50,
-      interval_coverage_90
+      interval_coverage_90,
+      interval_coverage_95
     )
 
   summarised_scores <- left_join(abs_wis, rel_wis, by = "model")
@@ -145,44 +146,6 @@ location_score_table <- function(location, quantile_scores, ...) {
   return
 }
 
-#' Save a list of plots as a PDF, with a
-#' grid of `nrow` by `ncol` plots per page
-#'
-#' @param list_of_plots list of plots to save to PDF
-#' @param save_path path to which to save the plots
-#' @param nrow Number of rows of plots per page
-#' (passed to [gridExtra::marrangeGrob()])
-#' Default `1`.
-#' @param ncol Number of columns of plots per page
-#' (passed to [gridExtra::marrangeGrob()]).
-#' Default `1`.
-#' @param width page width in device units (passed to
-#' [ggplot2::ggsave()]). Default `8.5`.
-#' @param height page height in device units (passed to
-#' [ggplot2::ggsave()]). Default `11`.
-#' @return `TRUE` on success.
-#' @export
-plots_to_pdf <- function(list_of_plots,
-                         save_path,
-                         nrow = 1,
-                         ncol = 1,
-                         width = 8.5,
-                         height = 11) {
-  if (!(tolower(fs::path_ext(save_path)) == ".pdf")) {
-    cli::cli_abort("Filepath must end with `.pdf`")
-  }
-  cli::cli_inform("Saving plots to {save_path}")
-  ggplot2::ggsave(
-    filename = save_path,
-    plot = gridExtra::marrangeGrob(list_of_plots,
-      nrow = nrow,
-      ncol = ncol
-    ),
-    width = width,
-    height = height
-  )
-  return(TRUE)
-}
 
 relative_wis_by_location <- function(scores,
                                      baseline_model = "cdc_baseline") {
@@ -234,6 +197,32 @@ relative_wis_by_location <- function(scores,
   return(fig)
 }
 
+coverage_plot <- function(data, coverage_level) {
+  coverage_column <-
+    glue::glue("interval_coverage_{100 * coverage_level}")
+  return(
+    ggplot(
+      data = data,
+      mapping = aes(
+        x = date,
+        y = .data[[coverage_column]]
+      )
+    ) +
+      geom_line(linewidth = 2) +
+      geom_point(shape = 21, size = 3, fill = "darkgreen") +
+      geom_hline(
+        yintercept = coverage_level,
+        linewidth = 1.5,
+        linetype = "dashed"
+      ) +
+      facet_wrap(~horizon_name) +
+      scale_y_continuous(label = scales::label_percent()) +
+      scale_x_date() +
+      coord_cartesian(ylim = c(0, 1)) +
+      theme_minimal()
+  )
+}
+
 
 main <- function(path_to_scores,
                  output_directory,
@@ -245,12 +234,37 @@ main <- function(path_to_scores,
     )
   }
 
-  scores <- readRDS(path_to_scores)
+  scores <- readr::read_rds(path_to_scores)
 
-  quantile_scores <- scores$quantile_scores
+  quantile_scores <- scores$quantile_scores |>
+    dplyr::mutate(horizon = floor(
+      as.numeric(date - report_date) / 7
+    ))
 
   locations <- unique(quantile_scores$location) |>
     purrr::set_names()
+
+
+  for_coverage_plots <- quantile_scores |>
+    summarise_scores(by = c("model", "date", "horizon")) |>
+    mutate(horizon_name = glue::glue("{horizon + 1} week ahead")) |>
+    filter(model == "pyrenew-hew")
+
+  message("Making coverage plots...")
+  coverage_plots <-
+    purrr::map(
+      c(0.5, 0.9, 0.95),
+      \(x) coverage_plot(for_coverage_plots, x)
+    )
+  coverage_plot_save_path <- get_save_path(
+    "coverage_by_date_and_horizon"
+  )
+  message("Saving coverage plots to {coverage_plot_save_path}...")
+  forecasttools::plots_to_pdf(coverage_plots,
+    coverage_plot_save_path,
+    width = 8,
+    height = 4
+  )
 
   message("Plotting relative WIS by forecast date across locations...")
 
@@ -285,7 +299,7 @@ main <- function(path_to_scores,
     glue::glue("Saving figure to {rel_wis_by_date_loc_save_path}...")
   )
 
-  plots_to_pdf(rel_wis_by_date_and_location,
+  forecasttools::plots_to_pdf(rel_wis_by_date_and_location,
     rel_wis_by_date_loc_save_path,
     width = 8,
     height = 4
