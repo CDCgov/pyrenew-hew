@@ -196,6 +196,7 @@ ggplot(rt_ci, aes(date, .value, ymin = .lower, ymax = .upper)) +
     labels = ~ scales::label_percent()(as.numeric(.))
   ) +
   scale_y_log10(TeX("$R_t$")) +
+  scale_x_date("Date") +
   geom_hline(yintercept = 1, linetype = "dashed") +
   cowplot::theme_minimal_grid() +
   ggtitle(TeX("Posterior $R_t$")) +
