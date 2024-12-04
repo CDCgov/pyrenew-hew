@@ -104,7 +104,8 @@ plot_category_pointintervals <- function(data, horizon) {
       size = 5,
       show.legend = TRUE
     ) +
-    scale_color_prism() +
+    scale_color_prism(drop = FALSE) +
+    labs(color = "Activity Level") +
     theme_minimal()
 
   return(plot)
