@@ -42,7 +42,8 @@ score_hubverse <- function(forecast,
                            offset = 1,
                            observed_value_column = "value",
                            observed_location_column = "location",
-                           observed_date_column = "reference_date") {
+                           observed_date_column = "reference_date",
+                           ...) {
   obs <- observed |>
     dplyr::select(
       location = .data[[observed_location_column]],
@@ -65,7 +66,8 @@ score_hubverse <- function(forecast,
     ) |>
     scoringutils::transform_forecasts(
       fun = transform,
-      offset = offset
+      offset = offset,
+      ...
     )
 
   interval_coverage_95 <- purrr::partial(
