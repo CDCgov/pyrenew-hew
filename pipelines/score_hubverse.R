@@ -57,14 +57,20 @@ score_and_save <- function(truth_data_path,
   }
 
   read_and_score <- function(path, disease) {
+    disease_short <- dplyr::case_when(
+      disease == "covid-19" ~ "covid",
+      TRUE ~ disease
+    )
+
     scored <- readr::read_tsv(
-      x,
+      path,
       show_col_types = FALSE
     ) |>
       dplyr::mutate(disease = !!disease) |>
       dplyr::filter(.data$target_end_date <= !!last_target_date) |>
       hewr::score_hubverse(
-        observed_value_column = "prop_{disease}",
+        observed = truth_data,
+        observed_value_column = glue::glue("prop_{disease_short}"),
         horizons = horizons
       )
 
@@ -75,8 +81,9 @@ score_and_save <- function(truth_data_path,
     purrr::pmap(read_and_score) |>
     dplyr::bind_rows()
 
-  print(full_scores)
+  message("Scoring complete.")
 
+  message("Producing summaries and plots...")
   desired_summaries <- list(
     summary_overall = c("horizon", "target"),
     summary_by_epiweek = c(
@@ -108,7 +115,7 @@ score_and_save <- function(truth_data_path,
   make_output_path <- function(output_name,
                                extension) {
     return(fs::path(output_dir,
-      glue::glue("{scoring_date}-{output_name}"),
+      glue::glue("{scoring_date}_{output_name}"),
       ext = extension
     ))
   }
@@ -123,6 +130,7 @@ score_and_save <- function(truth_data_path,
     height = 8.5
   )
 
+  message("Saving summary tables...")
   purrr::walk2(
     summaries,
     names(summaries),
@@ -136,4 +144,6 @@ score_and_save <- function(truth_data_path,
       )
     }
   )
+
+  message("Done.")
 }
