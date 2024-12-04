@@ -132,17 +132,8 @@ score_and_save <- function(eval_data_path,
 
   message("Saving summary tables...")
   purrr::walk2(
-    summaries,
-    names(summaries),
-    \(x, y) {
-      readr::write_tsv(
-        x,
-        make_output_path(
-          y,
-          "tsv"
-        )
-      )
-    }
+    summaries, names(summaries),
+    \(x, y) readr::write_tsv(x, make_output_path(y, "tsv"))
   )
 
   message("Done.")
