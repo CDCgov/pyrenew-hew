@@ -75,14 +75,14 @@ plot_category_pointintervals <- function(data, horizon) {
     )) |>
     ggplot(aes(
       y = location,
-      x = 100 * point,
-      xmin = 100 * lower,
-      xmax = 100 * upper
+      x = point,
+      xmin = lower,
+      xmax = upper
     )) +
     ggdist::geom_pointinterval() +
     geom_point(
       aes(
-        x = 100 * lower,
+        x = lower,
         color = category_lower
       ),
       size = 3,
@@ -90,7 +90,7 @@ plot_category_pointintervals <- function(data, horizon) {
     ) +
     geom_point(
       aes(
-        x = 100 * upper,
+        x = upper,
         color = category_upper
       ),
       size = 3,
@@ -98,12 +98,13 @@ plot_category_pointintervals <- function(data, horizon) {
     ) +
     geom_point(
       aes(
-        x = 100 * point,
+        x = point,
         color = category_point
       ),
       size = 5,
       show.legend = TRUE
     ) +
+    scale_x_continuous(label = label_percent()) +
     scale_color_prism(drop = FALSE) +
     labs(color = "Activity Level") +
     theme_minimal()
