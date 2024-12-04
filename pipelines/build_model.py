@@ -4,7 +4,7 @@ import runpy
 import jax.numpy as jnp
 from pyrenew.deterministic import DeterministicVariable
 
-from pyrenew_hew.hosp_only_ww_model import hosp_only_ww_model
+from pyrenew_hew.pyrenew_hew_model import pyrenew_hew_model
 
 
 def build_model_from_dir(model_dir):
@@ -52,7 +52,7 @@ def build_model_from_dir(model_dir):
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
-    my_model = hosp_only_ww_model(
+    my_model = pyrenew_hew_model(
         state_pop=state_pop,
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
         initialization_rate_rv=priors["initialization_rate_rv"],

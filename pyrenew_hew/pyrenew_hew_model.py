@@ -21,7 +21,7 @@ from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew_hew.utils import convert_to_logmean_log_sd
 
 
-class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
+class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
     def __init__(
         self,
         state_pop,
@@ -234,7 +234,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         return observed_hospital_admissions
 
 
-def create_hosp_only_ww_model_from_stan_data(stan_data_file):
+def create_pyrenew_hew_model_from_stan_data(stan_data_file):
     with open(
         stan_data_file,
         "r",
@@ -367,7 +367,7 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     right_truncation_pmf_rv = DeterministicVariable(
         "right_truncation_pmf", jnp.array(1)
     )
-    my_model = hosp_only_ww_model(
+    my_model = pyrenew_hew_model(
         state_pop=state_pop,
         i0_first_obs_n_rv=i0_first_obs_n_rv,
         initialization_rate_rv=initialization_rate_rv,
