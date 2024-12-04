@@ -12,11 +12,11 @@ categories <- arrow::read_parquet(path_categories) |>
     prop_high = perc_level_high / 100,
     prop_very_high = perc_level_very_high / 100,
     prop_upper_bound = 1,
-    very_low_name = "very low",
-    low_name = "low",
-    moderate_name = "moderate",
-    high_name = "high",
-    very_high_name = "very high"
+    very_low_name = "Very Low",
+    low_name = "Low",
+    moderate_name = "Moderate",
+    high_name = "High",
+    very_high_name = "Very High"
   ) |>
   tidyr::nest(
     bin_breaks = c(
@@ -130,23 +130,7 @@ category_pointinterval_plot <- function(data, horizon) {
       size = 5,
       show.legend = TRUE
     ) +
-    scale_color_manual(
-      values = list(
-        "very low" = "#d3ecea",
-        "low" = "#baddab",
-        "moderate" = "#faa731",
-        "high" = "#f15d54",
-        "very high" = "#a03169"
-      ),
-      breaks = c(
-        "very low",
-        "low",
-        "moderate",
-        "high",
-        "very high"
-      ),
-      drop = FALSE
-    ) +
+    scale_color_prism() +
     theme_minimal()
 
   return(plot)
