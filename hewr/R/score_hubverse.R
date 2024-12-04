@@ -45,7 +45,7 @@ score_hubverse <- function(forecast,
                            observed,
                            horizons = c(0, 1),
                            transform = scoringutils::log_shift,
-                           append = FALSE,
+                           append_transformed = FALSE,
                            offset = 1,
                            observed_value_column = "value",
                            observed_location_column = "location",
@@ -73,7 +73,7 @@ score_hubverse <- function(forecast,
     ) |>
     scoringutils::transform_forecasts(
       fun = transform,
-      append = append,
+      append = append_transformed,
       offset = offset,
       ...
     )
