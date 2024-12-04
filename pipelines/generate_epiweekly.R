@@ -34,6 +34,7 @@ convert_daily_to_epiweekly <- function(
     model_run_dir, dataname = "data.csv",
     strict = TRUE, day_of_week = 7) {
   ext <- path_ext(dataname)
+  data_basename <- path_ext_remove(dataname)
   if (!ext %in% c("csv", "tsv")) {
     stop("Invalid file extension. Only 'csv' and 'tsv' are allowed.")
   }
@@ -71,7 +72,9 @@ convert_daily_to_epiweekly <- function(
     )
   # epiweek end date determines data_type classification
 
-  output_file <- path(model_run_dir, glue::glue("epiweekly_{dataname}"),
+  output_file <- path(
+    model_run_dir,
+    glue::glue("epiweekly_{data_basename}"),
     ext = ext
   )
 
