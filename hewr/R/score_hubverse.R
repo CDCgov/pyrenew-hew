@@ -17,6 +17,9 @@
 #' @param transform transformation passed as the
 #' `fun` argument to [scoringutils::transform_forecasts()].
 #' Default [scoringutils::log_shift()].
+#' @param transform_label Label for the transformed scale, as a
+#' string. Passed as the `label` argument to
+#' [scoringutils::transform_forecasts()]. Default `"log"`.
 #' @param offset Offset for the transform passed to
 #' [scoringutils::transform_forecasts()]
 #' transforming forecasts for scoring. Default 1.
@@ -39,6 +42,7 @@ score_hubverse <- function(forecast,
                            observed,
                            horizons = c(0, 1),
                            transform = scoringutils::log_shift,
+                           transform_label = "log",
                            offset = 1,
                            observed_value_column = "value",
                            observed_location_column = "location",
@@ -66,6 +70,7 @@ score_hubverse <- function(forecast,
     ) |>
     scoringutils::transform_forecasts(
       fun = transform,
+      label = transform_label,
       offset = offset,
       ...
     )
@@ -82,7 +87,8 @@ score_hubverse <- function(forecast,
         list(interval_coverage_95 = interval_coverage_95)
       )
     ) |>
-    dplyr::filter(.data$scale == "log")
+    dplyr::filter(.data$scale == !!transform_label)
+  ## only return the transformed-scale scores
 
   return(scored)
 }
