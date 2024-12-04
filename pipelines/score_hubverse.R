@@ -15,7 +15,7 @@ get_hubverse_table_paths <- function(dir,
 }
 
 
-score_and_save <- function(truth_data_path,
+score_and_save <- function(observed_data_path,
                            influenza_table_dir,
                            covid_table_dir,
                            output_dir,
@@ -42,12 +42,12 @@ score_and_save <- function(truth_data_path,
 
   message(
     "Scoring against observed data from the file: ",
-    truth_data_path,
+    observed_data_path,
     "..."
   )
 
-  truth_data <- readr::read_tsv(
-    truth_data_path,
+  observed_data <- readr::read_tsv(
+    observed_data_path,
     show_col_types = FALSE
   )
 
@@ -69,7 +69,7 @@ score_and_save <- function(truth_data_path,
       dplyr::mutate(disease = !!disease) |>
       dplyr::filter(.data$target_end_date <= !!last_target_date) |>
       hewr::score_hubverse(
-        observed = truth_data,
+        observed = observed_data,
         observed_value_column = glue::glue("prop_{disease_short}"),
         horizons = horizons
       )
@@ -147,3 +147,56 @@ score_and_save <- function(truth_data_path,
 
   message("Done.")
 }
+
+p <- arg_parser("Score hubverse tables against observed data.") |>
+  add_argument(
+    "observed_data_path",
+    help = "Path to a .tsv containing observed data."
+  ) |>
+  add_argument(
+    "hubverse_table_dir",
+    help = paste0(
+      "Directory containing influenza and/or ",
+      "COVID-19 forecasts as hubverse tables."
+    )
+  ) |>
+  add_argument(
+    "--output-dir",
+    help = paste0(
+      "Output directory for scores and plots. If not given, ",
+      "use the directory in which the script is invoked."
+    ),
+    default = fs::path(".")
+  ) |>
+  add_argument(
+    "--last-target-date",
+    help = paste0(
+      "Only score forecasts up to and including this target ",
+      "date, specified in YYYY-MM-DD format. ",
+      "If not given, score all available forecasts for ",
+      "which there is observed data."
+    ),
+    default = "9999-01-01"
+  ) |>
+  add_argument(
+    "--horizons",
+    help = paste0(
+      "Score these horizons, given as a ",
+      "whitespace-separated ",
+      "string of integers. Default '0 1'."
+    ),
+    default = "0 1"
+  )
+
+
+argv <- parse_args(p)
+score_and_save(
+  observed_data_path = argv$observed_data_path,
+  influenza_table_dir = argv$hubverse_table_dir,
+  covid_table_dir = argv$hubverse_table_dir,
+  ## for the CLI, covid and influenza should be
+  ## in the same directory
+  output_dir = argv$output_dir,
+  last_target_date = lubridate::ymd(last_target_date),
+  horizons = stringr::str_split_1(argv$horizons, " ")
+)
