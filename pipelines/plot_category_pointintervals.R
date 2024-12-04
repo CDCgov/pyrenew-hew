@@ -114,7 +114,8 @@ plot_category_pointintervals <- function(data, horizon) {
 main <- function(influenza_table_path,
                  covid_table_path,
                  categories_path,
-                 output_path) {
+                 output_path,
+                 ...) {
   categories <- arrow::read_parquet(categories_path) |>
     transmute(
       disease,
