@@ -9,6 +9,7 @@ score_hubverse(
   observed,
   horizons = c(0, 1),
   transform = scoringutils::log_shift,
+  append = FALSE,
   offset = 1,
   observed_value_column = "value",
   observed_location_column = "location",
@@ -31,7 +32,7 @@ score_hubverse(
 Default \code{\link[scoringutils:log_shift]{scoringutils::log_shift()}}.}
 
 \item{offset}{Offset for the transform passed to
-\code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}
+\code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.
 transforming forecasts for scoring. Default 1.}
 
 \item{observed_value_column}{Name of the column containing
@@ -48,6 +49,13 @@ Default \code{"reference_date"}}
 
 \item{...}{Other keyword arguments passed to
 \code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.}
+
+\item{append_transformed}{When calling
+\code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}, append
+the transformed scale forecasts to the base scale forecasts
+or keep only the transformed scale forecasts? Passed as the
+\code{append} argument to \code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.
+Boolean, default \code{FALSE} (keep only transformed scale).}
 }
 \value{
 A table of scores, as the output of
