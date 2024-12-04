@@ -17,8 +17,8 @@ def build_model_from_dir(model_dir):
     ) as file:
         model_data = json.load(file)
 
-    inf_to_hosp_rv = DeterministicVariable(
-        "inf_to_hosp", jnp.array(model_data["inf_to_hosp_pmf"])
+    inf_to_ed_rv = DeterministicVariable(
+        "inf_to_ed", jnp.array(model_data["inf_to_ed_pmf"])
     )  # check if off by 1 or reversed
 
     generation_interval_pmf_rv = DeterministicVariable(
@@ -31,8 +31,8 @@ def build_model_from_dir(model_dir):
         jnp.array(model_data["generation_interval_pmf"]),
     )  # check if off by 1 or reversed
 
-    data_observed_disease_hospital_admissions = jnp.array(
-        model_data["data_observed_disease_hospital_admissions"]
+    data_observed_disease_ed_visits = jnp.array(
+        model_data["data_observed_disease_ed_visits"]
     )
     state_pop = jnp.array(model_data["state_pop"])
 
@@ -43,7 +43,7 @@ def build_model_from_dir(model_dir):
     uot = (
         max(
             len(model_data["generation_interval_pmf"]),
-            len(model_data["inf_to_hosp_pmf"]),
+            len(model_data["inf_to_ed_pmf"]),
         )
         - 1
     )
@@ -62,11 +62,11 @@ def build_model_from_dir(model_dir):
         generation_interval_pmf_rv=generation_interval_pmf_rv,
         infection_feedback_strength_rv=priors["inf_feedback_strength_rv"],
         infection_feedback_pmf_rv=infection_feedback_pmf_rv,
-        p_hosp_mean_rv=priors["p_ed_visit_mean_rv"],
-        p_hosp_w_sd_rv=priors["p_ed_visit_w_sd_rv"],
-        autoreg_p_hosp_rv=priors["autoreg_p_ed_visit_rv"],
-        hosp_wday_effect_rv=priors["ed_visit_wday_effect_rv"],
-        inf_to_hosp_rv=inf_to_hosp_rv,
+        p_ed_mean_rv=priors["p_ed_visit_mean_rv"],
+        p_ed_w_sd_rv=priors["p_ed_visit_w_sd_rv"],
+        autoreg_p_ed_rv=priors["autoreg_p_ed_visit_rv"],
+        ed_wday_effect_rv=priors["ed_visit_wday_effect_rv"],
+        inf_to_ed_rv=inf_to_ed_rv,
         phi_rv=priors["phi_rv"],
         right_truncation_pmf_rv=right_truncation_pmf_rv,
         n_initialization_points=uot,
@@ -74,6 +74,6 @@ def build_model_from_dir(model_dir):
 
     return (
         my_model,
-        data_observed_disease_hospital_admissions,
+        data_observed_disease_ed_visits,
         right_truncation_offset,
     )

@@ -322,11 +322,11 @@ def process_and_save_state(
     )
 
     data_for_model_fit = {
-        "inf_to_hosp_pmf": delay_pmf,
+        "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_hospital_admissions": train_disease_ed_visits,
-        "data_observed_disease_hospital_admissions_test": test_disease_ed_visits,
+        "data_observed_disease_ed_visits": train_disease_ed_visits,
+        "data_observed_disease_ed_visits_test": test_disease_ed_visits,
         "data_observed_total_hospital_admissions": train_total_ed_visits,
         "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,

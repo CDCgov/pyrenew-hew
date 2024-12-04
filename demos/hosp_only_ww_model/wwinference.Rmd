@@ -280,7 +280,7 @@ modified with any discrete daily PMF.
 
 ```{r set-delay-distributions}
 generation_interval <- wwinference::default_covid_gi
-inf_to_hosp <- wwinference::default_covid_inf_to_hosp
+inf_to_ed <- wwinference::default_covid_inf_to_ed
 
 # Assign infection feedback equal to the generation interval
 infection_feedback_pmf <- generation_interval
@@ -330,7 +330,7 @@ ww_fit <- wwinference::wwinference(
   forecast_horizon = forecast_horizon,
   model_spec = get_model_spec(
     generation_interval = generation_interval,
-    inf_to_count_delay = inf_to_hosp,
+    inf_to_count_delay = inf_to_ed,
     infection_feedback_pmf = infection_feedback_pmf,
     params = params
   ),
@@ -509,7 +509,7 @@ fit_hosp_only <- wwinference::wwinference(
   forecast_horizon = forecast_horizon,
   model_spec = get_model_spec(
     generation_interval = generation_interval,
-    inf_to_count_delay = inf_to_hosp,
+    inf_to_count_delay = inf_to_ed,
     infection_feedback_pmf = infection_feedback_pmf,
     include_ww = FALSE,
     params = params

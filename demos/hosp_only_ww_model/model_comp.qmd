@@ -83,14 +83,14 @@ pyrenew_tidy_draws <-
 combined_ci_for_plotting <-
   bind_rows(
     pyrenew_tidy_draws$posterior_predictive |>
-      gather_draws(observed_hospital_admissions[time], rt[time], ihr[time]) |>
+      gather_draws(observed_ed_visits[time], rt[time], iedr[time]) |>
       median_qi(.width = ci_width) |>
       mutate(model = "pyrenew"),
     stan_tidy_draws |>
       gather_draws(pred_hosp[time], rt[time], p_hosp[time]) |>
       mutate(.variable = case_when(
-        .variable == "pred_hosp" ~ "observed_hospital_admissions",
-        .variable == "p_hosp" ~ "ihr",
+        .variable == "pred_hosp" ~ "observed_ed_visits",
+        .variable == "p_hosp" ~ "iedr",
         TRUE ~ .variable
       )) |>
       median_qi(.width = ci_width) |>
@@ -104,7 +104,7 @@ combined_ci_for_plotting <-
 
 ```{r}
 combined_ci_for_plotting |>
-  filter(.variable == "observed_hospital_admissions") |>
+  filter(.variable == "observed_ed_visits") |>
   ggplot(aes(time, .value)) +
   facet_wrap(~model) +
   geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
@@ -143,11 +143,11 @@ combined_ci_for_plotting |>
 ```
 
 
-## IHR Comparison
+## IEDR Comparison
 
 ```{r}
 combined_ci_for_plotting |>
-  filter(.variable == "ihr") |>
+  filter(.variable == "iedr") |>
   ggplot(aes(time, .value)) +
   facet_wrap(~model) +
   geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
@@ -157,9 +157,9 @@ combined_ci_for_plotting |>
   ) +
   cowplot::theme_cowplot() +
   ggtitle("Vignette Data Model Comparison") +
-  scale_y_log10("IHR (p_hosp)", breaks = scales::log_breaks(n = 6)) +
+  scale_y_log10("IEDR (p_hosp)", breaks = scales::log_breaks(n = 6)) +
   scale_x_continuous("Time") +
   theme(legend.position = "bottom")
 ```
 
-IHR lengths are different (Stan model generates an unnecessarily long version, see https://github.com/CDCgov/ww-inference-model/issues/43#issuecomment-2330269879)
+IEDR lengths are different (Stan model generates an unnecessarily long version, see https://github.com/CDCgov/ww-inference-model/issues/43#issuecomment-2330269879)
