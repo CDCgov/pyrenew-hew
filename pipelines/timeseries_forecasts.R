@@ -76,27 +76,31 @@ fit_and_forecast <- function(data,
   target_sym <- sym(target_col)
   output_sym <- sym(output_col)
 
-  max_visits <- data |>
-    pull(!!target_sym) |>
-    max(na.rm = TRUE)
-  offset <- 1 / max_visits
+  offset <- 1
 
-  fit <-
-    data |>
+  fit <- data |>
     as_tsibble(index = date) |>
     filter(data_type == "train") |>
     model(
       comb_model = combination_ensemble(
-        ETS(log(!!target_sym + offset) ~ trend(method = c("N", "M", "A"))),
-        ARIMA(log(!!target_sym + offset))
+        ETS(log(!!target_sym + !!offset) ~ trend(
+          method = c("N", "M", "A")
+        )),
+        ARIMA(log(!!target_sym + !!offset))
       )
     )
 
   forecast_samples <- fit |>
     generate(h = forecast_horizon, times = n_samples) |>
     as_tibble() |>
-    mutate("{output_col}" := .sim, .draw = as.integer(.rep)) |> # nolint
-    select(date, .draw, !!output_sym)
+    mutate(!!output_col := pmax(.data$.sim, 0), # clip values
+      .draw = as.integer(.data$.rep)
+    ) |>
+    select("date", ".draw", all_of(output_col))
+
+  if (any(forecast_samples[[output_col]] < 0)) {
+    stop(glue::glue("Negative count forecast for {output_col}"))
+  }
 
   forecast_samples
 }
@@ -142,9 +146,14 @@ cdc_flat_forecast <- function(data,
   return(cdc_flat_forecast)
 }
 
-main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
+main <- function(
+    model_run_dir, n_forecast_days = 28, n_samples = 2000,
+    epiweekly = FALSE) {
+  prefix <- if_else(epiweekly, "epiweekly_", "")
+  data_frequency <- if_else(epiweekly, "1 week", "1 day")
+  dataname <- if_else(epiweekly, "epiweekly_data", "data")
   # to do: do this with json data that has dates
-  data_path <- path(model_run_dir, "data", ext = "csv")
+  data_path <- path(model_run_dir, dataname, ext = "csv")
 
   target_and_other_data <- read_csv(
     data_path,
@@ -187,7 +196,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     target_and_other_data,
     target_col = "ed_visits_target",
     output_col = "baseline_ed_visit_count_forecast",
-    data_frequency = "1 day",
+    data_frequency = data_frequency,
     aheads = 1:n_forecast_days
   )
 
@@ -200,7 +209,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
         (ed_visits_target + ed_visits_other)),
     target_col = "ed_visits_prop",
     output_col = "baseline_ed_visit_prop_forecast",
-    data_frequency = "1 day",
+    data_frequency = data_frequency,
     aheads = 1:n_forecast_days
   )
 
@@ -213,7 +222,7 @@ main <- function(model_run_dir, n_forecast_days = 28, n_samples = 2000) {
     "baseline_cdc_prop_ed_visits_forecast", baseline_cdc_prop
   ) |>
     mutate(save_path = path(
-      !!model_run_dir, basename,
+      !!model_run_dir, glue::glue("{prefix}{basename}"),
       ext = "parquet"
     ))
 
@@ -256,4 +265,10 @@ disease_name_nssp_map <- c(
 
 disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
 
-main(model_run_dir, n_forecast_days, n_samples)
+# Baseline forecasts on 1 day resolution
+main(model_run_dir, n_forecast_days = n_forecast_days, n_samples = n_samples)
+# Baseline forecasts on 1 (epi)week resolution
+main(model_run_dir,
+  n_forecast_days = n_forecast_days, n_samples = n_samples,
+  epiweekly = TRUE
+)
