@@ -67,8 +67,12 @@ score_and_save <- function(observed_data_path,
       show_col_types = FALSE
     ) |>
       dplyr::mutate(disease = !!disease) |>
-      dplyr::filter(.data$target_end_date <= !!last_target_date)
+      dplyr::filter(
+        .data$target_end_date <= !!last_target_date,
+        .data$horizon %in% !!horizons
+      )
 
+    print(to_score)
 
     scored <- if (nrow(to_score) > 0) {
       hewr::score_hubverse(
