@@ -76,9 +76,9 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
 
   forecast_samples <-
     posterior_predictive |>
-    tidybayes::gather_draws(observed_hospital_admissions[time]) |>
+    tidybayes::gather_draws(observed_ed_visits[time]) |>
     tidyr::pivot_wider(names_from = .variable, values_from = .value) |>
-    dplyr::rename(Disease = observed_hospital_admissions) |>
+    dplyr::rename(Disease = observed_ed_visits) |>
     dplyr::ungroup() |>
     dplyr::mutate(date = min(combined_dat$date) + time) |>
     dplyr::left_join(other_ed_visits_samples,

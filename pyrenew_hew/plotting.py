@@ -54,8 +54,8 @@ def plot_predictive(idata, prior=False):
         idata.prior_predictive if prior else idata.posterior_predictive
     )
 
-    x_data = predictive_obj["observed_hospital_admissions_dim_0"]
-    y_data = predictive_obj["observed_hospital_admissions"]
+    x_data = predictive_obj["observed_ed_visits_dim_0"]
+    y_data = predictive_obj["observed_ed_visits"]
 
     fig, axes = plt.subplots(figsize=(6, 5))
     az.plot_hdi(
@@ -86,8 +86,8 @@ def plot_predictive(idata, prior=False):
         label="Median",
     )
     plt.scatter(
-        idata.observed_data["observed_hospital_admissions_dim_0"],
-        idata.observed_data["observed_hospital_admissions"],
+        idata.observed_data["observed_ed_visits_dim_0"],
+        idata.observed_data["observed_ed_visits"],
         color="black",
     )
     axes.legend()
