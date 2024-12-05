@@ -19,10 +19,6 @@ library(here)
 library(forecasttools)
 ci_width <- c(0.5, 0.8, 0.95)
 fit_dir <- here(path("demos/hosp_only_ww_model/data/fit_hosp_only"))
-dir_ls(fit_dir)
-distribution_split <- function(x) {
-  split(select(x, -distribution), f = as.factor(x$distribution))
-}
 ```
 
 ## Load Data
