@@ -39,8 +39,7 @@ or keep only the transformed scale forecasts? Passed as the
 Boolean, default \code{FALSE} (keep only transformed scale).}
 
 \item{offset}{Offset for the transform passed to
-\code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.
-transforming forecasts for scoring. Default 1.}
+\code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.}
 
 \item{observed_value_column}{Name of the column containing
 observed values in the \code{observed} table, as a string.
