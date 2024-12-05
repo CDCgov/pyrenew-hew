@@ -62,17 +62,25 @@ score_and_save <- function(observed_data_path,
       TRUE ~ disease
     )
 
-    scored <- readr::read_tsv(
+    to_score <- readr::read_tsv(
       path,
       show_col_types = FALSE
     ) |>
       dplyr::mutate(disease = !!disease) |>
-      dplyr::filter(.data$target_end_date <= !!last_target_date) |>
+      dplyr::filter(.data$target_end_date <= !!last_target_date)
+
+
+    scored <- if (nrow(to_score) > 0) {
       hewr::score_hubverse(
+        to_score,
         observed = observed_data,
-        observed_value_column = glue::glue("prop_{disease_short}"),
+        observed_value_column =
+          glue::glue("prop_{disease_short}"),
         horizons = horizons
       )
+    } else {
+      NULL
+    }
 
     return(scored)
   }
@@ -166,7 +174,7 @@ p <- arg_parser("Score hubverse tables against observed data.") |>
       "Output directory for scores and plots. If not given, ",
       "use the directory in which the script is invoked."
     ),
-    default = fs::path(".")
+    default = "."
   ) |>
   add_argument(
     "--last-target-date",
@@ -196,7 +204,7 @@ score_and_save(
   covid_table_dir = argv$hubverse_table_dir,
   ## for the CLI, covid and influenza should be
   ## in the same directory
-  output_dir = argv$output_dir,
-  last_target_date = lubridate::ymd(last_target_date),
+  output_dir = fs::path(argv$output_dir),
+  last_target_date = lubridate::ymd(argv$last_target_date),
   horizons = stringr::str_split_1(argv$horizons, " ")
 )
