@@ -17,9 +17,16 @@
 #' @param transform transformation passed as the
 #' `fun` argument to [scoringutils::transform_forecasts()].
 #' Default [scoringutils::log_shift()].
+#' @param offset Offset for the transformation, passed to
+#' [scoringutils::transform_forecasts()]. Default 1.
+#' @param append_transformed When calling
+#' [scoringutils::transform_forecasts()], append
+#' the transformed scale forecasts to the base scale forecasts
+#' or keep only the transformed scale forecasts? Passed as the
+#' `append` argument to [scoringutils::transform_forecasts()].
+#' Boolean, default `FALSE` (keep only transformed scale).
 #' @param offset Offset for the transform passed to
-#' [scoringutils::transform_forecasts()]
-#' transforming forecasts for scoring. Default 1.
+#' [scoringutils::transform_forecasts()].
 #' @param observed_value_column Name of the column containing
 #' observed values in the `observed` table, as a string.
 #' Default `"value"`
@@ -39,6 +46,7 @@ score_hubverse <- function(forecast,
                            observed,
                            horizons = c(0, 1),
                            transform = scoringutils::log_shift,
+                           append_transformed = FALSE,
                            offset = 1,
                            observed_value_column = "value",
                            observed_location_column = "location",
@@ -66,6 +74,7 @@ score_hubverse <- function(forecast,
     ) |>
     scoringutils::transform_forecasts(
       fun = transform,
+      append = append_transformed,
       offset = offset,
       ...
     )
@@ -79,10 +88,8 @@ score_hubverse <- function(forecast,
     scoringutils::score(
       metrics = c(
         scoringutils::get_metrics(to_score),
-        list(interval_coverage_95 = interval_coverage_95)
-      )
-    ) |>
-    dplyr::filter(.data$scale == "log")
+        interval_coverage_95 = interval_coverage_95
+      ))
 
   return(scored)
 }
