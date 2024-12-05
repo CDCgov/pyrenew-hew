@@ -332,16 +332,14 @@ def process_and_save_state(
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
-
-    os.makedirs(model_run_dir, exist_ok=True)
+    data_dir = Path(model_run_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
 
     if logger is not None:
-        logger.info(f"Saving {state_abb} to {model_run_dir}")
-    data_to_save.write_csv(Path(model_run_dir, "data.csv"))
+        logger.info(f"Saving {state_abb} to {data_dir}")
+    data_to_save.write_csv(Path(data_dir, "data.tsv"), separator="\t")
 
-    with open(
-        Path(model_run_dir, "data_for_model_fit.json"), "w"
-    ) as json_file:
+    with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
 
     return None

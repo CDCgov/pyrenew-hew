@@ -8,7 +8,7 @@ from pyrenew_hew.pyrenew_hew_model import pyrenew_hew_model
 
 
 def build_model_from_dir(model_dir):
-    data_path = model_dir / "data_for_model_fit.json"
+    data_path = model_dir / "data" / "data_for_model_fit.json"
     prior_path = model_dir / "priors.py"
 
     with open(

@@ -9,10 +9,10 @@
 process_state_forecast <- function(model_run_dir, save = TRUE) {
   disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
 
-  train_data_path <- fs::path(model_run_dir, "data", ext = "csv")
-  train_dat <- readr::read_csv(train_data_path, show_col_types = FALSE)
+  train_data_path <- fs::path(model_run_dir, "data", "data", ext = "tsv")
+  train_dat <- readr::read_tsv(train_data_path, show_col_types = FALSE)
 
-  eval_data_path <- fs::path(model_run_dir, "eval_data", ext = "tsv")
+  eval_data_path <- fs::path(model_run_dir, "data", "eval_data", ext = "tsv")
   eval_dat <- readr::read_tsv(eval_data_path, show_col_types = FALSE) |>
     dplyr::mutate(data_type = "eval")
 

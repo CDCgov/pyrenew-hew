@@ -153,9 +153,9 @@ main <- function(
   data_frequency <- if_else(epiweekly, "1 week", "1 day")
   dataname <- if_else(epiweekly, "epiweekly_data", "data")
   # to do: do this with json data that has dates
-  data_path <- path(model_run_dir, dataname, ext = "csv")
+  data_path <- path(model_run_dir, "data", dataname, ext = "tsv")
 
-  target_and_other_data <- read_csv(
+  target_and_other_data <- read_tsv(
     data_path,
     col_types = cols(
       disease = col_character(),
