@@ -89,7 +89,8 @@ score_hubverse <- function(forecast,
       metrics = c(
         scoringutils::get_metrics(to_score),
         interval_coverage_95 = interval_coverage_95
-      ))
+      )
+    )
 
   return(scored)
 }
