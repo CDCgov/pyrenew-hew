@@ -15,7 +15,7 @@ get_hubverse_table_paths <- function(dir,
 }
 
 
-score_and_save <- function(eval_data_path,
+score_and_save <- function(observed_data_path,
                            influenza_table_dir,
                            covid_table_dir,
                            output_dir,
@@ -41,13 +41,13 @@ score_and_save <- function(eval_data_path,
   )
 
   message(
-    "Scoring against evaluation data from the file: ",
-    eval_data_path,
+    "Scoring against observed data from the file: ",
+    observed_data_path,
     "..."
   )
 
-  eval_data <- readr::read_tsv(
-    eval_data_path,
+  observed_data <- readr::read_tsv(
+    observed_data_path,
     show_col_types = FALSE
   )
 
@@ -62,17 +62,25 @@ score_and_save <- function(eval_data_path,
       TRUE ~ disease
     )
 
-    scored <- readr::read_tsv(
+    to_score <- readr::read_tsv(
       path,
       show_col_types = FALSE
     ) |>
       dplyr::mutate(disease = !!disease) |>
-      dplyr::filter(.data$target_end_date <= !!last_target_date) |>
+      dplyr::filter(.data$target_end_date <= !!last_target_date)
+
+
+    scored <- if (nrow(to_score) > 0) {
       hewr::score_hubverse(
-        observed = eval_data,
-        observed_value_column = glue::glue("prop_{disease_short}"),
+        to_score,
+        observed = observed_data,
+        observed_value_column =
+          glue::glue("prop_{disease_short}"),
         horizons = horizons
       )
+    } else {
+      NULL
+    }
 
     return(scored)
   }
@@ -132,17 +140,26 @@ score_and_save <- function(eval_data_path,
 
   message("Saving summary tables...")
   purrr::walk2(
-    summaries, names(summaries),
-    \(x, y) readr::write_tsv(x, make_output_path(y, "tsv"))
+    summaries,
+    names(summaries),
+    \(x, y) {
+      readr::write_tsv(
+        x,
+        make_output_path(
+          y,
+          "tsv"
+        )
+      )
+    }
   )
 
   message("Done.")
 }
 
-p <- arg_parser("Score hubverse tables against evaluation data.") |>
+p <- arg_parser("Score hubverse tables against observed data.") |>
   add_argument(
-    "eval_data_path",
-    help = "Path to a .tsv containing observed data for evaluation."
+    "observed_data_path",
+    help = "Path to a .tsv containing observed data."
   ) |>
   add_argument(
     "hubverse_table_dir",
@@ -157,7 +174,7 @@ p <- arg_parser("Score hubverse tables against evaluation data.") |>
       "Output directory for scores and plots. If not given, ",
       "use the directory in which the script is invoked."
     ),
-    default = fs::path(".")
+    default = "."
   ) |>
   add_argument(
     "--last-target-date",
@@ -182,12 +199,12 @@ p <- arg_parser("Score hubverse tables against evaluation data.") |>
 
 argv <- parse_args(p)
 score_and_save(
-  eval_data_path = argv$eval_data_path,
+  observed_data_path = argv$observed_data_path,
   influenza_table_dir = argv$hubverse_table_dir,
   covid_table_dir = argv$hubverse_table_dir,
   ## for the CLI, covid and influenza should be
   ## in the same directory
-  output_dir = argv$output_dir,
-  last_target_date = lubridate::ymd(last_target_date),
+  output_dir = fs::path(argv$output_dir),
+  last_target_date = lubridate::ymd(argv$last_target_date),
   horizons = stringr::str_split_1(argv$horizons, " ")
 )
