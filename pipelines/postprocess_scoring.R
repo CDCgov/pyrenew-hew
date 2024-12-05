@@ -144,10 +144,11 @@ relative_wis_by_location <- function(summarised_scores,
   sym_xlim <- c(1 / max_overall, max_overall)
 
   ## compute location order (by 0-week horizon
-  ## rel wis
+  ## rel wis, showing best performance at the
+  ## top
   ordered_locs <- summarised_scores |>
     filter(.data$horizon == min(.data$horizon)) |>
-    arrange(.data$relative_wis) |>
+    arrange(desc(.data$relative_wis)) |>
     pull("location")
 
   fig <- summarised_scores |>
