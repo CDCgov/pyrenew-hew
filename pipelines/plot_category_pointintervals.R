@@ -104,7 +104,7 @@ plot_category_pointintervals <- function(data, horizon) {
       size = 5,
       show.legend = TRUE
     ) +
-    scale_x_continuous(label = label_percent()) +
+    scale_x_continuous(label = scales::label_percent()) +
     scale_color_prism(drop = FALSE) +
     labs(color = "Activity Level") +
     theme_minimal()
