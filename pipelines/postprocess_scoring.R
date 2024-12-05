@@ -247,10 +247,13 @@ main <- function(path_to_scores,
       table_name,
       "..."
     )
-    tab_by <- if (table_name == "overall") {
-      NULL
+    if (table_name == "overall") {
+      tab_by <- NULL
+      tab_savename <- "table_scores_overall"
     } else {
-      stringr::str_split_1(table_name, "__")
+      tab_by <- stringr::str_split_1(table_name, "__")
+      tab_by_str <- paste(tab_by, collapse = "_")
+      tab_savename <- glue::glue("table_scores_by_{tab_by_str}")
     }
 
     table <- summarised_scoring_table(
@@ -260,7 +263,7 @@ main <- function(path_to_scores,
     )
 
     save_path <- get_save_path(
-      glue::glue("table_scores_by_{table_name}"),
+      tab_savename,
       ext = "tsv"
     )
     message(
