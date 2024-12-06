@@ -4,10 +4,20 @@
 \alias{process_state_forecast}
 \title{Process state forecast}
 \usage{
-process_state_forecast(model_run_dir, save = TRUE)
+process_state_forecast(
+  model_run_dir,
+  pyrenew_model_name,
+  timeseries_model_name,
+  save = TRUE
+)
 }
 \arguments{
 \item{model_run_dir}{Model run directory}
+
+\item{pyrenew_model_name}{Name of directory containing pyrenew model outputs}
+
+\item{timeseries_model_name}{Name of directory containing timeseries model
+outputs}
 
 \item{save}{Logical indicating whether or not to save}
 }

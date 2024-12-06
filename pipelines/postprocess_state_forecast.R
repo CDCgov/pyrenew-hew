@@ -11,9 +11,15 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-save_forecast_figures <- function(model_run_dir) {
+save_forecast_figures <- function(model_run_dir,
+                                  pyrenew_model_name,
+                                  timeseries_model_name) {
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
-  processed_forecast <- process_state_forecast(model_run_dir)
+  processed_forecast <- process_state_forecast(
+    model_run_dir,
+    pyrenew_model_name,
+    timeseries_model_name
+  )
 
   figure_save_tbl <-
     expand_grid(
@@ -56,9 +62,20 @@ p <- arg_parser("Generate forecast figures") |>
   add_argument(
     "model_run_dir",
     help = "Directory containing the model data and output.",
+  ) |>
+  add_argument(
+    "--pyrenew-model-name",
+    help = "Name of directory containing pyrenew model outputs"
+  ) |>
+  add_argument(
+    "--timeseries-model-name",
+    help = "Name of directory containing timeseries model outputs"
   )
 
 argv <- parse_args(p)
 
 model_run_dir <- path(argv$model_run_dir)
-save_forecast_figures(model_run_dir)
+pyrenew_model_name <- argv$pyrenew_model_name
+timeseries_model_name <- argv$timeseries_model_name
+
+save_forecast_figures(model_run_dir, pyrenew_model_name, timeseries_model_name)
