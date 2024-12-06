@@ -31,7 +31,7 @@ purrr::walk(script_packages, \(pkg) {
 #' @return None. The function writes the epiweekly data to a CSV file in the
 #'  specified directory.
 convert_daily_to_epiweekly <- function(
-    model_run_dir, dataname = "data.csv",
+    model_run_dir, dataname = "data.tsv",
     strict = TRUE, day_of_week = 7) {
   ext <- path_ext(dataname)
   data_basename <- path_ext_remove(dataname)
@@ -42,7 +42,7 @@ convert_daily_to_epiweekly <- function(
   delim <- if (ext == "csv") "," else "\t"
   message(glue::glue("Generating epi-weekly data {model_run_dir}..."))
 
-  data_path <- path(model_run_dir, dataname)
+  data_path <- path(model_run_dir, "data", dataname)
 
   daily_data <- read_delim(
     data_path,
@@ -73,7 +73,7 @@ convert_daily_to_epiweekly <- function(
   # epiweek end date determines data_type classification
 
   output_file <- path(
-    model_run_dir,
+    model_run_dir, "data",
     glue::glue("epiweekly_{data_basename}"),
     ext = ext
   )
@@ -82,7 +82,7 @@ convert_daily_to_epiweekly <- function(
 }
 
 main <- function(model_run_dir) {
-  convert_daily_to_epiweekly(model_run_dir, dataname = "data.csv")
+  convert_daily_to_epiweekly(model_run_dir, dataname = "data.tsv")
   convert_daily_to_epiweekly(model_run_dir, dataname = "eval_data.tsv")
 }
 

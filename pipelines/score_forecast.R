@@ -200,6 +200,7 @@ read_and_score_location <- function(model_run_dir,
   )
 
   truth_path <- fs::path(model_run_dir,
+    "data",
     eval_data_filename,
     ext = eval_data_file_ext
   )
