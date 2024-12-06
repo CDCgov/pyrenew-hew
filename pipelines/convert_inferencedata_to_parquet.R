@@ -21,10 +21,14 @@ purrr::walk(script_packages, \(pkg) {
 
 
 tidy_and_save_mcmc <- function(model_run_dir,
+                               model_name,
                                file_name_prefix = "",
                                filter_bad_chains,
                                good_chain_tol) {
-  inference_data_path <- path(model_run_dir, "inference_data", ext = "csv")
+  model_dir <- path(model_run_dir, model_name)
+  inference_data_path <- path(model_dir, "inference_data",
+    ext = "csv"
+  )
 
   tidy_inference_data <- inference_data_path |>
     read_csv(show_col_types = FALSE) |>
@@ -51,7 +55,7 @@ tidy_and_save_mcmc <- function(model_run_dir,
       data = purrr::map(data, \(x) filter(x, .chain %in% good_chains))
     )
 
-  save_dir <- path(model_run_dir, "mcmc_tidy")
+  save_dir <- path(model_dir, "mcmc_tidy")
   dir_create(save_dir)
 
   purrr::pwalk(tidy_inference_data, .f = function(group_name, data) {
@@ -67,6 +71,10 @@ p <- arg_parser("Tidy InferenceData to Parquet files") |>
   add_argument(
     "model_run_dir",
     help = "Directory containing the model data and output.",
+  ) |>
+  add_argument(
+    "--model-name",
+    help = "Name of model.",
   ) |>
   add_argument(
     "--no-filter-bad-chains",
@@ -85,10 +93,12 @@ p <- arg_parser("Tidy InferenceData to Parquet files") |>
 
 argv <- parse_args(p)
 model_run_dir <- path(argv$model_run_dir)
+model_name <- argv$model_name
 filter_bad_chains <- !argv$no_filter_bad_chains
 good_chain_tol <- argv$good_chain_tol
 
 tidy_and_save_mcmc(model_run_dir,
+  model_name,
   file_name_prefix = "pyrenew_",
   filter_bad_chains,
   good_chain_tol
