@@ -116,7 +116,7 @@ plot_scores_by_date <- function(scores_by_date,
     scale_y_continuous(trans = "log10") +
     theme_minimal() +
     coord_cartesian(ylim = sym_ylim) +
-    facet_wrap(~horizon)
+    facet_wrap(~horizon, ncol = 1)
 
   return(score_fig)
 }
@@ -324,7 +324,7 @@ main <- function(path_to_scores,
   ggsave(rel_wis_by_date_save_path,
     rel_wis_by_date,
     width = 10,
-    height = 8
+    height = 10
   )
 
   message("Plotting relative WIS by horizon, forecast date, location...")
@@ -347,7 +347,7 @@ main <- function(path_to_scores,
       "relative_wis_by_date_horizon_location"
     ),
     width = 10,
-    height = 8
+    height = 10
   )
 
   message("Plotting WIS components by location for pyrenew-hew...")
