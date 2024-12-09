@@ -26,6 +26,8 @@ Imports:
     here,
     htmltools,
     jsonlite,
+    knitr,
+    latex2exp,
     lubridate,
     purrr,
     quarto,

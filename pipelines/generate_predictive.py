@@ -13,7 +13,7 @@ def generate_and_save_predictions(
 
     (
         my_model,
-        data_observed_disease_hospital_admissions,
+        data_observed_disease_ed_visits,
         right_truncation_offset,
     ) = build_model_from_dir(model_run_dir)
 
@@ -29,8 +29,7 @@ def generate_and_save_predictions(
     my_model.mcmc.sampler = fresh_sampler
 
     posterior_predictive = my_model.posterior_predictive(
-        n_datapoints=len(data_observed_disease_hospital_admissions)
-        + n_forecast_points
+        n_datapoints=len(data_observed_disease_ed_visits) + n_forecast_points
     )
 
     idata = az.from_numpyro(

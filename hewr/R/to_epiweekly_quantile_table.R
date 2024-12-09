@@ -5,21 +5,27 @@
 #' @param model_run_dir Path to a directory containing
 #' forecast draws to process, whose basename is the forecasted
 #' location.
-#' @param report_date Report date for which to generate epiweekly quantiles.
+#' @param report_date Report date for which to generate epiweekly
+#' quantiles.
 #' @param max_lookback_days How many days before the report date
 #' to look back when generating epiweekly quantiles (determines how
 #' many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 #' quantiles will be generated.
+#' @param epiweekly_other Use an expressly epiweekly forecast
+#' for non-target ED visits instead of a daily forecast aggregated
+#' to epiweekly? Boolean, default `FALSE`.
 #' @return A [`tibble`][tibble::tibble()] of quantiles.
 #' @export
 to_epiweekly_quantiles <- function(model_run_dir,
                                    report_date,
-                                   max_lookback_days) {
+                                   max_lookback_days,
+                                   epiweekly_other = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
   draws_path <- fs::path(model_run_dir,
     "forecast_samples",
     ext = "parquet"
   )
+
   location <- fs::path_file(model_run_dir)
 
   draws <- arrow::read_parquet(draws_path) |>
@@ -42,19 +48,34 @@ to_epiweekly_quantiles <- function(model_run_dir,
       strict = TRUE
     )
 
-  epiweekly_total_draws <- draws |>
-    dplyr::filter(.data$disease == "Other") |>
-    forecasttools::daily_to_epiweekly(
-      date_col = "date",
-      value_col = ".value",
-      id_cols = ".draw",
-      weekly_value_name = "epiweekly_total",
-      strict = TRUE
+  if (!epiweekly_other) {
+    epiweekly_other_draws <- draws |>
+      dplyr::filter(.data$disease == "Other") |>
+      forecasttools::daily_to_epiweekly(
+        date_col = "date",
+        value_col = ".value",
+        id_cols = ".draw",
+        weekly_value_name = "epiweekly_other",
+        strict = TRUE
+      )
+  } else {
+    denom_path <- fs::path(model_run_dir,
+      "epiweekly_other_ed_visits_forecast",
+      ext = "parquet"
     )
 
+    epiweekly_other_draws <- arrow::read_parquet(denom_path) |>
+      dplyr::filter(.data$date >= lubridate::ymd(!!report_date) -
+        lubridate::days(!!max_lookback_days)) |>
+      dplyr::rename("epiweekly_other" = "other_ed_visits") |>
+      dplyr::mutate(
+        epiweek = lubridate::epiweek(.data$date),
+        epiyear = lubridate::epiyear(.data$date)
+      )
+  }
   epiweekly_prop_draws <- dplyr::inner_join(
     epiweekly_disease_draws,
-    epiweekly_total_draws,
+    epiweekly_other_draws,
     by = c(
       "epiweek",
       "epiyear",
@@ -63,7 +84,8 @@ to_epiweekly_quantiles <- function(model_run_dir,
   ) |>
     dplyr::mutate(
       "epiweekly_proportion" =
-        .data$epiweekly_disease / .data$epiweekly_total
+        .data$epiweekly_disease / (.data$epiweekly_disease +
+          .data$epiweekly_other)
     )
 
 
@@ -90,11 +112,17 @@ to_epiweekly_quantiles <- function(model_run_dir,
 #' `{disease}_r_{reference_date}_f_{first_data_date}_t_{last_data_date}`.
 #' @param exclude Locations to exclude, if any, as a list of strings.
 #' Default `NULL` (exclude nothing).
-#'
+#' @param epiweekly_other Use an expressly epiweekly forecast
+#' for non-target ED visits instead of a daily forecast aggregated
+#' to epiweekly? Boolean, default `FALSE`.
+#' @return The complete hubverse-format [`tibble`][tibble::tibble()].
 #' @export
 to_epiweekly_quantile_table <- function(model_batch_dir,
-                                        exclude = NULL) {
-  locations_to_process <- fs::dir_ls(model_batch_dir,
+                                        exclude = NULL,
+                                        epiweekly_other = FALSE) {
+  model_runs_path <- fs::path(model_batch_dir, "model_runs")
+
+  locations_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
   )
 
@@ -129,12 +157,14 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       to_epiweekly_quantiles(
         x,
         report_date = report_date,
-        max_lookback_days = 8
+        max_lookback_days = 8,
+        epiweekly_other = epiweekly_other
       )
     }
-    ## ensures we get the full -1 horizon but do not
-    ## waste time quantilizing draws that will not be
-    ## included in the final table.
+    ## max_lookback_days = 8 ensures we get
+    ## the full -1 horizon but do not waste
+    ## time quantilizing draws that will not
+    ## be included in the final table.
   ) |>
     dplyr::bind_rows() |>
     forecasttools::get_hubverse_table(

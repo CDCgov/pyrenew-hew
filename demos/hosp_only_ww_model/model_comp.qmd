@@ -4,8 +4,7 @@ format: gfm
 editor: visual
 ---
 
-This document shows graphical comparisons for key variables in the PyRenew model fit to example data (notebooks/hosp_only_ww_model.qmd) and Stan model fit to example data (notebooks/wwinference.Rmd).
-In order to render this document, those notebooks must be rendered first.
+This document shows graphical comparisons for key variables in the PyRenew model fit to example data (notebooks/pyrenew_hew_model.qmd) and Stan model fit to example data (notebooks/wwinference.Rmd). In order to render this document, those notebooks must be rendered first.
 
 ```{r}
 #| output: false
@@ -17,27 +16,22 @@ library(posterior)
 library(jsonlite)
 library(scales)
 library(here)
+library(forecasttools)
 ci_width <- c(0.5, 0.8, 0.95)
-
-distribution_split <- function(x) {
-  split(select(x, -distribution), f = as.factor(x$distribution))
-}
+fit_dir <- here(path("demos/hosp_only_ww_model/data/fit_hosp_only"))
 ```
 
 ## Load Data
 
 ```{r}
-hosp_data <- tibble(.value = here(path("notebooks", "data", "fit_hosp_only",
-  "stan_data",
-  ext = "json"
-)) |>
+hosp_data <- tibble(.value = path(fit_dir, "stan_data", ext = "json") |>
   jsonlite::read_json() |>
   pluck("hosp") |>
   unlist()) |>
   mutate(time = row_number())
 
 stan_files <-
-  dir_ls(here(path("notebooks", "data", "fit_hosp_only")),
+  dir_ls(fit_dir,
     glob = "*wwinference*"
   ) |>
   enframe(name = NULL, value = "file_path") |>
@@ -55,26 +49,9 @@ stan_tidy_draws <- read_cmdstan_csv(stan_files)$post_warmup_draws |>
   tidy_draws()
 
 pyrenew_tidy_draws <-
-  read_csv(here(path("notebooks", "data", "fit_hosp_only",
-    "inference_data",
-    ext = "csv"
-  ))) |>
-  rename_with(\(varname) str_remove_all(varname, "\\(|\\)|\\'|(, \\d+)")) |>
-  rename(
-    .chain = chain,
-    .iteration = draw
-  ) |>
-  mutate(across(c(.chain, .iteration), \(x) as.integer(x + 1))) |>
-  mutate(
-    .draw = tidybayes:::draw_from_chain_and_iteration_(.chain, .iteration),
-    .after = .iteration
-  ) |>
-  pivot_longer(-starts_with("."),
-    names_sep = ", ",
-    names_to = c("distribution", "name")
-  ) |>
-  distribution_split() |>
-  map(\(x) pivot_wider(x, names_from = name) |> tidy_draws())
+  path(fit_dir, "inference_data", ext = "csv") |>
+  read_csv() |>
+  forecasttools::inferencedata_to_tidy_draws()
 ```
 
 ## Calculate Credible Intervals for Plotting
@@ -82,15 +59,15 @@ pyrenew_tidy_draws <-
 ```{r}
 combined_ci_for_plotting <-
   bind_rows(
-    pyrenew_tidy_draws$posterior_predictive |>
-      gather_draws(observed_hospital_admissions[time], rt[time], ihr[time]) |>
+    deframe(pyrenew_tidy_draws)$posterior_predictive |>
+      gather_draws(observed_ed_visits[time], rt[time], iedr[time]) |>
       median_qi(.width = ci_width) |>
       mutate(model = "pyrenew"),
     stan_tidy_draws |>
       gather_draws(pred_hosp[time], rt[time], p_hosp[time]) |>
       mutate(.variable = case_when(
-        .variable == "pred_hosp" ~ "observed_hospital_admissions",
-        .variable == "p_hosp" ~ "ihr",
+        .variable == "pred_hosp" ~ "observed_ed_visits",
+        .variable == "p_hosp" ~ "iedr",
         TRUE ~ .variable
       )) |>
       median_qi(.width = ci_width) |>
@@ -98,13 +75,11 @@ combined_ci_for_plotting <-
   )
 ```
 
-
-
 ## Hospital Admission Comparison
 
 ```{r}
 combined_ci_for_plotting |>
-  filter(.variable == "observed_hospital_admissions") |>
+  filter(.variable == "observed_ed_visits") |>
   ggplot(aes(time, .value)) +
   facet_wrap(~model) +
   geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
@@ -119,8 +94,6 @@ combined_ci_for_plotting |>
   scale_x_continuous("Time") +
   theme(legend.position = "bottom")
 ```
-
-
 
 ## Rt Comparions
 
@@ -142,12 +115,11 @@ combined_ci_for_plotting |>
   geom_hline(yintercept = 1, linetype = "dashed")
 ```
 
-
-## IHR Comparison
+## IEDR Comparison
 
 ```{r}
 combined_ci_for_plotting |>
-  filter(.variable == "ihr") |>
+  filter(.variable == "iedr") |>
   ggplot(aes(time, .value)) +
   facet_wrap(~model) +
   geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
@@ -157,9 +129,9 @@ combined_ci_for_plotting |>
   ) +
   cowplot::theme_cowplot() +
   ggtitle("Vignette Data Model Comparison") +
-  scale_y_log10("IHR (p_hosp)", breaks = scales::log_breaks(n = 6)) +
+  scale_y_log10("IEDR (p_hosp)", breaks = scales::log_breaks(n = 6)) +
   scale_x_continuous("Time") +
   theme(legend.position = "bottom")
 ```
 
-IHR lengths are different (Stan model generates an unnecessarily long version, see https://github.com/CDCgov/ww-inference-model/issues/43#issuecomment-2330269879)
+IEDR lengths are different (Stan model generates an unnecessarily long version, see https://github.com/CDCgov/ww-inference-model/issues/43#issuecomment-2330269879)
