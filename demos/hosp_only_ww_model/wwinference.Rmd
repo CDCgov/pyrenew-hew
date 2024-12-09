@@ -181,7 +181,7 @@ hosp_data_preprocessed <- preprocess_count_data(
 
 We'll make some plots of the data just to make sure it looks like what we'd expect:
 
-```{r time-series-fig,  out.width='100%'}
+```{r wastewater-time-series-fig,  out.width='100%'}
 ggplot(ww_data_preprocessed) +
   geom_point(
     aes(
@@ -614,12 +614,12 @@ plot(draws_hosp_only, what = "global_rt", forecast_date = forecast_date)
 ```{r copy results}
 library(fs)
 
-base_dir <- path("data")
-fit_dir <- path(base_dir, "fit")
-fit_hosp_only_dir <- path(base_dir, "fit_hosp_only")
+fit_dir <- path("demos", "ww_model", "data", "fit")
+fit_hosp_only_dir <- path(
+  "demos", "hosp_only_ww_model", "data", "fit_hosp_only"
+)
 dir_create(fit_dir)
 dir_create(fit_hosp_only_dir)
-
 
 file_copy(
   path = ww_fit$fit$result$data_file(),
