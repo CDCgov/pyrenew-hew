@@ -10,6 +10,8 @@ to_epiweekly_quantiles(
   model_run_dir,
   report_date,
   max_lookback_days,
+  disease_model_name = "pyrenew_e",
+  other_model_name = "timeseries_e",
   epiweekly_other = FALSE
 )
 }
@@ -25,6 +27,15 @@ quantiles.}
 to look back when generating epiweekly quantiles (determines how
 many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 quantiles will be generated.}
+
+\item{disease_model_name}{Name of the model for the target
+disease to use when making the quantile table. Default
+\code{"pyrenew_e"}.}
+
+\item{other_model_name}{Name of the model for other ed visits
+to use when making the quantile table if "epiweekly_other" is
+\code{TRUE} (ignored when \code{epiweekly_other} is \code{FALSE}). Default
+\code{"timeseries_e"}.}
 
 \item{epiweekly_other}{Use an expressly epiweekly forecast
 for non-target ED visits instead of a daily forecast aggregated
