@@ -11,6 +11,13 @@
 #' to look back when generating epiweekly quantiles (determines how
 #' many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 #' quantiles will be generated.
+#' @param disease_model_name Name of the model for the target
+#' disease to use when making the quantile table. Default
+#' `"pyrenew_e"`.
+#' @param other_model_name Name of the model for other ed visits
+#' to use when making the quantile table if "epiweekly_other" is
+#' `TRUE` (ignored when `epiweekly_other` is `FALSE`). Default
+#' `"timeseries_e"`.
 #' @param epiweekly_other Use an expressly epiweekly forecast
 #' for non-target ED visits instead of a daily forecast aggregated
 #' to epiweekly? Boolean, default `FALSE`.
@@ -19,9 +26,12 @@
 to_epiweekly_quantiles <- function(model_run_dir,
                                    report_date,
                                    max_lookback_days,
+                                   disease_model_name = "pyrenew_e",
+                                   other_model_name = "timeseries_e",
                                    epiweekly_other = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
   draws_path <- fs::path(model_run_dir,
+    disease_model_name,
     "forecast_samples",
     ext = "parquet"
   )
@@ -60,6 +70,7 @@ to_epiweekly_quantiles <- function(model_run_dir,
       )
   } else {
     denom_path <- fs::path(model_run_dir,
+      other_model_name,
       "epiweekly_other_ed_visits_forecast",
       ext = "parquet"
     )
