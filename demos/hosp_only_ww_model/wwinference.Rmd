@@ -615,8 +615,11 @@ plot(draws_hosp_only, what = "global_rt", forecast_date = forecast_date)
 library(fs)
 
 fit_dir <- path("demos", "ww_model", "data", "fit")
-fit_hosp_only_dir <- path("demos", "hosp_only_ww_model", "data", "fit_hosp_only")
+fit_hosp_only_dir <- path(
+  "demos", "hosp_only_ww_model", "data", "fit_hosp_only"
+)
 dir_create(fit_dir)
+dir_create(fit_hosp_only_dir)
 
 file_copy(
   path = ww_fit$fit$result$data_file(),
