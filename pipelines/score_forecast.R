@@ -184,22 +184,23 @@ read_and_score_location <- function(model_run_dir,
   )$report_date
 
   forecast_path <- fs::path(
-    model_run_dir,
+    model_run_dir, "pyrenew_e",
     glue::glue("{prefix}forecast_samples"),
     ext = parquet_file_ext
   )
   ts_baseline_path <- fs::path(
-    model_run_dir,
+    model_run_dir, "timeseries_e",
     glue::glue("{prefix}baseline_ts_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
   cdc_baseline_path <- fs::path(
-    model_run_dir,
+    model_run_dir, "timeseries_e",
     glue::glue("{prefix}baseline_cdc_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
 
   truth_path <- fs::path(model_run_dir,
+    "data",
     eval_data_filename,
     ext = eval_data_file_ext
   )

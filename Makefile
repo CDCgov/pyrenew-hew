@@ -24,7 +24,7 @@ acr_login:
 	az acr login -n $(AZURE_CONTAINER_REGISTRY_ACCOUNT)
 
 dep_container_push: dep_container_tag acr_login
-	$(ENGINE) push $(DEP_CONTAINER_NAME)
+	$(ENGINE) push $(DEP_CONTAINER_REMOTE_NAME)
 
 container_push: container_tag acr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)

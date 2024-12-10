@@ -32,13 +32,15 @@ def generate_epiweekly(model_run_dir: Path) -> None:
 
 
 def timeseries_forecasts(
-    model_run_dir: Path, n_forecast_days: int, n_samples: int
+    model_run_dir: Path, model_name: str, n_forecast_days: int, n_samples: int
 ) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/timeseries_forecasts.R",
             f"{model_run_dir}",
+            "--model-name",
+            f"{model_name}",
             "--n-forecast-days",
             f"{n_forecast_days}",
             "--n-samples",
@@ -51,12 +53,16 @@ def timeseries_forecasts(
     return None
 
 
-def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
+def convert_inferencedata_to_parquet(
+    model_run_dir: Path, model_name: str
+) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/convert_inferencedata_to_parquet.R",
             f"{model_run_dir}",
+            "--model-name",
+            f"{model_name}",
         ],
         capture_output=True,
     )
@@ -67,12 +73,18 @@ def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
     return None
 
 
-def postprocess_forecast(model_run_dir: Path) -> None:
+def postprocess_forecast(
+    model_run_dir: Path, pyrenew_model_name: str, timeseries_model_name: str
+) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/postprocess_state_forecast.R",
             f"{model_run_dir}",
+            "--pyrenew-model-name",
+            f"{pyrenew_model_name}",
+            "--timeseries-model-name",
+            f"{timeseries_model_name}",
         ],
         capture_output=True,
     )
@@ -92,6 +104,20 @@ def score_forecast(model_run_dir: Path) -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(f"score_forecast: {result.stderr}")
+    return None
+
+
+def render_webpage(model_run_dir: Path) -> None:
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/render_webpage.R",
+            f"{model_run_dir}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"render_webpage: {result.stderr}")
     return None
 
 
@@ -239,7 +265,7 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         latest_comprehensive_path=eval_data_path,
-        output_data_dir=model_run_dir,
+        output_data_dir=Path(model_run_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
     )
 
@@ -251,6 +277,7 @@ def main(
     logger.info("Fitting model")
     fit_and_save_model(
         model_run_dir,
+        "pyrenew_e",
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
@@ -260,7 +287,9 @@ def main(
     logger.info("Performing posterior prediction / forecasting...")
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
-    generate_and_save_predictions(model_run_dir, n_days_past_last_training)
+    generate_and_save_predictions(
+        model_run_dir, "pyrenew_e", n_days_past_last_training
+    )
 
     logger.info(
         "Performing baseline forecasting and non-target pathogen "
@@ -268,17 +297,24 @@ def main(
     )
     n_denominator_samples = n_samples * n_chains
     timeseries_forecasts(
-        model_run_dir, n_days_past_last_training, n_denominator_samples
+        model_run_dir,
+        "timeseries_e",
+        n_days_past_last_training,
+        n_denominator_samples,
     )
     logger.info("All forecasting complete.")
 
     logger.info("Converting inferencedata to parquet...")
-    convert_inferencedata_to_parquet(model_run_dir)
+    convert_inferencedata_to_parquet(model_run_dir, "pyrenew_e")
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    postprocess_forecast(model_run_dir)
+    postprocess_forecast(model_run_dir, "pyrenew_e", "timeseries_e")
     logger.info("Postprocessing complete.")
+
+    logger.info("Rendering webpage...")
+    render_webpage(model_run_dir)
+    logger.info("Rendering complete.")
 
     if score:
         logger.info("Scoring forecast...")

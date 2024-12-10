@@ -17,7 +17,7 @@ polars = "^1.5.0"
 pypdf = "^5.1.0"
 pyarrow = "^18.0.0"
 pygit2 = "^1.16.0"
-azuretools = {git = "https://github.com/cdcent/cfa-stf-azuretools"}
+azuretools = {git = "https://github.com/cdcgov/cfa-azuretools"}
 
 [build-system]
 requires = ["poetry-core"]

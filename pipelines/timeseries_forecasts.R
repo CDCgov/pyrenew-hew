@@ -147,15 +147,15 @@ cdc_flat_forecast <- function(data,
 }
 
 main <- function(
-    model_run_dir, n_forecast_days = 28, n_samples = 2000,
+    model_run_dir, model_name, n_forecast_days = 28, n_samples = 2000,
     epiweekly = FALSE) {
   prefix <- if_else(epiweekly, "epiweekly_", "")
   data_frequency <- if_else(epiweekly, "1 week", "1 day")
   dataname <- if_else(epiweekly, "epiweekly_data", "data")
   # to do: do this with json data that has dates
-  data_path <- path(model_run_dir, dataname, ext = "csv")
+  data_path <- path(model_run_dir, "data", dataname, ext = "tsv")
 
-  target_and_other_data <- read_csv(
+  target_and_other_data <- read_tsv(
     data_path,
     col_types = cols(
       disease = col_character(),
@@ -213,6 +213,9 @@ main <- function(
     aheads = 1:n_forecast_days
   )
 
+  model_dir <- path(model_run_dir, model_name)
+  dir_create(model_dir)
+
   to_save <- tribble(
     ~basename, ~value,
     "other_ed_visits_forecast", forecast_other,
@@ -222,7 +225,7 @@ main <- function(
     "baseline_cdc_prop_ed_visits_forecast", baseline_cdc_prop
   ) |>
     mutate(save_path = path(
-      !!model_run_dir, glue::glue("{prefix}{basename}"),
+      !!model_dir, glue::glue("{prefix}{basename}"),
       ext = "parquet"
     ))
 
@@ -243,6 +246,10 @@ p <- arg_parser(
     help = "Directory containing the model data and output.",
   ) |>
   add_argument(
+    "--model-name",
+    help = "Name of model.",
+  ) |>
+  add_argument(
     "--n-forecast-days",
     help = "Number of days to forecast.",
     default = 28L
@@ -255,6 +262,7 @@ p <- arg_parser(
 
 argv <- parse_args(p)
 model_run_dir <- path(argv$model_run_dir)
+model_name <- argv$model_name
 n_forecast_days <- argv$n_forecast_days
 n_samples <- argv$n_samples
 
@@ -266,9 +274,11 @@ disease_name_nssp_map <- c(
 disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
 
 # Baseline forecasts on 1 day resolution
-main(model_run_dir, n_forecast_days = n_forecast_days, n_samples = n_samples)
+main(model_run_dir, model_name,
+  n_forecast_days = n_forecast_days, n_samples = n_samples
+)
 # Baseline forecasts on 1 (epi)week resolution
-main(model_run_dir,
+main(model_run_dir, model_name,
   n_forecast_days = n_forecast_days, n_samples = n_samples,
   epiweekly = TRUE
 )

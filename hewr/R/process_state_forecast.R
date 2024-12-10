@@ -1,29 +1,38 @@
 #' Process state forecast
 #'
 #' @param model_run_dir Model run directory
+#' @param pyrenew_model_name Name of directory containing pyrenew model outputs
+#' @param timeseries_model_name Name of directory containing timeseries model
+#' outputs
 #' @param save Logical indicating whether or not to save
 #'
 #' @return a list with three tibbles: combined_dat, forecast_samples,
 #' and forecast_ci
 #' @export
-process_state_forecast <- function(model_run_dir, save = TRUE) {
+process_state_forecast <- function(model_run_dir,
+                                   pyrenew_model_name,
+                                   timeseries_model_name,
+                                   save = TRUE) {
+  pyrenew_model_dir <- fs::path(model_run_dir, pyrenew_model_name)
+  timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
   disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
 
-  train_data_path <- fs::path(model_run_dir, "data", ext = "csv")
-  train_dat <- readr::read_csv(train_data_path, show_col_types = FALSE)
+  train_data_path <- fs::path(model_run_dir, "data", "data", ext = "tsv")
+  train_dat <- readr::read_tsv(train_data_path, show_col_types = FALSE)
 
-  eval_data_path <- fs::path(model_run_dir, "eval_data", ext = "tsv")
+  eval_data_path <- fs::path(model_run_dir, "data", "eval_data", ext = "tsv")
   eval_dat <- readr::read_tsv(eval_data_path, show_col_types = FALSE) |>
     dplyr::mutate(data_type = "eval")
 
-  posterior_predictive_path <- fs::path(model_run_dir, "mcmc_tidy",
+  posterior_predictive_path <- fs::path(pyrenew_model_dir, "mcmc_tidy",
     "pyrenew_posterior_predictive",
     ext = "parquet"
   )
   posterior_predictive <- arrow::read_parquet(posterior_predictive_path)
 
 
-  other_ed_visits_path <- fs::path(model_run_dir, "other_ed_visits_forecast",
+  other_ed_visits_path <- fs::path(timeseries_model_dir,
+    "other_ed_visits_forecast",
     ext = "parquet"
   )
   other_ed_visits_forecast <- arrow::read_parquet(other_ed_visits_path) |>
@@ -76,9 +85,9 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
 
   forecast_samples <-
     posterior_predictive |>
-    tidybayes::gather_draws(observed_hospital_admissions[time]) |>
+    tidybayes::gather_draws(observed_ed_visits[time]) |>
     tidyr::pivot_wider(names_from = .variable, values_from = .value) |>
-    dplyr::rename(Disease = observed_hospital_admissions) |>
+    dplyr::rename(Disease = observed_ed_visits) |>
     dplyr::ungroup() |>
     dplyr::mutate(date = min(combined_dat$date) + time) |>
     dplyr::left_join(other_ed_visits_samples,
@@ -124,7 +133,7 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
   if (save) {
     arrow::write_parquet(
       combined_dat,
-      fs::path(model_run_dir,
+      fs::path(pyrenew_model_dir,
         "combined_training_eval_data",
         ext = "parquet"
       )
@@ -132,20 +141,20 @@ process_state_forecast <- function(model_run_dir, save = TRUE) {
 
     arrow::write_parquet(
       forecast_samples,
-      fs::path(model_run_dir, "forecast_samples",
+      fs::path(pyrenew_model_dir, "forecast_samples",
         ext = "parquet"
       )
     )
     arrow::write_parquet(
       epiweekly_forecast_samples,
-      fs::path(model_run_dir, "epiweekly_forecast_samples",
+      fs::path(pyrenew_model_dir, "epiweekly_forecast_samples",
         ext = "parquet"
       )
     )
 
     arrow::write_parquet(
       forecast_ci,
-      fs::path(model_run_dir, "forecast_ci",
+      fs::path(pyrenew_model_dir, "forecast_ci",
         ext = "parquet"
       )
     )

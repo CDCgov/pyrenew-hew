@@ -322,26 +322,24 @@ def process_and_save_state(
     )
 
     data_for_model_fit = {
-        "inf_to_hosp_pmf": delay_pmf,
+        "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_hospital_admissions": train_disease_ed_visits,
-        "data_observed_disease_hospital_admissions_test": test_disease_ed_visits,
+        "data_observed_disease_ed_visits": train_disease_ed_visits,
+        "data_observed_disease_ed_visits_test": test_disease_ed_visits,
         "data_observed_total_hospital_admissions": train_total_ed_visits,
         "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
-
-    os.makedirs(model_run_dir, exist_ok=True)
+    data_dir = Path(model_run_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
 
     if logger is not None:
-        logger.info(f"Saving {state_abb} to {model_run_dir}")
-    data_to_save.write_csv(Path(model_run_dir, "data.csv"))
+        logger.info(f"Saving {state_abb} to {data_dir}")
+    data_to_save.write_csv(Path(data_dir, "data.tsv"), separator="\t")
 
-    with open(
-        Path(model_run_dir, "data_for_model_fit.json"), "w"
-    ) as json_file:
+    with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
 
     return None
