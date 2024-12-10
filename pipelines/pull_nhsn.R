@@ -1,6 +1,7 @@
 script_packages <- c(
   "forecasttools",
-  "tidyverse",
+  "dplyr",
+  "readr",
   "argparser"
 )
 
