@@ -67,8 +67,8 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
                                      date_colname = "date",
                                      sample_id_colname = ".draw",
                                      value_colname = ".value") {
-  first_forecast_date <- min(forecast[date_colname])
-  n_draws <- max(other_ed_visits_forecast[sample_id_colname])
+  first_forecast_date <- min(tidy_forecast[date_colname])
+  n_draws <- max(tidy_forecast[sample_id_colname])
   transformed_obs <- observed |>
     dplyr::filter(
       .data$disease == !!disease_name,
@@ -84,7 +84,7 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 
   dplyr::bind_rows(
     transformed_obs,
-    other_ed_visits_forecast
+    tidy_forecast
   )
 }
 
