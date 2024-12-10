@@ -14,16 +14,18 @@ process_state_forecast(
 \arguments{
 \item{model_run_dir}{Model run directory}
 
-\item{pyrenew_model_name}{Name of directory containing pyrenew model outputs}
+\item{pyrenew_model_name}{Name of directory containing pyrenew
+model outputs}
 
-\item{timeseries_model_name}{Name of directory containing timeseries model
-outputs}
+\item{timeseries_model_name}{Name of directory containing timeseries
+model outputs}
 
 \item{save}{Logical indicating whether or not to save}
 }
 \value{
-a list with three tibbles: combined_dat, forecast_samples,
-and forecast_ci
+a list with four tibbles: \code{combined_dat},
+\code{forecast_samples}, \code{epiweekly_forecast_samples},
+and \code{forecast_ci}
 }
 \description{
 Process state forecast
