@@ -40,6 +40,54 @@ combine_training_and_eval_data <- function(train_dat,
   return(combined_dat)
 }
 
+#' Combine a forecast in tidy draws based format
+#' with observed values to create a synthetic set
+#' of tidy posterior "samples".
+#'
+#' Observed timepoints have the observed value as
+#' the sampled value for all sample ids.
+#'
+#' @param tidy_forecast Forecast in tidy format, with
+#' a sample id column and a value column.
+#' @param observed observed data to join with the forecast.
+#' @param disease_name name of the disease in `tidy_forecast`,
+#' for downsampling the observed data if it contains data
+#' for multiple diseases.
+#' @param date_colname Name of the column in `tidy_forecast`
+#' and `observed` that identifies dates. Default `"date"`.
+#' @param sample_id_colname Name of the column in
+#' `tidy_forecast` that uniquely identifies individual
+#' posterior samples / draws. Default `".draw"`.
+#' @param value_colname Name of the column in
+#' `tidy_forecast` for the sampled values.
+#' Default `".value"`.
+to_tidy_draws_timeseries <- function(tidy_forecast,
+                                     observed,
+                                     disease_name,
+                                     date_colname = "date",
+                                     sample_id_colname = ".draw",
+                                     value_colname = ".value") {
+  first_forecast_date <- min(forecast[date_colname])
+  n_draws <- max(other_ed_visits_forecast[sample_id_colname])
+  transformed_obs <- observed |>
+    dplyr::filter(
+      .data$disease == !!disease_name,
+      .data[[date_colname]] < !!first_forecast_date
+    ) |>
+    dplyr::select("date", !!disease_name := "disease") |>
+    tidyr::expand_grid(!!sample_id_colname := 1:n_draws)
+
+
+  stopifnot(
+    max(transformed_obs[date_colname]) + 1 == first_forecast_date
+  )
+
+  dplyr::bind_rows(
+    transformed_obs,
+    other_ed_visits_forecast
+  )
+}
+
 
 #' Compute the proportion of ED visits due to
 #' the target disease.
@@ -126,25 +174,13 @@ process_state_forecast <- function(model_run_dir,
     disease_name
   )
 
-  last_training_date <- combined_dat |>
-    dplyr::filter(.data$data_type == "train") |>
-    dplyr::pull("date") |>
-    max()
-
-  other_ed_visits_samples <-
-    dplyr::bind_rows(
-      combined_dat |>
-        dplyr::filter(
-          .data$data_type == "train",
-          .data$disease == "Other",
-          .data$date <= !!last_training_date
-        ) |>
-        dplyr::select("date", Other = ".value") |>
-        tidyr::expand_grid(
-          .draw = 1:max(other_ed_visits_forecast$.draw)
-        ),
-      other_ed_visits_forecast
-    )
+  ## augement other ed visits forecast with "sample"
+  ## format observed data
+  other_ed_visits_samples <- to_tidy_draws_timeseries(
+    other_ed_visits_forecast,
+    train_dat,
+    disease_name = "Other"
+  )
 
 
   forecast_samples <-
