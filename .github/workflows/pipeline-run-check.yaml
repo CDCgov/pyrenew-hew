@@ -3,11 +3,10 @@ name: Pipeline Run Check
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  install-pkgs:
+  set-up-R-and-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,22 +14,28 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: "Cache poetry"
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: ${{ runner.os }}-poetry
-      - name: "install poetry"
-        run: pip install poetry
-      - name: "Install pyrenew-hew"
-        run: poetry install
       - name: "Set up R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: "4.2.0"
           use-public-rspm: true
-      - name: "Install hewr"
-        run: Rscript -e 'devtools::install()'
-        working-directory: hewr
+  install-pkgs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "install poetry"
+        run: pip install poetry
+      - name: "Install pyrenew-hew"
+        run: poetry install
+      - name: "Set up dependencies for hewr"
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: hewr
+      - name: "Check hewr package"
+        uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: hewr
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
       - name: "Run pipeline"
         run: bash pipelines/tests/test_run.sh pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs 1000 28
