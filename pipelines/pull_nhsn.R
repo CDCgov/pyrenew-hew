@@ -2,6 +2,7 @@ script_packages <- c(
   "forecasttools",
   "dplyr",
   "readr",
+  "lubridate",
   "argparser"
 )
 
