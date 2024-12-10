@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  set-up-R-and-python:
+  run-pipeline:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,9 +19,6 @@ jobs:
         with:
           r-version: "4.2.0"
           use-public-rspm: true
-  install-pkgs:
-    runs-on: ubuntu-latest
-    steps:
       - name: "install poetry"
         run: pip install poetry
       - name: "Install pyrenew-hew"
@@ -34,8 +31,5 @@ jobs:
         uses: r-lib/actions/check-r-package@v2
         with:
           working-directory: hewr
-  run-pipeline:
-    runs-on: ubuntu-latest
-    steps:
       - name: "Run pipeline"
         run: bash pipelines/tests/test_run.sh pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs 1000 28
