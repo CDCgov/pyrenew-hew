@@ -41,6 +41,44 @@ combine_training_and_eval_data <- function(train_dat,
 }
 
 
+#' Compute the proportion of ED visits due to
+#' the target disease.
+#'
+#' @param df dataframe to annotate, with coulumns
+#' `"Disease"` and `"Other"`.
+#' @return the dataframe with an additional column
+#' `prop_disease_ed_visits`.
+#' @export
+with_prop_disease_ed_visits <- function(df) {
+  return(
+    df |>
+      dplyr::mutate(prop_disease_ed_visits = .data$Disease /
+        (.data$Disease + .data$Other))
+  )
+}
+
+#' Pivot a data table of counts and proportions of
+#' ED visits to long format.
+#'
+#' @param df data frame to pivot. Should have columns
+#' `"Disease"`, `"Other"`, and `"prop_disease_ed_visits"`.
+#' @return the pivoted data frame, with disease names in
+#' a column named `disease` and counts / proportions in
+#' a column named `.value`.
+#' @export
+pivot_ed_visit_df_longer <- function(df) {
+  return(tidyr::pivot_longer(
+    df,
+    c(
+      "Disease",
+      "Other",
+      "prop_disease_ed_visits"
+    ),
+    names_to = "disease",
+    values_to = ".value"
+  ))
+}
+
 #' Process state forecast
 #'
 #' @param model_run_dir Model run directory
@@ -122,17 +160,8 @@ process_state_forecast <- function(model_run_dir,
     dplyr::left_join(other_ed_visits_samples,
       by = c(".draw", "date")
     ) |>
-    dplyr::mutate(prop_disease_ed_visits = .data$Disease /
-      (.data$Disease + .data$Other)) |>
-    tidyr::pivot_longer(
-      c(
-        "Other",
-        "Disease",
-        "prop_disease_ed_visits"
-      ),
-      names_to = "disease",
-      values_to = ".value"
-    )
+    with_prop_disease_ed_visits() |>
+    pivot_ed_visit_df_longer()
 
   epiweekly_forecast_samples <- forecast_samples |>
     dplyr::filter(.data$disease != "prop_disease_ed_visits") |>
@@ -146,22 +175,14 @@ process_state_forecast <- function(model_run_dir,
       names_from = "disease",
       values_from = ".value"
     ) |>
-    dplyr::mutate(prop_disease_ed_visits = .data$Disease /
-      (.data$Disease + .data$Other)) |>
-    tidyr::pivot_longer(
-      c(
-        "Disease",
-        "Other",
-        "prop_disease_ed_visits"
-      ),
-      names_to = "disease",
-      values_to = ".value"
-    ) |>
     dplyr::mutate(date = forecasttools::epiweek_to_date(
       .data$epiweek,
       .data$epiyear,
       day_of_week = 7
-    ))
+    )) |>
+    with_prop_disease_ed_visits() |>
+    pivot_ed_visit_df_longer()
+
 
   forecast_ci <-
     forecast_samples |>
@@ -169,36 +190,42 @@ process_state_forecast <- function(model_run_dir,
     dplyr::group_by(.data$date, .data$disease) |>
     ggdist::median_qi(.width = c(0.5, 0.8, 0.95))
 
-  # Save data
+  # Optionally save data to parquet
   if (save) {
-    arrow::write_parquet(
-      combined_dat,
-      fs::path(pyrenew_model_dir,
-        "combined_training_eval_data",
-        ext = "parquet"
+    to_save <- list(
+      list(
+        table = combined_dat,
+        save_name = "combined_training_eval_data"
+      ),
+      list(
+        table = forecast_samples,
+        save_name = "forecast_samples"
+      ),
+      list(
+        table = epiweekly_forecast_samples,
+        save_name = "epiweekly_forecast_samples"
+      ),
+      list(
+        table = forecast_ci,
+        save_name = "forecast_ci"
       )
     )
 
-    arrow::write_parquet(
-      forecast_samples,
-      fs::path(pyrenew_model_dir, "forecast_samples",
-        ext = "parquet"
-      )
-    )
-    arrow::write_parquet(
-      epiweekly_forecast_samples,
-      fs::path(pyrenew_model_dir, "epiweekly_forecast_samples",
-        ext = "parquet"
-      )
-    )
 
-    arrow::write_parquet(
-      forecast_ci,
-      fs::path(pyrenew_model_dir, "forecast_ci",
-        ext = "parquet"
-      )
+    purrr::walk(
+      to_save,
+      \(x) {
+        arrow::write_parquet(
+          x$table,
+          fs::path(pyrenew_model_dir,
+            x$save_name,
+            ext = "parquet"
+          )
+        )
+      }
     )
   }
+
   return(list(
     combined_dat = combined_dat,
     forecast_samples = forecast_samples,
