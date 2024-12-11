@@ -18,33 +18,73 @@ echo ""
 for SUBDIR in "$BASE_DIR"/*/; do
     echo "TEST-MODE: Inference for $SUBDIR"
     python fit_model.py "$SUBDIR" --n-chains 1 --n-samples $N_SAMPLES
-    echo "TEST-MODE: Finished inference"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: Inference failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished inference"
+    fi
     echo ""
     echo "TEST-MODE: Generating posterior predictions for $SUBDIR"
     python generate_predictive.py "$SUBDIR" --n-forecast-points $N_AHEAD
-    echo "TEST-MODE: Finished generating posterior predictions"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: generating posterior predictions failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished generating posterior predictions"
+    fi
     echo ""
     echo "TEST-MODE: Converting inferencedata to parquet for $SUBDIR"
     Rscript convert_inferencedata_to_parquet.R "$SUBDIR"
-    echo "TEST-MODE: Finished converting inferencedata to parquet"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: converting inferencedata to parquet failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished converting inferencedata to parquet"
+    fi
     echo ""
     echo "TEST-MODE: Generate epiweekly data for $SUBDIR"
     Rscript generate_epiweekly.R "$SUBDIR"
-    echo "TEST-MODE: Finished generating epiweekly data"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: generating epiweekly data failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished generating epiweekly data"
+    fi
     echo ""
     echo "TEST-MODE: Forecasting baseline models for $SUBDIR"
     Rscript timeseries_forecasts.R "$SUBDIR" --n-forecast-days $N_AHEAD --n-samples $N_SAMPLES
-    echo "TEST-MODE: Finished forecasting baseline models"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: forecasting baseline models failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished forecasting baseline models"
+    fi
     echo ""
     echo "TEST-MODE: Postprocessing state forecast for $SUBDIR"
     Rscript postprocess_state_forecast.R "$SUBDIR"
-    echo "TEST-MODE: Finished postprocessing state forecast"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: postprocessing state forecast failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished postprocessing state forecast"
+    fi
     echo ""
     echo "TEST-MODE: Rendering webpage for $SUBDIR"
     Rscript render_webpage.R "$SUBDIR"
-    echo "TEST-MODE: Finished rendering webpage"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: rendering webpage failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished rendering webpage"
+    fi
     echo ""
     echo "TEST-MODE: Scoring forecast for $SUBDIR"
     Rscript score_forecast.R "$SUBDIR"
-    echo "TEST-MODE: Finished scoring forecast"
+    if [ $? -ne 0 ]; then
+        echo "TEST-MODE FAIL: scoring forecast failed for $SUBDIR"
+        exit 1
+    else
+        echo "TEST-MODE: Finished scoring forecast"
+    fi
 done
