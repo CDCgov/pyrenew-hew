@@ -22,6 +22,7 @@ jobs:
         id: branch-name
 
       - name: Figure out tag (either latest if it is main or the branch name)
+        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         id: image-tag
         run: |
           if [ "${{ steps.branch-name.outputs.branch }}" = "main" ]; then
@@ -31,6 +32,7 @@ jobs:
           fi
 
       - name: Login to the Container Registry
+        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         uses: docker/login-action@v3
         with:
           registry: "cfaprdbatchcr.azurecr.io"
@@ -38,6 +40,7 @@ jobs:
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
 
       - name: Login to Azure with NNH Service Principal
+        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         id: azure_login_2
         uses: azure/login@v2
         with:
@@ -47,6 +50,7 @@ jobs:
           creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
 
       - name: Deleting the image
+        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         run: |
           az acr repository delete \
             --yes \
