@@ -32,5 +32,6 @@ jobs:
         with:
           working-directory: hewr
       - name: "Run pipeline"
-        run: cd pipelines
-        run: bash ./tests/test_run.sh ./tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs 1000 28
+        run: |
+          cd pipelines
+          bash ./tests/test_run.sh ./tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs 1000 28
