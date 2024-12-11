@@ -9,9 +9,13 @@ def compute_eti(dataset, eti_prob):
     return eti_bdry.values.T
 
 
-def plot_posterior(idata, name):
+def plot_posterior(idata, name, dim_1=None):
     x_data = idata.posterior[f"{name}_dim_0"]
-    y_data = idata.posterior[name]
+    y_data = (
+        idata.posterior[name]
+        if dim_1 is None
+        else idata.posterior[name].isel({f"{name}_dim_1": dim_1})
+    )
     fig, axes = plt.subplots(figsize=(6, 5))
     az.plot_hdi(
         x_data,
@@ -45,17 +49,20 @@ def plot_posterior(idata, name):
     axes.set_title(name, fontsize=10)
     axes.set_xlabel("Time", fontsize=10)
     axes.set_ylabel(name, fontsize=10)
-    return fig
 
 
-def plot_predictive(idata, prior=False):
+def plot_predictive(idata, name="observed_ed_visits", dim_1=None, prior=False):
     prior_or_post_text = "Prior" if prior else "Posterior"
     predictive_obj = (
         idata.prior_predictive if prior else idata.posterior_predictive
     )
 
-    x_data = predictive_obj["observed_ed_visits_dim_0"]
-    y_data = predictive_obj["observed_ed_visits"]
+    x_data = predictive_obj[f"{name}_dim_0"]
+    y_data = (
+        predictive_obj[name]
+        if dim_1 is None
+        else predictive_obj[name].isel({f"{name}_dim_1": dim_1})
+    )
 
     fig, axes = plt.subplots(figsize=(6, 5))
     az.plot_hdi(
@@ -85,12 +92,20 @@ def plot_predictive(idata, prior=False):
         color="C0",
         label="Median",
     )
-    plt.scatter(
-        idata.observed_data["observed_ed_visits_dim_0"],
-        idata.observed_data["observed_ed_visits"],
-        color="black",
-    )
+    if name == "observed_ed_visits":
+        plt.scatter(
+            idata.observed_data["observed_ed_visits_dim_0"],
+            idata.observed_data["observed_ed_visits"],
+            color="black",
+        )
+    elif name == "observed_hospital_admissions":
+        plt.scatter(
+            idata.observed_data["observed_hospital_admissions_dim_0"],
+            idata.observed_data["observed_hospital_admissions"],
+            color="black",
+        )
+
     axes.legend()
-    axes.set_title(f"{prior_or_post_text} Predictive Admissions", fontsize=10)
+    axes.set_title(f"{prior_or_post_text} {name}", fontsize=10)
     axes.set_xlabel("Time", fontsize=10)
-    axes.set_ylabel("Hospital Admissions", fontsize=10)
+    axes.set_ylabel(f"{name}", fontsize=10)

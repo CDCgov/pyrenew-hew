@@ -53,3 +53,4 @@ jobs:
           az acr repository delete \
             --name ${{ env.REGISTRY }} \
             --image ${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag}}
+
