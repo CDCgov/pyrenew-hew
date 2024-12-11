@@ -30,6 +30,15 @@ jobs:
           username: "cfaprdbatchcr"
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
 
+      - name: Login to Azure with NNH Service Principal
+        id: azure_login_2
+        uses: azure/login@v2
+        with:
+          # managed by EDAV. Contact Amit Mantri or Jon Kislin if you
+          # have issues. Also, this is documented in the Predict
+          # handbook.
+          creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
+
       - name: Deleting the image
         run: |
           az acr repository delete \
