@@ -9,6 +9,7 @@ env:
 
 jobs:
   delete-container:
+    if: github.event.ref_type == 'branch'
     runs-on: cfa-cdcgov
     name: Deleting the container
 
@@ -16,23 +17,17 @@ jobs:
       - name : Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: branch-name
-
       - name: Figure out tag (either latest if it is main or the branch name)
-        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         id: image-tag
         run: |
-          if [ "${{ steps.branch-name.outputs.branch }}" = "main" ]; then
-            echo "tag=latest" >> $GITHUB_OUTPUT
+          if [ "${{ github.event.ref }}" = "main" ]; then
+            echo "The image associated with the main branch cannot be deleted."
+            exit 1
           else
-            echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.event.ref }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Login to the Container Registry
-        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         uses: docker/login-action@v3
         with:
           registry: "cfaprdbatchcr.azurecr.io"
@@ -40,7 +35,6 @@ jobs:
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
 
       - name: Login to Azure with NNH Service Principal
-        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         id: azure_login_2
         uses: azure/login@v2
         with:
@@ -50,7 +44,6 @@ jobs:
           creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
 
       - name: Deleting the image
-        if: ${{ steps.branch-name.outputs.branch != 'main' }}
         run: |
           az acr repository delete \
             --yes \
