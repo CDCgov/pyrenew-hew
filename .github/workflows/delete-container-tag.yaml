@@ -23,6 +23,15 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: branch-name
 
+      - name: Figure out tag (either latest if it is main or the branch name)
+        id: image-tag
+        run: |
+          if [ "${{ steps.branch-name.outputs.branch }}" = "main" ]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Login to the Container Registry
         uses: docker/login-action@v3
         with:
@@ -43,4 +52,5 @@ jobs:
         run: |
           az acr repository delete \
             --name ${{ env.REGISTRY }} \
-            --image ${{ env.IMAGE_NAME }}:${{ steps.branch-name.outputs.branch}}
+            --image ${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
+
