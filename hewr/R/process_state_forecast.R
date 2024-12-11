@@ -67,22 +67,22 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
                                      date_colname = "date",
                                      sample_id_colname = ".draw",
                                      value_colname = ".value") {
-  first_forecast_date <- min(tidy_forecast[date_colname])
-  n_draws <- max(tidy_forecast[sample_id_colname])
+  first_forecast_date <- min(tidy_forecast[[date_colname]])
+  n_draws <- max(tidy_forecast[[sample_id_colname]])
   transformed_obs <- observed |>
     dplyr::filter(
       .data$disease == !!disease_name,
       .data[[date_colname]] < !!first_forecast_date
     ) |>
     dplyr::select(
-      "date",
+      !!date_colname,
       !!disease_name := !!value_colname
     ) |>
     tidyr::expand_grid(!!sample_id_colname := 1:n_draws)
 
-
   stopifnot(
-    max(transformed_obs[date_colname]) + 1 == first_forecast_date
+    max(as.Date(transformed_obs[[date_colname]])) +
+      lubridate::ddays(1) == first_forecast_date
   )
 
   dplyr::bind_rows(

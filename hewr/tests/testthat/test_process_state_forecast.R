@@ -73,3 +73,45 @@ test_that("combine_training_and_eval_data works as expected", {
   check_disease("COVID-19")
   check_disease("Influenza")
 })
+
+
+test_that("to_tidy_draws_timeseries() works as expected", {
+  forecast <- tibble::tibble(
+    date = c(
+      "2024-02-02",
+      "2024-02-03",
+      "2024-02-02",
+      "2024-02-03"
+    ),
+    Test = c(5, 6, 10, 11),
+    .draw = c(1, 1, 2, 2)
+  )
+  obs <- tibble::tibble(
+    date = c(
+      "2024-02-01",
+      "2024-02-02"
+    ),
+    .value = c(4, 8),
+    disease = c("Test", "Test")
+  )
+  result <- to_tidy_draws_timeseries(
+    forecast,
+    obs,
+    "Test"
+  )
+
+  expected <- tibble::tibble(
+    date = c(
+      "2024-02-01",
+      "2024-02-01",
+      "2024-02-02",
+      "2024-02-03",
+      "2024-02-02",
+      "2024-02-03"
+    ),
+    Test = c(4, 4, 5, 6, 10, 11),
+    .draw = c(1, 2, 1, 1, 2, 2)
+  )
+
+  expect_equal(result, expected)
+})
