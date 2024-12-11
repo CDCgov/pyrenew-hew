@@ -2,13 +2,13 @@
 % Please edit documentation in R/process_state_forecast.R
 \name{with_prop_disease_ed_visits}
 \alias{with_prop_disease_ed_visits}
-\title{Compute the proportion of ED visits due to
-the target disease.}
+\title{Annotate a dataframe of ED visits data with the
+proportion of visits due to a target disease.}
 \usage{
 with_prop_disease_ed_visits(df)
 }
 \arguments{
-\item{df}{dataframe to annotate, with coulumns
+\item{df}{dataframe to annotate, with columns
 \code{"Disease"} and \code{"Other"}.}
 }
 \value{
@@ -16,6 +16,6 @@ the dataframe with an additional column
 \code{prop_disease_ed_visits}.
 }
 \description{
-Compute the proportion of ED visits due to
-the target disease.
+Annotate a dataframe of ED visits data with the
+proportion of visits due to a target disease.
 }

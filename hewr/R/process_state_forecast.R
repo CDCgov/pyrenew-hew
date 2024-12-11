@@ -89,10 +89,10 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 }
 
 
-#' Compute the proportion of ED visits due to
-#' the target disease.
+#' Annotate a dataframe of ED visits data with the
+#' proportion of visits due to a target disease.
 #'
-#' @param df dataframe to annotate, with coulumns
+#' @param df dataframe to annotate, with columns
 #' `"Disease"` and `"Other"`.
 #' @return the dataframe with an additional column
 #' `prop_disease_ed_visits`.
