@@ -39,7 +39,7 @@ jobs:
           username: "cfaprdbatchcr"
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
 
-      - name: Login to Azure with NNH Service Principal
+      - name: Login to Azure with STF Service Principal
         id: azure_login_2
         uses: azure/login@v2
         with:
