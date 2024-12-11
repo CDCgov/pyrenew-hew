@@ -1,0 +1,46 @@
+name: Delete tag from container registry
+
+on:
+  delete:
+
+env:
+  REGISTRY: cfaprdbatchcr.azurecr.io
+  IMAGE_NAME: pyrenew-hew
+
+jobs:
+  delete-container:
+    runs-on: cfa-cdcgov
+    name: Deleting the container
+
+    steps:
+      - name : Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: branch-name
+
+      - name: Login to the Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: "cfaprdbatchcr.azurecr.io"
+          username: "cfaprdbatchcr"
+          password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
+
+      - name: Login to Azure with STF Service Principal
+        id: azure_login_2
+        uses: azure/login@v2
+        with:
+          # managed by EDAV. Contact Amit Mantri or Jon Kislin if you
+          # have issues. Also, this is documented in the Predict
+          # handbook.
+          creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
+
+      - name: Deleting the image
+        run: |
+          az acr repository delete \
+            --name ${{ env.REGISTRY }} \
+            --image ${{ env.IMAGE_NAME }}:${{ steps.branch-name.outputs.branch}}
