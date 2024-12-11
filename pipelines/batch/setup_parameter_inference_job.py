@@ -144,7 +144,7 @@ def main(
         "--exclude-last-n-days 5 "
         "--no-score "
         "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet"
+        "nssp-archival-vintages/latest_comprehensive.parquet"
         "'"
     )
 
