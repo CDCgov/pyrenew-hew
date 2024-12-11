@@ -15,8 +15,6 @@ jobs:
     steps:
       - name : Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Extract branch name
         shell: bash
