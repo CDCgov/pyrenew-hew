@@ -9,19 +9,23 @@ env:
 
 jobs:
   delete-container:
+    if: github.event.ref_type == 'branch'
     runs-on: cfa-cdcgov
     name: Deleting the container
 
     steps:
       - name : Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Extract branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: branch-name
+      - name: Figure out tag (either latest if it is main or the branch name)
+        id: image-tag
+        run: |
+          if [ "${{ github.event.ref }}" = "main" ]; then
+            echo "The image associated with the main branch cannot be deleted."
+            exit 1
+          else
+            echo "tag=${{ github.event.ref }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login to the Container Registry
         uses: docker/login-action@v3
@@ -41,6 +45,14 @@ jobs:
 
       - name: Deleting the image
         run: |
+          # Remove the image from the registry
           az acr repository delete \
+            --yes \
             --name ${{ env.REGISTRY }} \
-            --image ${{ env.IMAGE_NAME }}:${{ steps.branch-name.outputs.branch}}
+            --image ${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
+
+          # Remove the dependencies image from the registry
+          az acr repository delete \
+            --yes \
+            --name ${{ env.REGISTRY }} \
+            --image ${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
