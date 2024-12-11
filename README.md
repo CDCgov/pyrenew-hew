@@ -38,6 +38,12 @@ and [code of conduct](https://github.com/CDCgov/template/blob/master/code-of-con
 
 Describe the purpose of your project. Add additional sections as necessary to help collaborators and potential collaborators understand and use your project.
 
+## Containers
+
+The project uses GitHub Actions for automatically building container images based on the project's [Containerfile](Containerfile) and [Containerfile.dependencies](Containerfile.dependencies) files. The images are currently hosted on Azure Container Registry and are built and pushed via the [containers.yaml](.github/workflows/containers.yaml) GitHub Actions workflow.
+
+Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
+
 ## Project Admin
 
 Name, Degrees, e-mail, CDC org (e.g., CDC/IOD/ORR/CFA)
