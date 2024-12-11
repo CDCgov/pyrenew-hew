@@ -181,7 +181,7 @@ process_state_forecast <- function(model_run_dir,
   ## format observed data
   other_ed_visits_samples <- to_tidy_draws_timeseries(
     other_ed_visits_forecast,
-    combined_dat,
+    combined_dat |> dplyr::filter(.data$data_type == "train"),
     ## use this rather than train_dat since it has "Other"
     ## (as opposed to "Total") pre-computed
     disease_name = "Other"
