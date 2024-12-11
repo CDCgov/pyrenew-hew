@@ -74,7 +74,10 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
       .data$disease == !!disease_name,
       .data[[date_colname]] < !!first_forecast_date
     ) |>
-    dplyr::select("date", !!disease_name := "disease") |>
+    dplyr::select(
+      "date",
+      !!disease_name := !!value_colname
+    ) |>
     tidyr::expand_grid(!!sample_id_colname := 1:n_draws)
 
 
