@@ -45,7 +45,14 @@ jobs:
 
       - name: Deleting the image
         run: |
+          # Remove the image from the registry
           az acr repository delete \
             --yes \
             --name ${{ env.REGISTRY }} \
             --image ${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
+
+          # Remove the dependencies image from the registry
+          az acr repository delete \
+            --yes \
+            --name ${{ env.REGISTRY }} \
+            --image ${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
