@@ -1,52 +1,14 @@
-# cfa-repo-template
-A template for new CFA repos
+# PyRenew-HEW
 
-⚠️ This is a work in progress
+The PyRenew-HEW project aims to create short-term forecasts of respiratory disease burden using the [PyRenew library](https://github.com/CDCgov/PyRenew) and several data sources: 
 
-## How to use this template
-To open a new repo using this template, click the green `Use this template`
-button above and to the right. Then select `Create a new repository`.
-Boilerplate language from [CDCgov GitHub Oroganization Open Source Project Template](https://github.com/cdcgov/template)
-below the horizontal rule should be maintained in the final `README.md` file.
+- [ ] **H**ospital Admissions from the [National Healthcare Safety Network](https://www.cdc.gov/nhsn/index.html) 
+- [x] **E**mergency Department Visits from the [National Syndromic Surveillance Program](https://www.cdc.gov/nssp/index.html)
+- [ ] **W**astewater virus concentration from the [National Wastewater Surveillance System](https://www.cdc.gov/nwss/index.html)
 
-[Guidance about when clearance is needed and how to get it]
+This is a work in progress, and not all data sources are currently integrated into the model.
 
-## This template contains
-- [x] An Apache 2.0 license
-- [ ] Issue templates for bugs, feature requests, and scientific improvements
-- [ ] A pull request (PR) template
-- [x] CI for linting and styling, following CFA's style guide for R, Python, and Java
-- [x] A .gitignore template that covers R, Python, and Java
-
-## Reminders on CFA collaborative programming practice
-
-* CFA Predict [style guide](https://github.com/cdcent/cfa-predict-documentation/blob/main/docs/style_guide.md)
-* CFA [GitHub workflow](https://github.com/cdcent/cfa-predict-documentation/blob/main/docs/github.md) for
-* CFA Predict [code review guidance](https://github.com/cdcent/cfa-predict-documentation/blob/main/docs/code_review.md)
-
-## Contributing to the CDCgov repo template
-
-Please refer to [CDC's Template Repository](https://github.com/CDCgov/template)
-for more information about [contributing to that repository](https://github.com/CDCgov/template/blob/master/CONTRIBUTING.md),
-[public domain notices and disclaimers](https://github.com/CDCgov/template/blob/master/DISCLAIMER.md),
-and [code of conduct](https://github.com/CDCgov/template/blob/master/code-of-conduct.md).
-
-------------------------------------------------------------------------------------
-# Your project name
-
-## Overview
-
-Describe the purpose of your project. Add additional sections as necessary to help collaborators and potential collaborators understand and use your project.
-
-## Containers
-
-The project uses GitHub Actions for automatically building container images based on the project's [Containerfile](Containerfile) and [Containerfile.dependencies](Containerfile.dependencies) files. The images are currently hosted on Azure Container Registry and are built and pushed via the [containers.yaml](.github/workflows/containers.yaml) GitHub Actions workflow.
-
-Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
-
-## Project Admin
-
-Name, Degrees, e-mail, CDC org (e.g., CDC/IOD/ORR/CFA)
+This repository contains code for the [PyRenew-HEW model](https://github.com/CDCgov/pyrenew-hew/blob/main/pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](https://github.com/CDCgov/pyrenew-hew/tree/main/pyrenew_hew) for running the model in production, and [utilities](https://github.com/CDCgov/pyrenew-hew/tree/main/hewr) for working with model outputs.
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
