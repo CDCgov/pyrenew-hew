@@ -1,8 +1,6 @@
 name: Delete tag from container registry
 
 on:
-  pull_request:
-    types: [closed]
   delete:
 
 env:
