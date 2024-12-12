@@ -275,48 +275,23 @@ def process_and_save_state(
             pl.col("date") < first_facility_level_data_date
         )
 
-    data_to_save = (
+    training_data = (
         pl.concat([state_level_data, aggregated_facility_data])
-        .with_columns(
-            pl.when(pl.col("date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("test"))
-            .alias("data_type"),
-        )
+        .filter(pl.col("date") <= last_training_date)
+        .with_columns(pl.lit("train").alias("data_type"))
         .sort(["date", "disease"])
     )
 
-    verify_no_date_gaps(data_to_save)
+    verify_no_date_gaps(training_data)
 
     train_disease_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "train", pl.col("disease") == disease
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    test_disease_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "test",
-            pl.col("disease") == disease,
-        )
+        training_data.filter(pl.col("disease") == disease)
         .get_column("ed_visits")
         .to_list()
     )
 
     train_total_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "train", pl.col("disease") == "Total"
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    test_total_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "test", pl.col("disease") == "Total"
-        )
+        training_data.filter(pl.col("disease") == "Total")
         .get_column("ed_visits")
         .to_list()
     )
@@ -326,9 +301,7 @@ def process_and_save_state(
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "data_observed_disease_ed_visits": train_disease_ed_visits,
-        "data_observed_disease_ed_visits_test": test_disease_ed_visits,
         "data_observed_total_hospital_admissions": train_total_ed_visits,
-        "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
@@ -337,7 +310,7 @@ def process_and_save_state(
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {data_dir}")
-    data_to_save.write_csv(Path(data_dir, "data.tsv"), separator="\t")
+    training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
 
     with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
