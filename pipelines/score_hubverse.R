@@ -56,7 +56,7 @@ score_and_save <- function(observed_data_path,
     last_target_date <- lubridate::ymd("9999-01-01")
   }
 
-  read_and_score <- function(path, disease) {
+  read_and_prep_for_scoring <- function(path, disease) {
     disease_short <- dplyr::case_when(
       disease == "covid-19" ~ "covid",
       TRUE ~ disease
@@ -73,8 +73,8 @@ score_and_save <- function(observed_data_path,
       )
 
 
-    scored <- if (nrow(to_score) > 0) {
-      hewr::score_hubverse(
+    scoreable_table <- if (nrow(to_score) > 0) {
+      hewr::to_scoreable_table(
         to_score,
         observed = observed_data,
         observed_value_column =
@@ -85,12 +85,16 @@ score_and_save <- function(observed_data_path,
       NULL
     }
 
-    return(scored)
+    return(scoreable_table)
   }
 
-  full_scores <- all_paths |>
-    purrr::pmap(read_and_score) |>
+  full_scoreable_table <- all_paths |>
+    purrr::pmap(read_and_prep_for_scoring) |>
     dplyr::bind_rows()
+
+  full_scores <- hewr::score_hewr(
+    full_scoreable_table
+  )
 
   message("Scoring complete.")
 
