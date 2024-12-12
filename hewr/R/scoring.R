@@ -76,7 +76,7 @@ to_scoreable_table <- function(forecast,
 #' or keep only the transformed scale forecasts? Passed as the
 #' `append` argument to [scoringutils::transform_forecasts()].
 #' Boolean, default `FALSE` (keep only transformed scale).
-#' @param offset Offset for the transform passed to
+#' @param ... Other keyword arguments passed to
 #' [scoringutils::transform_forecasts()].
 #' @return A table of scores, as the output of
 #' [scoringutils::score()], filtered to include only the

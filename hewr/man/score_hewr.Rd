@@ -27,7 +27,10 @@ or keep only the transformed scale forecasts? Passed as the
 \code{append} argument to \code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.
 Boolean, default \code{FALSE} (keep only transformed scale).}
 
-\item{offset}{Offset for the transform passed to
+\item{offset}{Offset for the transformation, passed to
+\code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}. Default 1.}
+
+\item{...}{Other keyword arguments passed to
 \code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.}
 }
 \value{
