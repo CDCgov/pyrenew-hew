@@ -5,6 +5,7 @@ import os
 from logging import Logger
 from pathlib import Path
 
+import forecasttools
 import polars as pl
 
 _disease_map = {
@@ -154,17 +155,16 @@ def verify_no_date_gaps(df: pl.DataFrame):
 
 
 def get_state_pop_df():
-    facts = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/"
-        "refs/heads/master/data-raw/facts.csv"
-    )
-    states = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/"
-        "refs/heads/master/data-raw/states.csv"
+    census_dat = pl.read_csv(
+        "https://www2.census.gov/geo/docs/reference/cenpop2020/CenPop2020_Mean_ST.txt"
     )
 
-    state_pop_df = facts.join(states, on="name").select(
-        ["abb", "name", "population"]
+    state_pop_df = forecasttools.location_table.join(
+        census_dat, left_on="long_name", right_on="STNAME"
+    ).select(
+        pl.col("short_name").alias("abb"),
+        pl.col("long_name").alias("name"),
+        pl.col("POPULATION").alias("population"),
     )
 
     return state_pop_df
