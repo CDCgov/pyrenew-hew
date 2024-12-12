@@ -60,15 +60,11 @@ jobs:
         with:
           use-public-rspm: true
           
-      - name: Set Working Directory
-        working-directory: "hewr"
-        run: |
-          echo "Current directory: $(pwd)"          
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::covr, any::xml2
           needs: coverage
+          working-directory: hewr
 
       - name: Test coverage
         run: |
