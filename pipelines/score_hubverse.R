@@ -1,4 +1,5 @@
 library(argparser)
+library(ggplot2)
 
 get_hubverse_table_paths <- function(dir,
                                      disease) {
@@ -14,6 +15,132 @@ get_hubverse_table_paths <- function(dir,
   return(path_df)
 }
 
+
+plot_pred_act_by_horizon <- function(scoreable_table,
+                                     location) {
+  to_plot <- scoreable_table |>
+    dplyr::filter(
+      location == !!location,
+      quantile_level %in% c(0.025, 0.5, 0.975)
+    ) |>
+    tidyr::pivot_wider(
+      id_cols = c(
+        reference_date,
+        target_end_date,
+        horizon,
+        disease,
+        observed
+      ),
+      names_from = quantile_level,
+      names_glue = "q_{quantile_level * 100}",
+      values_from = predicted
+    )
+
+  plot <- to_plot |>
+    ggplot(aes(
+      x = target_end_date,
+      y = q_50
+    )) +
+    geom_point(color = "blue") +
+    geom_line(
+      color = "blue",
+      linetype = "dashed"
+    ) +
+    geom_ribbon(
+      aes(
+        ymin = q_2.5,
+        ymax = q_97.5
+      ),
+      fill = "blue",
+      alpha = 0.5
+    ) +
+    geom_point(aes(y = observed)) +
+    geom_line(aes(y = observed)) +
+    facet_wrap(disease ~ horizon) +
+    labs(
+      title =
+        glue::glue("Predictions and observations for {location}"),
+      x = "Target date",
+      y = "%ED visits"
+    ) +
+    scale_y_continuous(labels = scales::label_percent()) +
+    forecasttools::theme_forecasttools()
+
+  return(plot)
+}
+
+plot_pred_act_by_forecast_date <- function(scoreable_table,
+                                           location,
+                                           disease) {
+  to_plot <- scoreable_table |>
+    dplyr::filter(
+      location == !!location,
+      disease == !!disease
+    )
+
+  to_plot_obs <- to_plot |>
+    dplyr::filter(
+      quantile_level == 0.5,
+      horizon == 0
+    ) |>
+    dplyr::select(target_end_date, observed)
+
+  to_plot_forecast <- to_plot |>
+    dplyr::filter(quantile_level %in% c(0.025, 0.5, 0.975)) |>
+    tidyr::pivot_wider(
+      id_cols = c(
+        reference_date,
+        target_end_date,
+        horizon,
+        disease,
+        observed
+      ),
+      names_from = quantile_level,
+      names_glue = "q_{quantile_level * 100}",
+      values_from = predicted
+    )
+
+  plot <- to_plot_forecast |>
+    ggplot(aes(
+      x = target_end_date,
+      y = q_50
+    )) +
+    geom_point(color = "blue") +
+    geom_line(
+      color = "blue",
+      linetype = "dashed"
+    ) +
+    geom_ribbon(
+      aes(
+        ymin = q_2.5,
+        ymax = q_97.5
+      ),
+      fill = "blue",
+      alpha = 0.5
+    ) +
+    geom_point(
+      mapping = aes(y = observed),
+      data = to_plot_obs
+    ) +
+    geom_line(
+      mapping = aes(y = observed),
+      data = to_plot_obs
+    ) +
+    facet_wrap(~reference_date) +
+    labs(
+      title =
+        glue::glue(paste0(
+          "Predictions and observations across ",
+          "horizons for {disease} in {location}"
+        )),
+      x = "Date",
+      y = "%ED visits"
+    ) +
+    scale_y_continuous(labels = scales::label_percent()) +
+    forecasttools::theme_forecasttools()
+
+  return(plot)
+}
 
 score_and_save <- function(observed_data_path,
                            influenza_table_dir,
@@ -56,7 +183,7 @@ score_and_save <- function(observed_data_path,
     last_target_date <- lubridate::ymd("9999-01-01")
   }
 
-  read_and_score <- function(path, disease) {
+  read_and_prep_for_scoring <- function(path, disease) {
     disease_short <- dplyr::case_when(
       disease == "covid-19" ~ "covid",
       TRUE ~ disease
@@ -73,8 +200,8 @@ score_and_save <- function(observed_data_path,
       )
 
 
-    scored <- if (nrow(to_score) > 0) {
-      hewr::score_hubverse(
+    scoreable_table <- if (nrow(to_score) > 0) {
+      hewr::to_scoreable_table(
         to_score,
         observed = observed_data,
         observed_value_column =
@@ -85,12 +212,16 @@ score_and_save <- function(observed_data_path,
       NULL
     }
 
-    return(scored)
+    return(scoreable_table)
   }
 
-  full_scores <- all_paths |>
-    purrr::pmap(read_and_score) |>
+  full_scoreable_table <- all_paths |>
+    purrr::pmap(read_and_prep_for_scoring) |>
     dplyr::bind_rows()
+
+  full_scores <- hewr::score_hewr(
+    full_scoreable_table
+  )
 
   message("Scoring complete.")
 
@@ -123,6 +254,42 @@ score_and_save <- function(observed_data_path,
     }
   )
 
+  locations <- unique(full_scoreable_table$location)
+
+  pred_actual_by_horizon <-
+    purrr::map(
+      locations,
+      \(x) {
+        plot_pred_act_by_horizon(
+          full_scoreable_table,
+          x
+        )
+      }
+    )
+
+  pred_actual_by_date <- c(
+    purrr::map(
+      locations,
+      \(x) {
+        plot_pred_act_by_forecast_date(
+          full_scoreable_table,
+          x,
+          "covid-19"
+        )
+      }
+    ),
+    purrr::map(
+      locations,
+      \(x) {
+        plot_pred_act_by_forecast_date(
+          full_scoreable_table,
+          x,
+          "influenza"
+        )
+      }
+    )
+  )
+
   make_output_path <- function(output_name,
                                extension) {
     return(fs::path(output_dir,
@@ -135,6 +302,25 @@ score_and_save <- function(observed_data_path,
     coverage_figs,
     make_output_path(
       "coverage",
+      "pdf"
+    ),
+    width = 11,
+    height = 8.5
+  )
+  forecasttools::plots_to_pdf(
+    pred_actual_by_horizon,
+    make_output_path(
+      "predicted_actual_by_horizon",
+      "pdf"
+    ),
+    width = 11,
+    height = 8.5
+  )
+
+  forecasttools::plots_to_pdf(
+    pred_actual_by_date,
+    make_output_path(
+      "predicted_actual_by_forecast_date",
       "pdf"
     ),
     width = 11,
