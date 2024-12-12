@@ -7,7 +7,7 @@ format:
     - custom.scss
     embed-resources: false
 params:
-  model_dir_raw: "/home/xum8/pyrenew-hew/private_data/pyrenew-test-output/covid-19_r_2024-11-22_f_2024-08-19_t_2024-11-16/model_runs/SC" # pragma: allowlist-secret
+  model_dir_raw: "/home/xum8/pyrenew-hew/private_data/pyrenew-test-output/covid-19_r_2024-11-22_f_2024-08-19_t_2024-11-16/model_runs/MN/" # pragma: allowlist-secret
 ---
 <!-- Would like embed-resources to be true, but the current version is problematic with blobfuse -->
 
@@ -42,9 +42,24 @@ available_states <- model_dir %>%
 
 ```{r Render Sidebar}
 #| output: asis
-formatted_available_states <-
+this_state <- model_info$location
+this_state_i <- which(available_states == this_state)
+
+relative_links <-
+  c(
+    "Prev" = available_states[this_state_i - 1],
+    "Next" = available_states[this_state_i + 1]
+  ) |>
+  discard(is.na) |>
+  imap(\(x, y) a(y, href = path(x, ext = "html"))) |>
+  unname()
+
+state_links <-
   available_states %>%
-  map(\(x) a(x, href = path(x, ext = "html"))) %>%
+  map(\(x) a(x, href = path(x, ext = "html")))
+
+formatted_available_states <-
+  c(relative_links, state_links) |>
   map(p) %>%
   map_chr(as.character) %>%
   str_c(collapse = "")
@@ -53,7 +68,6 @@ cat(formatted_available_states)
 ```
 
 # Run Info
-
 
 ```{r Model Metadata}
 #| title: Model Info
@@ -170,11 +184,17 @@ figure_save_tbl |>
 ```{r Rt Plot}
 #| title: Posterior Rt
 date_time_map <- combined_dat |>
-  filter(data_type == "train") |>
   distinct(time, date)
 
+last_training_date <- combined_dat |>
+  dplyr::filter(data_type == "train") |>
+  dplyr::pull(date) |>
+  max()
+
 pyrenew_posterior <- read_parquet(
-  path(pyrenew_model_dir, "mcmc_tidy", "pyrenew_posterior", ext = "parquet")
+  path(pyrenew_model_dir, "mcmc_tidy", "pyrenew_posterior_predictive",
+    ext = "parquet"
+  )
 ) |>
   tidy_draws()
 
@@ -198,6 +218,22 @@ ggplot(rt_ci, aes(date, .value, ymin = .lower, ymax = .upper)) +
   scale_y_log10(TeX("$R_t$")) +
   scale_x_date("Date") +
   geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_vline(xintercept = last_training_date, linetype = "dashed") +
+  ggplot2::annotate(
+    geom = "text",
+    x = last_training_date,
+    y = Inf,
+    label = "Fit Period \u2190\n",
+    hjust = "right",
+    vjust = "top"
+  ) +
+  ggplot2::annotate(
+    geom = "text",
+    x = last_training_date,
+    y = Inf, label = "\u2192 Forecast Period\n",
+    hjust = "left",
+    vjust = "top",
+  ) +
   cowplot::theme_minimal_grid() +
   ggtitle(TeX("Posterior $R_t$")) +
   theme(legend.position = "bottom")
