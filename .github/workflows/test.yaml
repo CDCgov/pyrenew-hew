@@ -48,7 +48,7 @@ jobs:
           verbose: true
 
 #test coverage for R package
-  test-coverage:
+  test-coverage-R:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -64,11 +64,15 @@ jobs:
         with:
           extra-packages: any::covr, any::xml2
           needs: coverage
+      
+      - name: Set Working Directory
+        working-directory: "hewr"
+        run: |
+          echo "Current directory: $(pwd)"
 
       - name: Test coverage
         run: |
           cov <- covr::package_coverage(
-            path = "hewr",
             quiet = FALSE,
             clean = FALSE,
             install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
