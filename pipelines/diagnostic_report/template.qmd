@@ -7,7 +7,7 @@ format:
     - custom.scss
     embed-resources: false
 params:
-  model_dir_raw: "/home/xum8/pyrenew-hew/private_data/pyrenew-test-output/covid-19_r_2024-11-22_f_2024-08-19_t_2024-11-16/model_runs/SC" # pragma: allowlist-secret
+  model_dir_raw: "~/pyrenew-hew/private_data/pyrenew-test-output/covid-19_r_2024-11-22_f_2024-08-19_t_2024-11-16/model_runs/CA" # pragma: allowlist-secret
 ---
 <!-- Would like embed-resources to be true, but the current version is problematic with blobfuse -->
 
@@ -52,16 +52,6 @@ formatted_available_states <-
 cat(formatted_available_states)
 ```
 
-# Run Info
-
-
-```{r Model Metadata}
-#| title: Model Info
-model_info |>
-  enframe() |>
-  mutate(value = map_chr(value, as.character)) |>
-  kable()
-```
 
 # Forecasts {scrolling="true"}
 ```{r Example Forecast}
@@ -220,4 +210,14 @@ idata_summary = az.summary(idata)
 ```{r Render InferenceData}
 #| title: MCMC Summary
 datatable(py$idata_summary)
+```
+
+# Run Info
+
+```{r Model Metadata}
+#| title: Model Info
+model_info |>
+  enframe() |>
+  mutate(value = map_chr(value, as.character)) |>
+  kable()
 ```
