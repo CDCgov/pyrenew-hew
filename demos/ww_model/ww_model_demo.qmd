@@ -375,13 +375,13 @@ plotting.plot_predictive(idata,"observed_hospital_admissions")
 
 ```{python}
 # | label: plot posterior predictive rt
-plotting.plot_predictive(idata,'state_rt')
+plotting.plot_predictive(idata,'Rt')
 ```
 
 ```{python}
 # | label: plot posterior predictive rt by subpop
 for i in range(n_subpops):
-    plotting.plot_predictive(idata, 'r_subpop_t', dim_1=i)
+    plotting.plot_predictive(idata, 'rt_subpop', dim_1=i)
 ```
 
 ```{python}
@@ -459,7 +459,7 @@ plotting.plot_predictive(idata_hosp_only,name='observed_hospital_admissions')
 ```
 
 ```{python}
-plotting.plot_predictive(idata_hosp_only,'r_subpop_t')
+plotting.plot_predictive(idata_hosp_only,'rt_subpop')
 ```
 
 
