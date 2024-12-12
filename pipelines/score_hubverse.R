@@ -16,8 +16,8 @@ get_hubverse_table_paths <- function(dir,
 }
 
 
-plot_predicted_actual <- function(scoreable_table,
-                                  location) {
+plot_pred_act_by_horizon <- function(scoreable_table,
+                                     location) {
   to_plot <- scoreable_table |>
     dplyr::filter(
       location == !!location,
@@ -69,7 +69,7 @@ plot_predicted_actual <- function(scoreable_table,
   return(plot)
 }
 
-plot_predicted_actual_horizons <- function(scoreable_table,
+plot_pred_act_by_forecast_date <- function(scoreable_table,
                                            location,
                                            disease) {
   to_plot <- scoreable_table |>
@@ -129,7 +129,10 @@ plot_predicted_actual_horizons <- function(scoreable_table,
     facet_wrap(~reference_date) +
     labs(
       title =
-        glue::glue("Predictions and observations across horizons for {disease} in {location}"),
+        glue::glue(paste0(
+          "Predictions and observations across ",
+          "horizons for {disease} in {location}"
+        )),
       x = "Date",
       y = "%ED visits"
     ) +
@@ -253,30 +256,37 @@ score_and_save <- function(observed_data_path,
 
   locations <- unique(full_scoreable_table$location)
 
-  pred_actual_figs <- purrr::map(
-    locations,
-    \(x) plot_predicted_actual(
-      full_scoreable_table,
-      x
-    )
-  )
-
-  pred_actual_horizons <- c(
+  pred_actual_by_horizon <-
     purrr::map(
       locations,
-      \(x) plot_predicted_actual_horizons(
-        full_scoreable_table,
-        x,
-        "covid-19"
-      )
+      \(x) {
+        plot_pred_act_by_horizon(
+          full_scoreable_table,
+          x
+        )
+      }
+    )
+
+  pred_actual_by_date <- c(
+    purrr::map(
+      locations,
+      \(x) {
+        plot_pred_act_by_forecast_date(
+          full_scoreable_table,
+          x,
+          "covid-19"
+        )
+      }
     ),
     purrr::map(
       locations,
-      \(x) plot_predicted_actual_horizons(
-        full_scoreable_table,
-        x,
-        "influenza"
-      )
+      \(x) {
+        plot_pred_act_by_forecast_date(
+          full_scoreable_table,
+          x,
+          "influenza"
+        )
+      }
     )
   )
 
@@ -298,9 +308,9 @@ score_and_save <- function(observed_data_path,
     height = 8.5
   )
   forecasttools::plots_to_pdf(
-    pred_actual_figs,
+    pred_actual_by_horizon,
     make_output_path(
-      "predicted_actual",
+      "predicted_actual_by_horizon",
       "pdf"
     ),
     width = 11,
@@ -308,9 +318,9 @@ score_and_save <- function(observed_data_path,
   )
 
   forecasttools::plots_to_pdf(
-    pred_actual_horizons,
+    pred_actual_by_date,
     make_output_path(
-      "predicted_actual_horizons",
+      "predicted_actual_by_forecast_date",
       "pdf"
     ),
     width = 11,
