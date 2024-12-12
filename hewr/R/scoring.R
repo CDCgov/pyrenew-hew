@@ -26,6 +26,7 @@
 #' Default `"reference_date"`
 #' @return A table for scoring, as the output of
 #' [scoringutils::as_forecast_quantile()].
+#' @export
 to_scoreable_table <- function(forecast,
                                observed,
                                horizons = c(0, 1),
