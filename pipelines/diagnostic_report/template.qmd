@@ -174,11 +174,17 @@ figure_save_tbl |>
 ```{r Rt Plot}
 #| title: Posterior Rt
 date_time_map <- combined_dat |>
-  filter(data_type == "train") |>
   distinct(time, date)
 
+last_training_date <- combined_dat |>
+  dplyr::filter(data_type == "train") |>
+  dplyr::pull(date) |>
+  max()
+
 pyrenew_posterior <- read_parquet(
-  path(pyrenew_model_dir, "mcmc_tidy", "pyrenew_posterior", ext = "parquet")
+  path(pyrenew_model_dir, "mcmc_tidy", "pyrenew_posterior_predictive",
+    ext = "parquet"
+  )
 ) |>
   tidy_draws()
 
@@ -202,6 +208,22 @@ ggplot(rt_ci, aes(date, .value, ymin = .lower, ymax = .upper)) +
   scale_y_log10(TeX("$R_t$")) +
   scale_x_date("Date") +
   geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_vline(xintercept = last_training_date, linetype = "dashed") +
+  ggplot2::annotate(
+    geom = "text",
+    x = last_training_date,
+    y = Inf,
+    label = "Fit Period \u2190\n",
+    hjust = "right",
+    vjust = "top"
+  ) +
+  ggplot2::annotate(
+    geom = "text",
+    x = last_training_date,
+    y = Inf, label = "\u2192 Forecast Period\n",
+    hjust = "left",
+    vjust = "top",
+  ) +
   cowplot::theme_minimal_grid() +
   ggtitle(TeX("Posterior $R_t$")) +
   theme(legend.position = "bottom")
