@@ -20,6 +20,7 @@ jobs:
     outputs:
       tag: ${{ steps.image-tag.outputs.tag }}
       commit-msg: ${{ steps.commit-message.outputs.message }}
+      git_sha: ${{ github.sha }}  # Add this line to pass the SHA
 
     steps:
 
@@ -88,6 +89,7 @@ jobs:
           file: ./Containerfile.dependencies
           build-args: |
             PYRENEW_VERSION=${{ env.PYRENEW_VERSION }}
+            GIT_COMMIT_SHA=${{ github.sha }}
 
   build-pipeline-image:
 
@@ -119,3 +121,4 @@ jobs:
           file: ./Containerfile
           build-args: |
             TAG=${{ needs.build-dependencies-image.outputs.tag }}
+            GIT_COMMIT_SHA=${{ github.sha }}

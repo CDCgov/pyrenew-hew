@@ -1,6 +1,8 @@
 ARG TAG=latest
 
 FROM cfaprdbatchcr.azurecr.io/pyrenew-hew-dependencies:${TAG}
+ARG GIT_COMMIT_SHA
+ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
 COPY ./hewr /pyrenew-hew/hewr
 
