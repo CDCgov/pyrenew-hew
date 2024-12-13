@@ -216,6 +216,8 @@ cython_debug/
 # https://github.com/github/gitignore/blob/main/R.gitignore
 
 .Rprofile
+renv/
+renv.lock
 
 # History files
 .Rhistory
