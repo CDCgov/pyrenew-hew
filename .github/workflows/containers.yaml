@@ -20,7 +20,6 @@ jobs:
     outputs:
       tag: ${{ steps.image-tag.outputs.tag }}
       commit-msg: ${{ steps.commit-message.outputs.message }}
-      git_sha: ${{ github.sha }}  # Add this line to pass the SHA
 
     steps:
 
@@ -121,4 +120,4 @@ jobs:
           file: ./Containerfile
           build-args: |
             TAG=${{ needs.build-dependencies-image.outputs.tag }}
-            GIT_COMMIT_SHA=${{ github.sha }}
+            GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha }}
