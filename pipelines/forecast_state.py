@@ -8,13 +8,30 @@ from pathlib import Path
 
 import numpyro
 import polars as pl
+import yaml
 from prep_data import process_and_save_state
+from pygit2 import Repository
 from save_eval_data import save_eval_data
 
 numpyro.set_host_device_count(4)
 
 from fit_model import fit_and_save_model  # noqa
 from generate_predictive import generate_and_save_predictions  # noqa
+
+
+def record_git_info(model_run_dir: Path):
+    metadata_file = Path(model_run_dir, "metadata.yaml")
+    repo = Repository(os.getcwd())
+    branch_name = os.environ.get("GIT_BRANCH_NAME", Path(repo.head.name).stem)
+    commit_sha = os.environ.get("GIT_COMMIT_SHA", str(repo.head.target))
+
+    metadata = {
+        "branch_name": branch_name,
+        "commit_sha": commit_sha,
+    }
+
+    with open(metadata_file, "w") as file:
+        yaml.dump(metadata, file)
 
 
 def generate_epiweekly(model_run_dir: Path) -> None:
@@ -237,6 +254,9 @@ def main(
     model_run_dir = Path(model_batch_dir, "model_runs", state)
 
     os.makedirs(model_run_dir, exist_ok=True)
+
+    logger.info("Recording git info...")
+    record_git_info(model_run_dir)
 
     logger.info(f"Using priors from {priors_path}...")
     shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
