@@ -7,7 +7,7 @@ on:
 
 jobs:
   python-test:
-    name: Run tests and collect coverage
+    name: Run python tests and collect coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
