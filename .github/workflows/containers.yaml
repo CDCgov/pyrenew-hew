@@ -88,7 +88,6 @@ jobs:
           file: ./Containerfile.dependencies
           build-args: |
             PYRENEW_VERSION=${{ env.PYRENEW_VERSION }}
-            GIT_COMMIT_SHA=${{ github.sha }}
 
   build-pipeline-image:
 
@@ -121,3 +120,4 @@ jobs:
           build-args: |
             TAG=${{ needs.build-dependencies-image.outputs.tag }}
             GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha }}
+            GIT_BRANCH_NAME=${{ steps.branch-name.outputs.branch }}
