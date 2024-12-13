@@ -60,21 +60,16 @@ pyrenew_tidy_draws <-
 combined_ci_for_plotting <-
   bind_rows(
     deframe(pyrenew_tidy_draws)$posterior_predictive |>
-      gather_draws(
-        observed_hospital_admissions[time], state_rt[time],
-        ihr[time], r_subpop_t[time, group]
-      ) |>
+      gather_draws(observed_hospital_admissions[time], Rt[time], ihr[time], rt_subpop[time,group]) |>
       median_qi(.width = ci_width) |>
       mutate(model = "pyrenew"),
     stan_tidy_draws |>
-      gather_draws(
-        pred_hosp[time], rt[time], p_hosp[time],
-        r_subpop_t[group, time]
-      ) |>
+      gather_draws(pred_hosp[time], rt[time], p_hosp[time],r_subpop_t[group,time]) |>
       mutate(.variable = case_when(
         .variable == "pred_hosp" ~ "observed_hospital_admissions",
         .variable == "p_hosp" ~ "ihr",
-        .variable == "rt" ~ "state_rt",
+        .variable == "rt" ~ "Rt",
+        .variable == "r_subpop_t" ~ "rt_subpop",
         TRUE ~ .variable
       )) |>
       median_qi(.width = ci_width) |>
@@ -106,7 +101,7 @@ combined_ci_for_plotting |>
 
 ```{r}
 combined_ci_for_plotting |>
-  filter(.variable == "state_rt") |>
+  filter(.variable == "Rt") |>
   ggplot(aes(time, .value)) +
   facet_wrap(~model) +
   geom_lineribbon(aes(ymin = .lower, ymax = .upper), color = "#08519c") +
@@ -116,7 +111,7 @@ combined_ci_for_plotting |>
   ) +
   cowplot::theme_cowplot() +
   ggtitle("Vignette Data Model Comparison") +
-  scale_y_log10("State Rt", breaks = scales::log_breaks(n = 6)) +
+  scale_y_log10("Rt", breaks = scales::log_breaks(n = 6)) +
   scale_x_continuous("Time") +
   theme(legend.position = "bottom") +
   geom_hline(yintercept = 1, linetype = "dashed")
@@ -126,7 +121,7 @@ combined_ci_for_plotting |>
 
 ```{r}
 combined_ci_for_plotting |>
-  filter(.variable == "r_subpop_t") |>
+  filter(.variable == "rt_subpop") |>
   mutate(group = if_else(model == "pyrenew", group + 1, group)) |>
   # adjust for index python starting from 1
   ggplot(aes(time, .value)) +
