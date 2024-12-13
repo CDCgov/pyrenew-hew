@@ -10,11 +10,7 @@
 combine_training_and_eval_data <- function(train_dat,
                                            eval_dat,
                                            disease_name) {
-  combined_dat <- dplyr::bind_rows(
-    train_dat |>
-      dplyr::filter(.data$data_type == "train"),
-    eval_dat
-  ) |>
+  combined_dat <- dplyr::bind_rows(train_dat, eval_dat) |>
     dplyr::mutate(
       disease = dplyr::if_else(
         .data$disease == !!disease_name,
