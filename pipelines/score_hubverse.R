@@ -201,12 +201,13 @@ score_and_save <- function(observed_data_path,
 
 
     scoreable_table <- if (nrow(to_score) > 0) {
-      hewr::to_scoreable_table(
+      forecasttools::quantile_table_to_scoreable(
         to_score,
-        observed = observed_data,
-        observed_value_column =
+        observation_table = observed_data,
+        obs_value_column =
           glue::glue("prop_{disease_short}"),
-        horizons = horizons
+        obs_date_column = "reference_date",
+        obs_location_column = "location"
       )
     } else {
       NULL
