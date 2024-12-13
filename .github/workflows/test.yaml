@@ -34,15 +34,7 @@ jobs:
         run: |
           poetry run pytest \
             --mpl --mpl-default-tolerance=10 \
-            --cov=pyrenew-hew --cov-report=term --cov-report=xml .
-            
-      - name: debug 
-        run: |
-          echo "files in working directory"
-          ls 
-          echo "current directory"
-          pwd
-          
+            --cov=pyrenew_hew --cov-report=term --cov-report=xml .   
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
