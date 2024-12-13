@@ -5,7 +5,7 @@
 #' `pyrenew-hew` production.
 #'
 #' @param scoreable_table Table to score, as the output
-#' of [forecasttools::to_scoreable_table()].
+#' of [forecasttools::quantile_table_to_scoreable()].
 #' @param transform transformation passed as the
 #' `fun` argument to [scoringutils::transform_forecasts()].
 #' Default [scoringutils::log_shift()].

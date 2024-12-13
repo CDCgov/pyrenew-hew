@@ -14,7 +14,7 @@ score_hewr(
 }
 \arguments{
 \item{scoreable_table}{Table to score, as the output
-of \code{\link[=to_scoreable_table]{to_scoreable_table()}}.}
+of \code{\link[forecasttools:quantile_table_to_scoreable]{forecasttools::quantile_table_to_scoreable()}}.}
 
 \item{transform}{transformation passed as the
 \code{fun} argument to \code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.
