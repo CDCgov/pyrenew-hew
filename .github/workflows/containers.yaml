@@ -20,6 +20,7 @@ jobs:
     outputs:
       tag: ${{ steps.image-tag.outputs.tag }}
       commit-msg: ${{ steps.commit-message.outputs.message }}
+      branch: ${{ steps.branch-name.outputs.branch }}
 
     steps:
 
@@ -109,12 +110,6 @@ jobs:
           username: "cfaprdbatchcr"
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
 
-      # From: https://stackoverflow.com/a/58035262/2097171
-      - name: Extract branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: branch-name
-
       - name: Build and push model pipeline image for Azure batch
         id: build_and_push_model_image
         uses: docker/build-push-action@v6
@@ -126,4 +121,4 @@ jobs:
           build-args: |
             TAG=${{ needs.build-dependencies-image.outputs.tag }}
             GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha }}
-            GIT_BRANCH_NAME=${{ steps.branch-name.outputs.branch }}
+            GIT_BRANCH_NAME=${{ needs.build-dependencies-image.outputs.branch }}
