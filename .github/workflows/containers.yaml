@@ -116,9 +116,9 @@ jobs:
         with:
           push: true # This can be toggled manually for tweaking.
           tags: |
-            ${{ env.REGISTRY}}/${{ env.IMAGE_NAME }}:${{ needs.build-dependencies-image.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-dependencies-image.outputs.tag }}
           file: ./Containerfile
           build-args: |
             TAG=${{ needs.build-dependencies-image.outputs.tag }}
-            GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha }}
+            GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
             GIT_BRANCH_NAME=${{ needs.build-dependencies-image.outputs.branch }}
