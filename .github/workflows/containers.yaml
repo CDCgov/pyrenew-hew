@@ -109,6 +109,12 @@ jobs:
           username: "cfaprdbatchcr"
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
 
+      # From: https://stackoverflow.com/a/58035262/2097171
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: branch-name
+
       - name: Build and push model pipeline image for Azure batch
         id: build_and_push_model_image
         uses: docker/build-push-action@v6
