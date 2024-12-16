@@ -67,11 +67,11 @@ def parse_model_batch_dir_name(model_batch_dir_name):
         )
     return dict(
         disease=disease_map_lower_[disease],
-        report_date=datetime.strptime(report_date, "%Y-%m-%d").date(),
-        first_training_date=datetime.strptime(
+        report_date=datetime.datetime.strptime(report_date, "%Y-%m-%d").date(),
+        first_training_date=datetime.datetime.strptime(
             first_training_date, "%Y-%m-%d"
         ).date(),
-        last_training_date=datetime.strptime(
+        last_training_date=datetime.datetime.strptime(
             last_training_date, "%Y-%m-%d"
         ).date(),
     )

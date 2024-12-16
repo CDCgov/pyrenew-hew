@@ -192,12 +192,14 @@ parser.add_argument(
     help=("Name of the Azure batch pool on which to run the job"),
 )
 parser.add_argument(
-    "diseases",
+    "--diseases",
     type=str,
+    default="COVID-19 Influenza",
     help=(
         "Name(s) of disease(s) to run as part of the job, "
         "as a whitespace-separated string. Supported "
-        "values are 'COVID-19' and 'Influenza'."
+        "values are 'COVID-19' and 'Influenza'. "
+        "Default 'COVID-19 Influenza' (i.e. run for both)."
     ),
 )
 
