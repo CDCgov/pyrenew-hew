@@ -1,0 +1,133 @@
+---
+jupyter: python3
+---
+
+```{python}
+import os
+import polars as pl
+from pathlib import Path
+import toml
+import yaml
+import jax
+import numpyro
+import pyrenew_hew.plotting as plotting
+
+from get_input_data import (
+    get_input_ww_data,
+    get_input_hosp_data,
+    get_last_hosp_data_date,
+)
+from get_spines import (
+    get_lab_site_site_spine,
+    get_date_time_spine,
+    get_lab_site_subpop_spine,
+    get_site_subpop_spine,
+)
+from get_model import get_model
+
+numpyro.set_host_device_count(4)
+```
+
+```{python}
+
+base_path = Path("../data")
+file_name_ww_data = "ww_2023-10-16.csv"
+file_name_hosp_data = "hosp_2023-10-16.csv"
+
+ww_data_path = os.path.join(base_path, file_name_ww_data)
+hosp_data_path = os.path.join(base_path, file_name_hosp_data)
+params_path = os.path.join(base_path, "example_params.toml")
+config_path = os.path.join(base_path, "eval_config.yaml")
+
+params = toml.load(params_path)
+
+with open(config_path) as f:
+    config = yaml.safe_load(f)
+
+forecast_date_i = "2023-10-16"  # used to select filename
+location = "AL"
+calibration_time = 180
+for_eval = False
+
+hosp_data = get_input_hosp_data(
+    hosp_data_path, forecast_date_i, location, calibration_time
+)
+last_hosp_data_date = get_last_hosp_data_date(hosp_data)
+ww_data = get_input_ww_data(
+    ww_data_path, forecast_date_i, location, last_hosp_data_date, calibration_time
+)
+site_subpop_spine = get_site_subpop_spine(ww_data, hosp_data)
+lab_site_site_spine = get_lab_site_site_spine(ww_data)
+lab_site_subpop_spine = get_lab_site_subpop_spine(
+    lab_site_site_spine, site_subpop_spine
+)
+date_time_spine = get_date_time_spine(forecast_date_i, hosp_data, calibration_time)
+```
+
+```{python}
+hosp_data_joined = hosp_data.join(
+    date_time_spine, on="date", how="left", coalesce=True
+)
+
+ww_data_joined = (
+    ww_data.join(date_time_spine, on="date", how="left", coalesce=True)
+    .join(site_subpop_spine, on=["site_index", "site"], how="left", coalesce=True)
+    .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
+)
+```
+
+```{python}
+hosp = hosp_data_joined["count"].to_numpy()
+log_conc = ww_data_joined["log_genome_copies_per_ml"].to_numpy()
+max_ww_sampled_days = ww_data_joined['t'].max()
+```
+
+```{python}
+ww_model = get_model(
+    params,
+    config,
+    hosp_data_joined,
+    ww_data_joined,
+    site_subpop_spine,
+    lab_site_subpop_spine,
+)
+```
+
+```{python}
+n_forecast_days = 28
+
+prior_predictive = ww_model.prior_predictive(
+    n_datapoints= max(len(hosp), max_ww_sampled_days) + n_forecast_days,
+    numpyro_predictive_args={"num_samples": 100},
+)
+ww_model.run(
+    num_warmup=100,
+    num_samples=100,
+    rng_key=jax.random.key(223),
+    data_observed_hospital_admissions=hosp,
+    data_observed_log_conc=log_conc,
+    mcmc_args=dict(num_chains=4)
+)
+posterior_predictive = ww_model.posterior_predictive(
+    n_datapoints= max(len(hosp), max_ww_sampled_days) + n_forecast_days, is_predictive=True
+)
+```
+
+```{python}
+import arviz as az
+
+idata = az.from_numpyro(
+    ww_model.mcmc,
+    posterior_predictive=posterior_predictive,
+    prior=prior_predictive,
+)
+```
+
+```{python}
+plotting.plot_predictive(idata, "observed_hospital_admissions")
+```
+
+```{python}
+plotting.plot_predictive(idata,'state_rt')
+```
+
