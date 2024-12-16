@@ -20,21 +20,50 @@ from generate_predictive import generate_and_save_predictions  # noqa
 
 
 def record_git_info(model_run_dir: Path):
-    metadata_file = Path(model_run_dir, "metadata.yaml")
+    metadata_file = Path("metadata.yaml")
+
+    if metadata_file.exists():
+        with open(metadata_file, "r") as file:
+            metadata = yaml.safe_load(file)
+    else:
+        metadata = {}
+
     try:
         repo = Repository(os.getcwd())
         branch_name = os.environ.get(
-            "GIT_BRANCH_NAME", Path(repo.head.name).stem
+            "GIT_BRANCH_NAME", Path(repo.head.shorthand).stem
         )
         commit_sha = os.environ.get("GIT_COMMIT_SHA", str(repo.head.target))
-    except:
+    except Exception as e:
         branch_name = os.environ.get("GIT_BRANCH_NAME", "unknown")
         commit_sha = os.environ.get("GIT_COMMIT_SHA", "unknown")
 
-    metadata = {
+    new_metadata = {
         "branch_name": branch_name,
         "commit_sha": commit_sha,
     }
+
+    metadata.update(new_metadata)
+
+    with open(metadata_file, "w") as file:
+        yaml.dump(metadata, file)
+
+
+def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
+    metadata_file = Path("metadata.yaml")
+    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
+
+    if metadata_file.exists():
+        with open(metadata_file, "r") as file:
+            metadata = yaml.safe_load(file)
+    else:
+        metadata = {}
+
+    new_metadata = {
+        "priors_path": str(priors_path),
+    }
+
+    metadata.update(new_metadata)
 
     with open(metadata_file, "w") as file:
         yaml.dump(metadata, file)
@@ -264,8 +293,8 @@ def main(
     logger.info("Recording git info...")
     record_git_info(model_run_dir)
 
-    logger.info(f"Using priors from {priors_path}...")
-    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
+    logger.info(f"Copying and recording priors from {priors_path}...")
+    copy_and_record_priors(priors_path, model_run_dir)
 
     logger.info(f"Processing {state}")
     process_and_save_state(
