@@ -20,7 +20,7 @@ from generate_predictive import generate_and_save_predictions  # noqa
 
 
 def record_git_info(model_run_dir: Path):
-    metadata_file = Path("metadata.yaml")
+    metadata_file = Path(model_run_dir, "metadata.yaml")
 
     if metadata_file.exists():
         with open(metadata_file, "r") as file:
@@ -50,7 +50,7 @@ def record_git_info(model_run_dir: Path):
 
 
 def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
-    metadata_file = Path("metadata.yaml")
+    metadata_file = Path(model_run_dir, "metadata.yaml")
     shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
 
     if metadata_file.exists():
