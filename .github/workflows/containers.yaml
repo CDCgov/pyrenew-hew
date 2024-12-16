@@ -110,6 +110,10 @@ jobs:
           username: "cfaprdbatchcr"
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
 
+
+      - name: Debug branch name
+        run: echo "Branch name ${{ needs.build-dependencies-image.outputs.branch }}"
+
       - name: Build and push model pipeline image for Azure batch
         id: build_and_push_model_image
         uses: docker/build-push-action@v6
