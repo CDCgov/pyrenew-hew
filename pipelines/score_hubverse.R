@@ -220,6 +220,8 @@ score_and_save <- function(observed_data_path,
     purrr::pmap(read_and_prep_for_scoring) |>
     dplyr::bind_rows()
 
+  message("Finished reading in forecasts and preparing for scoring.")
+  message("Scoring forecasts...")
   full_scores <- hewr::score_hewr(
     full_scoreable_table
   )

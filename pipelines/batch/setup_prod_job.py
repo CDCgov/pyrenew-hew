@@ -22,7 +22,8 @@ def main(
     output_subdir: str | Path = "./",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
-    excluded_locations: list[str] = [
+    locations_include: list[str] = None,
+    locations_exclude: list[str] = [
         "AS",
         "GU",
         "MO",
@@ -62,9 +63,16 @@ def main(
     container_image_version
         Version of the container to use. Default 'latest'.
 
-    excluded_locations
+    locations_include
+        List of two-letter USPS location abbreviations for locations
+        to include in the job (unless explicitly excluded by
+        --locations-exclude). If ``None``, use all available
+        not-explicitly-excluded locations. Default ``None``.
+
+    locations_exclude
         List of two letter USPS location abbreviations to
-        exclude from the job. Defaults to locations for which
+        exclude from the job. If ``None``, do not exclude any
+        locations. Defaults to a list of locations for which
         we typically do not have available NSSP ED visit data:
         ``["AS", "GU", "MO", "MP", "PR", "UM", "VI", "WY"]``.
 
@@ -159,10 +167,16 @@ def main(
         "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
     )
 
+    loc_abbrs = locations.get_column("STUSAB").to_list() + ["US"]
+    if locations_include is None:
+        locations_include = loc_abbrs
+    if locations_exclude is None:
+        locations_exclude = []
+
     all_locations = [
         loc
-        for loc in locations.get_column("STUSAB").to_list() + ["US"]
-        if loc not in excluded_locations
+        for loc in loc_abbrs
+        if loc not in locations_exclude and loc in locations_include
     ]
 
     for disease, state in itertools.product(disease_list, all_locations):
@@ -226,7 +240,20 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--excluded-locations",
+    "--locations-include",
+    type=str,
+    help=(
+        "Two-letter USPS location abbreviations to "
+        "include in the job, as a whitespace-separated "
+        "string. If not set, include all ",
+        "available locations except any explicitly excluded "
+        "via --locations-exclude.",
+    ),
+    default=None,
+)
+
+parser.add_argument(
+    "--locations-exclude",
     type=str,
     help=(
         "Two-letter USPS location abbreviations to "
@@ -242,5 +269,7 @@ parser.add_argument(
 if __name__ == "__main__":
     args = parser.parse_args()
     args.diseases = args.diseases.split()
-    args.excluded_locations = args.excluded_locations.split()
+    if args.locations_include is not None:
+        args.locations_include = args.locations_include.split()
+    args.locations_exclude = args.locations_exclude.split()
     main(**vars(args))
