@@ -22,6 +22,8 @@ def main(
     output_subdir: str | Path = "./",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
+    n_training_days: int = 90,
+    exclude_last_n_days: int = 1,
     locations_include: list[str] = None,
     locations_exclude: list[str] = [
         "AS",
@@ -62,6 +64,18 @@ def main(
 
     container_image_version
         Version of the container to use. Default 'latest'.
+
+    n_training_days
+        Number of training days of data to use for model fitting.
+        Default 90.
+
+    exclude_last_n_days
+        Number of days of available data to exclude from fitting.
+        Default 1. Note that we start the lookback for the
+        ``n_training_days`` of data after these exclusions,
+        so there will always be ``n_training_days`` of observations
+        for fitting; ``exclude_last_n_days`` determines where
+        the date range of observations starts and ends.
 
     locations_include
         List of two-letter USPS location abbreviations for locations
@@ -145,7 +159,7 @@ def main(
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 90 "
+        "--n-training-days {n_training_days} "
         "--n-warmup {n_warmup} "
         "--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
@@ -155,7 +169,7 @@ def main(
         "--output-dir {output_dir} "
         "--priors-path config/prod_priors.py "
         "--report-date {report_date} "
-        "--exclude-last-n-days 1 "
+        "--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
@@ -237,6 +251,26 @@ parser.add_argument(
     type=str,
     help="Version of the container to use for the job.",
     default="latest",
+)
+
+parser.add_argument(
+    "--n-training-days",
+    type=int,
+    help=(
+        "Number of 'training days' of observed data "
+        "to use for model fitting."
+    ),
+    default=90,
+)
+
+parser.add_argument(
+    "--exclude-last-n-days",
+    type=int,
+    help=(
+        "Number of days to drop from the end of the timeseries "
+        "of observed data when constructing the training data."
+    ),
+    default=1,
 )
 
 parser.add_argument(
