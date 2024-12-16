@@ -21,9 +21,15 @@ from generate_predictive import generate_and_save_predictions  # noqa
 
 def record_git_info(model_run_dir: Path):
     metadata_file = Path(model_run_dir, "metadata.yaml")
-    repo = Repository(os.getcwd())
-    branch_name = os.environ.get("GIT_BRANCH_NAME", Path(repo.head.name).stem)
-    commit_sha = os.environ.get("GIT_COMMIT_SHA", str(repo.head.target))
+    try:
+        repo = Repository(os.getcwd())
+        branch_name = os.environ.get(
+            "GIT_BRANCH_NAME", Path(repo.head.name).stem
+        )
+        commit_sha = os.environ.get("GIT_COMMIT_SHA", str(repo.head.target))
+    except:
+        branch_name = os.environ.get("GIT_BRANCH_NAME", "unknown")
+        commit_sha = os.environ.get("GIT_COMMIT_SHA", "unknown")
 
     metadata = {
         "branch_name": branch_name,
