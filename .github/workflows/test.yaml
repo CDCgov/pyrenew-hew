@@ -85,8 +85,8 @@ jobs:
           files: pipelines-coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
-          
-          
+
+
   hewr-test:
     name: Run hewr tests and collect coverage
     runs-on: ubuntu-latest
