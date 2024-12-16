@@ -51,13 +51,9 @@ def plot_posterior(idata, name, dim_1=None):
     axes.set_ylabel(name, fontsize=10)
 
 
-def plot_predictive(
-    idata, name="observed_hospital_admissions", dim_1=None, prior=False
-):
+def plot_predictive(idata, name="observed_ed_visits", dim_1=None, prior=False):
     prior_or_post_text = "Prior" if prior else "Posterior"
-    predictive_obj = (
-        idata.prior_predictive if prior else idata.posterior_predictive
-    )
+    predictive_obj = idata.prior_predictive if prior else idata.posterior_predictive
 
     x_data = predictive_obj[f"{name}_dim_0"]
     y_data = (
@@ -94,15 +90,19 @@ def plot_predictive(
         color="C0",
         label="Median",
     )
-    if (
-        name == "observed_hospital_admissions"
-        or name == "pred_hospital_admissions"
-    ):
+    if name == "observed_ed_visits":
+        plt.scatter(
+            idata.observed_data["observed_ed_visits_dim_0"],
+            idata.observed_data["observed_ed_visits"],
+            color="black",
+        )
+    elif name == "observed_hospital_admissions":
         plt.scatter(
             idata.observed_data["observed_hospital_admissions_dim_0"],
             idata.observed_data["observed_hospital_admissions"],
             color="black",
         )
+
     axes.legend()
     axes.set_title(f"{prior_or_post_text} {name}", fontsize=10)
     axes.set_xlabel("Time", fontsize=10)

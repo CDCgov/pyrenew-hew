@@ -14,19 +14,21 @@ make_forecast_figure(
 )
 }
 \arguments{
-\item{target_disease}{a disease matching the disease columns in combined_dat
-and forecast_ci}
+\item{target_disease}{a disease matching the disease columns
+in \code{combined_dat} and \code{forecast_ci}}
 
-\item{combined_dat}{\code{combined_dat} from the result of process_state_forecast}
+\item{combined_dat}{\code{combined_dat} from the result of
+\code{\link[=process_state_forecast]{process_state_forecast()}}}
 
-\item{forecast_ci}{\code{forecast_ci} from the result of process_state_forecast}
+\item{forecast_ci}{\code{forecast_ci} from the result of
+\code{\link[=process_state_forecast]{process_state_forecast()}}}
 
-\item{disease_name}{"COVID-19" or "Influenza"}
+\item{disease_name}{\code{"COVID-19"} or \code{"Influenza"}}
 
 \item{data_vintage_date}{date that the data was collected}
 
 \item{y_transform}{a character passed as the transform argument to
-ggplot2::scale_y_continuous()}
+\code{\link[ggplot2:scale_continuous]{ggplot2::scale_y_continuous()}}.}
 }
 \value{
 a ggplot object

@@ -7,13 +7,15 @@ from build_model import build_model_from_dir
 
 
 def generate_and_save_predictions(
-    model_run_dir: str | Path, n_forecast_points: int
+    model_run_dir: str | Path, model_name: str, n_forecast_points: int
 ) -> None:
     model_run_dir = Path(model_run_dir)
-
+    model_dir = Path(model_run_dir, model_name)
+    if not model_dir.exists():
+        raise FileNotFoundError(f"The directory {model_dir} does not exist.")
     (
         my_model,
-        data_observed_disease_hospital_admissions,
+        data_observed_disease_ed_visits,
         right_truncation_offset,
     ) = build_model_from_dir(model_run_dir)
 
@@ -21,7 +23,7 @@ def generate_and_save_predictions(
     fresh_sampler = my_model.mcmc.sampler
 
     with open(
-        model_run_dir / "posterior_samples.pickle",
+        model_dir / "posterior_samples.pickle",
         "rb",
     ) as file:
         my_model.mcmc = pickle.load(file)
@@ -29,8 +31,7 @@ def generate_and_save_predictions(
     my_model.mcmc.sampler = fresh_sampler
 
     posterior_predictive = my_model.posterior_predictive(
-        n_datapoints=len(data_observed_disease_hospital_admissions)
-        + n_forecast_points
+        n_datapoints=len(data_observed_disease_ed_visits) + n_forecast_points
     )
 
     idata = az.from_numpyro(
@@ -38,12 +39,10 @@ def generate_and_save_predictions(
         posterior_predictive=posterior_predictive,
     )
 
-    idata.to_dataframe().to_csv(
-        model_run_dir / "inference_data.csv", index=False
-    )
+    idata.to_dataframe().to_csv(model_dir / "inference_data.csv", index=False)
 
     # Save one netcdf for reloading
-    idata.to_netcdf(model_run_dir / "inference_data.nc")
+    idata.to_netcdf(model_dir / "inference_data.nc")
 
     return None
 
@@ -60,6 +59,12 @@ if __name__ == "__main__":
             "and the posterior chains. "
             "The completed predictive samples will be saved here."
         ),
+    )
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        required=True,
+        help="Name of the model to use for generating predictions.",
     )
     parser.add_argument(
         "--n-forecast-points",

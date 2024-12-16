@@ -27,9 +27,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     tag = args.tag
+    if tag == "main":
+        tag = "latest"
     print(f"Using tag {tag}")
     current_datetime = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%SZ")
-    tag = Path(Repository(os.getcwd()).head.name).stem
 
     locs_to_exclude = [  # keep CA, MN, SD, and US
         "AS",
@@ -87,9 +88,10 @@ if __name__ == "__main__":
         "WI",
         "WV",
     ]
+
     main(
         job_id=f"pyrenew-hew-test-{current_datetime}",
-        pool_id="pyrenew-pool",
+        pool_id="dmb-pyrenew-pool",
         diseases=["COVID-19", "Influenza"],
         container_image_name="pyrenew-hew",
         container_image_version=tag,

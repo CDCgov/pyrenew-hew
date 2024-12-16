@@ -9,6 +9,7 @@ from build_model import build_model_from_dir
 
 def fit_and_save_model(
     model_run_dir: str,
+    model_name: str,
     n_warmup: int = 1000,
     n_samples: int = 1000,
     n_chains: int = 4,
@@ -25,25 +26,24 @@ def fit_and_save_model(
         )
     (
         my_model,
-        data_observed_disease_hospital_admissions,
+        data_observed_disease_ed_visits,
         right_truncation_offset,
     ) = build_model_from_dir(model_run_dir)
     my_model.run(
         num_warmup=n_warmup,
         num_samples=n_samples,
         rng_key=rng_key,
-        data_observed_disease_hospital_admissions=(
-            data_observed_disease_hospital_admissions
-        ),
+        data_observed_disease_ed_visits=(data_observed_disease_ed_visits),
         right_truncation_offset=right_truncation_offset,
         mcmc_args=dict(num_chains=n_chains, progress_bar=True),
         nuts_args=dict(find_heuristic_step_size=True),
     )
 
     my_model.mcmc.sampler = None
-
+    model_dir = Path(model_run_dir, model_name)
+    model_dir.mkdir(exist_ok=True)
     with open(
-        model_run_dir / "posterior_samples.pickle",
+        model_dir / "posterior_samples.pickle",
         "wb",
     ) as file:
         pickle.dump(my_model.mcmc, file)
@@ -60,6 +60,12 @@ if __name__ == "__main__":
             "Path to a directory containing model fitting data. "
             "The completed fit will be saved here."
         ),
+    )
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        required=True,
+        help="Name of the model to use for generating predictions.",
     )
     parser.add_argument(
         "--n-warmup",

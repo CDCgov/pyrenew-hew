@@ -8,6 +8,7 @@ on Azure Batch.
 import argparse
 import datetime
 import itertools
+from pathlib import Path
 
 import polars as pl
 from azure.batch import models
@@ -21,6 +22,7 @@ def main(
     job_id: str,
     pool_id: str,
     diseases: str,
+    output_subdir: str | Path = "./",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     excluded_locations: list[str] = [
@@ -45,6 +47,11 @@ def main(
         Name(s) of disease(s) to run as part of the job,
         as a whitespace-separated string. Supported
         values are 'COVID-19' and 'Influenza'.
+
+    output_subdir
+        Subdirectory of the output blob storage container
+        in which to save results.
+
 
     container_image_name:
         Name of the container to use for the job.
@@ -108,7 +115,7 @@ def main(
                 "target": "/pyrenew-hew/params",
             },
             {
-                "source": "pyrenew-hew-prod-output",
+                "source": "pyrenew-test-output",
                 "target": "/pyrenew-hew/output",
             },
             {
@@ -123,17 +130,17 @@ def main(
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days 365 "
+        "--n-training-days {n_training} "
         "--n-warmup 1000 "
         "--n-samples 500 "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--output-data-dir output "
+        "--output-dir {output_dir} "
         "--priors-path config/eval_priors.py "
         "--report-date {report_date:%Y-%m-%d} "
-        "--exclude-last-n-days 2 "
+        "--exclude-last-n-days {exclude_last_n} "
         "--score "
         "--eval-data-path "
         "nssp-archival-vintages/latest_comprehensive.parquet"
@@ -158,12 +165,17 @@ def main(
     for disease, report_date, loc in itertools.product(
         disease_list, report_dates, all_locations
     ):
+        n_training = 90
+        exclude_last_n = 3
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-{report_date}",
             base_call=base_call.format(
                 state=loc,
                 disease=disease,
                 report_date=report_date,
+                n_training=n_training,
+                exclude_last_n=exclude_last_n,
+                output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
         )
@@ -189,6 +201,17 @@ parser.add_argument(
         "values are 'COVID-19' and 'Influenza'."
     ),
 )
+
+parser.add_argument(
+    "--output-subdir",
+    type=str,
+    help=(
+        "Subdirectory of the output blob storage container "
+        "in which to save results."
+    ),
+    default="./",
+)
+
 
 parser.add_argument(
     "--container-image-name",

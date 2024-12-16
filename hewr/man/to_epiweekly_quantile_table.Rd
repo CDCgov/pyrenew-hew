@@ -6,7 +6,11 @@
 from a model batch directory containing forecasts
 for multiple locations as daily MCMC draws.}
 \usage{
-to_epiweekly_quantile_table(model_batch_dir, exclude = NULL)
+to_epiweekly_quantile_table(
+  model_batch_dir,
+  exclude = NULL,
+  epiweekly_other = FALSE
+)
 }
 \arguments{
 \item{model_batch_dir}{Model batch directory containing
@@ -16,6 +20,13 @@ the individual location forecast directories
 
 \item{exclude}{Locations to exclude, if any, as a list of strings.
 Default \code{NULL} (exclude nothing).}
+
+\item{epiweekly_other}{Use an expressly epiweekly forecast
+for non-target ED visits instead of a daily forecast aggregated
+to epiweekly? Boolean, default \code{FALSE}.}
+}
+\value{
+The complete hubverse-format \code{\link[tibble:tibble]{tibble}}.
 }
 \description{
 Create an epiweekly hubverse-format forecast quantile table

@@ -5,6 +5,7 @@ import os
 from logging import Logger
 from pathlib import Path
 
+import forecasttools
 import polars as pl
 
 _disease_map = {
@@ -84,7 +85,7 @@ def process_state_level_data(
             .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
-        .collect()
+        .collect(streaming=True)
     )
 
 
@@ -154,17 +155,16 @@ def verify_no_date_gaps(df: pl.DataFrame):
 
 
 def get_state_pop_df():
-    facts = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/"
-        "refs/heads/master/data-raw/facts.csv"
-    )
-    states = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/"
-        "refs/heads/master/data-raw/states.csv"
+    census_dat = pl.read_csv(
+        "https://www2.census.gov/geo/docs/reference/cenpop2020/CenPop2020_Mean_ST.txt"
     )
 
-    state_pop_df = facts.join(states, on="name").select(
-        ["abb", "name", "population"]
+    state_pop_df = forecasttools.location_table.join(
+        census_dat, left_on="long_name", right_on="STNAME"
+    ).select(
+        pl.col("short_name").alias("abb"),
+        pl.col("long_name").alias("name"),
+        pl.col("POPULATION").alias("population"),
     )
 
     return state_pop_df
@@ -178,7 +178,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("parameter") == "generation_interval")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect()
+        .collect(streaming=True)
         .get_column("value")
         .to_list()[0]
     )
@@ -190,7 +190,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("parameter") == "delay")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect()
+        .collect(streaming=True)
         .get_column("value")
         .to_list()[0]
     )
@@ -203,7 +203,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
             & (pl.col("end_date").is_null())
         )
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect()
+        .collect(streaming=True)
         .get_column("value")
         .to_list()[0]
     )
@@ -275,73 +275,44 @@ def process_and_save_state(
             pl.col("date") < first_facility_level_data_date
         )
 
-    data_to_save = (
+    training_data = (
         pl.concat([state_level_data, aggregated_facility_data])
-        .with_columns(
-            pl.when(pl.col("date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("test"))
-            .alias("data_type"),
-        )
+        .filter(pl.col("date") <= last_training_date)
+        .with_columns(pl.lit("train").alias("data_type"))
         .sort(["date", "disease"])
     )
 
-    verify_no_date_gaps(data_to_save)
+    verify_no_date_gaps(training_data)
 
     train_disease_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "train", pl.col("disease") == disease
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    test_disease_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "test",
-            pl.col("disease") == disease,
-        )
+        training_data.filter(pl.col("disease") == disease)
         .get_column("ed_visits")
         .to_list()
     )
 
     train_total_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "train", pl.col("disease") == "Total"
-        )
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    test_total_ed_visits = (
-        data_to_save.filter(
-            pl.col("data_type") == "test", pl.col("disease") == "Total"
-        )
+        training_data.filter(pl.col("disease") == "Total")
         .get_column("ed_visits")
         .to_list()
     )
 
     data_for_model_fit = {
-        "inf_to_hosp_pmf": delay_pmf,
+        "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_hospital_admissions": train_disease_ed_visits,
-        "data_observed_disease_hospital_admissions_test": test_disease_ed_visits,
+        "data_observed_disease_ed_visits": train_disease_ed_visits,
         "data_observed_total_hospital_admissions": train_total_ed_visits,
-        "data_observed_total_hospital_admissions_test": test_total_ed_visits,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
     }
-
-    os.makedirs(model_run_dir, exist_ok=True)
+    data_dir = Path(model_run_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
 
     if logger is not None:
-        logger.info(f"Saving {state_abb} to {model_run_dir}")
-    data_to_save.write_csv(Path(model_run_dir, "data.csv"))
+        logger.info(f"Saving {state_abb} to {data_dir}")
+    training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
 
-    with open(
-        Path(model_run_dir, "data_for_model_fit.json"), "w"
-    ) as json_file:
+    with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)
 
     return None

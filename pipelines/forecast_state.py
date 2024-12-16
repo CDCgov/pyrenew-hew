@@ -8,7 +8,9 @@ from pathlib import Path
 
 import numpyro
 import polars as pl
+import yaml
 from prep_data import process_and_save_state
+from pygit2 import Repository
 from save_eval_data import save_eval_data
 
 numpyro.set_host_device_count(4)
@@ -17,14 +19,51 @@ from fit_model import fit_and_save_model  # noqa
 from generate_predictive import generate_and_save_predictions  # noqa
 
 
-def baseline_forecasts(
-    model_run_dir: Path, n_forecast_days: int, n_samples: int
+def record_git_info(model_run_dir: Path):
+    metadata_file = Path(model_run_dir, "metadata.yaml")
+    try:
+        repo = Repository(os.getcwd())
+        branch_name = os.environ.get(
+            "GIT_BRANCH_NAME", Path(repo.head.name).stem
+        )
+        commit_sha = os.environ.get("GIT_COMMIT_SHA", str(repo.head.target))
+    except:
+        branch_name = os.environ.get("GIT_BRANCH_NAME", "unknown")
+        commit_sha = os.environ.get("GIT_COMMIT_SHA", "unknown")
+
+    metadata = {
+        "branch_name": branch_name,
+        "commit_sha": commit_sha,
+    }
+
+    with open(metadata_file, "w") as file:
+        yaml.dump(metadata, file)
+
+
+def generate_epiweekly(model_run_dir: Path) -> None:
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/generate_epiweekly.R",
+            f"{model_run_dir}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"generate_epiweekly: {result.stderr}")
+    return None
+
+
+def timeseries_forecasts(
+    model_run_dir: Path, model_name: str, n_forecast_days: int, n_samples: int
 ) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/timeseries_forecasts.R",
             f"{model_run_dir}",
+            "--model-name",
+            f"{model_name}",
             "--n-forecast-days",
             f"{n_forecast_days}",
             "--n-samples",
@@ -33,16 +72,20 @@ def baseline_forecasts(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"baseline_forecasts: {result.stderr}")
+        raise RuntimeError(f"timeseries_forecasts: {result.stderr}")
     return None
 
 
-def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
+def convert_inferencedata_to_parquet(
+    model_run_dir: Path, model_name: str
+) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/convert_inferencedata_to_parquet.R",
             f"{model_run_dir}",
+            "--model-name",
+            f"{model_name}",
         ],
         capture_output=True,
     )
@@ -53,12 +96,18 @@ def convert_inferencedata_to_parquet(model_run_dir: Path) -> None:
     return None
 
 
-def postprocess_forecast(model_run_dir: Path) -> None:
+def postprocess_forecast(
+    model_run_dir: Path, pyrenew_model_name: str, timeseries_model_name: str
+) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/postprocess_state_forecast.R",
             f"{model_run_dir}",
+            "--pyrenew-model-name",
+            f"{pyrenew_model_name}",
+            "--timeseries-model-name",
+            f"{timeseries_model_name}",
         ],
         capture_output=True,
     )
@@ -81,6 +130,20 @@ def score_forecast(model_run_dir: Path) -> None:
     return None
 
 
+def render_webpage(model_run_dir: Path) -> None:
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/render_webpage.R",
+            f"{model_run_dir}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"render_webpage: {result.stderr}")
+    return None
+
+
 def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
@@ -98,7 +161,7 @@ def main(
     state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
     priors_path: Path | str,
-    output_data_dir: Path | str,
+    output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
     n_chains: int,
@@ -192,11 +255,14 @@ def main(
         f"{first_training_date}_t_{last_training_date}"
     )
 
-    model_batch_dir = Path(output_data_dir, model_batch_dir_name)
+    model_batch_dir = Path(output_dir, model_batch_dir_name)
 
     model_run_dir = Path(model_batch_dir, "model_runs", state)
 
     os.makedirs(model_run_dir, exist_ok=True)
+
+    logger.info("Recording git info...")
+    record_git_info(model_run_dir)
 
     logger.info(f"Using priors from {priors_path}...")
     shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
@@ -215,31 +281,6 @@ def main(
         model_run_dir=model_run_dir,
         logger=logger,
     )
-    logger.info("Data preparation complete.")
-
-    logger.info("Fitting model")
-    fit_and_save_model(
-        model_run_dir,
-        n_warmup=n_warmup,
-        n_samples=n_samples,
-        n_chains=n_chains,
-    )
-    logger.info("Model fitting complete")
-
-    logger.info("Performing posterior prediction / forecasting...")
-
-    n_days_past_last_training = n_forecast_days + exclude_last_n_days
-    generate_and_save_predictions(model_run_dir, n_days_past_last_training)
-
-    logger.info(
-        "Performing baseline forecasting and non-target pathogen "
-        "forecasting..."
-    )
-    n_denominator_samples = n_samples * n_chains
-    baseline_forecasts(
-        model_run_dir, n_days_past_last_training, n_denominator_samples
-    )
-    logger.info("Forecasting complete.")
     logger.info("Getting eval data...")
     if eval_data_path is None:
         raise ValueError("No path to an evaluation dataset provided.")
@@ -250,17 +291,56 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         latest_comprehensive_path=eval_data_path,
-        output_data_dir=model_run_dir,
+        output_data_dir=Path(model_run_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
     )
 
+    logger.info("Generating epiweekly datasets from daily datasets...")
+    generate_epiweekly(model_run_dir)
+
+    logger.info("Data preparation complete.")
+
+    logger.info("Fitting model")
+    fit_and_save_model(
+        model_run_dir,
+        "pyrenew_e",
+        n_warmup=n_warmup,
+        n_samples=n_samples,
+        n_chains=n_chains,
+    )
+    logger.info("Model fitting complete")
+
+    logger.info("Performing posterior prediction / forecasting...")
+
+    n_days_past_last_training = n_forecast_days + exclude_last_n_days
+    generate_and_save_predictions(
+        model_run_dir, "pyrenew_e", n_days_past_last_training
+    )
+
+    logger.info(
+        "Performing baseline forecasting and non-target pathogen "
+        "forecasting..."
+    )
+    n_denominator_samples = n_samples * n_chains
+    timeseries_forecasts(
+        model_run_dir,
+        "timeseries_e",
+        n_days_past_last_training,
+        n_denominator_samples,
+    )
+    logger.info("All forecasting complete.")
+
     logger.info("Converting inferencedata to parquet...")
-    convert_inferencedata_to_parquet(model_run_dir)
+    convert_inferencedata_to_parquet(model_run_dir, "pyrenew_e")
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    postprocess_forecast(model_run_dir)
+    postprocess_forecast(model_run_dir, "pyrenew_e", "timeseries_e")
     logger.info("Postprocessing complete.")
+
+    logger.info("Rendering webpage...")
+    render_webpage(model_run_dir)
+    logger.info("Rendering complete.")
 
     if score:
         logger.info("Scoring forecast...")
@@ -343,10 +423,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--output-data-dir",
+        "--output-dir",
         type=Path,
         default="private_data",
-        help="Directory in which to save output data.",
+        help="Directory in which to save output.",
     )
 
     parser.add_argument(

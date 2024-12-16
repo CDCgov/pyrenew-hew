@@ -21,7 +21,7 @@ from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew_hew.utils import convert_to_logmean_log_sd
 
 
-class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
+class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
     def __init__(
         self,
         state_pop,
@@ -33,11 +33,11 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         generation_interval_pmf_rv,
         infection_feedback_strength_rv,
         infection_feedback_pmf_rv,
-        p_hosp_mean_rv,
-        p_hosp_w_sd_rv,
-        autoreg_p_hosp_rv,
-        hosp_wday_effect_rv,
-        inf_to_hosp_rv,
+        p_ed_mean_rv,
+        p_ed_w_sd_rv,
+        autoreg_p_ed_rv,
+        ed_wday_effect_rv,
+        inf_to_ed_rv,
         phi_rv,
         right_truncation_pmf_rv,  # when unnamed deterministic variables are allowed, we could default this to 1.
         n_initialization_points,
@@ -55,7 +55,7 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
             infection_feedback_pmf=infection_feedback_pmf_rv,
         )
 
-        self.p_hosp_ar_proc = ARProcess()
+        self.p_ed_ar_proc = ARProcess()
         self.ar_diff = DifferencedProcess(
             fundamental_process=ARProcess(),
             differencing_order=1,
@@ -69,11 +69,11 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
         self.infection_feedback_pmf_rv = infection_feedback_pmf_rv
-        self.p_hosp_mean_rv = p_hosp_mean_rv
-        self.p_hosp_w_sd_rv = p_hosp_w_sd_rv
-        self.autoreg_p_hosp_rv = autoreg_p_hosp_rv
-        self.hosp_wday_effect_rv = hosp_wday_effect_rv
-        self.inf_to_hosp_rv = inf_to_hosp_rv
+        self.p_ed_mean_rv = p_ed_mean_rv
+        self.p_ed_w_sd_rv = p_ed_w_sd_rv
+        self.autoreg_p_ed_rv = autoreg_p_ed_rv
+        self.ed_wday_effect_rv = ed_wday_effect_rv
+        self.inf_to_ed_rv = inf_to_ed_rv
         self.phi_rv = phi_rv
         self.state_pop = state_pop
         self.n_initialization_points = n_initialization_points
@@ -85,26 +85,23 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
     def sample(
         self,
         n_datapoints=None,
-        data_observed_disease_hospital_admissions=None,
+        data_observed_disease_ed_visits=None,
         right_truncation_offset=None,
     ):  # numpydoc ignore=GL08
-        if (
-            n_datapoints is None
-            and data_observed_disease_hospital_admissions is None
-        ):
+        if n_datapoints is None and data_observed_disease_ed_visits is None:
             raise ValueError(
-                "Either n_datapoints or data_observed_hosp_admissions "
+                "Either n_datapoints or data_observed_disease_ed_visits "
                 "must be passed."
             )
         elif (
             n_datapoints is not None
-            and data_observed_disease_hospital_admissions is not None
+            and data_observed_disease_ed_visits is not None
         ):
             raise ValueError(
-                "Cannot pass both n_datapoints and data_observed_disease_hospital_admissions."
+                "Cannot pass both n_datapoints and data_observed_disease_ed_visits."
             )
         elif n_datapoints is None:
-            n_datapoints = len(data_observed_disease_hospital_admissions)
+            n_datapoints = len(data_observed_disease_ed_visits)
         else:
             n_datapoints = n_datapoints
 
@@ -153,54 +150,49 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
-        p_hosp_mean = self.p_hosp_mean_rv()
-        p_hosp_w_sd = self.p_hosp_w_sd_rv()
-        autoreg_p_hosp = self.autoreg_p_hosp_rv()
+        p_ed_mean = self.p_ed_mean_rv()
+        p_ed_w_sd = self.p_ed_w_sd_rv()
+        autoreg_p_ed = self.autoreg_p_ed_rv()
 
-        p_hosp_ar_init_rv = DistributionalVariable(
-            "p_hosp_ar_init",
+        p_ed_ar_init_rv = DistributionalVariable(
+            "p_ed_ar_init",
             dist.Normal(
                 0,
-                p_hosp_w_sd / jnp.sqrt(1 - jnp.pow(autoreg_p_hosp, 2)),
+                p_ed_w_sd / jnp.sqrt(1 - jnp.pow(autoreg_p_ed, 2)),
             ),
         )
-        p_hosp_ar_init = p_hosp_ar_init_rv()
+        p_ed_ar_init = p_ed_ar_init_rv()
 
-        p_hosp_ar = self.p_hosp_ar_proc(
-            noise_name="p_hosp",
+        p_ed_ar = self.p_ed_ar_proc(
+            noise_name="p_ed",
             n=n_weeks_post_init,
-            autoreg=autoreg_p_hosp,
-            init_vals=p_hosp_ar_init,
-            noise_sd=p_hosp_w_sd,
+            autoreg=autoreg_p_ed,
+            init_vals=p_ed_ar_init,
+            noise_sd=p_ed_w_sd,
         )
 
-        ihr = jnp.repeat(
-            transformation.SigmoidTransform()(p_hosp_ar + p_hosp_mean),
+        iedr = jnp.repeat(
+            transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
         )[:n_datapoints]
-        # this is only applied after the hospital_admissions are generated, not to all the latent infections. This is why we cannot apply the ihr in compute_delay_ascertained_incidence
+        # this is only applied after the ed visits are generated, not to all the latent infections. This is why we cannot apply the iedr in compute_delay_ascertained_incidence
         # see https://github.com/CDCgov/ww-inference-model/issues/43
 
-        numpyro.deterministic("ihr", ihr)
+        numpyro.deterministic("iedr", iedr)
 
-        hosp_wday_effect_raw = self.hosp_wday_effect_rv()
-        hosp_wday_effect = tile_until_n(hosp_wday_effect_raw, n_datapoints)
+        ed_wday_effect_raw = self.ed_wday_effect_rv()
+        ed_wday_effect = tile_until_n(ed_wday_effect_raw, n_datapoints)
 
-        inf_to_hosp = self.inf_to_hosp_rv()
+        inf_to_ed = self.inf_to_ed_rv()
 
-        potential_latent_hospital_admissions = (
-            compute_delay_ascertained_incidence(
-                p_observed_given_incident=1,
-                latent_incidence=latent_infections,
-                delay_incidence_to_observation_pmf=inf_to_hosp,
-            )[-n_datapoints:]
-        )
+        potential_latent_ed_visits = compute_delay_ascertained_incidence(
+            p_observed_given_incident=1,
+            latent_incidence=latent_infections,
+            delay_incidence_to_observation_pmf=inf_to_ed,
+        )[-n_datapoints:]
 
-        latent_hospital_admissions_final = (
-            potential_latent_hospital_admissions
-            * ihr
-            * hosp_wday_effect
-            * self.state_pop
+        latent_ed_visits_final = (
+            potential_latent_ed_visits * iedr * ed_wday_effect * self.state_pop
         )
 
         if right_truncation_offset is not None:
@@ -216,25 +208,25 @@ class hosp_only_ww_model(Model):  # numpydoc ignore=GL08
                 mode="constant",
                 constant_values=(1, 0),
             )
-            latent_hospital_admissions_now = (
-                latent_hospital_admissions_final * prop_already_reported
+            latent_ed_visits_now = (
+                latent_ed_visits_final * prop_already_reported
             )
         else:
-            latent_hospital_admissions_now = latent_hospital_admissions_final
+            latent_ed_visits_now = latent_ed_visits_final
 
-        hospital_admission_obs_rv = NegativeBinomialObservation(
-            "observed_hospital_admissions", concentration_rv=self.phi_rv
+        ed_visit_obs_rv = NegativeBinomialObservation(
+            "observed_ed_visits", concentration_rv=self.phi_rv
         )
 
-        observed_hospital_admissions = hospital_admission_obs_rv(
-            mu=latent_hospital_admissions_now,
-            obs=data_observed_disease_hospital_admissions,
+        observed_ed_visits = ed_visit_obs_rv(
+            mu=latent_ed_visits_now,
+            obs=data_observed_disease_ed_visits,
         )
 
-        return observed_hospital_admissions
+        return observed_ed_visits
 
 
-def create_hosp_only_ww_model_from_stan_data(stan_data_file):
+def create_pyrenew_hew_model_from_stan_data(stan_data_file):
     with open(
         stan_data_file,
         "r",
@@ -309,29 +301,29 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     p_hosp_prior_mean = stan_data["p_hosp_prior_mean"]
     p_hosp_sd_logit = stan_data["p_hosp_sd_logit"]
 
-    p_hosp_mean_rv = DistributionalVariable(
-        "p_hosp_mean",
+    p_ed_mean_rv = DistributionalVariable(
+        "p_ed_mean",
         dist.Normal(
             transformation.SigmoidTransform().inv(p_hosp_prior_mean),
             p_hosp_sd_logit,
         ),
     )  # logit scale
 
-    p_hosp_w_sd_sd = stan_data["p_hosp_w_sd_sd"]
-    p_hosp_w_sd_rv = DistributionalVariable(
-        "p_hosp_w_sd_sd", dist.TruncatedNormal(0, p_hosp_w_sd_sd, low=0)
+    p_ed_w_sd_sd = stan_data["p_hosp_w_sd_sd"]
+    p_ed_w_sd_rv = DistributionalVariable(
+        "p_ed_w_sd_sd", dist.TruncatedNormal(0, p_ed_w_sd_sd, low=0)
     )
 
-    autoreg_p_hosp_a = stan_data["autoreg_p_hosp_a"]
-    autoreg_p_hosp_b = stan_data["autoreg_p_hosp_b"]
-    autoreg_p_hosp_rv = DistributionalVariable(
-        "autoreg_p_hosp", dist.Beta(autoreg_p_hosp_a, autoreg_p_hosp_b)
+    autoreg_p_ed_a = stan_data["autoreg_p_hosp_a"]
+    autoreg_p_ed_b = stan_data["autoreg_p_hosp_b"]
+    autoreg_p_ed_rv = DistributionalVariable(
+        "autoreg_p_ed", dist.Beta(autoreg_p_ed_a, autoreg_p_ed_b)
     )
 
-    hosp_wday_effect_rv = TransformedVariable(
-        "hosp_wday_effect",
+    ed_wday_effect_rv = TransformedVariable(
+        "ed_wday_effect",
         DistributionalVariable(
-            "hosp_wday_effect_raw",
+            "ed_wday_effect_raw",
             dist.Dirichlet(
                 jnp.array(stan_data["hosp_wday_effect_prior_alpha"])
             ),
@@ -339,8 +331,8 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
         transformation.AffineTransform(loc=0, scale=7),
     )
 
-    inf_to_hosp_rv = DeterministicVariable(
-        "inf_to_hosp", jnp.array(stan_data["inf_to_hosp"])
+    inf_to_ed_rv = DeterministicVariable(
+        "inf_to_ed", jnp.array(stan_data["inf_to_hosp"])
     )
 
     inv_sqrt_phi_prior_mean = stan_data["inv_sqrt_phi_prior_mean"]
@@ -363,11 +355,11 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
     uot = len(jnp.array(stan_data["inf_to_hosp"]))
     state_pop = stan_data["state_pop"]
 
-    data_observed_disease_hospital_admissions = jnp.array(stan_data["hosp"])
+    data_observed_disease_ed_visits = jnp.array(stan_data["hosp"])
     right_truncation_pmf_rv = DeterministicVariable(
         "right_truncation_pmf", jnp.array(1)
     )
-    my_model = hosp_only_ww_model(
+    my_model = pyrenew_hew_model(
         state_pop=state_pop,
         i0_first_obs_n_rv=i0_first_obs_n_rv,
         initialization_rate_rv=initialization_rate_rv,
@@ -377,14 +369,14 @@ def create_hosp_only_ww_model_from_stan_data(stan_data_file):
         generation_interval_pmf_rv=generation_interval_pmf_rv,
         infection_feedback_pmf_rv=infection_feedback_pmf_rv,
         infection_feedback_strength_rv=inf_feedback_strength_rv,
-        p_hosp_mean_rv=p_hosp_mean_rv,
-        p_hosp_w_sd_rv=p_hosp_w_sd_rv,
-        autoreg_p_hosp_rv=autoreg_p_hosp_rv,
-        hosp_wday_effect_rv=hosp_wday_effect_rv,
-        inf_to_hosp_rv=inf_to_hosp_rv,
+        p_ed_mean_rv=p_ed_mean_rv,
+        p_ed_w_sd_rv=p_ed_w_sd_rv,
+        autoreg_p_ed_rv=autoreg_p_ed_rv,
+        ed_wday_effect_rv=ed_wday_effect_rv,
+        inf_to_ed_rv=inf_to_ed_rv,
         phi_rv=phi_rv,
         right_truncation_pmf_rv=right_truncation_pmf_rv,
         n_initialization_points=uot,
     )
 
-    return my_model, data_observed_disease_hospital_admissions
+    return my_model, data_observed_disease_ed_visits
