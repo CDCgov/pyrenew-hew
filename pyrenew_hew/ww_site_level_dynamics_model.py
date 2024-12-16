@@ -24,7 +24,7 @@ from pyrenew_hew.utils import get_vl_trajectory
 class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
     def __init__(
         self,
-        state_pop,
+        total_pop,
         unobs_time,
         n_initialization_points,
         i0_t_offset,
@@ -71,7 +71,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         max_ww_sampled_days=None,
         include_ww=False,
     ):  # numpydoc ignore=GL08
-        self.state_pop = state_pop
+        self.total_pop = total_pop
         self.n_subpops = n_subpops
         self.n_ww_lab_sites = n_ww_lab_sites
         self.unobs_time = unobs_time
@@ -360,7 +360,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             gen_int=generation_interval_pmf,
         )
 
-        new_i_subpop = jnp.atleast_2d(
+        letent_inf_subpop = jnp.atleast_2d(
             jnp.concat(
                 [
                     i0,
@@ -368,16 +368,16 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 ]
             )
         )
-        if new_i_subpop.shape[0] == 1:
-            new_i_subpop = new_i_subpop.T
+        if letent_inf_subpop.shape[0] == 1:
+            letent_inf_subpop = letent_inf_subpop.T
 
-        r_subpop_t = inf_with_feedback_proc_sample.rt
-        numpyro.deterministic("r_subpop_t", r_subpop_t)
+        rt_subpop = inf_with_feedback_proc_sample.rt
+        numpyro.deterministic("rt_subpop", rt_subpop)
 
-        state_inf_per_capita = jnp.sum(
-            self.pop_fraction * new_i_subpop, axis=1
+        total_inf_per_capita = jnp.sum(
+            self.pop_fraction * letent_inf_subpop, axis=1
         )
-        numpyro.deterministic("state_inf_per_capita", state_inf_per_capita)
+        numpyro.deterministic("total_inf_per_capita", total_inf_per_capita)
 
         # Hospital admission component
         p_hosp_mean = self.p_hosp_mean_rv()
@@ -416,7 +416,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         potential_latent_hospital_admissions = (
             compute_delay_ascertained_incidence(
                 p_observed_given_incident=1,
-                latent_incidence=state_inf_per_capita,
+                latent_incidence=total_inf_per_capita,
                 delay_incidence_to_observation_pmf=inf_to_hosp,
             )[-n_datapoints:]
         )
@@ -425,7 +425,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             potential_latent_hospital_admissions
             * ihr
             * hosp_wday_effect
-            * self.state_pop
+            * self.total_pop
         )
         numpyro.deterministic(
             "latent_hospital_admissions", latent_hospital_admissions
@@ -455,7 +455,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 return jnp.convolve(m, s, mode="valid")
 
             model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
-                new_i_subpop
+                letent_inf_subpop
             )[-n_datapoints:, :]
             numpyro.deterministic("model_net_i", model_net_i)
 
@@ -536,7 +536,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             )
 
             state_model_net_i = jnp.convolve(
-                state_inf_per_capita, s, mode="valid"
+                total_inf_per_capita, s, mode="valid"
             )[-n_datapoints:]
             numpyro.deterministic("state_model_net_i", state_model_net_i)
 
@@ -552,17 +552,17 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 "expected_state_ww_conc", expected_state_ww_conc
             )
 
-            state_rt = (
-                state_inf_per_capita[-n_datapoints:]
+            Rt = (
+                total_inf_per_capita[-n_datapoints:]
                 / jnp.convolve(
-                    state_inf_per_capita,
+                    total_inf_per_capita,
                     jnp.hstack(
                         (jnp.array([0]), jnp.array(generation_interval_pmf))
                     ),
                     mode="valid",
                 )[-n_datapoints:]
             )
-            numpyro.deterministic("state_rt", state_rt)
+            numpyro.deterministic("Rt", Rt)
 
         return (
             observed_hospital_admissions,
