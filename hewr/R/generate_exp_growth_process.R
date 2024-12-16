@@ -20,7 +20,7 @@
 #'
 #' @export
 generate_exp_growth_pois <- function(rt, initial) {
-    means <- initial * exp(cumsum(rt))
-    samples <- stats::rpois(length(means), lambda = means)
-    return(samples)
+  means <- initial * exp(cumsum(rt))
+  samples <- stats::rpois(length(means), lambda = means)
+  return(samples)
 }
