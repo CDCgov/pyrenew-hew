@@ -13,6 +13,9 @@ WORKDIR /pyrenew-hew
 
 COPY .ContainerBuildRprofile .Rprofile
 
+RUN echo "GIT_COMMIT_SHA: $GIT_COMMIT_SHA"
+RUN echo "GIT_BRANCH_NAME: $GIT_BRANCH_NAME"
+
 RUN Rscript -e "install.packages('pak')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epipredict@main')"
