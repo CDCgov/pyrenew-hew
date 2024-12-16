@@ -18,5 +18,8 @@ RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epipredict@main')"
 RUN Rscript -e "pak::local_install('hewr')"
 
-COPY . .
+COPY --exclude=pipelines/priors . .
 RUN pip install --root-user-action=ignore .
+
+# Copy priors folder last
+COPY pipelines/priors pipelines/priors
