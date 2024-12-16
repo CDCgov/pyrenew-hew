@@ -202,6 +202,8 @@ def main(
                 report_date="latest",
                 n_warmup=n_warmup,
                 n_samples=n_samples,
+                n_training_days=n_training_days,
+                exclude_last_n_days=exclude_last_n_days,
                 output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
