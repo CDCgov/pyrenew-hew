@@ -16,7 +16,7 @@ python forecast_state.py \
     --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
     --priors-path "$BASE_DIR/test_output/priors.py" \
     --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
-    --output-dir "BASE_DIR/private_data" \
+    --output-dir "$BASE_DIR/private_data" \
     --n-training-days 90 \
     --n-chains 1 \
     --score \
