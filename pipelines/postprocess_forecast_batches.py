@@ -1,4 +1,13 @@
+#!/usr/bin/env python3
+
+"""
+Postprocess batches of forecasts, creating
+summary files including collated PDFs of plots
+and .tsv-format hubverse tables.
+"""
+
 import argparse
+import logging
 import subprocess
 from pathlib import Path
 
@@ -38,15 +47,21 @@ def process_model_batch_dir(model_batch_dir_path: Path) -> None:
     plots_to_collate = [f"{x}_forecast_plot.pdf" for x in plot_types] + [
         f"{x}_forecast_plot_log.pdf" for x in plot_types
     ]
+    logger = logging.getLogger(__name__)
+    logger.info("Collating plots...")
     cp.process_dir(model_batch_dir_path, target_filenames=plots_to_collate)
+    logger.info("Creating hubverse table...")
     create_hubverse_table(model_batch_dir_path)
 
 
 def main(
     base_forecast_dir: Path, diseases: list[str] = ["COVID-19", "Influenza"]
 ):
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
     to_process = get_all_forecast_dirs(base_forecast_dir, diseases)
     for batch_dir in to_process:
+        logger.info(f"Processing {batch_dir}...")
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)
         process_model_batch_dir(model_batch_dir_path)
 
