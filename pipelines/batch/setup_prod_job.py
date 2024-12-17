@@ -167,7 +167,7 @@ def main(
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
         "--output-dir {output_dir} "
-        "--priors-path config/prod_priors.py "
+        "--priors-path pipelines/priors/prod_priors.py "
         "--report-date {report_date} "
         "--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
