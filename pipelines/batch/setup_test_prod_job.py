@@ -95,6 +95,6 @@ if __name__ == "__main__":
         diseases=["COVID-19", "Influenza"],
         container_image_name="pyrenew-hew",
         container_image_version=tag,
-        excluded_locations=locs_to_exclude,
+        locations_exclude=locs_to_exclude,
         test=True,
     )
