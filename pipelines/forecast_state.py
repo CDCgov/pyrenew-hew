@@ -29,7 +29,7 @@ def record_git_info(model_run_dir: Path):
         metadata = {}
 
     try:
-        repo = Repository(ocommit_sha=os.environ.gets.getcwd())
+        repo = Repository(os.getcwd())
         branch_name = repo.head.shorthand
         commit_sha = str(repo.head.target)
     except Exception as e:
