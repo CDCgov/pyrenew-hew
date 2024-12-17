@@ -101,7 +101,7 @@ generate_fake_facility_data <- function(
     end_reference = as.Date("2024-12-25"), initial = 10, mean_other = 200,
     target_disease = "COVID-19/Omicron") {
   nssp_etl_gold_dir <- path(private_data_dir, "nssp_etl_gold")
-  dir_create(nssp_etl_gold_dir, recurse = T)
+  dir_create(nssp_etl_gold_dir, recurse = TRUE)
 
   fac_data <- purrr::map(1:n_facilities, \(i) {
     create_facility_test_data(
@@ -138,12 +138,11 @@ generate_fake_state_level_data <- function(
     start_reference = as.Date("2024-06-01"),
     end_reference = as.Date("2024-12-25"), initial = 10, mean_other = 200,
     target_disease = "COVID-19/Omicron", n_forecast_days = 28) {
-  
   gold_dir <- path(private_data_dir, "nssp_state_level_gold")
-  dir_create(gold_dir)
+  dir_create(gold_dir, recurse = TRUE)
 
   comp_dir <- path(private_data_dir, "nssp-archival-vintages")
-  dir_create(comp_dir)
+  dir_create(comp_dir, recurse = TRUE)
 
   state_data <- create_facility_test_data(
     1, start_reference, end_reference + n_forecast_days,
@@ -185,8 +184,8 @@ generate_fake_param_data <- function(
     private_data_dir = path(getwd()),
     end_reference = as.Date("2024-12-25"), target_disease = "COVID-19") {
   prod_param_estimates_dir <- path(private_data_dir, "prod_param_estimates")
-  dir_create(prod_param_estimates_dir)
-  
+  dir_create(prod_param_estimates_dir, recurse = TRUE)
+
   # Simple discretize exponential distribution
   gi_pmf <- seq(0.5, 6.5) |> dexp()
   gi_pmf <- gi_pmf / sum(gi_pmf)
