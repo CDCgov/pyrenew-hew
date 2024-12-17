@@ -23,6 +23,8 @@ jobs:
         run: pip install poetry
       - name: "Install pyrenew-hew"
         run: poetry install
+      - name: "Set up Quarto"
+        uses: quarto-dev/quarto-actions/setup@v2
       - name: "Set up dependencies for hewr"
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
