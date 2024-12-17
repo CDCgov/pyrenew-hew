@@ -18,6 +18,10 @@ purrr::walk(script_packages, \(pkg) {
 # Set seed for reproducibility
 set.seed(123)
 
+# Dict for converting to short names
+disease_short_names <- list("COVID-19/Omicron" = "COVID-19")
+
+
 #' Create Facility Test Data
 #'
 #' This function generates test data for a given facility over a specified
@@ -220,11 +224,13 @@ generate_fake_param_data <- function(
 }
 
 main <- function(private_data_dir, target_disease) {
+  short_target_disease <- disease_short_names[[target_disease]]
   generate_fake_facility_data(private_data_dir, target_disease = target_disease)
   generate_fake_state_level_data(private_data_dir,
     target_disease = target_disease
   )
-  generate_fake_param_data(private_data_dir, target_disease = target_disease)
+  generate_fake_param_data(private_data_dir,
+    target_disease = short_target_disease)
 }
 
 p <- arg_parser("Create epiweekly data") |>
@@ -235,7 +241,7 @@ p <- arg_parser("Create epiweekly data") |>
   add_argument(
     "--target-disease",
     type = "character",
-    default = "COVID-19",
+    default = "COVID-19/Omicron",
     help = "Target disease for the data generation."
   )
 
