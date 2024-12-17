@@ -19,7 +19,7 @@ jobs:
         with:
           r-version: "release"
           use-public-rspm: true
-      - name: "install poetry"
+      - name: "Install poetry"
         run: pip install poetry
       - name: "Install pyrenew-hew"
         run: poetry install
@@ -27,9 +27,8 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: hewr
-      - name: "Check hewr package"
-        uses: r-lib/actions/check-r-package@v2
-        with:
-          working-directory: hewr
+      - name: "Install hewr"
+        run: pak::local_install("hewr", path = "hewr")
+        shell: Rscript {0}
       - name: "Run pipeline"
         run: poetry run bash pipelines/tests/test_forecast_state.sh pipelines/tests
