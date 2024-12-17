@@ -131,7 +131,7 @@ generate_fake_facility_data <- function(
 #'
 #' @return This function does not return a value. It writes the generated data
 #' to a parquet file in the specified directory.
-generate_state_level_data <- function(
+generate_fake_state_level_data <- function(
     private_data_dir,
     start_reference = as.Date("2024-06-01"),
     end_reference = as.Date("2024-12-25"), initial = 10.0, mean_other = 200.0,
@@ -149,3 +149,81 @@ generate_state_level_data <- function(
     select(-facility, -run_id, -asof) |>
     write_parquet(path(dir_to_create, end_reference, ext = "parquet"))
 }
+
+#' Generate Fake Parameter Data
+#'
+#' This function generates fake parameter data for a specified disease and
+#' saves it as a parquet file.
+#'
+#' The function creates a directory for storing the parameter estimates if it
+#' does not already exist. It then generates a simple discretized exponential
+#' distribution for the generation interval (gi_pmf) and a right truncation
+#' probability mass function (rt_truncation_pmf).
+#'
+#' @param private_data_dir A string specifying the directory where the data will
+#' be saved.
+#' @param end_reference A Date object specifying the end reference date for the
+#' data. Default is "2024-12-25".
+#' @param target_disease A string specifying the target disease for the data.
+#' Default is "COVID-19".
+generate_fake_param_data <- function(
+    private_data_dir,
+    end_reference = as.Date("2024-12-25"), target_disease = "COVID-19") {
+  dir_to_create <- path(private_data_dir, "prod_param_estimates")
+  if (!dir_exists(dir_to_create)) {
+    dir_create(dir_to_create)
+  }
+  # Simple discretise exponential distribution
+  gi_pmf <- seq(0.5, 6.5) |> dexp()
+  gi_pmf <- gi_pmf / sum(gi_pmf)
+  rt_truncation_pmf <- c(1.0)
+
+  gi_data <- tibble(
+    id = 0,
+    start_date = as.Date("2024-06-01"),
+    end_date = NA,
+    disease = target_disease,
+    format = "PMF",
+    parameter = "delay",
+    geo_value = NA,
+    value = list(gi_pmf)
+  )
+  rt_trunc_data <- tibble(
+    id = 0,
+    start_date = as.Date("2024-06-01"),
+    end_date = end_reference,
+    disease = target_disease,
+    format = "PMF",
+    parameter = "right_truncation",
+    geo_value = "CA",
+    value = list(rt_truncation_pmf)
+  )
+  write_parquet(
+    bind_rows(gi_data, rt_trunc_data),
+    path(dir_to_create, "prod", ext = "parquet")
+  )
+}
+
+main <- function(private_data_dir, target_disease) {
+  generate_fake_facility_data(private_data_dir, target_disease = target_disease)
+  generate_fake_state_level_data(private_data_dir,
+    target_disease = target_disease
+  )
+  generate_fake_param_data(private_data_dir, target_disease = target_disease)
+}
+
+p <- arg_parser("Create epiweekly data") |>
+  add_argument(
+    "model_run_dir",
+    help = "Directory containing the model data and output."
+  ) |>
+  add_argument(
+    "--target-disease",
+    type = "character",
+    default = "COVID-19/Omicron",
+    help = "Target disease for the data generation."
+  )
+
+argv <- parse_args(p)
+
+main(argv$model_run_dir, target_disease = argv$target_disease)
