@@ -176,22 +176,37 @@ generate_fake_param_data <- function(
   # Simple discretise exponential distribution
   gi_pmf <- seq(0.5, 6.5) |> dexp()
   gi_pmf <- gi_pmf / sum(gi_pmf)
-  rt_truncation_pmf <- c(1.0)
+  delay_pmf <- seq(0.5, 10.5) |> dexp(rate = 1 / 2)
+  delay_pmf <- delay_pmf / sum(delay_pmf)
+  rt_truncation_pmf <- c(1.0, 0, 0, 0)
 
   gi_data <- tibble(
     id = 0,
     start_date = as.Date("2024-06-01"),
     end_date = NA,
+    reference_date = end_reference,
+    disease = target_disease,
+    format = "PMF",
+    parameter = "generation_interval",
+    geo_value = NA,
+    value = list(gi_pmf)
+  )
+  delay_data <- tibble(
+    id = 0,
+    start_date = as.Date("2024-06-01"),
+    end_date = NA,
+    reference_date = end_reference,
     disease = target_disease,
     format = "PMF",
     parameter = "delay",
     geo_value = NA,
-    value = list(gi_pmf)
+    value = list(delay_pmf)
   )
   rt_trunc_data <- tibble(
     id = 0,
     start_date = as.Date("2024-06-01"),
-    end_date = end_reference,
+    end_date = NA,
+    reference_date = end_reference,
     disease = target_disease,
     format = "PMF",
     parameter = "right_truncation",
@@ -199,7 +214,7 @@ generate_fake_param_data <- function(
     value = list(rt_truncation_pmf)
   )
   write_parquet(
-    bind_rows(gi_data, rt_trunc_data),
+    bind_rows(gi_data, delay_data, rt_trunc_data),
     path(dir_to_create, "prod", ext = "parquet")
   )
 }
@@ -220,7 +235,7 @@ p <- arg_parser("Create epiweekly data") |>
   add_argument(
     "--target-disease",
     type = "character",
-    default = "COVID-19/Omicron",
+    default = "COVID-19",
     help = "Target disease for the data generation."
   )
 
