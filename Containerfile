@@ -1,3 +1,4 @@
+#syntax=docker/dockerfile:1.7-labs
 ARG TAG=latest
 
 FROM cfaprdbatchcr.azurecr.io/pyrenew-hew-dependencies:${TAG}
