@@ -96,7 +96,7 @@ create_facility_test_data <- function(
 #' @return This function does not return a value. It writes the generated data
 #' to a parquet file.
 generate_fake_facility_data <- function(
-    private_data_dir, n_facilities = 3,
+    private_data_dir, n_facilities = 1,
     start_reference = as.Date("2024-06-01"),
     end_reference = as.Date("2024-12-25"), initial = 10.0, mean_other = 200.0,
     target_disease = "COVID-19/Omicron") {
