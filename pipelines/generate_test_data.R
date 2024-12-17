@@ -87,23 +87,21 @@ create_facility_test_data <- function(
 #' @param end_reference A Date object specifying the end date for the data
 #' generation. Default is "2024-12-25".
 #' @param initial A numeric value specifying the initial value for the data
-#' generation. Default is 10.0.
+#' generation. Default is 10.
 #' @param mean_other A numeric value specifying the mean value for other data
-#' points. Default is 200.0.
+#' points. Default is 200.
 #' @param target_disease A string specifying the target disease for the data
 #' generation. Default is "COVID-19/Omicron".
 #'
 #' @return This function does not return a value. It writes the generated data
 #' to a parquet file.
 generate_fake_facility_data <- function(
-    private_data_dir, n_facilities = 1,
+    private_data_dir = path(getwd()), n_facilities = 1,
     start_reference = as.Date("2024-06-01"),
-    end_reference = as.Date("2024-12-25"), initial = 10.0, mean_other = 200.0,
+    end_reference = as.Date("2024-12-25"), initial = 10, mean_other = 200,
     target_disease = "COVID-19/Omicron") {
-  dir_to_create <- path(private_data_dir, "nssp_etl_gold")
-  if (!dir_exists(dir_to_create)) {
-    dir_create(dir_to_create)
-  }
+  nssp_etl_gold_dir <- path(private_data_dir, "nssp_etl_gold")
+  dir_create(nssp_etl_gold_dir, recurse = T)
 
   fac_data <- purrr::map(1:n_facilities, \(i) {
     create_facility_test_data(
@@ -112,7 +110,7 @@ generate_fake_facility_data <- function(
     )
   }) |>
     bind_rows() |>
-    write_parquet(path(dir_to_create, end_reference, ext = "parquet"))
+    write_parquet(path(nssp_etl_gold_dir, end_reference, ext = "parquet"))
 }
 
 #' Generate State Level Data
@@ -127,27 +125,25 @@ generate_fake_facility_data <- function(
 #' @param end_reference A Date object specifying the end date for the data
 #' generation period. Default is "2024-12-25".
 #' @param initial A numeric value specifying the initial value for the data
-#' generation. Default is 10.0.
+#' generation. Default is 10.
 #' @param mean_other A numeric value specifying the mean value for other data
-#' points. Default is 200.0.
+#' points. Default is 200.
 #' @param target_disease A string specifying the target disease for the data
 #' generation. Default is "COVID-19/Omicron".
 #'
 #' @return This function does not return a value. It writes the generated data
 #' to a parquet file in the specified directory.
 generate_fake_state_level_data <- function(
-    private_data_dir,
+    private_data_dir = path(getwd()),
     start_reference = as.Date("2024-06-01"),
-    end_reference = as.Date("2024-12-25"), initial = 10.0, mean_other = 200.0,
+    end_reference = as.Date("2024-12-25"), initial = 10, mean_other = 200,
     target_disease = "COVID-19/Omicron", n_forecast_days = 28) {
-  gold_dir_to_create <- path(private_data_dir, "nssp_state_level_gold")
-  if (!dir_exists(gold_dir_to_create)) {
-    dir_create(gold_dir_to_create)
-  }
-  comp_dir_to_create <- path(private_data_dir, "nssp-archival-vintages")
-  if (!dir_exists(comp_dir_to_create)) {
-    dir_create(comp_dir_to_create)
-  }
+  
+  gold_dir <- path(private_data_dir, "nssp_state_level_gold")
+  dir_create(gold_dir)
+
+  comp_dir <- path(private_data_dir, "nssp-archival-vintages")
+  dir_create(comp_dir)
 
   state_data <- create_facility_test_data(
     1, start_reference, end_reference + n_forecast_days,
@@ -159,12 +155,12 @@ generate_fake_state_level_data <- function(
   state_data |>
     filter(reference_date <= end_reference) |>
     mutate(any_update_this_day = TRUE) |>
-    write_parquet(path(gold_dir_to_create, end_reference, ext = "parquet"))
+    write_parquet(path(gold_dir, end_reference, ext = "parquet"))
 
   # Write out-of-sample state-level data to comparison directory
   state_data |>
     filter(reference_date > end_reference) |>
-    write_parquet(path(comp_dir_to_create, "latest_comprehensive",
+    write_parquet(path(comp_dir, "latest_comprehensive",
       ext = "parquet"
     ))
 }
@@ -186,18 +182,17 @@ generate_fake_state_level_data <- function(
 #' @param target_disease A string specifying the target disease for the data.
 #' Default is "COVID-19".
 generate_fake_param_data <- function(
-    private_data_dir,
+    private_data_dir = path(getwd()),
     end_reference = as.Date("2024-12-25"), target_disease = "COVID-19") {
-  dir_to_create <- path(private_data_dir, "prod_param_estimates")
-  if (!dir_exists(dir_to_create)) {
-    dir_create(dir_to_create)
-  }
-  # Simple discretise exponential distribution
+  prod_param_estimates_dir <- path(private_data_dir, "prod_param_estimates")
+  dir_create(prod_param_estimates_dir)
+  
+  # Simple discretize exponential distribution
   gi_pmf <- seq(0.5, 6.5) |> dexp()
   gi_pmf <- gi_pmf / sum(gi_pmf)
   delay_pmf <- seq(0.5, 10.5) |> dexp(rate = 1 / 2)
   delay_pmf <- delay_pmf / sum(delay_pmf)
-  rt_truncation_pmf <- c(1.0, 0, 0, 0)
+  rt_truncation_pmf <- c(1, 0, 0, 0)
 
   gi_data <- tibble(
     id = 0,
@@ -234,7 +229,7 @@ generate_fake_param_data <- function(
   )
   write_parquet(
     bind_rows(gi_data, delay_data, rt_trunc_data),
-    path(dir_to_create, "prod", ext = "parquet")
+    path(prod_param_estimates_dir, "prod", ext = "parquet")
   )
 }
 
