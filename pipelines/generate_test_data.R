@@ -139,7 +139,7 @@ generate_fake_state_level_data <- function(
     private_data_dir,
     start_reference = as.Date("2024-06-01"),
     end_reference = as.Date("2024-12-25"), initial = 10.0, mean_other = 200.0,
-    target_disease = "COVID-19/Omicron") {
+    target_disease = "COVID-19/Omicron", n_forecast_days = 28) {
   gold_dir_to_create <- path(private_data_dir, "nssp_state_level_gold")
   if (!dir_exists(gold_dir_to_create)) {
     dir_create(gold_dir_to_create)
@@ -150,18 +150,20 @@ generate_fake_state_level_data <- function(
   }
 
   state_data <- create_facility_test_data(
-    1, start_reference, end_reference,
+    1, start_reference, end_reference + n_forecast_days,
     initial, mean_other, target_disease
   ) |>
     select(-facility, -run_id, -asof)
 
-  # Write state-level data to gold directory
+  # Write in-sample state-level data to gold directory
   state_data |>
+    filter(reference_date <= end_reference) |>
     mutate(any_update_this_day = TRUE) |>
     write_parquet(path(gold_dir_to_create, end_reference, ext = "parquet"))
 
-  # Write state-level data to comparison directory
+  # Write out-of-sample state-level data to comparison directory
   state_data |>
+    filter(reference_date > end_reference) |>
     write_parquet(path(comp_dir_to_create, "latest_comprehensive",
       ext = "parquet"
     ))
@@ -236,11 +238,11 @@ generate_fake_param_data <- function(
   )
 }
 
-main <- function(private_data_dir, target_disease) {
+main <- function(private_data_dir, target_disease, n_forecast_days) {
   short_target_disease <- disease_short_names[[target_disease]]
   generate_fake_facility_data(private_data_dir, target_disease = target_disease)
   generate_fake_state_level_data(private_data_dir,
-    target_disease = target_disease
+    target_disease = target_disease, n_forecast_days = n_forecast_days
   )
   generate_fake_param_data(private_data_dir,
     target_disease = short_target_disease
@@ -257,8 +259,15 @@ p <- arg_parser("Create epiweekly data") |>
     type = "character",
     default = "COVID-19/Omicron",
     help = "Target disease for the data generation."
-  )
+  ) |>
+  add_argument(
+    "--n-forecast-days",
+    type = "integer",
+    default = 28,
+    help = "Number of days to forecast."
+    )
 
 argv <- parse_args(p)
 
-main(argv$model_run_dir, target_disease = argv$target_disease)
+main(argv$model_run_dir, target_disease = argv$target_disease,
+    n_forecast_days = argv$n_forecast_days)
