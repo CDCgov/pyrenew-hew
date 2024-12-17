@@ -265,9 +265,11 @@ p <- arg_parser("Create epiweekly data") |>
     type = "integer",
     default = 28,
     help = "Number of days to forecast."
-    )
+  )
 
 argv <- parse_args(p)
 
-main(argv$model_run_dir, target_disease = argv$target_disease,
-    n_forecast_days = argv$n_forecast_days)
+main(argv$model_run_dir,
+  target_disease = argv$target_disease,
+  n_forecast_days = argv$n_forecast_days
+)
