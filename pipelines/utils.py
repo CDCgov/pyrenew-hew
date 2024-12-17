@@ -12,7 +12,7 @@ from pathlib import Path
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
 
 
-def ensure_listlike(x):
+def ensure_listlike(x: any) -> MutableSequence:
     """
     Ensure that an object either behaves like a
     :class:`MutableSequence` and if not return a
@@ -39,7 +39,7 @@ def ensure_listlike(x):
     return x if isinstance(x, MutableSequence) else [x]
 
 
-def parse_model_batch_dir_name(model_batch_dir_name):
+def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
     """
     Parse the name of a model batch directory,
     returning a dictionary of parsed values.

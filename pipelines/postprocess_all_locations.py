@@ -6,8 +6,10 @@ import collate_plots as cp
 from utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
 
-def create_hubverse_table(base_path: Path, model_batch_dir: Path) -> None:
-    batch_info = parse_model_batch_dir_name(model_batch_dir)
+def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
+    model_batch_dir_path = Path(model_batch_dir_path)
+    model_batch_dir_name = model_batch_dir_path.name
+    batch_info = parse_model_batch_dir_name(model_batch_dir_name)
 
     output_file_name = (
         f"{batch_info["report_date"]}-"
@@ -15,14 +17,13 @@ def create_hubverse_table(base_path: Path, model_batch_dir: Path) -> None:
         "hubverse-table.tsv"
     )
 
-    model_batch_path = Path(base_path, model_batch_dir)
-    output_path = Path(model_batch_path, output_file_name)
+    output_path = Path(model_batch_dir_path, output_file_name)
 
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/create_hubverse_table.R",
-            f"{model_batch_path}",
+            f"{model_batch_dir_path}",
             f"{output_path}",
         ],
         capture_output=True,
@@ -32,15 +33,13 @@ def create_hubverse_table(base_path: Path, model_batch_dir: Path) -> None:
     return None
 
 
-def process_model_batch_dir(base_dir: Path, model_batch_dir: Path) -> None:
+def process_model_batch_dir(model_batch_dir_path: Path) -> None:
     plot_types = ["Disease", "Other", "prop_disease_ed_visits"]
     plots_to_collate = [f"{x}_forecast_plot.pdf" for x in plot_types] + [
         f"{x}_forecast_plot_log.pdf" for x in plot_types
     ]
-    cp.process_dir(
-        Path(base_dir, model_batch_dir), target_filenames=plots_to_collate
-    )
-    create_hubverse_table(base_dir, model_batch_dir)
+    cp.process_dir(model_batch_dir_path, target_filenames=plots_to_collate)
+    create_hubverse_table(model_batch_dir_path)
 
 
 def main(
@@ -48,7 +47,8 @@ def main(
 ):
     to_process = get_all_forecast_dirs(base_forecast_dir, diseases)
     for batch_dir in to_process:
-        process_model_batch_dir(base_forecast_dir, batch_dir)
+        model_batch_dir_path = Path(base_forecast_dir, batch_dir)
+        process_model_batch_dir(model_batch_dir_path)
 
 
 if __name__ == "__main__":
