@@ -5,8 +5,9 @@ import logging
 import os
 from pathlib import Path
 
+from forecasttools import ensure_listlike
 from pypdf import PdfWriter
-from utils import ensure_listlike, get_all_forecast_dirs
+from utils import get_all_forecast_dirs
 
 
 def merge_pdfs_and_save(
