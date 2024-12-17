@@ -20,29 +20,28 @@ create_forecast_data <- function(
   arrow::write_parquet(data, fs::path(directory, filename))
 }
 
-# create temporary directories and forecast files for tests
-temp_dir <- fs::path_temp("CA")
-fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
-fs::dir_create(fs::path(temp_dir, "timeseries_e"))
-
-create_forecast_data(
-  fs::path(temp_dir, "pyrenew_e"),
-  "forecast_samples.parquet",
-  seq(lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"), by = "day"),
-  c("Disease", "Other", "prop_disease_ed_visits"),
-  20
-)
-
-create_forecast_data(
-  fs::path(temp_dir, "timeseries_e"),
-  "epiweekly_other_ed_visits_forecast.parquet",
-  seq(lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"), by = "day"),
-  "other_ed_visits",
-  20
-)
-
-
 testthat::test_that("to_epiweekly_quantiles works as expected", {
+  # create temporary directories and forecast files for tests
+  temp_dir <- fs::path_temp("CA")
+  fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
+  fs::dir_create(fs::path(temp_dir, "timeseries_e"))
+
+  create_forecast_data(
+    fs::path(temp_dir, "pyrenew_e"),
+    "forecast_samples.parquet",
+    seq(lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"), by = "day"),
+    c("Disease", "Other", "prop_disease_ed_visits"),
+    20
+  )
+
+  create_forecast_data(
+    fs::path(temp_dir, "timeseries_e"),
+    "epiweekly_other_ed_visits_forecast.parquet",
+    seq(lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"), by = "day"),
+    "other_ed_visits",
+    20
+  )
+
   check <- function(epiweekly_other_bool) {
     result <- to_epiweekly_quantiles(
       model_run_dir = temp_dir,
@@ -60,8 +59,10 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
 
   check(epiweekly_other_bool = FALSE)
   check(epiweekly_other_bool = TRUE)
+
+  fs::dir_delete(temp_dir)
 })
-fs::dir_delete(temp_dir)
+
 
 
 testthat::test_that("to_epiweekly_quantiles handles missing forecast files", {
