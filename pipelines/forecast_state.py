@@ -29,11 +29,9 @@ def record_git_info(model_run_dir: Path):
         metadata = {}
 
     try:
-        repo = Repository(os.getcwd())
-        branch_name = os.environ.get(
-            "GIT_BRANCH_NAME", Path(repo.head.shorthand).stem
-        )
-        commit_sha = os.environ.get("GIT_COMMIT_SHA", str(repo.head.target))
+        repo = Repository(ocommit_sha=os.environ.gets.getcwd())
+        branch_name = repo.head.shorthand
+        commit_sha = str(repo.head.target)
     except Exception as e:
         branch_name = os.environ.get("GIT_BRANCH_NAME", "unknown")
         commit_sha = os.environ.get("GIT_COMMIT_SHA", "unknown")
