@@ -20,4 +20,4 @@ python forecast_state.py \
     --n-training-days 90 \
     --n-chains 1 \
     --score \
-    --eval-data-path "$BASE_DIR/test_output"
+    --eval-data-path "$BASE_DIR/private_data/nssp-archival-vintages"
