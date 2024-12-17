@@ -8,7 +8,8 @@ from pathlib import Path
 
 import numpyro
 import polars as pl
-import yaml
+import tomli_w
+import tomllib
 from prep_data import process_and_save_state
 from pygit2 import Repository
 from save_eval_data import save_eval_data
@@ -20,24 +21,52 @@ from generate_predictive import generate_and_save_predictions  # noqa
 
 
 def record_git_info(model_run_dir: Path):
-    metadata_file = Path(model_run_dir, "metadata.yaml")
+    metadata_file = Path(model_run_dir, "metadata.toml")
+
+    if metadata_file.exists():
+        with open(metadata_file, "rb") as file:
+            metadata = tomllib.load(file)
+    else:
+        metadata = {}
+
     try:
         repo = Repository(os.getcwd())
-        branch_name = os.environ.get(
-            "GIT_BRANCH_NAME", Path(repo.head.name).stem
-        )
-        commit_sha = os.environ.get("GIT_COMMIT_SHA", str(repo.head.target))
-    except:
+        branch_name = repo.head.shorthand
+        commit_sha = str(repo.head.target)
+    except Exception as e:
         branch_name = os.environ.get("GIT_BRANCH_NAME", "unknown")
         commit_sha = os.environ.get("GIT_COMMIT_SHA", "unknown")
 
-    metadata = {
+    new_metadata = {
         "branch_name": branch_name,
         "commit_sha": commit_sha,
     }
 
-    with open(metadata_file, "w") as file:
-        yaml.dump(metadata, file)
+    metadata.update(new_metadata)
+
+    metadata_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(metadata_file, "wb") as file:
+        tomli_w.dump(metadata, file)
+
+
+def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
+    metadata_file = Path(model_run_dir, "metadata.toml")
+    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
+
+    if metadata_file.exists():
+        with open(metadata_file, "rb") as file:
+            metadata = tomllib.load(file)
+    else:
+        metadata = {}
+
+    new_metadata = {
+        "priors_path": str(priors_path),
+    }
+
+    metadata.update(new_metadata)
+
+    with open(metadata_file, "wb") as file:
+        tomli_w.dump(metadata, file)
 
 
 def generate_epiweekly(model_run_dir: Path) -> None:
@@ -264,8 +293,8 @@ def main(
     logger.info("Recording git info...")
     record_git_info(model_run_dir)
 
-    logger.info(f"Using priors from {priors_path}...")
-    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
+    logger.info(f"Copying and recording priors from {priors_path}...")
+    copy_and_record_priors(priors_path, model_run_dir)
 
     logger.info(f"Processing {state}")
     process_and_save_state(
