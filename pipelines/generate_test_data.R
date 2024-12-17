@@ -21,7 +21,10 @@ set.seed(123)
 #' Create Facility Test Data
 #'
 #' This function generates test data for a given facility over a specified
-#' date range.
+#' date range. The test data counts for the target disease are generated using
+#' a cosine varying exponential growth process, with Poisson samples, while
+#' counts for other diseases are generated using a mean-constant Poisson
+#' process.
 #'
 #' @param facility A number representing the name of the facility.
 #' @param start_reference A Date object representing the start date of the
