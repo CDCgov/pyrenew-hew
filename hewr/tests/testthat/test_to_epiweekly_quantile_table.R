@@ -28,19 +28,25 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
   fs::dir_create(fs::path(temp_dir, "timeseries_e"))
 
   create_forecast_data(
-    fs::path(temp_dir, "pyrenew_e"),
-    "forecast_samples.parquet",
-    seq(lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"), by = "day"),
-    c("Disease", "Other", "prop_disease_ed_visits"),
-    20
+    directory = fs::path(temp_dir, "pyrenew_e"),
+    filename = "forecast_samples.parquet",
+    date_cols = seq(
+      lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
+      by = "day"
+    ),
+    disease_cols = c("Disease", "Other", "prop_disease_ed_visits"),
+    n_draw = 20
   )
 
   create_forecast_data(
-    fs::path(temp_dir, "timeseries_e"),
-    "epiweekly_other_ed_visits_forecast.parquet",
-    seq(lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"), by = "day"),
-    "other_ed_visits",
-    20
+    directory = fs::path(temp_dir, "timeseries_e"),
+    filename = "epiweekly_other_ed_visits_forecast.parquet",
+    date_cols = seq(
+      lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
+      by = "day"
+    ),
+    disease_cols = "other_ed_visits",
+    n_draw = 20
   )
 
   check_epiweekly_quantiles <- function(epiweekly_other_bool) {
@@ -61,6 +67,75 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
   check_epiweekly_quantiles(epiweekly_other_bool = FALSE)
   check_epiweekly_quantiles(epiweekly_other_bool = TRUE)
 })
+
+
+testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
+  temp_dir <- withr::local_tempdir("test")
+  fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
+  fs::dir_create(fs::path(temp_dir, "timeseries_e"))
+
+  create_forecast_data(
+    directory = fs::path(temp_dir, "pyrenew_e"),
+    filename = "forecast_samples.parquet",
+    date_cols = seq(
+      lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
+      by = "day"
+    ),
+    disease_cols = c("Disease", "Other", "prop_disease_ed_visits"),
+    n_draw = 20
+  )
+
+  result <- to_epiweekly_quantiles(
+    model_run_dir = temp_dir,
+    report_date = "2024-12-14",
+    max_lookback_days = 8,
+    epiweekly_other = FALSE
+  )
+
+  draws_path <- fs::path(
+    temp_dir,
+    "pyrenew_e",
+    "forecast_samples",
+    ext = "parquet"
+  )
+
+  quantiles <- c(0.01, 0.025, seq(0.05, 0.95, 0.05), 0.975, 0.99)
+  check_quantiles <- arrow::read_parquet(draws_path) |>
+    dplyr::group_by(.draw, disease) |>
+    dplyr::summarise(
+      epiweekly_val = sum(.data$.value),
+      .groups = "drop"
+    ) |>
+    tidyr::pivot_wider(
+      names_from = disease,
+      values_from = epiweekly_val
+    ) |>
+    dplyr::mutate(
+      epiweekly_proportion = Disease / (Disease + Other)
+    ) |>
+    dplyr::summarise(
+      quantile_value = list(quantile(epiweekly_proportion, probs = quantiles))
+    ) |>
+    tidyr::unnest(cols = c(quantile_value)) |>
+    dplyr::mutate(
+      quantile_level = quantiles
+    )
+
+  testthat::expect_equal(
+    result$quantile_value,
+    check_quantiles$quantile_value,
+    tolerance = 1e-6
+  )
+
+  testthat::expect_equal(
+    result$quantile_level,
+    check_quantiles$quantile_level,
+    tolerance = 1e-6
+  )
+})
+
+
+
 
 
 
@@ -89,14 +164,14 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
     fs::dir_create(loc_dir)
 
     create_forecast_data(
-      loc_dir,
-      "forecast_samples.parquet",
-      seq(
+      directory = loc_dir,
+      filename = "forecast_samples.parquet",
+      date_cols = seq(
         lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
         by = "day"
       ),
-      c("Disease", "Other", "prop_disease_ed_visits"),
-      20
+      disease_cols = c("Disease", "Other", "prop_disease_ed_visits"),
+      n_draw = 20
     )
   })
 
