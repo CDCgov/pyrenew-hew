@@ -20,6 +20,7 @@ create_forecast_data <- function(
   arrow::write_parquet(data, fs::path(directory, filename))
 }
 
+# tests for `to_epiweekly_quantile`
 testthat::test_that("to_epiweekly_quantiles works as expected", {
   # create temporary directories and forecast files for tests
   temp_dir <- withr::local_tempdir("CA")
@@ -75,4 +76,52 @@ testthat::test_that("to_epiweekly_quantiles handles missing forecast files", {
     ),
     "Failed to open local file"
   )
+})
+
+
+# tests for `to_epiweekly_quantile_table`
+test_that("to_epiweekly_quantile_table handles multiple locations", {
+  temp_batch_dir <- withr::local_tempdir("test_model_batch_dir")
+
+  locations <- c("loc1", "loc2")
+  purrr::walk(locations, function(loc) {
+    loc_dir <- fs::path(temp_batch_dir, "model_runs", loc, "pyrenew_e")
+    fs::dir_create(loc_dir)
+
+    create_forecast_data(
+      loc_dir,
+      "forecast_samples.parquet",
+      seq(
+        lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
+        by = "day"
+      ),
+      c("Disease", "Other", "prop_disease_ed_visits"),
+      20
+    )
+  })
+
+  # Rename using expected format
+  batch_dir_name <- "covid-19_r_2024-12-14_f_2024-12-08_t_2024-12-14"
+  fs::file_move(temp_batch_dir, fs::path_temp(batch_dir_name))
+  renamed_path <- fs::path_temp(batch_dir_name)
+
+  result <- to_epiweekly_quantile_table(renamed_path)
+
+  expect_s3_class(result, "tbl_df")
+  expect_gt(nrow(result), 0)
+  expect_true(all(c(
+    "reference_date", "target", "horizon", "target_end_date",
+    "location", "output_type", "output_type_id", "value"
+  ) %in% colnames(result)))
+  expect_true(all(locations %in% result$location))
+})
+
+
+test_that("to_epiweekly_quantile_table excludes specified locations", {
+  result <- to_epiweekly_quantile_table(
+    model_batch_dir = renamed_path,
+    exclude = c("loc1")
+  )
+  expect_true("loc2" %in% result$location)
+  expect_false("loc1" %in% result$location)
 })
