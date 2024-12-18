@@ -105,23 +105,20 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
   fs::file_move(temp_batch_dir, fs::path_temp(batch_dir_name))
   renamed_path <- fs::path_temp(batch_dir_name)
 
-  result <- to_epiweekly_quantile_table(renamed_path)
+  result_w_both_locations <- to_epiweekly_quantile_table(renamed_path)
 
-  expect_s3_class(result, "tbl_df")
-  expect_gt(nrow(result), 0)
+  expect_s3_class(result_w_both_locations, "tbl_df")
+  expect_gt(nrow(result_w_both_locations), 0)
   expect_true(all(c(
     "reference_date", "target", "horizon", "target_end_date",
     "location", "output_type", "output_type_id", "value"
-  ) %in% colnames(result)))
-  expect_true(all(locations %in% result$location))
-})
+  ) %in% colnames(result_w_both_locations)))
+  expect_true(all(locations %in% result_w_both_locations$location))
 
-
-test_that("to_epiweekly_quantile_table excludes specified locations", {
-  result <- to_epiweekly_quantile_table(
+  result_w_one_location <- to_epiweekly_quantile_table(
     model_batch_dir = renamed_path,
     exclude = c("loc1")
   )
-  expect_true("loc2" %in% result$location)
-  expect_false("loc1" %in% result$location)
+  expect_true("loc2" %in% result_w_one_location$location)
+  expect_false("loc1" %in% result_w_one_location$location)
 })
