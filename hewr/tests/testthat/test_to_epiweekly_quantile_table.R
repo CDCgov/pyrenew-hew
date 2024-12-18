@@ -15,7 +15,7 @@ create_forecast_data <- function(
 }
 
 # tests for `to_epiweekly_quantile`
-testthat::test_that("to_epiweekly_quantiles works as expected", {
+test_that("to_epiweekly_quantiles works as expected", {
   # create temporary directories and forecast files for tests
   temp_dir <- withr::local_tempdir("CA")
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
@@ -51,11 +51,11 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
       epiweekly_other = epiweekly_other_bool
     )
 
-    testthat::expect_s3_class(result, "tbl_df")
-    testthat::expect_true(all(c(
+    expect_s3_class(result, "tbl_df")
+    expect_setequal(c(
       "epiweek", "epiyear", "quantile_value", "quantile_level", "location"
-    ) %in% colnames(result)))
-    testthat::expect_gt(nrow(result), 0)
+    ), colnames(result))
+    expect_gt(nrow(result), 0)
   }
 
   check_epiweekly_quantiles(epiweekly_other_bool = FALSE)
@@ -63,7 +63,7 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
 })
 
 
-testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
+test_that("to_epiweekly_quantiles calculates quantiles accurately", {
   temp_dir <- withr::local_tempdir("test")
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
 
@@ -85,7 +85,7 @@ testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
     epiweekly_other = FALSE
   )
 
-  draws_path <- fs::path(
+  forecast_path <- fs::path(
     temp_dir,
     "pyrenew_e",
     "forecast_samples",
@@ -93,7 +93,7 @@ testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
   )
 
   quantiles <- c(0.01, 0.025, seq(0.05, 0.95, 0.05), 0.975, 0.99)
-  check_quantiles <- arrow::read_parquet(draws_path) |>
+  check_quantiles <- arrow::read_parquet(forecast_path) |>
     dplyr::group_by(.draw, disease) |>
     dplyr::summarise(
       epiweekly_val = sum(.data$.value),
@@ -114,13 +114,13 @@ testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
       quantile_level = quantiles
     )
 
-  testthat::expect_equal(
+  expect_equal(
     result$quantile_value,
     check_quantiles$quantile_value,
     tolerance = 1e-6
   )
 
-  testthat::expect_equal(
+  expect_equal(
     result$quantile_level,
     check_quantiles$quantile_level,
     tolerance = 1e-6
@@ -128,7 +128,7 @@ testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
 })
 
 
-testthat::test_that("to_epiweekly_quantiles handles missing forecast files", {
+test_that("to_epiweekly_quantiles handles missing forecast files", {
   temp_dir <- withr::local_tempdir("CA")
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
 
@@ -173,11 +173,11 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
 
   expect_s3_class(result_w_both_locations, "tbl_df")
   expect_gt(nrow(result_w_both_locations), 0)
-  expect_true(all(c(
+  expect_setequal(c(
     "reference_date", "target", "horizon", "target_end_date",
     "location", "output_type", "output_type_id", "value"
-  ) %in% colnames(result_w_both_locations)))
-  expect_true(all(locations %in% result_w_both_locations$location))
+  ), colnames(result_w_both_locations))
+  expect_setequal(locations, result_w_both_locations$location)
 
   result_w_one_location <- to_epiweekly_quantile_table(
     model_batch_dir = renamed_path,
