@@ -1,8 +1,10 @@
 create_forecast_data <- function(
     directory, filename, date_cols, disease_cols, n_draw) {
-  tidyr::expand_grid(date = date_cols,
-                     disease = disease_cols,
-                     .draw = 1:n_draw) |> 
+  tidyr::expand_grid(
+    date = date_cols,
+    disease = disease_cols,
+    .draw = 1:n_draw
+  ) |>
     dplyr::mutate(.value = sample(1:100, dplyr::n(), replace = TRUE))
   if (length(disease_cols) == 1) {
     data <- data |>
