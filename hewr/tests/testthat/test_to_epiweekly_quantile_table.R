@@ -1,6 +1,6 @@
 create_forecast_data <- function(
     directory, filename, date_cols, disease_cols, n_draw) {
-  tidyr::expand_grid(
+  data <- tidyr::expand_grid(
     date = date_cols,
     disease = disease_cols,
     .draw = 1:n_draw
