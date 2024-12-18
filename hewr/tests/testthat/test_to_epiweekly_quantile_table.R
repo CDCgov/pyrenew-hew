@@ -1,17 +1,9 @@
 create_forecast_data <- function(
     directory, filename, date_cols, disease_cols, n_draw) {
-  data <- tibble::tibble(
-    date = rep(date_cols, times = length(disease_cols) * n_draw),
-    disease = rep(disease_cols, each = length(date_cols) * n_draw),
-    .value = sample(
-      1:100, length(disease_cols) * length(date_cols) * n_draw,
-      replace = TRUE
-    ),
-    .draw = rep(
-      rep(1:20, each = length(date_cols)),
-      times = length(disease_cols)
-    )
-  )
+  tidyr::expand_grid(date = date_cols,
+                     disease = disease_cols,
+                     .draw = 1:n_draw) |> 
+    dplyr::mutate(.value = sample(1:100, dplyr::n(), replace = TRUE))
   if (length(disease_cols) == 1) {
     data <- data |>
       dplyr::rename(!!disease_cols := ".value") |>
