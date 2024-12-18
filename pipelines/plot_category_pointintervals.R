@@ -75,16 +75,10 @@ main <- function(influenza_table_path,
                  output_path,
                  ...) {
   flu_dat <- readr::read_tsv(influenza_table_path) |>
-    to_categorized_iqr(
-      "Influenza",
-      categories
-    )
+    to_categorized_iqr("Influenza")
 
   covid_dat <- readr::read_tsv(covid_table_path) |>
-    to_categorized_iqr(
-      "COVID-19",
-      categories
-    )
+    to_categorized_iqr("COVID-19")
 
   plots <- list(
     flu_plot_1wk = flu_dat |>
