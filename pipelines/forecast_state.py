@@ -10,14 +10,16 @@ import numpyro
 import polars as pl
 import tomli_w
 import tomllib
-from preprocess.prep_data import process_and_save_state
-from preprocess.prep_eval_data import save_eval_data
+from pipelines.preprocess.prep_data import process_and_save_state
+from pipelines.preprocess.prep_eval_data import save_eval_data
 from pygit2 import Repository
 
 numpyro.set_host_device_count(4)
 
-from fit_model.pyrenew.fit_pyrenew_model import fit_and_save_model  # noqa
-from postprocess.generate_predictive import generate_and_save_predictions  # noqa
+from pipelines.fit_model.pyrenew.fit_pyrenew_model import fit_and_save_model  # noqa
+from pipelines.postprocess.generate_predictive import (
+    generate_and_save_predictions,
+)  # noqa
 
 
 def record_git_info(model_run_dir: Path):

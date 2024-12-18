@@ -4,7 +4,9 @@ from pathlib import Path
 
 import jax
 import numpy as np
-from fit_model.pyrenew.build_pyrenew_model import build_model_from_dir
+from pipelines.fit_model.pyrenew.build_pyrenew_model import (
+    build_model_from_dir,
+)
 
 
 def fit_and_save_model(

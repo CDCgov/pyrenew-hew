@@ -5,7 +5,7 @@ from pathlib import Path
 
 import epiweeks
 import polars as pl
-from preprocess.prep_data import (
+from pipelines.preprocess.prep_data import (
     aggregate_facility_level_nssp_to_state,
     get_state_pop_df,
 )
