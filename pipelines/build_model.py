@@ -1,3 +1,8 @@
+"""
+Construct a ready-for-fitting pyrenew model instance
+with particular data and prior hyperparameters.
+"""
+
 import json
 import runpy
 
