@@ -66,7 +66,6 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
 testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
   temp_dir <- withr::local_tempdir("test")
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
-  fs::dir_create(fs::path(temp_dir, "timeseries_e"))
 
   create_forecast_data(
     directory = fs::path(temp_dir, "pyrenew_e"),
@@ -127,10 +126,6 @@ testthat::test_that("to_epiweekly_quantiles calculates quantiles accurately", {
     tolerance = 1e-6
   )
 })
-
-
-
-
 
 
 testthat::test_that("to_epiweekly_quantiles handles missing forecast files", {
