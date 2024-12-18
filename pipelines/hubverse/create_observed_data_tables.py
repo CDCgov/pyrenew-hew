@@ -5,7 +5,11 @@ from pathlib import Path
 
 import epiweeks
 import polars as pl
-from prep_data import aggregate_facility_level_nssp_to_state, get_state_pop_df
+
+from pipelines.preprocess.prep_data import (
+    aggregate_facility_level_nssp_to_state,
+    get_state_pop_df,
+)
 
 
 def save_observed_data_tables(

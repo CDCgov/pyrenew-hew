@@ -128,7 +128,7 @@ def main(
 
     base_call = (
         "/bin/bash -c '"
-        "python pipelines/forecast_state.py "
+        "python pipelines/workflows/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
         "--n-training-days 450 "

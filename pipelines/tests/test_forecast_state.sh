@@ -16,7 +16,7 @@ else
     echo "TEST-MODE: Finished generating test data"
 fi
 echo "TEST-MODE: Running forecasting pipeline"
-python pipelines/forecast_state.py \
+python pipelines/workflows/forecast_state.py \
     --disease "COVID-19" \
     --state "CA" \
     --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
