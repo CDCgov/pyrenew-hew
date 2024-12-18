@@ -22,7 +22,7 @@ create_forecast_data <- function(
 
 testthat::test_that("to_epiweekly_quantiles works as expected", {
   # create temporary directories and forecast files for tests
-  temp_dir <- fs::path_temp("CA")
+  temp_dir <- withr::local_tempdir("CA")
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
   fs::dir_create(fs::path(temp_dir, "timeseries_e"))
 
@@ -42,7 +42,7 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
     20
   )
 
-  check <- function(epiweekly_other_bool) {
+  check_epiweekly_quantiles <- function(epiweekly_other_bool) {
     result <- to_epiweekly_quantiles(
       model_run_dir = temp_dir,
       report_date = "2024-12-14",
@@ -57,16 +57,14 @@ testthat::test_that("to_epiweekly_quantiles works as expected", {
     testthat::expect_gt(nrow(result), 0)
   }
 
-  check(epiweekly_other_bool = FALSE)
-  check(epiweekly_other_bool = TRUE)
-
-  fs::dir_delete(temp_dir)
+  check_epiweekly_quantiles(epiweekly_other_bool = FALSE)
+  check_epiweekly_quantiles(epiweekly_other_bool = TRUE)
 })
 
 
 
 testthat::test_that("to_epiweekly_quantiles handles missing forecast files", {
-  temp_dir <- fs::path_temp("CA")
+  temp_dir <- withr::local_tempdir("CA")
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
 
   expect_error(
@@ -77,6 +75,4 @@ testthat::test_that("to_epiweekly_quantiles handles missing forecast files", {
     ),
     "Failed to open local file"
   )
-
-  fs::dir_delete(temp_dir)
 })
