@@ -4,64 +4,20 @@ library(dplyr)
 library(argparser)
 
 
-categorize_vec <- function(values, break_sets, label_sets) {
-  return(purrr::pmap_vec(
-    list(
-      x = values,
-      breaks = break_sets,
-      labels = label_sets,
-      include.lowest = TRUE,
-      order = TRUE,
-      right = TRUE
-    ),
-    cut
-  ))
-}
-
-
-
-with_category_cutpoints <- function(df,
-                                    disease,
-                                    categories) {
-  with_cutpoints <- df |>
-    mutate(disease = !!disease) |>
-    inner_join(categories, by = c("location", "disease"))
-  return(with_cutpoints)
-}
-
-
 to_categorized_iqr <- function(hub_table,
-                               disease,
-                               categories,
-                               .keep = FALSE) {
+                               disease) {
   result <- hub_table |>
     pivot_hubverse_quantiles_wider() |>
-    with_category_cutpoints(
-      disease = disease,
-      categories = categories
-    ) |>
     mutate(
-      category_point = categorize_vec(
-        .data$point,
-        .data$bin_breaks,
-        .data$bin_names
-      ),
-      category_lower = categorize_vec(
-        .data$lower,
-        .data$bin_breaks,
-        .data$bin_names
-      ),
-      category_upper = categorize_vec(
-        .data$upper,
-        .data$bin_breaks,
-        .data$bin_names
-      ),
+      across(c("point", "lower", "upper"),
+        ~ forecasttools::categorize_prism(
+          .x,
+          .data$location,
+          !!disease
+        ),
+        .names = "category_{.col}"
+      )
     )
-
-  if (!.keep) {
-    result <- result |> select(-c(bin_breaks, bin_names))
-  }
-
   return(result)
 }
 
