@@ -11,8 +11,8 @@ import polars as pl
 import tomli_w
 import tomllib
 from preprocess.prep_data import process_and_save_state
-from pygit2 import Repository
 from preprocess.prep_eval_data import save_eval_data
+from pygit2 import Repository
 
 numpyro.set_host_device_count(4)
 
