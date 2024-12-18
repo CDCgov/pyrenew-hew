@@ -74,40 +74,6 @@ main <- function(influenza_table_path,
                  categories_path,
                  output_path,
                  ...) {
-  categories <- arrow::read_parquet(categories_path) |>
-    transmute(
-      disease,
-      location = state_abb,
-      prop_lower_bound = 0,
-      prop_low = perc_level_low / 100,
-      prop_moderate = perc_level_moderate / 100,
-      prop_high = perc_level_high / 100,
-      prop_very_high = perc_level_very_high / 100,
-      prop_upper_bound = 1,
-      very_low_name = "Very Low",
-      low_name = "Low",
-      moderate_name = "Moderate",
-      high_name = "High",
-      very_high_name = "Very High"
-    ) |>
-    tidyr::nest(
-      bin_breaks = c(
-        prop_lower_bound,
-        prop_low,
-        prop_moderate,
-        prop_high,
-        prop_very_high,
-        prop_upper_bound
-      ),
-      bin_names = c(
-        very_low_name,
-        low_name,
-        moderate_name,
-        high_name,
-        very_high_name
-      )
-    )
-
   flu_dat <- readr::read_tsv(influenza_table_path) |>
     to_categorized_iqr(
       "Influenza",
