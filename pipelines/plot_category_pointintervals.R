@@ -156,10 +156,6 @@ p <- arg_parser("Create a pointinterval plot of forecasts") |>
     help = "Path to a hubverse format forecast table for COVID-19."
   ) |>
   add_argument(
-    "categories_path",
-    help = "Path to a parquet file containing PRISM category cutpoints."
-  ) |>
-  add_argument(
     "output_path",
     help = "Path to save the output plots, as a single PDF"
   )
