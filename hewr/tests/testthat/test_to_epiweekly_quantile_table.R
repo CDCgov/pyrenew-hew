@@ -181,7 +181,7 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
 
   result_w_one_location <- to_epiweekly_quantile_table(
     model_batch_dir = renamed_path,
-    exclude = c("loc1")
+    exclude = "loc1"
   )
   expect_true("loc2" %in% result_w_one_location$location)
   expect_false("loc1" %in% result_w_one_location$location)
