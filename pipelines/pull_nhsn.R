@@ -77,7 +77,7 @@ dat <- pull_nhsn(
   jurisdictions = jurisdictions,
 ) |>
   mutate(weekendingdate = as_date(weekendingdate)) |>
-  rename(nhsn_admissions = !!unname(columns)) |>
-  mutate(nhsn_admissions = as.numeric(nhsn_admissions))
+  rename(hospital_admissions = !!unname(columns)) |>
+  mutate(hospital_admissions = as.numeric(hospital_admissions))
 
 write_tsv(dat, output_file)
