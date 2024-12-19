@@ -107,6 +107,8 @@ def main(
         forecast_dirs = get_all_forecast_dirs(
             score_dir, ["COVID-19", "Influenza"]
         )
+        score_dir_name = Path(score_dir).name
+
         for model_batch_dir in forecast_dirs:
             location_names = [
                 f.name
@@ -116,7 +118,9 @@ def main(
                 if f.is_dir() and f.name in loc_abbrs
             ]
             for location in location_names:
-                model_batch_dir_path = f"output/{score_dir}/{model_batch_dir}"
+                model_batch_dir_path = (
+                    f"output/{score_dir_name}/{model_batch_dir}"
+                )
                 task = get_task_config(
                     f"{model_batch_dir}-{location}",
                     base_call=base_call.format(
