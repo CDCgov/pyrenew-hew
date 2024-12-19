@@ -2,9 +2,10 @@ import datetime
 import json
 import logging
 import os
+import subprocess
 from logging import Logger
 from pathlib import Path
-import subprocess
+
 import forecasttools
 import polars as pl
 import polars.selectors as cs

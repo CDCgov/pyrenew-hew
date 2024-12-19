@@ -39,10 +39,10 @@ p <- arg_parser(
     help = "Disease name"
   ) |>
   add_argument("--jurisdictions",
-               type = "character",
-               help = "space-separated list of jurisdictions to keep",
-               nargs = Inf
-               ) |> 
+    type = "character",
+    help = "space-separated list of jurisdictions to keep",
+    nargs = Inf
+  ) |>
   add_argument(
     "--output-file",
     type = "character",
