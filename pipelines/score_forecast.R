@@ -183,6 +183,8 @@ read_and_score_location <- function(model_run_dir,
     model_run_dir
   )$report_date
 
+  print(report_date)
+
   forecast_path <- fs::path(
     model_run_dir, "pyrenew_e",
     glue::glue("{prefix}forecast_samples"),
@@ -262,15 +264,23 @@ read_and_score_location <- function(model_run_dir,
     pull(true_value) |>
     max()
 
-  scored <- score_single_run(
-    sample_forecasts_to_score,
-    quantile_forecasts_to_score,
-    forecast_unit = c("date", "model"),
-    observed = "true_value",
-    sample_id = ".draw",
-    predicted = ".value",
-    offset = 1 / max_visits
-  )
+
+  if (nrow(sample_forecasts_to_score) > 0) {
+    print(sample_forecasts_to_score)
+    scored <- score_single_run(
+      sample_forecasts_to_score,
+      quantile_forecasts_to_score,
+      forecast_unit = c("date", "model"),
+      observed = "true_value",
+      sample_id = ".draw",
+      predicted = ".value",
+      offset = 1 / max_visits
+    )
+  } else {
+    print(actual_data |> dplyr::arrange(desc(date)))
+    print(pyrenew |> dplyr::arrange(desc(date), .draw, disease))
+    scored <- NULL
+  }
 
   readr::write_rds(scored, fs::path(model_run_dir,
     glue::glue("{prefix}score_table"),

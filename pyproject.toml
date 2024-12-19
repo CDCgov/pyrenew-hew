@@ -20,6 +20,7 @@ pygit2 = "^1.16.0"
 azuretools = {git = "https://github.com/cdcgov/cfa-azuretools"}
 forecasttools = {git = "https://github.com/CDCgov/forecasttools-py"}
 tomli-w = "^1.1.0"
+duckdb = "^1.1.3"
 
 [tool.poetry.group.test]
 optional = true

@@ -49,22 +49,22 @@ def main(state, model_batch_dir_path: Path, eval_data_path: Path):
     logger = logging.getLogger(__name__)
 
     batch_info = parse_model_batch_dir_name(model_batch_dir_path.name)
-    model_run_dir = Path(model_batch_dir_path, "model_runs", state)
+    model_run_dir_path = Path(model_batch_dir_path, "model_runs", state)
 
     logger.info("Getting eval data...")
     save_eval_data(
         state=state,
         latest_comprehensive_path=eval_data_path,
-        output_data_dir=Path(model_run_dir, "data", "eval"),
+        output_data_dir=Path(model_run_dir_path, "data"),
         last_eval_date=(batch_info["report_date"] + timedelta(days=50)),
         **batch_info,
     )
 
     logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly(model_run_dir)
+    generate_epiweekly(model_run_dir_path)
 
     logger.info("Scoring forecast...")
-    score_forecast(model_run_dir)
+    score_forecast(model_run_dir_path)
 
     logger.info(f"Scoring complete for state {state}. ")
     return None
