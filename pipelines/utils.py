@@ -7,6 +7,7 @@ import datetime
 import os
 import re
 from collections.abc import MutableSequence
+from datetime.datetime import strptime
 from pathlib import Path
 
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
@@ -67,13 +68,9 @@ def parse_model_batch_dir_name(model_batch_dir_name):
         )
     return dict(
         disease=disease_map_lower_[disease],
-        report_date=datetime.strptime(report_date, "%Y-%m-%d").date(),
-        first_training_date=datetime.strptime(
-            first_training_date, "%Y-%m-%d"
-        ).date(),
-        last_training_date=datetime.strptime(
-            last_training_date, "%Y-%m-%d"
-        ).date(),
+        report_date=strptime(report_date, "%Y-%m-%d").date(),
+        first_training_date=strptime(first_training_date, "%Y-%m-%d").date(),
+        last_training_date=strptime(last_training_date, "%Y-%m-%d").date(),
     )
 
 
