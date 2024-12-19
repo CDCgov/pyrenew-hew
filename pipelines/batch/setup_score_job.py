@@ -119,7 +119,7 @@ def main(
                 task = get_task_config(
                     f"{model_batch_dir}-{location}",
                     base_call=base_call.format(
-                        model_batch_dir=model_batch_dir, state=location
+                        model_batch_dir=model_batch_dir, location=location
                     ),
                     container_settings=container_settings,
                 )
