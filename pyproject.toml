@@ -18,7 +18,7 @@ pypdf = "^5.1.0"
 pyarrow = "^18.0.0"
 pygit2 = "^1.16.0"
 azuretools = {git = "https://github.com/cdcgov/cfa-azuretools"}
-forecasttools = {git = "https://github.com/CDCgov/forecasttools-py"}
+forecasttools = {git = "https://github.com/cdcgov/forecasttools-py"}
 tomli-w = "^1.1.0"
 duckdb = "^1.1.3"
 
