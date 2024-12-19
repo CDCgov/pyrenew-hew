@@ -266,7 +266,6 @@ read_and_score_location <- function(model_run_dir,
 
 
   if (nrow(sample_forecasts_to_score) > 0) {
-    print(sample_forecasts_to_score)
     scored <- score_single_run(
       sample_forecasts_to_score,
       quantile_forecasts_to_score,
@@ -277,8 +276,6 @@ read_and_score_location <- function(model_run_dir,
       offset = 1 / max_visits
     )
   } else {
-    print(actual_data |> dplyr::arrange(desc(date)))
-    print(pyrenew |> dplyr::arrange(desc(date), .draw, disease))
     scored <- NULL
   }
 
