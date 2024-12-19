@@ -21,15 +21,16 @@ if __name__ == "__main__":
         "--tag",
         type=str,
         help="The tag name to use for the container image version",
-        default=Path(Repository(os.getcwd()).head.name).stem,
+        default=Repository(os.getcwd()).head.shorthand,
     )
 
     args = parser.parse_args()
 
     tag = args.tag
+    if tag == "main":
+        tag = "latest"
     print(f"Using tag {tag}")
     current_datetime = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%SZ")
-    tag = Path(Repository(os.getcwd()).head.name).stem
 
     locs_to_exclude = [  # keep CA, MN, SD, and US
         "AS",
@@ -94,6 +95,6 @@ if __name__ == "__main__":
         diseases=["COVID-19", "Influenza"],
         container_image_name="pyrenew-hew",
         container_image_version=tag,
-        excluded_locations=locs_to_exclude,
+        locations_exclude=locs_to_exclude,
         test=True,
     )

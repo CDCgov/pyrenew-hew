@@ -216,6 +216,8 @@ cython_debug/
 # https://github.com/github/gitignore/blob/main/R.gitignore
 
 .Rprofile
+renv/
+renv.lock
 
 # History files
 .Rhistory
@@ -401,3 +403,6 @@ private_data/*
 # Test data exceptions to the general data exclusion
 !pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/data/data.tsv
 !pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/data/eval_data.tsv
+
+# Ignore test pipe output
+pipelines/tests/private_data/*

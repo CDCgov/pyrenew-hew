@@ -6,38 +6,10 @@ pipeline.
 import datetime
 import os
 import re
-from collections.abc import MutableSequence
 from datetime.datetime import strptime
 from pathlib import Path
 
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
-
-
-def ensure_listlike(x):
-    """
-    Ensure that an object either behaves like a
-    :class:`MutableSequence` and if not return a
-    one-item :class:`list` containing the object.
-
-    Useful for handling list-of-strings inputs
-    alongside single strings.
-
-    Based on this _`StackOverflow approach
-    <https://stackoverflow.com/a/66485952>`.
-
-    Parameters
-    ----------
-    x
-        The item to ensure is :class:`list`-like.
-
-    Returns
-    -------
-    MutableSequence
-        ``x`` if ``x`` is a :class:`MutableSequence`
-        otherwise ``[x]`` (i.e. a one-item list containing
-        ``x``.
-    """
-    return x if isinstance(x, MutableSequence) else [x]
 
 
 def parse_model_batch_dir_name(model_batch_dir_name):
