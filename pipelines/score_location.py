@@ -78,9 +78,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "model_batch_dir_path",
         type=Path,
-        help=(
-            "Path to a model batch directory containing " "forecasts to score"
-        ),
+        help="Path to a model batch directory of forecasts to score.",
+    )
+
+    parser.add_argument(
+        "eval_data_path",
+        type=Path,
+        help=("Path to a parquet file containing evaluation data."),
     )
 
     parser.add_argument(
