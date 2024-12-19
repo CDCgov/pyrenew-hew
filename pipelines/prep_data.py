@@ -4,7 +4,7 @@ import logging
 import os
 from logging import Logger
 from pathlib import Path
-
+import subprocess
 import forecasttools
 import polars as pl
 
@@ -13,6 +13,40 @@ _disease_map = {
 }
 
 _inverse_disease_map = {v: k for k, v in _disease_map.items()}
+
+
+def get_nhsn(
+    start_date: str,
+    end_date: str,
+    disease: str,
+    jurisdictions: str,
+) -> None:
+    output_file = "tmp_nhsn_output.csv"
+    if os.path.exists(output_file):
+        raise FileExistsError(f"Output file {output_file} already exists")
+    my_list = [
+        "Rscript",
+        "pull_nhsn.R",  # relies on being in the correct working directory
+        "--start-date",
+        f"{start_date}",
+        "--end-date",
+        f"{end_date}",
+        "--disease",
+        f"{disease}",
+        "--jurisdictions",
+        f"{jurisdictions}",
+        "--output-file",
+        f"{output_file}",
+    ]
+    result = subprocess.run(
+        my_list,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"pull_and_save_nhsn: {result.stderr}")
+    dat = pl.read_csv(output_file, separator="\t")
+    os.remove(output_file)
+    return dat
 
 
 def aggregate_to_national(
@@ -215,7 +249,6 @@ def process_and_save_state(
     state_abb: str,
     disease: str,
     report_date: datetime.date,
-    state_level_report_date: datetime.date,
     first_training_date: datetime.date,
     last_training_date: datetime.date,
     param_estimates: pl.LazyFrame,
@@ -275,23 +308,31 @@ def process_and_save_state(
             pl.col("date") < first_facility_level_data_date
         )
 
-    training_data = (
+    nssp_training_data = (
         pl.concat([state_level_data, aggregated_facility_data])
         .filter(pl.col("date") <= last_training_date)
         .with_columns(pl.lit("train").alias("data_type"))
         .sort(["date", "disease"])
     )
 
-    verify_no_date_gaps(training_data)
+    verify_no_date_gaps(nssp_training_data)
+
+    nhsn_state_abb = state_abb if state_abb != "US" else "USA"
+    nhsn_training_data = get_nhsn(
+        start_date=first_training_date,
+        end_date=last_training_date,
+        disease=disease,
+        jurisdictions=nhsn_state_abb,
+    )
 
     train_disease_ed_visits = (
-        training_data.filter(pl.col("disease") == disease)
+        nssp_training_data.filter(pl.col("disease") == disease)
         .get_column("ed_visits")
         .to_list()
     )
 
     train_total_ed_visits = (
-        training_data.filter(pl.col("disease") == "Total")
+        nssp_training_data.filter(pl.col("disease") == "Total")
         .get_column("ed_visits")
         .to_list()
     )
@@ -310,7 +351,7 @@ def process_and_save_state(
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {data_dir}")
-    training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
+    nssp_training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
 
     with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file)

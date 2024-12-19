@@ -38,17 +38,30 @@ p <- arg_parser(
     type = "character",
     help = "Disease name"
   ) |>
+  add_argument("--jurisdictions",
+               type = "character",
+               help = "space-separated list of jurisdictions to keep",
+               nargs = Inf
+               ) |> 
   add_argument(
     "--output-file",
     type = "character",
     help = "Path to output file"
   )
 
+null_if_na <- function(x) {
+  if (all(is.na(x))) {
+    NULL
+  } else {
+    x
+  }
+}
 
 argv <- parse_args(p)
-start_date <- argv$start_date
-end_date <- argv$end_date
-disease <- argv$disease
+start_date <- null_if_na(argv$start_date)
+end_date <- null_if_na(argv$end_date)
+disease <- null_if_na(argv$disease)
+jurisdictions <- null_if_na(argv$jurisdictions)
 output_file <- argv$output_file
 
 if (is.na(output_file)) {
@@ -60,9 +73,11 @@ columns <- disease_nhsn_key[disease]
 dat <- pull_nhsn(
   start_date = start_date,
   end_date = end_date,
-  columns = columns
+  columns = columns,
+  jurisdictions = jurisdictions,
 ) |>
   mutate(weekendingdate = as_date(weekendingdate)) |>
   rename(nhsn_admissions = !!unname(columns)) |>
-  mutate(nhsn_admissions = as.numeric(nhsn_admissions)) |>
-  write_tsv(output_file)
+  mutate(nhsn_admissions = as.numeric(nhsn_admissions))
+
+write_tsv(dat, output_file)
