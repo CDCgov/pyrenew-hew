@@ -91,7 +91,7 @@ def main(
     base_call = (
         "/bin/bash -c '"
         "python pipelines/score_location.py "
-        "{model_batch_dir} "
+        "{model_batch_dir_path} "
         "nssp-archival-vintages/latest_comprehensive.parquet "
         "--state {location}"
         "'"
@@ -116,10 +116,12 @@ def main(
                 if f.is_dir() and f.name in loc_abbrs
             ]
             for location in location_names:
+                model_batch_dir_path = f"output/{score_dir}/{model_batch_dir}"
                 task = get_task_config(
                     f"{model_batch_dir}-{location}",
                     base_call=base_call.format(
-                        model_batch_dir=model_batch_dir, location=location
+                        model_batch_dir_path=model_batch_dir_path,
+                        location=location,
                     ),
                     container_settings=container_settings,
                 )
