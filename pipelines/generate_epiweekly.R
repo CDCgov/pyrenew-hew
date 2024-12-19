@@ -53,22 +53,22 @@ convert_daily_to_epiweekly <- function(
       ed_visits = col_double(),
       date = col_date()
     )
-  ) |>
-    mutate(.draw = 1)
+  )
 
   epiweekly_data <- daily_data |>
-    group_by(disease) |>
-    group_modify(~ forecasttools::daily_to_epiweekly(.x,
-      value_col = "ed_visits", weekly_value_name = "ed_visits",
+    forecasttools::daily_to_epiweekly(
+      value_col = "ed_visits",
+      weekly_value_name = "ed_visits",
+      id_cols = c("disease", "geo_value"),
       strict = strict
-    )) |>
-    ungroup() |>
-    mutate(date = epiweek_to_date(epiweek, epiyear,
+    ) |>
+    mutate(date = epiweek_to_date(epiweek,
+      epiyear,
       day_of_week = day_of_week
     )) |>
-    select(date, disease, ed_visits) |>
-    inner_join(daily_data |> select(date, disease, data_type),
-      by = c("date", "disease")
+    select(date, disease, ed_visits, geo_value) |>
+    inner_join(daily_data |> select(date, disease, data_type, geo_value),
+      by = c("date", "disease", "geo_value")
     )
   # epiweek end date determines data_type classification
 
