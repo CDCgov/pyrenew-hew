@@ -18,39 +18,52 @@ _inverse_disease_map = {v: k for k, v in _disease_map.items()}
 
 
 def get_nhsn(
-    start_date: str,
-    end_date: str,
+    start_date: datetime.date,
+    end_date: datetime.date,
     disease: str,
-    jurisdictions: str,
+    state_abb: str,
 ) -> None:
-    output_file = "tmp_nhsn_output.csv"
-    if os.path.exists(output_file):
-        raise FileExistsError(f"Output file {output_file} already exists")
-    my_list = [
+    def py_scalar_to_r_scalar(py_scalar):
+        if py_scalar is None:
+            return "NULL"
+        return f"'{str(py_scalar)}'"
+
+    disease_nhsn_key = {
+        "COVID-19": "totalconfc19newadm",
+        "Influenza": "totalconfflunewadm",
+    }
+
+    columns = disease_nhsn_key[disease]
+
+    state_abb = state_abb if state_abb != "US" else "USA"
+
+    r_command = [
         "Rscript",
-        "pipelines/pull_nhsn.R",  # relies on being in the correct working directory
-        # probably better executed as a function in hewr and an inline R script here
-        "--start-date",
-        f"{start_date}",
-        "--end-date",
-        f"{end_date}",
-        "--disease",
-        f"{disease}",
-        "--jurisdictions",
-        f"{jurisdictions}",
-        "--output-file",
-        f"{output_file}",
+        "-e",
+        f"""
+        forecasttools::pull_nhsn(
+            start_date = {py_scalar_to_r_scalar(start_date)},
+            end_date = {py_scalar_to_r_scalar(end_date)},
+            columns = {py_scalar_to_r_scalar(columns)},
+            jurisdictions = {py_scalar_to_r_scalar(state_abb)},
+        ) |>
+        dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
+        dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
+        dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
+        readr::write_tsv(stdout())
+        """,
     ]
     result = subprocess.run(
-        my_list,
+        r_command,
         capture_output=True,
     )
     if result.returncode != 0:
         raise RuntimeError(f"pull_and_save_nhsn: {result.stderr}")
-    dat = pl.read_csv(output_file, separator="\t").with_columns(
+    else:
+        raw_dat = pl.read_csv(result.stdout, separator="\t")
+    dat = raw_dat.with_columns(
         weekendingdate=pl.col("weekendingdate").cast(pl.Date)
     )
-    os.remove(output_file)
     return dat
 
 
@@ -322,12 +335,11 @@ def process_and_save_state(
 
     verify_no_date_gaps(nssp_training_data)
 
-    nhsn_state_abb = state_abb if state_abb != "US" else "USA"
     nhsn_training_data = get_nhsn(
         start_date=first_training_date,
         end_date=last_training_date,
         disease=disease,
-        jurisdictions=nhsn_state_abb,
+        state_abb=state_abb,
     )
 
     nssp_training_dates = (
@@ -412,6 +424,6 @@ def process_and_save_state(
     # post processing not yet updated for combined nhsn and nssp data
     nssp_training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
     combined_training_dat.write_csv(
-        Path(data_dir, "combined_data.tsv"), separator="\t"
+        Path(data_dir, "combined_training_data.tsv"), separator="\t"
     )
     return None
