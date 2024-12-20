@@ -55,3 +55,30 @@ testthat::test_that("score_hubverse handles missing location data", {
   expect_false("loc2" %in% result$location)
   expect_setequal(observed$location, result$location)
 })
+
+
+testthat::test_that("score_hubverse handles zero length forecast table", {
+  forecast <- tibble::tibble(
+    reference_date = as.Date(character(0)),
+    horizon = integer(0),
+    output_type_id = numeric(0),
+    location = character(0),
+    value = numeric(0),
+    target = character(0),
+    output_type = character(0),
+    target_end_date = as.Date(character(0))
+  )
+
+  observed <- create_observation_data(
+    date_cols = seq(
+      lubridate::ymd("2024-11-01"), lubridate::ymd("2024-11-02"),
+      by = "day"
+    ),
+    location = c("loc1")
+  )
+
+  expect_error(
+    result <- score_hubverse(forecast, observed),
+    "Assertion on 'data' failed: Must have at least 1 rows, but has 0 rows."
+  )
+})
