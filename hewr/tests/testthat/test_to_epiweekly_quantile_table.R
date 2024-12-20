@@ -1,19 +1,3 @@
-create_forecast_data <- function(
-    directory, filename, date_cols, disease_cols, n_draw) {
-  data <- tidyr::expand_grid(
-    date = date_cols,
-    disease = disease_cols,
-    .draw = 1:n_draw
-  ) |>
-    dplyr::mutate(.value = sample(1:100, dplyr::n(), replace = TRUE))
-  if (length(disease_cols) == 1) {
-    data <- data |>
-      dplyr::rename(!!disease_cols := ".value") |>
-      dplyr::select(-disease)
-  }
-  arrow::write_parquet(data, fs::path(directory, filename))
-}
-
 # tests for `to_epiweekly_quantile`
 test_that("to_epiweekly_quantiles works as expected", {
   # create temporary directories and forecast files for tests
@@ -21,7 +5,7 @@ test_that("to_epiweekly_quantiles works as expected", {
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
   fs::dir_create(fs::path(temp_dir, "timeseries_e"))
 
-  create_forecast_data(
+  create_tidy_forecast_data(
     directory = fs::path(temp_dir, "pyrenew_e"),
     filename = "forecast_samples.parquet",
     date_cols = seq(
@@ -32,7 +16,7 @@ test_that("to_epiweekly_quantiles works as expected", {
     n_draw = 20
   )
 
-  create_forecast_data(
+  create_tidy_forecast_data(
     directory = fs::path(temp_dir, "timeseries_e"),
     filename = "epiweekly_other_ed_visits_forecast.parquet",
     date_cols = seq(
@@ -67,7 +51,7 @@ test_that("to_epiweekly_quantiles calculates quantiles accurately", {
   temp_dir <- withr::local_tempdir("test")
   fs::dir_create(fs::path(temp_dir, "pyrenew_e"))
 
-  create_forecast_data(
+  create_tidy_forecast_data(
     directory = fs::path(temp_dir, "pyrenew_e"),
     filename = "forecast_samples.parquet",
     date_cols = seq(
@@ -152,7 +136,7 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
     loc_dir <- fs::path(temp_batch_dir, "model_runs", loc, "pyrenew_e")
     fs::dir_create(loc_dir)
 
-    create_forecast_data(
+    create_tidy_forecast_data(
       directory = loc_dir,
       filename = "forecast_samples.parquet",
       date_cols = seq(
