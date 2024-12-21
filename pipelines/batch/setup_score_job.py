@@ -15,7 +15,7 @@ from azuretools.client import get_batch_service_client
 from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
 
-from pipelines.utils import get_all_forecast_dirs
+from pipelines.utils import get_all_forecast_dirs, get_all_model_run_dirs
 
 
 def main(
@@ -97,12 +97,6 @@ def main(
         "'"
     )
 
-    locations = pl.read_csv(
-        "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
-    )
-
-    loc_abbrs = locations.get_column("STUSAB").to_list() + ["US"]
-
     for score_dir in dirs_to_score:
         forecast_dirs = get_all_forecast_dirs(
             score_dir, ["COVID-19", "Influenza"]
@@ -110,13 +104,9 @@ def main(
         score_dir_name = Path(score_dir).name
 
         for model_batch_dir in forecast_dirs:
-            location_names = [
-                f.name
-                for f in os.scandir(
-                    Path(score_dir, model_batch_dir, "model_runs")
-                )
-                if f.is_dir() and f.name in loc_abbrs
-            ]
+            location_names = get_all_model_run_dirs(
+                Path(score_dir, model_batch_dir, "model_runs")
+            )
             for location in location_names:
                 model_batch_dir_path = (
                     f"output/{score_dir_name}/{model_batch_dir}"

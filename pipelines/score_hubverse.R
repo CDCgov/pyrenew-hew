@@ -79,11 +79,7 @@ plot_pred_act_by_forecast_date <- function(scoreable_table,
     )
 
   to_plot_obs <- to_plot |>
-    dplyr::filter(
-      quantile_level == 0.5,
-      horizon == 0
-    ) |>
-    dplyr::select(target_end_date, observed)
+    dplyr::distinct(target_end_date, observed)
 
   to_plot_forecast <- to_plot |>
     dplyr::filter(quantile_level %in% c(0.025, 0.5, 0.975)) |>

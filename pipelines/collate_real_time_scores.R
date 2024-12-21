@@ -97,10 +97,15 @@ collate_disease <- function(base_dir,
 }
 
 collate_and_save <- function(base_dir,
+                             save_dir = NULL,
                              diseases = c("COVID-19", "Influenza"),
                              score_file_stem = "score_table",
                              score_file_ext = "rds") {
+  if (is.null(save_dir)) {
+    save_dir <- base_dir
+  }
   collate_and_save_disease <- function(disease) {
+    fs::dir_create(save_dir)
     collate_disease(
       base_dir,
       disease,
@@ -108,7 +113,7 @@ collate_and_save <- function(base_dir,
       score_file_ext
     ) |>
       readr::write_rds(score_table_path(
-        base_dir,
+        save_dir,
         disease,
         score_file_stem,
         score_file_ext
@@ -135,6 +140,14 @@ p <- arg_parser(
     )
   ) |>
   add_argument(
+    "--save-dir",
+    help = paste0(
+      "Directory in which to save the results. If NULL,",
+      "use the dir_of_forecast_dirs"
+    ),
+    default = NULL
+  ) |>
+  add_argument(
     "--score-file-stem",
     help = paste0(
       "Name of the score file to look for, ",
@@ -152,6 +165,7 @@ argv <- parse_args(p)
 
 collate_and_save(
   argv$dir_of_forecast_dirs,
+  argv$save_dir,
   score_file_stem = argv$score_file_stem,
   score_file_ext = argv$score_file_ext
 )
