@@ -15,15 +15,19 @@ import collate_plots as cp
 from utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
 
+def _hubverse_table_filename(
+    report_date: str | datetime.date, disease: str
+) -> None:
+    return f"{report_date}-" f"{disease.lower()}-" "hubverse-table.tsv"
+
+
 def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     model_batch_dir_path = Path(model_batch_dir_path)
     model_batch_dir_name = model_batch_dir_path.name
     batch_info = parse_model_batch_dir_name(model_batch_dir_name)
 
-    output_file_name = (
-        f"{batch_info["report_date"]}-"
-        f"{batch_info["disease"].lower()}-"
-        "hubverse-table.tsv"
+    output_file_name = _hubverse_table_filename(
+        batch_info["report_date"], batch_info["disease"]
     )
 
     output_path = Path(model_batch_dir_path, output_file_name)
@@ -38,7 +42,36 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"generate_epiweekly: {result.stderr}")
+        raise RuntimeError(f"create_hubverse_table: {result.stderr}")
+    return None
+
+
+def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
+    model_batch_dir_path = Path(model_batch_dir_path)
+    f_info = parse_model_batch_dir_name(model_batch_dir_path.name)
+    disease = f_info["disease"]
+    report_date = f_info["report_date"]
+    output_file_name = (
+        f"{report_date}_{disease}" "_category_pointintervals.pdf"
+    )
+
+    hubverse_table_path = Path(
+        model_batch_dir_path, _hubverse_table_filename(report_date, disease)
+    )
+
+    output_path = Path(model_batch_dir_path, output_file_name)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/.R",
+            f"{hubverse_table_path}",
+            f"{output_path}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("create_pointinterval_plot: " f"{result.stderr}")
     return None
 
 
@@ -52,6 +85,8 @@ def process_model_batch_dir(model_batch_dir_path: Path) -> None:
     cp.process_dir(model_batch_dir_path, target_filenames=plots_to_collate)
     logger.info("Creating hubverse table...")
     create_hubverse_table(model_batch_dir_path)
+    logger.info("Creating pointinterval plot...")
+    create_pointinterval_plot(model_batch_dir_path)
 
 
 def main(
