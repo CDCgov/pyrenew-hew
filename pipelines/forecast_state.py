@@ -305,7 +305,6 @@ def main(
         facility_level_nssp_data=facility_level_nssp_data,
         state_level_nssp_data=state_level_nssp_data,
         report_date=report_date,
-        state_level_report_date=state_report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         param_estimates=param_estimates,
