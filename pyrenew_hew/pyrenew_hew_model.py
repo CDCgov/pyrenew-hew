@@ -14,7 +14,7 @@ from pyrenew.latent import (
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.metaclass import Model
-from pyrenew.observation import NegativeBinomialObservation
+from pyrenew.observation import NegativeBinomialObservation, PoissonObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
@@ -85,7 +85,9 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
     def sample(
         self,
         n_observed_disease_ed_visits_datapoints=None,
+        n_observed_hospital_admissions_datapoints=None,
         data_observed_disease_ed_visits=None,
+        data_observed_hospital_admissions=None,
         right_truncation_offset=None,
     ):  # numpydoc ignore=GL08
         if (
@@ -107,9 +109,13 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             n_observed_disease_ed_visits_datapoints = len(
                 data_observed_disease_ed_visits
             )
-        else:
-            n_observed_disease_ed_visits_datapoints = (
-                n_observed_disease_ed_visits_datapoints
+
+        if (
+            n_observed_hospital_admissions_datapoints is None
+            and data_observed_hospital_admissions is not None
+        ):
+            n_observed_hospital_admissions_datapoints = len(
+                data_observed_hospital_admissions
             )
 
         n_weeks_post_init = n_observed_disease_ed_visits_datapoints // 7 + 1
@@ -232,6 +238,14 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             mu=latent_ed_visits_now,
             obs=data_observed_disease_ed_visits,
         )
+
+        if n_observed_hospital_admissions_datapoints is not None:
+            hospital_admissions_obs_rv = PoissonObservation(
+                "observed_hospital_admissions"
+            )
+            data_observed_hospital_admissions = hospital_admissions_obs_rv(
+                mu=jnp.ones(n_observed_hospital_admissions_datapoints)
+            )
 
         return observed_ed_visits
 
