@@ -8,6 +8,8 @@ import os
 import re
 from pathlib import Path
 
+from forecasttools import ensure_listlike
+
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
 
 
