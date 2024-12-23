@@ -376,7 +376,7 @@ def process_and_save_state(
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "data_observed_disease_ed_visits": train_disease_ed_visits,
-        "data_observed_total_hospital_admissions": train_total_ed_visits,
+        "data_observed_disease_hospital_admissions": train_total_ed_visits,
         "data_observed_disease_hospital_admissions": train_disease_hospital_admissions,
         "nssp_training_dates": nssp_training_dates,
         "nhsn_training_dates": nhsn_training_dates,

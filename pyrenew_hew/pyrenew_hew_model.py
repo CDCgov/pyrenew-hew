@@ -87,7 +87,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         n_observed_disease_ed_visits_datapoints=None,
         n_observed_hospital_admissions_datapoints=None,
         data_observed_disease_ed_visits=None,
-        data_observed_hospital_admissions=None,
+        data_observed_disease_hospital_admissions=None,
         right_truncation_offset=None,
     ):  # numpydoc ignore=GL08
         if (
@@ -112,10 +112,10 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
 
         if (
             n_observed_hospital_admissions_datapoints is None
-            and data_observed_hospital_admissions is not None
+            and data_observed_disease_hospital_admissions is not None
         ):
             n_observed_hospital_admissions_datapoints = len(
-                data_observed_hospital_admissions
+                data_observed_disease_hospital_admissions
             )
 
         n_weeks_post_init = n_observed_disease_ed_visits_datapoints // 7 + 1
@@ -243,8 +243,10 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             hospital_admissions_obs_rv = PoissonObservation(
                 "observed_hospital_admissions"
             )
-            data_observed_hospital_admissions = hospital_admissions_obs_rv(
-                mu=jnp.ones(n_observed_hospital_admissions_datapoints)
+            data_observed_disease_hospital_admissions = (
+                hospital_admissions_obs_rv(
+                    mu=jnp.ones(n_observed_hospital_admissions_datapoints) + 50
+                )
             )
 
         return observed_ed_visits

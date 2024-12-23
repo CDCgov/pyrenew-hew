@@ -62,7 +62,7 @@ max_ww_sampled_days = max(stan_data["ww_sampled_times"])
 lab_site_to_subpop_map = jnp.array(stan_data["lab_site_to_subpop_map"]) -1   #vector mapping the subpops to lab-site combos
 
 data_observed_log_conc = jnp.array(stan_data["log_conc"])
-data_observed_hospital_admissions = jnp.array(stan_data["hosp"])
+data_observed_disease_hospital_admissions = jnp.array(stan_data["hosp"])
 ```
 
 ```{python}
@@ -327,7 +327,7 @@ Check that we can simulate from the prior predictive
 n_forecast_days = 35
 
 prior_predictive = my_model.prior_predictive(
-    n_observed_disease_ed_visits_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days,
+    n_observed_disease_ed_visits_datapoints= max(len(data_observed_disease_hospital_admissions), max_ww_sampled_days) + n_forecast_days,
     numpyro_predictive_args={"num_samples": 100},
 )
 ```
@@ -339,7 +339,7 @@ my_model.run(
     num_warmup=750,
     num_samples=500,
     rng_key=jax.random.key(223),
-    data_observed_hospital_admissions=data_observed_hospital_admissions,
+    data_observed_disease_hospital_admissions=data_observed_disease_hospital_admissions,
     data_observed_log_conc=data_observed_log_conc,
     mcmc_args=dict(num_chains=4)
 )
@@ -349,7 +349,7 @@ Simulate the posterior predictive distribution
 ```{python}
 # | label: posterior predictive
 posterior_predictive = my_model.posterior_predictive(
-    n_observed_disease_ed_visits_datapoints= max(len(data_observed_hospital_admissions), max_ww_sampled_days) + n_forecast_days, is_predictive=True
+    n_observed_disease_ed_visits_datapoints= max(len(data_observed_disease_hospital_admissions), max_ww_sampled_days) + n_forecast_days, is_predictive=True
 )
 ```
 
@@ -437,14 +437,14 @@ my_model_hosp_only_fit.run(
     num_warmup=750,
     num_samples=500,
     rng_key=jax.random.key(223),
-    data_observed_hospital_admissions=data_observed_hospital_admissions,
+    data_observed_disease_hospital_admissions=data_observed_disease_hospital_admissions,
     mcmc_args=dict(num_chains=4)
 )
 ```
 
 ```{python}
 posterior_predictive_hosp_only = my_model_hosp_only_fit.posterior_predictive(
-    n_observed_disease_ed_visits_datapoints= len(data_observed_hospital_admissions) + n_forecast_days,is_predictive=True
+    n_observed_disease_ed_visits_datapoints= len(data_observed_disease_hospital_admissions) + n_forecast_days,is_predictive=True
 )
 ```
 

@@ -29,6 +29,7 @@ def fit_and_save_model(
     (
         my_model,
         data_observed_disease_ed_visits,
+        data_observed_disease_hospital_admissions,
         right_truncation_offset,
     ) = build_model_from_dir(model_run_dir)
     my_model.run(

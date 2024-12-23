@@ -34,6 +34,9 @@ def build_model_from_dir(model_dir):
     data_observed_disease_ed_visits = jnp.array(
         model_data["data_observed_disease_ed_visits"]
     )
+    data_observed_disease_hospital_admissions = jnp.array(
+        model_data["data_observed_disease_hospital_admissions"]
+    )
     state_pop = jnp.array(model_data["state_pop"])
 
     right_truncation_pmf_rv = DeterministicVariable(
@@ -75,5 +78,6 @@ def build_model_from_dir(model_dir):
     return (
         my_model,
         data_observed_disease_ed_visits,
+        data_observed_disease_hospital_admissions,
         right_truncation_offset,
     )
