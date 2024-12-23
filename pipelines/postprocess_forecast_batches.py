@@ -14,7 +14,11 @@ import subprocess
 from pathlib import Path
 
 import collate_plots as cp
-from utils import get_all_forecast_dirs, parse_model_batch_dir_name
+
+from pipelines.hubverse_create_observed_data_tables import (
+    save_observed_data_tables,
+)
+from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
 
 def _hubverse_table_filename(
@@ -55,9 +59,7 @@ def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
     f_info = parse_model_batch_dir_name(model_batch_dir_path.name)
     disease = f_info["disease"]
     report_date = f_info["report_date"]
-    output_file_name = (
-        f"{report_date}_{disease}" "_category_pointintervals.pdf"
-    )
+    output_file_name = "Disease_category_pointintervals.pdf"
 
     hubverse_table_path = Path(
         model_batch_dir_path, _hubverse_table_filename(report_date, disease)
@@ -97,8 +99,10 @@ def process_model_batch_dir(model_batch_dir_path: Path) -> None:
 
 
 def main(
-    base_forecast_dir: Path, diseases: list[str] = ["COVID-19", "Influenza"]
-):
+    base_forecast_dir: Path | str,
+    path_to_latest_data: Path | str,
+    diseases: list[str] = ["COVID-19", "Influenza"],
+) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     to_process = get_all_forecast_dirs(base_forecast_dir, diseases)
@@ -106,6 +110,15 @@ def main(
         logger.info(f"Processing {batch_dir}...")
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)
         process_model_batch_dir(model_batch_dir_path)
+        logger.info(f"Finished processing {batch_dir}")
+    logger.info("Created observed data tables for visualization...")
+    save_observed_data_tables(
+        path_to_latest_data,
+        base_forecast_dir,
+        daily_filename="daily.tsv",
+        epiweekly_filename="epiweekly.tsv",
+    )
+    logger.info(f"Finished processing {base_forecast_dir}.")
 
 
 if __name__ == "__main__":
@@ -117,7 +130,11 @@ if __name__ == "__main__":
         type=Path,
         help="Directory containing forecast subdirectories.",
     )
-
+    parser.add_argument(
+        "path_to_latest_data",
+        type=Path,
+        help=("Path to a parquet file containing the latest observed data."),
+    )
     parser.add_argument(
         "--diseases",
         type=str,
