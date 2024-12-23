@@ -5,7 +5,7 @@ from pathlib import Path
 import jax
 import numpy as np
 
-from .build_pyrenew_model import (
+from build_pyrenew_model import (
     build_model_from_dir,
 )
 
