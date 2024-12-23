@@ -9,6 +9,7 @@ and .tsv-format hubverse tables.
 import argparse
 import datetime
 import logging
+import os
 import subprocess
 from pathlib import Path
 
@@ -36,14 +37,16 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/create_hubverse_table.R",
+            "pipelines/hubverse_create_table.R",
             f"{model_batch_dir_path}",
             f"{output_path}",
         ],
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"create_hubverse_table: {result.stderr}")
+        raise RuntimeError(
+            "create_hubverse_table: " f"{result.stdout}\n" f"{result.stderr}"
+        )
     return None
 
 
@@ -60,13 +63,16 @@ def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
         model_batch_dir_path, _hubverse_table_filename(report_date, disease)
     )
 
-    output_path = Path(model_batch_dir_path, output_file_name)
+    figures_dir = Path(model_batch_dir_path, "figures")
+    os.makedirs(figures_dir, exist_ok=True)
+    output_path = Path(figures_dir, output_file_name)
 
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/.R",
+            "pipelines/plot_category_pointintervals.R",
             f"{hubverse_table_path}",
+            f"{disease}",
             f"{output_path}",
         ],
         capture_output=True,

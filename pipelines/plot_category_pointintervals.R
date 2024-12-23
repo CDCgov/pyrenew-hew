@@ -70,31 +70,31 @@ plot_category_pointintervals <- function(data, horizon) {
 
 
 main <- function(hubverse_table_path,
-                 output_path,
                  disease,
+                 output_path,
                  ...) {
   checkmate::check_names(disease,
     subset.of = c("COVID-19", "Influenza")
   )
 
-  dat <- readr::read_tsv(influenza_table_path) |>
+  dat <- readr::read_tsv(hubverse_table_path) |>
     to_categorized_iqr(disease)
 
   plots <- list(
-    plot_1wk = flu_dat |>
+    plot_1wk = dat |>
       plot_category_pointintervals(horizon = 0) +
       labs(
         x = "% ED visits",
         y = "Location"
       ) +
       ggtitle(glue::glue("{disease}, 1 week ahead")),
-    plot_2wk = flu_dat |>
+    plot_2wk = dat |>
       plot_category_pointintervals(horizon = 1) +
       labs(
         x = "% ED visits",
         y = "Location"
       ) +
-      ggtitle(glue::glue("{disease}, 2 weeks ahead")),
+      ggtitle(glue::glue("{disease}, 2 weeks ahead"))
   )
 
 
