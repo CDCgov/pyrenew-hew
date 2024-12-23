@@ -39,6 +39,58 @@ def convert_files(model_run_subdir_path: Path, dry_run: bool = True):
     [_csv_to_tsv(fp) for fp in to_convert_csv]
 
 
+def transform_model_batch_dir(
+    model_batch_dir_path: Path, dry_run: bool = True
+) -> None:
+    """
+    Transform a flat model batch directory into the new
+    more structured model_batch_dir format.
+
+    Parameters
+    ----------
+    model_batch_dir_path
+        Path to the directory.
+
+    dry_run
+        Perform a dry run (report would would be done but do nothing)
+        or actually perform the in-place modification?
+        Boolean, default ``True`` (perform a dry run).
+
+    Returns
+    -------
+    None
+    """
+    logger = logging.getLogger(__name__)
+    model_run_dirs_to_move = get_all_model_run_dirs(model_batch_dir_path)
+    model_run_dirs_path = Path(model_batch_dir_path, "model_runs")
+    figs_path = Path(model_batch_dir_path, "figures")
+    figs = [
+        quantity + "_forecast_plot" + suffix + ".pdf"
+        for quantity in ["Disease", "Other", "prop_disease_ed_visits"]
+        for suffix in ["", "_log"]
+    ] + ["Disease_category_pointintervals.pdf"]
+
+    figs_to_move = [
+        x for x in os.scandir(model_batch_dir_path) if x.name in figs
+    ]
+    if dry_run:
+        logger.info(
+            "Dry run. A non-dry run would move "
+            f"files {model_run_dirs_to_move} to {model_run_dirs_path}"
+        )
+        logger.info(
+            "Dry run. A non-dry run would move "
+            f"files {figs_to_move} to {figs_path}"
+        )
+    else:
+        os.makedirs(model_run_dirs_path, exist_ok=True)
+        figs = [shutil.move(x, figs_path) for x in figs_to_move]
+        model_run_dirs = [
+            shutil.move(x, model_run_dirs_path) for x in model_run_dirs_to_move
+        ]
+    [transform_model_run_dir(x, dry_run=dry_run) for x in model_run_dirs]
+
+
 def transform_model_run_dir(
     model_run_dir_path: Path, dry_run: bool = True
 ) -> None:
