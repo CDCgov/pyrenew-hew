@@ -57,9 +57,10 @@ def get_nhsn(
         r_command,
         capture_output=True,
     )
+
     if result.returncode != 0:
         raise RuntimeError(f"pull_and_save_nhsn: {result.stderr}")
-    raw_dat = pl.read_csv(result.stdout, separator="\t")
+    raw_dat = pl.read_csv(result.stdout, skip_rows=1, separator="\t")
     dat = raw_dat.with_columns(
         weekendingdate=pl.col("weekendingdate").cast(pl.Date)
     )
