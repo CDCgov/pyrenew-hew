@@ -12,13 +12,13 @@ import tomli_w
 import tomllib
 from pygit2 import Repository
 
-from pipelines.preprocess.prep_data import process_and_save_state
-from pipelines.preprocess.prep_eval_data import save_eval_data
+from prep_data import process_and_save_state
+from prep_eval_data import save_eval_data
 
 numpyro.set_host_device_count(4)
 
-from pipelines.fit_model.pyrenew.fit_pyrenew_model import fit_and_save_model  # noqa
-from pipelines.postprocess.generate_predictive import (
+from fit_pyrenew_model import fit_and_save_model  # noqa
+from generate_predictive import (
     generate_and_save_predictions,
 )  # noqa
 
@@ -76,7 +76,7 @@ def generate_epiweekly(model_run_dir: Path) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/preprocess/generate_epiweekly.R",
+            "pipelines/generate_epiweekly.R",
             f"{model_run_dir}",
         ],
         capture_output=True,
@@ -92,7 +92,7 @@ def timeseries_forecasts(
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/fit_model/timeseries_forecasts.R",
+            "pipelines/timeseries_forecasts.R",
             f"{model_run_dir}",
             "--model-name",
             f"{model_name}",
@@ -114,7 +114,7 @@ def convert_inferencedata_to_parquet(
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/postprocess/convert_inferencedata_to_parquet.R",
+            "pipelines/convert_inferencedata_to_parquet.R",
             f"{model_run_dir}",
             "--model-name",
             f"{model_name}",
@@ -128,13 +128,13 @@ def convert_inferencedata_to_parquet(
     return None
 
 
-def plot_state_forecast(
+def plot_and_save_state_forecast(
     model_run_dir: Path, pyrenew_model_name: str, timeseries_model_name: str
 ) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/postprocess/plot_state_forecast.R",
+            "pipelines/plot_and_save_state_forecast.R",
             f"{model_run_dir}",
             "--pyrenew-model-name",
             f"{pyrenew_model_name}",
@@ -144,7 +144,7 @@ def plot_state_forecast(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"plot_state_forecast: {result.stderr}")
+        raise RuntimeError(f"plot_and_save_state_forecast: {result.stderr}")
     return None
 
 
@@ -152,7 +152,7 @@ def score_forecast(model_run_dir: Path) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/postprocess/score_forecast.R",
+            "pipelines/score_forecast.R",
             f"{model_run_dir}",
         ],
         capture_output=True,
@@ -367,7 +367,7 @@ def main(
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    plot_state_forecast(model_run_dir, "pyrenew_e", "timeseries_e")
+    plot_and_save_state_forecast(model_run_dir, "pyrenew_e", "timeseries_e")
     logger.info("Postprocessing complete.")
 
     logger.info("Rendering webpage...")
