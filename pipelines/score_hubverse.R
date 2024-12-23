@@ -289,6 +289,13 @@ score_and_save <- function(observed_data_path,
     )
   )
 
+  wis_by_loc <- scoringutils::plot_wis(
+    summaries$summary_by_location,
+    x = "location"
+  ) +
+    facet_grid(horizon ~ target)
+
+
   make_output_path <- function(output_name,
                                extension) {
     return(fs::path(output_dir,
@@ -324,6 +331,11 @@ score_and_save <- function(observed_data_path,
     ),
     width = 11,
     height = 8.5
+  )
+
+  ggsave(
+    make_output_path("wis_components", "pdf"),
+    wis_by_loc
   )
 
   message("Saving summary tables...")
