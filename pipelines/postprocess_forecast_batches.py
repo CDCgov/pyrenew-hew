@@ -7,6 +7,7 @@ and .tsv-format hubverse tables.
 """
 
 import argparse
+import datetime
 import logging
 import subprocess
 from pathlib import Path
