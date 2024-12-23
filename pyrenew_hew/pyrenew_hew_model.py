@@ -84,28 +84,35 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
 
     def sample(
         self,
-        n_datapoints=None,
+        n_observed_disease_ed_visits_datapoints=None,
         data_observed_disease_ed_visits=None,
         right_truncation_offset=None,
     ):  # numpydoc ignore=GL08
-        if n_datapoints is None and data_observed_disease_ed_visits is None:
+        if (
+            n_observed_disease_ed_visits_datapoints is None
+            and data_observed_disease_ed_visits is None
+        ):
             raise ValueError(
-                "Either n_datapoints or data_observed_disease_ed_visits "
+                "Either n_observed_disease_ed_visits_datapoints or data_observed_disease_ed_visits "
                 "must be passed."
             )
         elif (
-            n_datapoints is not None
+            n_observed_disease_ed_visits_datapoints is not None
             and data_observed_disease_ed_visits is not None
         ):
             raise ValueError(
-                "Cannot pass both n_datapoints and data_observed_disease_ed_visits."
+                "Cannot pass both n_observed_disease_ed_visits_datapoints and data_observed_disease_ed_visits."
             )
-        elif n_datapoints is None:
-            n_datapoints = len(data_observed_disease_ed_visits)
+        elif n_observed_disease_ed_visits_datapoints is None:
+            n_observed_disease_ed_visits_datapoints = len(
+                data_observed_disease_ed_visits
+            )
         else:
-            n_datapoints = n_datapoints
+            n_observed_disease_ed_visits_datapoints = (
+                n_observed_disease_ed_visits_datapoints
+            )
 
-        n_weeks_post_init = n_datapoints // 7 + 1
+        n_weeks_post_init = n_observed_disease_ed_visits_datapoints // 7 + 1
         i0 = self.infection_initialization_process()
 
         eta_sd = self.eta_sd_rv()
@@ -127,7 +134,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
 
         rtu = repeat_until_n(
             data=jnp.exp(log_rtu_weekly),
-            n_timepoints=n_datapoints,
+            n_timepoints=n_observed_disease_ed_visits_datapoints,
             offset=0,
             period_size=7,
         )
@@ -174,14 +181,16 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         iedr = jnp.repeat(
             transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
-        )[:n_datapoints]
+        )[:n_observed_disease_ed_visits_datapoints]
         # this is only applied after the ed visits are generated, not to all the latent infections. This is why we cannot apply the iedr in compute_delay_ascertained_incidence
         # see https://github.com/CDCgov/ww-inference-model/issues/43
 
         numpyro.deterministic("iedr", iedr)
 
         ed_wday_effect_raw = self.ed_wday_effect_rv()
-        ed_wday_effect = tile_until_n(ed_wday_effect_raw, n_datapoints)
+        ed_wday_effect = tile_until_n(
+            ed_wday_effect_raw, n_observed_disease_ed_visits_datapoints
+        )
 
         inf_to_ed = self.inf_to_ed_rv()
 
@@ -189,7 +198,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             p_observed_given_incident=1,
             latent_incidence=latent_infections,
             delay_incidence_to_observation_pmf=inf_to_ed,
-        )[-n_datapoints:]
+        )[-n_observed_disease_ed_visits_datapoints:]
 
         latent_ed_visits_final = (
             potential_latent_ed_visits * iedr * ed_wday_effect * self.state_pop
@@ -200,7 +209,8 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
                 self.right_truncation_cdf_rv()[right_truncation_offset:]
             )
             n_points_to_prepend = (
-                n_datapoints - prop_already_reported_tail.shape[0]
+                n_observed_disease_ed_visits_datapoints
+                - prop_already_reported_tail.shape[0]
             )
             prop_already_reported = jnp.pad(
                 prop_already_reported_tail,
