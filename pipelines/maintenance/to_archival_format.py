@@ -3,6 +3,7 @@ Transform a forecast archives to the current
 archival format
 """
 
+import argparse
 import logging
 import os
 import shutil
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import polars as pl
 
-from pipelines.utils import get_all_forecast_dirs, get_all_model_run_dirs
+from pipelines.utils import get_all_model_run_dirs
 
 logging.basicConfig(level=None)
 
@@ -161,19 +162,29 @@ def transform_model_run_dir(
             convert_files(target_dir_path)
 
 
-to_transform = [
-    Path(
-        "/home/dylan/blobfuse/mounts/pyrenew-hew-prod-output", x + "_forecasts"
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=(
+            "Coerce old model batch directories to "
+            "latest archival directory schema."
+        )
     )
-    for x in ["2024-11-13"]
-]
 
+    parser.add_argument(
+        "model_batch_dir_path",
+        type=Path,
+        help="Path to a model batch directory to coerce.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help=(
+            "If this flag is provided, perform a dry run. This will "
+            "reporting what transformations would be performed but "
+            "not actually perform them."
+        ),
+    )
 
-for t_dir in to_transform:
-    f_dirs = get_all_forecast_dirs(t_dir, ["COVID-19", "Influenza"])
-    for f_dir in f_dirs:
-        f_dir_path = Path(t_dir, f_dir)
-        mr_dirs = get_all_model_run_dirs(f_dir_path)
-        for mr_dir in mr_dirs:
-            mr_dir_path = Path(f_dir_path, mr_dir)
-            transform_model_run_dir(mr_dir_path, dry_run=False)
+    args = parser.parse_args()
+    transform_model_batch_dir(**vars(args))
