@@ -11,13 +11,15 @@ import polars as pl
 import tomli_w
 import tomllib
 from prep_data import process_and_save_state
+from prep_eval_data import save_eval_data
 from pygit2 import Repository
-from save_eval_data import save_eval_data
 
 numpyro.set_host_device_count(4)
 
-from fit_model import fit_and_save_model  # noqa
-from generate_predictive import generate_and_save_predictions  # noqa
+from fit_pyrenew_model import fit_and_save_model  # noqa
+from generate_predictive import (
+    generate_and_save_predictions,
+)  # noqa
 
 
 def record_git_info(model_run_dir: Path):
@@ -125,13 +127,13 @@ def convert_inferencedata_to_parquet(
     return None
 
 
-def postprocess_forecast(
+def plot_and_save_state_forecast(
     model_run_dir: Path, pyrenew_model_name: str, timeseries_model_name: str
 ) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/postprocess_state_forecast.R",
+            "pipelines/plot_and_save_state_forecast.R",
             f"{model_run_dir}",
             "--pyrenew-model-name",
             f"{pyrenew_model_name}",
@@ -141,7 +143,7 @@ def postprocess_forecast(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"postprocess_forecast: {result.stderr}")
+        raise RuntimeError(f"plot_and_save_state_forecast: {result.stderr}")
     return None
 
 
@@ -159,17 +161,17 @@ def score_forecast(model_run_dir: Path) -> None:
     return None
 
 
-def render_webpage(model_run_dir: Path) -> None:
+def render_diagnostic_report(model_run_dir: Path) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/render_webpage.R",
+            "pipelines/diagnostic_report/render_diagnostic_report.R",
             f"{model_run_dir}",
         ],
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"render_webpage: {result.stderr}")
+        raise RuntimeError(f"render_diagnostic_report: {result.stderr}")
     return None
 
 
@@ -363,11 +365,11 @@ def main(
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    postprocess_forecast(model_run_dir, "pyrenew_e", "timeseries_e")
+    plot_and_save_state_forecast(model_run_dir, "pyrenew_e", "timeseries_e")
     logger.info("Postprocessing complete.")
 
     logger.info("Rendering webpage...")
-    render_webpage(model_run_dir)
+    render_diagnostic_report(model_run_dir)
     logger.info("Rendering complete.")
 
     if score:
