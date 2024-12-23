@@ -33,7 +33,10 @@ def generate_and_save_predictions(
     my_model.mcmc.sampler = fresh_sampler
 
     posterior_predictive = my_model.posterior_predictive(
-        n_datapoints=len(data_observed_disease_ed_visits) + n_forecast_points
+        n_observed_disease_ed_visits_datapoints=len(
+            data_observed_disease_ed_visits
+        )
+        + n_forecast_points
     )
 
     idata = az.from_numpyro(
