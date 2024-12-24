@@ -117,7 +117,7 @@ generate_fake_facility_data <-
     nssp_etl_gold_dir <- path(private_data_dir, "nssp_etl_gold")
     dir_create(nssp_etl_gold_dir, recurse = TRUE)
 
-    fac_data <- purrr::imap(geo_values, \(x, i) {
+    fac_data <- purrr::imap(facility_geo_values, \(x, i) {
       create_facility_test_data(
         i,
         start_reference = start_reference,
