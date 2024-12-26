@@ -143,67 +143,71 @@ generate_fake_facility_data <-
 #' @param states_to_generate A vector of strings representing
 #' individual states for which to generate simulated data.
 #' Default is `"CA"` (simulate data only for California).
-#' @param private_data_dir A string specifying the directory where the generated
-#' data will be stored.
-#' @param start_reference A Date object specifying the start date for the data
-#' generation period. Default is "2024-06-01".
+#' @param facilities_per_state number of facilities to simulate
+#' for each state in states_to_generate. Default 1.
+#' @param private_data_dir A string specifying the directory
+#' where the generated data will be stored.
+#' @param start_reference A Date object specifying the start date
+#' for the data generation period. Default is "2024-06-01".
 #' @param end_reference A Date object specifying the end date for the data
 #' generation period. Default is "2024-12-25".
 #' @param initial A numeric value specifying the initial value for the data
-#' generation. Default is 10.
-#' @param mean_other A numeric value specifying the mean value for other data
-#' points. Default is 200.
+#' generation (per facility). Default is 10.
+#' @param mean_other A numeric value specifying the mean value for
+#' other data points (per facility). Default is 200.
 #' @param target_disease A string specifying the target disease for the data
 #' generation. Default is "COVID-19/Omicron".
 #'
 #' @return This function does not return a value. It writes the generated data
 #' to a parquet file in the specified directory.
-generate_fake_state_level_data <- function(
-    states_to_generate = "CA",
-    private_data_dir = path(getwd()),
-    start_reference = as.Date("2024-06-01"),
-    end_reference = as.Date("2024-12-25"),
-    initial = 10,
-    mean_other = 200,
-    target_disease = "COVID-19/Omicron",
-    n_forecast_days = 28) {
-  gold_dir <- path(private_data_dir, "nssp_state_level_gold")
-  dir_create(gold_dir, recurse = TRUE)
+generate_fake_state_level_data <-
+  function(states_to_generate = "CA",
+           facilities_per_state = c(1),
+           private_data_dir = path(getwd()),
+           start_reference = as.Date("2024-06-01"),
+           end_reference = as.Date("2024-12-25"),
+           initial = 10,
+           mean_other = 200,
+           target_disease = "COVID-19/Omicron",
+           n_forecast_days = 28) {
+    gold_dir <- path(private_data_dir, "nssp_state_level_gold")
+    dir_create(gold_dir, recurse = TRUE)
 
-  comp_dir <- path(private_data_dir, "nssp-archival-vintages")
-  dir_create(comp_dir, recurse = TRUE)
+    comp_dir <- path(private_data_dir, "nssp-archival-vintages")
+    dir_create(comp_dir, recurse = TRUE)
 
-  state_data <- purrr::imap(
-    states_to_generate,
-    \(x, i) {
-      create_facility_test_data(
-        i,
-        start_reference = start_reference,
-        end_reference =
-          end_reference + n_forecast_days,
-        geo_value = x,
-        initial = initial,
-        mean_other = mean_other,
-        target_disease = target_disease
-      )
-    }
-  ) |>
-    bind_rows() |>
-    select(-facility, -run_id, -asof)
+    state_data <- purrr::map2(
+      states_to_generate,
+      facilities_per_state,
+      \(x, y) {
+        create_facility_test_data(
+          x,
+          start_reference = start_reference,
+          end_reference =
+            end_reference + n_forecast_days,
+          geo_value = x,
+          initial = y * initial,
+          mean_other = y * mean_other,
+          target_disease = target_disease
+        )
+      }
+    ) |>
+      bind_rows() |>
+      select(-facility, -run_id, -asof)
 
-  # Write in-sample state-level data to gold directory
-  state_data |>
-    filter(reference_date <= end_reference) |>
-    mutate(any_update_this_day = TRUE) |>
-    write_parquet(path(gold_dir, end_reference, ext = "parquet"))
+    # Write in-sample state-level data to gold directory
+    state_data |>
+      filter(reference_date <= end_reference) |>
+      mutate(any_update_this_day = TRUE) |>
+      write_parquet(path(gold_dir, end_reference, ext = "parquet"))
 
-  # Write out-of-sample state-level data to comparison directory
-  state_data |>
-    filter(reference_date > end_reference) |>
-    write_parquet(path(comp_dir, "latest_comprehensive",
-      ext = "parquet"
-    ))
-}
+    # Write out-of-sample state-level data to comparison directory
+    state_data |>
+      filter(reference_date > end_reference) |>
+      write_parquet(path(comp_dir, "latest_comprehensive",
+        ext = "parquet"
+      ))
+  }
 
 #' Generate Fake Parameter Data
 #'
@@ -303,12 +307,13 @@ main <- function(private_data_dir, target_disease, n_forecast_days) {
   generate_fake_state_level_data(
     private_data_dir,
     states_to_generate = c("MT", "CA"),
+    facilities_per_state = c(2, 3),
     target_disease = target_disease,
     n_forecast_days = n_forecast_days
   )
   generate_fake_param_data(
     private_data_dir,
-    states_to_generate = c("MT", "CA"),
+    states_to_generate = c("MT", "CA", "US"),
     target_disease = short_target_disease
   )
 }

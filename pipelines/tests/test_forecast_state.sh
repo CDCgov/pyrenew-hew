@@ -15,25 +15,34 @@ if [ $? -ne 0 ]; then
 else
     echo "TEST-MODE: Finished generating test data"
 fi
-echo "TEST-MODE: Running forecasting pipeline"
-python pipelines/forecast_state.py \
-    --disease "COVID-19" \
-    --state "CA" \
-    --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
-    --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
-    --priors-path "$BASE_DIR/test_output/priors.py" \
-    --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
-    --output-dir "$BASE_DIR/private_data" \
-    --n-training-days 90 \
-    --n-chains 1 \
-    --n-samples 500 \
-    --n-warmup 500 \
-    --score \
-    --eval-data-path "$BASE_DIR/private_data/nssp-archival-vintages"
+echo "TEST-MODE: Running forecasting pipeline for several locations"
+for state in CA MT US
+do
+    python pipelines/forecast_state.py \
+	   --disease "COVID-19" \
+	   --state $state \
+	   --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
+	   --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
+	   --priors-path "$BASE_DIR/test_output/priors.py" \
+	   --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
+	   --output-dir "$BASE_DIR/private_data" \
+	   --n-training-days 60 \
+	   --n-chains 2 \
+	   --n-samples 250 \
+	   --n-warmup 250 \
+	   --score \
+	   --eval-data-path "$BASE_DIR/private_data/nssp-archival-vintages"
+done
+
 if [ $? -ne 0 ]; then
     echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
     exit 1
 else
     echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline"
 fi
+
+echo "TEST-MODE: Running batch postprocess..."
+python pipelines/postprocess_forecast_batches.py \
+       $BASE_DIR/private_data \
+       $BASE_DIR/private_data/nssp-archival-vintages/latest_comprehensive.parquet
 echo "TEST-MODE: All finished successfully"
