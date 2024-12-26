@@ -13,7 +13,7 @@ import polars as pl
 
 from pipelines.utils import get_all_model_run_dirs
 
-logging.basicConfig(level=None)
+logging.basicConfig(level=logging.INFO)
 
 
 def _csv_to_tsv(path: Path):
@@ -81,15 +81,30 @@ def transform_model_batch_dir(
         )
         logger.info(
             "Dry run. A non-dry run would move "
-            f"files {figs_to_move} to {figs_path}"
+            f"files {[x.name for x in figs_to_move]} to {figs_path}"
         )
+        [
+            transform_model_run_dir(
+                Path(model_batch_dir_path, x), dry_run=True
+            )
+            for x in model_run_dirs_to_move
+        ]
     else:
         os.makedirs(model_run_dirs_path, exist_ok=True)
-        figs = [shutil.move(x, figs_path) for x in figs_to_move]
-        model_run_dirs = [
-            shutil.move(x, model_run_dirs_path) for x in model_run_dirs_to_move
+        os.makedirs(figs_path, exist_ok=True)
+        figs = [
+            shutil.move(Path(model_batch_dir_path, x), figs_path)
+            for x in figs_to_move
         ]
-    [transform_model_run_dir(x, dry_run=dry_run) for x in model_run_dirs]
+        model_run_dirs_to_move = [
+            shutil.move(Path(model_batch_dir_path, x), model_run_dirs_path)
+            for x in model_run_dirs_to_move
+        ]
+    model_run_dir_names = get_all_model_run_dirs(model_run_dirs_path)
+    [
+        transform_model_run_dir(Path(model_run_dirs_path, x), dry_run=dry_run)
+        for x in model_run_dir_names
+    ]
 
 
 def transform_model_run_dir(
@@ -151,10 +166,11 @@ def transform_model_run_dir(
     for target_dir, target_files in target_files.items():
         to_move = [f for f in dir_contents if f.name in target_files]
         target_dir_path = Path(model_run_dir_path, target_dir)
-        if dry_run:
+        if dry_run and len(to_move) > 0:
             logger.info(
                 "Dry run. A non-dry run would move "
-                f"files {to_move} to {target_dir_path}"
+                f"files {[x.name for x in to_move]} "
+                f"to {target_dir_path}"
             )
         else:
             os.makedirs(target_dir_path, exist_ok=True)
