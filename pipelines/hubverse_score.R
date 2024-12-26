@@ -1,5 +1,6 @@
 library(argparser)
 library(ggplot2)
+library(ggdist)
 
 get_hubverse_table_paths <- function(dir,
                                      disease) {
