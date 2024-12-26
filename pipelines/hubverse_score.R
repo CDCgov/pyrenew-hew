@@ -48,19 +48,30 @@ plot_pred_act_by_horizon <- function(scoreable_table,
         ymin = q_2.5,
         ymax = q_97.5
       ),
-      fill = "blue",
-      alpha = 0.5
+      color = "blue",
+      alpha = 0.5,
+      interval_linewidth = 2,
+      point_size = 0
     ) +
     geom_pointinterval(
       aes(
         ymin = q_25,
         ymax = q_75
       ),
-      fill = "blue",
-      alpha = 0.75
+      color = "blue",
+      alpha = 0.75,
+      interval_linewidth = 4,
+      point_size = 3,
+      point_shape = 23
     ) +
-    geom_point(aes(y = observed)) +
-    geom_line(aes(y = observed)) +
+    geom_point(aes(y = observed),
+      size = 5,
+      shape = 21
+    ) +
+    geom_line(aes(y = observed),
+      linewidth = 2,
+      linetype = "dashed"
+    ) +
     facet_wrap(disease ~ horizon) +
     labs(
       title =
