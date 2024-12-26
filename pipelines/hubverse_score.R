@@ -22,7 +22,7 @@ plot_pred_act_by_horizon <- function(scoreable_table,
   to_plot <- scoreable_table |>
     dplyr::filter(
       location == !!location,
-      quantile_level %in% c(0.025, 0.25, 0.5, 0.75, 0.975)
+      quantile_level %in% c(0.025, 0.25, 0.5, 0.75, 0.975, NA)
     ) |>
     tidyr::pivot_wider(
       id_cols = c(
@@ -62,11 +62,13 @@ plot_pred_act_by_horizon <- function(scoreable_table,
       alpha = 0.75,
       interval_linewidth = 4,
       point_size = 3,
-      point_shape = 23
+      shape = 23
     ) +
     geom_point(aes(y = observed),
       size = 5,
-      shape = 21
+      shape = 21,
+      fill = "darkred",
+      color = "black"
     ) +
     geom_line(aes(y = observed),
       linewidth = 2,
