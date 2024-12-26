@@ -21,7 +21,7 @@ plot_pred_act_by_horizon <- function(scoreable_table,
   to_plot <- scoreable_table |>
     dplyr::filter(
       location == !!location,
-      quantile_level %in% c(0.025, 0.5, 0.975)
+      quantile_level %in% c(0.025, 0.25, 0.5, 0.75, 0.975)
     ) |>
     tidyr::pivot_wider(
       id_cols = c(
@@ -42,17 +42,21 @@ plot_pred_act_by_horizon <- function(scoreable_table,
       y = q_50
     )) +
     geom_point(color = "blue") +
-    geom_line(
-      color = "blue",
-      linetype = "dashed"
-    ) +
-    geom_ribbon(
+    geom_pointinterval(
       aes(
         ymin = q_2.5,
         ymax = q_97.5
       ),
       fill = "blue",
       alpha = 0.5
+    ) +
+    geom_pointinterval(
+      aes(
+        ymin = q_25,
+        ymax = q_75
+      ),
+      fill = "blue",
+      alpha = 0.75
     ) +
     geom_point(aes(y = observed)) +
     geom_line(aes(y = observed)) +
