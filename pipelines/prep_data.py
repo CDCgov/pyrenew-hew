@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import subprocess
+import tempfile
 from logging import Logger
 from pathlib import Path
 
@@ -22,7 +23,11 @@ def get_nhsn(
     end_date: datetime.date,
     disease: str,
     state_abb: str,
+    temp_dir=None,
 ) -> None:
+    if temp_dir is None:
+        temp_dir = tempfile.mkdtemp()
+
     def py_scalar_to_r_scalar(py_scalar):
         if py_scalar is None:
             return "NULL"
@@ -37,6 +42,8 @@ def get_nhsn(
 
     state_abb = state_abb if state_abb != "US" else "USA"
 
+    temp_file = Path(temp_dir, "nhsn_temp.parquet")
+
     r_command = [
         "Rscript",
         "-e",
@@ -50,16 +57,15 @@ def get_nhsn(
         dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
         dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
         dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
-        readr::write_tsv(stdout())
+        arrow::write_parquet("{str(temp_file)}")
         """,
     ]
-    result = subprocess.run(
-        r_command,
-        capture_output=True,
-    )
+
+    result = subprocess.run(r_command)
+
     if result.returncode != 0:
         raise RuntimeError(f"pull_and_save_nhsn: {result.stderr}")
-    raw_dat = pl.read_csv(result.stdout, separator="\t")
+    raw_dat = pl.read_parquet(temp_file)
     dat = raw_dat.with_columns(
         weekendingdate=pl.col("weekendingdate").cast(pl.Date)
     )
@@ -376,7 +382,7 @@ def process_and_save_state(
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "data_observed_disease_ed_visits": train_disease_ed_visits,
-        "data_observed_total_hospital_admissions": train_total_ed_visits,
+        "data_observed_total_ed_visits": train_total_ed_visits,
         "data_observed_disease_hospital_admissions": train_disease_hospital_admissions,
         "nssp_training_dates": nssp_training_dates,
         "nhsn_training_dates": nhsn_training_dates,
