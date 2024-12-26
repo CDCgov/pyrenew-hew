@@ -42,7 +42,6 @@ plot_pred_act_by_horizon <- function(scoreable_table,
       x = target_end_date,
       y = q_50
     )) +
-    geom_point(color = "blue") +
     geom_pointinterval(
       aes(
         ymin = q_2.5,
@@ -50,7 +49,7 @@ plot_pred_act_by_horizon <- function(scoreable_table,
       ),
       color = "blue",
       alpha = 0.5,
-      interval_linewidth = 2,
+      linewidth = 10,
       point_size = 0
     ) +
     geom_pointinterval(
@@ -59,29 +58,37 @@ plot_pred_act_by_horizon <- function(scoreable_table,
         ymax = q_75
       ),
       color = "blue",
+      point_fill = "darkblue",
+      point_color = "black",
+      point_alpha = 1,
       alpha = 0.75,
-      interval_linewidth = 4,
-      point_size = 3,
+      linewidth = 20,
+      point_size = 4,
       shape = 23
     ) +
+    geom_line(aes(y = observed),
+      size = 1
+    ) +
     geom_point(aes(y = observed),
-      size = 5,
+      size = 4,
       shape = 21,
       fill = "darkred",
-      color = "black"
+      color = "black",
+      alpha = 1
     ) +
-    geom_line(aes(y = observed),
-      linewidth = 2,
-      linetype = "dashed"
+    facet_grid(disease ~ horizon,
+      scales = "free_y"
     ) +
-    facet_wrap(disease ~ horizon) +
     labs(
       title =
         glue::glue("Predictions and observations for {location}"),
       x = "Target date",
       y = "%ED visits"
     ) +
-    scale_y_continuous(labels = scales::label_percent()) +
+    scale_y_continuous(
+      labels = scales::label_percent(),
+      transform = "log10"
+    ) +
     forecasttools::theme_forecasttools()
 
   return(plot)
@@ -258,7 +265,9 @@ score_and_save <- function(observed_data_path,
   )
 
   summaries <- desired_summaries |>
-    purrr::map(\(x) scoringutils::summarise_scores(full_scores, by = x))
+    purrr::map(\(x) {
+      scoringutils::summarise_scores(full_scores, by = x)
+    })
 
 
   coverage_figs <- purrr::map(
@@ -308,7 +317,15 @@ score_and_save <- function(observed_data_path,
   )
 
   wis_by_loc <- scoringutils::plot_wis(
-    summaries$summary_by_location,
+    summaries$summary_by_location |>
+      dplyr::arrange(horizon, target, wis) |>
+      dplyr::mutate(location = factor(
+        location,
+        levels = unique(
+          location
+        ),
+        ordered = TRUE
+      )),
     x = "location"
   ) +
     facet_grid(horizon ~ target)
@@ -321,6 +338,14 @@ score_and_save <- function(observed_data_path,
       ext = extension
     ))
   }
+
+  message("Saving WIS component plot...")
+  ggsave(
+    make_output_path("wis_components", "pdf"),
+    wis_by_loc,
+    width = 8.5,
+    height = 11
+  )
 
   forecasttools::plots_to_pdf(
     coverage_figs,
@@ -351,10 +376,6 @@ score_and_save <- function(observed_data_path,
     height = 8.5
   )
 
-  ggsave(
-    make_output_path("wis_components", "pdf"),
-    wis_by_loc
-  )
 
   message("Saving summary tables...")
   purrr::walk2(
