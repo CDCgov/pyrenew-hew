@@ -8,6 +8,7 @@ import numpyro
 
 numpyro.set_host_device_count(4)
 
+
 from prep_eval_data import save_eval_data  # noqa
 from utils import parse_model_batch_dir_name  # noqa
 from fit_pyrenew_model import fit_and_save_model  # noqa
