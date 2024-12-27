@@ -88,7 +88,7 @@ def main(
 
     base_call = (
         "/bin/bash -c '"
-        "python pipelines/score_location.py "
+        "poetry run python pipelines/score_location.py "
         "{model_batch_dir_path} "
         "nssp-archival-vintages/latest_comprehensive.parquet "
         "--state {location}"

@@ -10,7 +10,7 @@ numpyro.set_host_device_count(4)
 
 from pipelines.prep_eval_data import save_eval_data  # noqa
 from pipelines.utils import parse_model_batch_dir_name  # noqa
-from pipelines.fit_model import fit_and_save_model  # noqa
+from pipelines.fit_pyrenew_model import fit_and_save_model  # noqa
 from pipelines.generate_predictive import (  # noqa
     generate_and_save_predictions,
 )
