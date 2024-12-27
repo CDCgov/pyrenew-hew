@@ -36,4 +36,4 @@ jobs:
             pak::pkg_install("cmu-delphi/epiprocess@main", ask = FALSE)
         shell: Rscript {0}
       - name: "Run pipeline"
-        run: poetry run bash pipelines/tests/test_forecast_state.sh pipelines/tests
+        run: poetry run bash pipelines/tests/test_end_to_end.sh pipelines/tests
