@@ -1,4 +1,7 @@
 # PyRenew-HEW
+| hewr | pyrenew-hew | pipelines |
+| ---- | ----------- | --------- |
+| [![hewr](https://codecov.io/gh/CDCgov/pyrenew-hew/branch/main/graph/badge.svg?flag=hewr)](https://codecov.io/gh/CDCgov/pyrenew-hew) | [![pyrenew_hew](https://codecov.io/gh/CDCgov/pyrenew-hew/graph/badge.svg?flag=pyrenew_hew)](https://codecov.io/gh/CDCgov/pyrenew-hew) | [![pipelines](https://codecov.io/gh/CDCgov/pyrenew-hew/graph/badge.svg?flag=pipelines)](https://codecov.io/gh/CDCgov/pyrenew-hew) |
 
 The PyRenew-HEW project aims to create short-term forecasts of respiratory disease burden using the [PyRenew library](https://github.com/CDCgov/PyRenew) and several data sources:
 
