@@ -82,6 +82,7 @@ collate_disease <- function(base_dir,
                             disease,
                             score_file_stem = "score_table",
                             score_file_ext = "rds") {
+  message(glue::glue("Collating disease {disease} from dir {base_dir}"))
   tabs <- fs::dir_map(base_dir,
     \(x) {
       read_score_table(
@@ -101,7 +102,7 @@ collate_and_save <- function(base_dir,
                              diseases = c("COVID-19", "Influenza"),
                              score_file_stem = "score_table",
                              score_file_ext = "rds") {
-  if (is.null(save_dir)) {
+  if (is.null(save_dir) || is.na(save_dir)) {
     save_dir <- base_dir
   }
   collate_and_save_disease <- function(disease) {
@@ -142,10 +143,10 @@ p <- arg_parser(
   add_argument(
     "--save-dir",
     help = paste0(
-      "Directory in which to save the results. If NULL,",
+      "Directory in which to save the results. If NULL or NA,",
       "use the dir_of_forecast_dirs"
     ),
-    default = NULL
+    default = NA
   ) |>
   add_argument(
     "--score-file-stem",
