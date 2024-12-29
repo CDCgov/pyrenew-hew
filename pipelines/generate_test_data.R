@@ -15,11 +15,11 @@ purrr::walk(script_packages, \(pkg) {
   )
 })
 
-# Set seed for reproducibility
-set.seed(123)
-
 # Dict for converting to short names
-disease_short_names <- list("COVID-19/Omicron" = "COVID-19")
+disease_short_names <- list(
+  "COVID-19/Omicron" = "COVID-19",
+  "Influenza" = "Influenza"
+)
 
 
 #' Create Facility Test Data
@@ -84,50 +84,50 @@ create_facility_test_data <- function(facility,
 
 #' Generate Fake Facility Data
 #'
-#' This function generates fake facility data for a specified number of
-#' facilities within a given date range and writes the data to a parquet file.
+#' This function generates fake facility data for a specified
+#' number of facilities within a given date range and writes
+#' the data to a parquet file.
 #'
-#' @param private_data_dir A string specifying the directory where the generated
-#' data will be saved.
-#' @param facility_geo_values A vector of strings
-#' representing the geographic values (locations)
-#' of each facility to simulated data. Default is `"CA"`
-#' (simulate a single facility in California).
-#' @param start_reference A Date object specifying the start date for the data
-#' generation. Default is "2024-06-01".
-#' @param end_reference A Date object specifying the end date for the data
-#' generation. Default is "2024-12-25".
-#' @param initial A numeric value specifying the initial value for the data
-#' generation. Default is 10.
-#' @param mean_other A numeric value specifying the mean value for other data
-#' points. Default is 200.
-#' @param target_disease A string specifying the target disease for the data
-#' generation. Default is "COVID-19/Omicron".
+#' @param facilities_to_simulate a tibble of facility/disease
+#' pairs to simulate with columns `facility_id`, `geo_value`, and
+#' `target_disease`.
+#' @param private_data_dir A string specifying the directory
+#' where the generated data will be saved.
+#' @param start_reference A Date object specifying the start
+#' date for the data generation. Default is "2024-06-01".
+#' @param end_reference A Date object specifying the end date
+#' for the data generation. Default is "2024-12-25".
+#' @param initial A numeric value specifying the initial value
+#' for the data generation. Default is 10.
+#' @param mean_other A numeric value specifying the mean value for
+#' other data points. Default is 200.
 #'
-#' @return This function does not return a value. It writes the generated data
-#' to a parquet file.
+#' @return This function does not return a value. It writes the
+#' generated data to a parquet file as a side effect.
 generate_fake_facility_data <-
-  function(private_data_dir = path(getwd()),
-           facility_geo_values = "CA",
+  function(facilities_to_simulate,
+           private_data_dir = path(getwd()),
            start_reference = as.Date("2024-06-01"),
-           end_reference = as.Date("2024-12-25"),
+           end_reference = as.Date("2024-12-21"),
            initial = 10,
-           mean_other = 200,
-           target_disease = "COVID-19/Omicron") {
+           mean_other = 200) {
     nssp_etl_gold_dir <- path(private_data_dir, "nssp_etl_gold")
     dir_create(nssp_etl_gold_dir, recurse = TRUE)
 
-    fac_data <- purrr::imap(facility_geo_values, \(x, i) {
-      create_facility_test_data(
-        i,
-        start_reference = start_reference,
-        end_reference = end_reference,
-        geo_value = x,
-        initial = initial,
-        mean_other = mean_other,
-        target_disease = target_disease
-      )
-    }) |>
+    purrr::pmap(
+      facilities_to_simulate,
+      \(facility_id, geo_value, target_disease) {
+        create_facility_test_data(
+          facility = facility_id,
+          start_reference = start_reference,
+          end_reference = end_reference,
+          geo_value = geo_value,
+          initial = initial,
+          mean_other = mean_other,
+          target_disease = target_disease
+        )
+      }
+    ) |>
       bind_rows() |>
       write_parquet(path(nssp_etl_gold_dir,
         end_reference,
@@ -137,14 +137,11 @@ generate_fake_facility_data <-
 
 #' Generate State Level Data
 #'
-#' This function generates state-level test data for a specified disease over a
-#' given time period.
-#'
-#' @param states_to_generate A vector of strings representing
-#' individual states for which to generate simulated data.
-#' Default is `"CA"` (simulate data only for California).
-#' @param facilities_per_state number of facilities to simulate
-#' for each state in states_to_generate. Default 1.
+#' This function generates state-level test data for a
+#' specified disease over a given time period.
+#' @param facilities_to_simulate a tibble of facility/disease
+#' pairs to simulate with columns `facility_id`, `geo_value`, and
+#' `target_disease`.
 #' @param private_data_dir A string specifying the directory
 #' where the generated data will be stored.
 #' @param start_reference A Date object specifying the start date
@@ -155,20 +152,16 @@ generate_fake_facility_data <-
 #' generation (per facility). Default is 10.
 #' @param mean_other A numeric value specifying the mean value for
 #' other data points (per facility). Default is 200.
-#' @param target_disease A string specifying the target disease for the data
-#' generation. Default is "COVID-19/Omicron".
 #'
 #' @return This function does not return a value. It writes the generated data
-#' to a parquet file in the specified directory.
+#' to parquet files in the specified directory as a side effect.
 generate_fake_state_level_data <-
-  function(states_to_generate = "CA",
-           facilities_per_state = c(1),
+  function(facilities_to_simulate,
            private_data_dir = path(getwd()),
            start_reference = as.Date("2024-06-01"),
-           end_reference = as.Date("2024-12-25"),
+           end_reference = as.Date("2024-12-21"),
            initial = 10,
            mean_other = 200,
-           target_disease = "COVID-19/Omicron",
            n_forecast_days = 28) {
     gold_dir <- path(private_data_dir, "nssp_state_level_gold")
     dir_create(gold_dir, recurse = TRUE)
@@ -176,29 +169,34 @@ generate_fake_state_level_data <-
     comp_dir <- path(private_data_dir, "nssp-archival-vintages")
     dir_create(comp_dir, recurse = TRUE)
 
-    state_data <- purrr::map2(
-      states_to_generate,
-      facilities_per_state,
-      \(x, y) {
-        create_facility_test_data(
-          x,
-          start_reference = start_reference,
-          end_reference =
-            end_reference + n_forecast_days,
-          geo_value = x,
-          initial = y * initial,
-          mean_other = y * mean_other,
-          target_disease = target_disease
-        )
-      }
-    ) |>
+    state_data <-
+      purrr::pmap(
+        facilities_to_simulate,
+        \(facility_id, geo_value, target_disease) {
+          create_facility_test_data(
+            facility = facility_id,
+            start_reference = start_reference,
+            end_reference = end_reference,
+            geo_value = geo_value,
+            initial = initial,
+            mean_other = mean_other,
+            target_disease = target_disease
+          )
+        }
+      ) |>
       bind_rows() |>
-      select(-facility, -run_id, -asof)
+      group_by(across(c(-facility, -value))) |>
+      summarise(value = sum(value), .groups = "drop") |>
+      ungroup() |>
+      select(-run_id, -asof)
 
     # Write in-sample state-level data to gold directory
     state_data |>
       filter(reference_date <= end_reference) |>
-      mutate(any_update_this_day = TRUE) |>
+      mutate(
+        any_update_this_day = TRUE,
+        reference_date = as.Date(.data$reference_date)
+      ) |>
       write_parquet(path(gold_dir, end_reference, ext = "parquet"))
 
     # Write out-of-sample state-level data to comparison directory
@@ -211,13 +209,15 @@ generate_fake_state_level_data <-
 
 #' Generate Fake Parameter Data
 #'
-#' This function generates fake parameter data for a specified disease and
-#' saves it as a parquet file.
+#' This function generates fake parameter data for a
+#' specified disease and saves it as a parquet file.
 #'
-#' The function creates a directory for storing the parameter estimates
-#' if it does not already exist. It then generates a simple discretized
+#' The function creates a directory for storing the
+#' parameter estimates if it does not already exist.
+#' It then generates a simple discretized
 #' exponential distribution for the generation interval (gi_pmf)
-#' and a right truncation probability mass function (rt_truncation_pmf).
+#' and a right truncation probability mass function
+#' (rt_truncation_pmf).
 #'
 #' @param private_data_dir A string specifying the directory
 #' where the data will be saved.
@@ -226,119 +226,148 @@ generate_fake_state_level_data <-
 #' PMFs. Default is `"CA"` (create a PMF only for California).
 #' @param end_reference A Date object specifying the end
 #' reference date for the data. Default is "2024-12-25".
-#' @param target_disease A string specifying the target disease for
-#' the data. Default is "COVID-19".
-generate_fake_param_data <- function(private_data_dir = path(getwd()),
-                                     states_to_generate = "CA",
-                                     end_reference = as.Date("2024-12-25"),
-                                     target_disease = "COVID-19") {
-  prod_param_estimates_dir <- path(
-    private_data_dir,
-    "prod_param_estimates"
-  )
-  dir_create(prod_param_estimates_dir, recurse = TRUE)
+#' @param target_diseases A vector of strings specifying the
+#' target disease(s) for the data. Default is
+#' `c("COVID-19", "Influenza")`.
+generate_fake_param_data <-
+  function(private_data_dir = path(getwd()),
+           states_to_generate = "CA",
+           end_reference = as.Date("2024-12-21"),
+           target_diseases = c("COVID-19", "Influenza")) {
+    prod_param_estimates_dir <- path(
+      private_data_dir,
+      "prod_param_estimates"
+    )
+    dir_create(prod_param_estimates_dir, recurse = TRUE)
 
-  # Simple discretize exponential distribution
-  gi_pmf <- seq(0.5, 6.5) |> dexp()
-  gi_pmf <- gi_pmf / sum(gi_pmf)
-  delay_pmf <- seq(0.5, 10.5) |> dexp(rate = 1 / 2)
-  delay_pmf <- delay_pmf / sum(delay_pmf)
-  rt_truncation_pmf <- c(1, 0, 0, 0)
+    purrr::map(target_diseases, \(target_disease) {
+      ## Simple discretize exponential distribution
+      gi_pmf <- seq(0.5, 6.5) |> dexp()
+      gi_pmf <- gi_pmf / sum(gi_pmf)
+      delay_pmf <- seq(0.5, 10.5) |> dexp(rate = 1 / 2)
+      delay_pmf <- delay_pmf / sum(delay_pmf)
+      rt_truncation_pmf <- c(1, 0, 0, 0)
 
-  gi_data <- tibble(
-    id = 0,
-    start_date = as.Date("2024-06-01"),
-    end_date = NA,
-    reference_date = end_reference,
-    disease = target_disease,
-    format = "PMF",
-    parameter = "generation_interval",
-    geo_value = NA,
-    value = list(gi_pmf)
-  )
-
-  delay_data <- tibble(
-    id = 0,
-    start_date = as.Date("2024-06-01"),
-    end_date = NA,
-    reference_date = end_reference,
-    disease = target_disease,
-    format = "PMF",
-    parameter = "delay",
-    geo_value = NA,
-    value = list(delay_pmf)
-  )
-
-  rt_trunc_data <- purrr::imap(
-    states_to_generate,
-    \(x, i) {
-      tibble(
-        id = i,
+      gi_data <- tibble(
+        id = 0,
         start_date = as.Date("2024-06-01"),
         end_date = NA,
         reference_date = end_reference,
         disease = target_disease,
         format = "PMF",
-        parameter = "right_truncation",
-        geo_value = x,
-        value = list(rt_truncation_pmf)
+        parameter = "generation_interval",
+        geo_value = NA,
+        value = list(gi_pmf)
       )
-    }
-  ) |>
-    bind_rows()
 
-  bind_rows(
-    gi_data,
-    delay_data,
-    rt_trunc_data
-  ) |>
-    write_parquet(
-      path(prod_param_estimates_dir, "prod", ext = "parquet")
+      delay_data <- tibble(
+        id = 0,
+        start_date = as.Date("2024-06-01"),
+        end_date = NA,
+        reference_date = end_reference,
+        disease = target_disease,
+        format = "PMF",
+        parameter = "delay",
+        geo_value = NA,
+        value = list(delay_pmf)
+      )
+
+      rt_trunc_data <- purrr::imap(
+        states_to_generate,
+        \(x, i) {
+          tibble(
+            id = i,
+            start_date = as.Date("2024-06-01"),
+            end_date = NA,
+            reference_date = end_reference,
+            disease = target_disease,
+            format = "PMF",
+            parameter = "right_truncation",
+            geo_value = x,
+            value = list(rt_truncation_pmf)
+          )
+        }
+      ) |>
+        bind_rows()
+
+      return(bind_rows(
+        gi_data,
+        delay_data,
+        rt_trunc_data
+      ))
+    }) |>
+      bind_rows() |>
+      write_parquet(
+        path(prod_param_estimates_dir, "prod", ext = "parquet")
+      )
+  }
+
+main <- function(private_data_dir,
+                 target_diseases,
+                 n_forecast_days) {
+  short_target_diseases <- disease_short_names[target_diseases]
+  facilities <- tibble::tibble(
+    facility_id = 1:5,
+    geo_value = c(
+      rep("CA", 3),
+      rep("MT", 2)
     )
-}
-
-main <- function(private_data_dir, target_disease, n_forecast_days) {
-  short_target_disease <- disease_short_names[[target_disease]]
-  generate_fake_facility_data(private_data_dir,
-    facility_geo_values =
-      c(rep("CA", 3), rep("MT", 2)),
-    target_disease = target_disease
   )
+  to_generate <- tidyr::crossing(
+    facilities,
+    target_disease = target_diseases
+  )
+
+  generate_fake_facility_data(
+    to_generate,
+    private_data_dir
+  )
+
   generate_fake_state_level_data(
+    to_generate,
     private_data_dir,
-    states_to_generate = c("MT", "CA"),
-    facilities_per_state = c(2, 3),
-    target_disease = target_disease,
     n_forecast_days = n_forecast_days
   )
   generate_fake_param_data(
     private_data_dir,
     states_to_generate = c("MT", "CA", "US"),
-    target_disease = short_target_disease
+    target_diseases = short_target_diseases
   )
 }
 
-p <- arg_parser("Create epiweekly data") |>
+p <- arg_parser("Create simulated epiweekly data.") |>
   add_argument(
     "model_run_dir",
     help = "Directory containing the model data and output."
   ) |>
   add_argument(
-    "--target-disease",
+    "--target-diseases",
     type = "character",
-    default = "COVID-19/Omicron",
-    help = "Target disease for the data generation."
+    default = "COVID-19/Omicron Influenza",
+    help = paste0(
+      "Target disease(s) for which to simulate data, ",
+      "as a whitespace-separated string"
+    )
   ) |>
   add_argument(
     "--n-forecast-days",
     type = "integer",
     default = 28,
     help = "Number of days to forecast."
+  ) |>
+  add_argument(
+    "--seed",
+    type = "integer",
+    default = 123,
+    help = "Seed for the pseudorandom number generator."
   )
+
 
 argv <- parse_args(p)
 
-main(argv$model_run_dir,
-  target_disease = argv$target_disease,
-  n_forecast_days = argv$n_forecast_days
-)
+withr::with_seed(argv$seed, {
+  main(argv$model_run_dir,
+    target_diseases = stringr::str_split_1(argv$target_diseases, " "),
+    n_forecast_days = argv$n_forecast_days
+  )
+})

@@ -9,6 +9,7 @@ fi
 BASE_DIR="$1"
 echo "TEST-MODE: Running forecast_state.py in test mode with base directory $BASE_DIR"
 Rscript pipelines/generate_test_data.R "$BASE_DIR/private_data"
+
 if [ $? -ne 0 ]; then
     echo "TEST-MODE FAIL: Generating test data failed"
     exit 1
@@ -34,15 +35,15 @@ do
 	       --n-warmup 250 \
 	       --score \
 	       --eval-data-path "$BASE_DIR/private_data/nssp-archival-vintages"
+	if [ $? -ne 0 ]; then
+	    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
+	    exit 1
+	else
+	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for" $disease "and" $state "."
+	fi
     done
 done
 
-if [ $? -ne 0 ]; then
-    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
-    exit 1
-else
-    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline"
-fi
 
 echo "TEST-MODE: Running batch postprocess..."
 python pipelines/postprocess_forecast_batches.py \

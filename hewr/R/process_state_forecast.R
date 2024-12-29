@@ -146,12 +146,21 @@ process_state_forecast <- function(model_run_dir,
   pyrenew_model_dir <- fs::path(model_run_dir, pyrenew_model_name)
   timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
   disease_name <- parse_model_run_dir_path(model_run_dir)$disease
+  data_cols <- readr::cols(
+    date = readr::col_date(),
+    ed_visits = readr::col_double()
+  )
 
   train_data_path <- fs::path(model_run_dir, "data", "data", ext = "tsv")
-  train_dat <- readr::read_tsv(train_data_path, show_col_types = FALSE)
+  train_dat <- readr::read_tsv(train_data_path,
+    col_types = data_cols
+  )
 
-  eval_data_path <- fs::path(model_run_dir, "data", "eval_data", ext = "tsv")
-  eval_dat <- readr::read_tsv(eval_data_path, show_col_types = FALSE) |>
+  eval_data_path <- fs::path(model_run_dir, "data",
+    "eval_data",
+    ext = "tsv"
+  )
+  eval_dat <- readr::read_tsv(eval_data_path, col_types = data_cols) |>
     dplyr::mutate(data_type = "eval")
 
   posterior_predictive_path <- fs::path(pyrenew_model_dir, "mcmc_tidy",

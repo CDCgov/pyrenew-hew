@@ -18,7 +18,7 @@ purrr::walk(script_packages, \(pkg) {
 #' Score Forecasts
 #'
 #' This function scores forecast data using the `scoringutils` package. It takes
-#' in scorable data, that is data which has a joined truth data and forecast
+#' in scoreable data, that is data which has a joined truth data and forecast
 #' data, and scores it.
 #'
 #' This function aims at scoring _sampled_ forecasts. Care must be taken to
@@ -34,7 +34,7 @@ purrr::walk(script_packages, \(pkg) {
 #' If more than one model is present in the data, in the column `model_col` the
 #' function will add relative skill metrics to the output.
 #'
-#' @param scorable_data A data frame containing the data to be scored.
+#' @param scoreable_data A data frame containing the data to be scored.
 #' @param forecast_unit A string specifying the forecast unit.
 #' @param observed A string specifying the column name for observed
 #' values.
@@ -43,19 +43,35 @@ purrr::walk(script_packages, \(pkg) {
 #' @param sample_id A string specifying the column name for sample
 #' IDs. Default is ".draw".
 #' @param model_col A string specifying the column name for models.
+#' @param strict Error if there are no forecasts to score (`TRUE`) or
+#' return `NULL` (`FALSE`)? Default `TRUE` (error).
 #' @param ... Additional arguments passed to
 #' `scoringutils::transform_forecasts`.
 #'
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
-score_single_run <- function(scorable_data,
+score_single_run <- function(scoreable_data,
                              quantile_only_data,
                              forecast_unit,
                              observed,
                              predicted,
                              sample_id = ".draw",
-                             model_col = "model", ...) {
-  forecast_sample_df <- scorable_data |>
+                             strict = TRUE,
+                             model_col = "model",
+                             ...) {
+  if (!nrow(scoreable_data) > 0) {
+    if (strict) {
+      stop(paste0(
+        "Nothing to score. ",
+        "If you want to permit this, ",
+        "set `strict` to `FALSE`."
+      ))
+    } else {
+      return(NULL)
+    }
+  }
+
+  forecast_sample_df <- scoreable_data |>
     scoringutils::as_forecast_sample(
       forecast_unit = forecast_unit,
       observed = observed,
@@ -109,7 +125,7 @@ score_single_run <- function(scorable_data,
     scoringutils::transform_forecasts(...) |>
     scoringutils::score(metrics = quantile_metrics)
   # Add relative skill if more than one model is present
-  if (n_distinct(scorable_data[[model_col]]) > 1) {
+  if (n_distinct(scoreable_data[[model_col]]) > 1) {
     sample_scores <- scoringutils::add_relative_skill(sample_scores)
     quantile_scores <- scoringutils::add_relative_skill(quantile_scores)
   }
@@ -127,40 +143,49 @@ prep_truth_data <- function(truth_data_path) {
     filter(data_type == "eval") |>
     rename(true_value = ed_visits)
 
+  any_truth_data <- nrow(dat) > 0
+
   truth_data_valid <- (
     dplyr::n_distinct(dat$disease) == 2 &
       "Total" %in% dat$disease &
       xor(
         "COVID-19" %in% dat$disease,
         "Influenza" %in% dat$disease
-      ))
+      ) || !any_truth_data)
 
   if (!truth_data_valid) {
     err_dis <- paste(unique(dat$disease), collapse = "', ")
     stop(
-      "Evaluation data 'disease' column must ",
-      "have exactly two uniques entries: 'Total' ",
+      "If evaluation data is provided, the 'disease' column must ",
+      "have exactly two unique entries: 'Total' ",
       "and exactly one of 'COVID-19', 'Influenza'. ",
       glue::glue("Got: '{err_dis}")
     )
   }
 
-  prepped_dat <- dat |>
-    mutate(disease = ifelse(disease %in% c("COVID-19", "Influenza"),
-      "Disease",
-      disease
-    )) |>
-    tidyr::pivot_wider(
-      names_from = "disease",
-      values_from = "true_value"
-    ) |>
-    mutate(prop_disease_ed_visits = Disease / Total) |>
-    tidyr::pivot_longer(
-      c(Disease, Total, prop_disease_ed_visits),
-      names_to = "disease",
-      values_to = "true_value"
+  if (any_truth_data) {
+    prepped_dat <- dat |>
+      mutate(disease = ifelse(disease %in% c("COVID-19", "Influenza"),
+        "Disease",
+        disease
+      )) |>
+      tidyr::pivot_wider(
+        names_from = "disease",
+        values_from = "true_value"
+      ) |>
+      mutate(prop_disease_ed_visits = Disease / Total) |>
+      tidyr::pivot_longer(
+        c(Disease, Total, prop_disease_ed_visits),
+        names_to = "disease",
+        values_to = "true_value"
+      )
+  } else {
+    prepped_dat <- tibble::tibble(
+      date = lubridate::ymd(),
+      disease = character(0),
+      true_value = numeric(0)
     )
-
+  }
   return(prepped_dat)
 }
 
@@ -269,7 +294,8 @@ read_and_score_location <- function(model_run_dir,
     observed = "true_value",
     sample_id = ".draw",
     predicted = ".value",
-    offset = 1 / max_visits
+    offset = 1 / max_visits,
+    strict = strict
   )
 
   readr::write_rds(scored, fs::path(model_run_dir,
