@@ -324,6 +324,7 @@ def main(
         output_data_dir=Path(model_run_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
     )
+    logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
     generate_epiweekly(model_run_dir)

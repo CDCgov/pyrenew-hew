@@ -18,7 +18,8 @@ purrr::walk(script_packages, \(pkg) {
 # Dict for converting to short names
 disease_short_names <- list(
   "COVID-19/Omicron" = "COVID-19",
-  "Influenza" = "Influenza"
+  "Influenza" = "Influenza",
+  "RSV" = "RSV"
 )
 
 
@@ -176,7 +177,8 @@ generate_fake_state_level_data <-
           create_facility_test_data(
             facility = facility_id,
             start_reference = start_reference,
-            end_reference = end_reference,
+            end_reference = end_reference +
+              lubridate::ddays(n_forecast_days),
             geo_value = geo_value,
             initial = initial,
             mean_other = mean_other,
@@ -343,7 +345,7 @@ p <- arg_parser("Create simulated epiweekly data.") |>
   add_argument(
     "--target-diseases",
     type = "character",
-    default = "COVID-19/Omicron Influenza",
+    default = "COVID-19/Omicron Influenza RSV",
     help = paste0(
       "Target disease(s) for which to simulate data, ",
       "as a whitespace-separated string"

@@ -39,13 +39,15 @@ do
 	    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
 	    exit 1
 	else
-	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for" $disease "and" $state "."
+	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for disease" $disease "in location" $state"."
 	fi
     done
 done
 
+echo "TEST-MODE: pipeline runs complete for all location/disease pairs."
 
 echo "TEST-MODE: Running batch postprocess..."
+
 python pipelines/postprocess_forecast_batches.py \
        $BASE_DIR/private_data \
        $BASE_DIR/private_data/nssp-archival-vintages/latest_comprehensive.parquet
@@ -56,4 +58,5 @@ if [ $? -ne 0 ]; then
 else
     echo "TEST-MODE: Batch postprocess succeeded."
 fi
-echo "TEST-MODE: All finished successfully"
+
+echo "TEST-MODE: All finished successfully."
