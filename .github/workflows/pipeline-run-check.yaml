@@ -8,6 +8,9 @@ on:
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
+    env:
+      NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
+      NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up python
