@@ -69,33 +69,32 @@ plot_category_pointintervals <- function(data, horizon) {
 }
 
 
-main <- function(influenza_table_path,
-                 covid_table_path,
-                 categories_path,
+main <- function(hubverse_table_path,
+                 disease,
                  output_path,
                  ...) {
-  flu_dat <- readr::read_tsv(influenza_table_path) |>
-    to_categorized_iqr("Influenza")
+  checkmate::check_names(disease,
+    subset.of = c("COVID-19", "Influenza")
+  )
 
-  covid_dat <- readr::read_tsv(covid_table_path) |>
-    to_categorized_iqr("COVID-19")
+  dat <- readr::read_tsv(hubverse_table_path) |>
+    to_categorized_iqr(disease)
 
   plots <- list(
-    flu_plot_1wk = flu_dat |>
+    plot_1wk = dat |>
       plot_category_pointintervals(horizon = 0) +
-      ggtitle("Influenza, 1 week ahead"),
-    flu_plot_2wk = flu_dat |>
+      labs(
+        x = "% ED visits",
+        y = "Location"
+      ) +
+      ggtitle(glue::glue("{disease}, 1 week ahead")),
+    plot_2wk = dat |>
       plot_category_pointintervals(horizon = 1) +
-      labs(x = "% ED visits") +
-      ggtitle("Influenza, 2 weeks ahead"),
-    covid_plot_1wk = covid_dat |>
-      plot_category_pointintervals(horizon = 0) +
-      labs(x = "% ED visits") +
-      ggtitle("COVID-19, 1 week ahead"),
-    covid_plot_2wk = covid_dat |>
-      plot_category_pointintervals(horizon = 1) +
-      labs(x = "% ED visits") +
-      ggtitle("COVID-19, 2 weeks ahead")
+      labs(
+        x = "% ED visits",
+        y = "Location"
+      ) +
+      ggtitle(glue::glue("{disease}, 2 weeks ahead"))
   )
 
 
@@ -108,12 +107,15 @@ main <- function(influenza_table_path,
 
 p <- arg_parser("Create a pointinterval plot of forecasts") |>
   add_argument(
-    "influenza_table_path",
-    help = "Path to a hubverse format forecast table for influenza."
+    "hubverse_table_path",
+    help = "Path to a hubverse format forecast table."
   ) |>
   add_argument(
-    "covid_table_path",
-    help = "Path to a hubverse format forecast table for COVID-19."
+    "disease",
+    help = paste0(
+      "Name of the disease to plot. ",
+      "One of 'COVID-19', 'Influenza'"
+    )
   ) |>
   add_argument(
     "output_path",
