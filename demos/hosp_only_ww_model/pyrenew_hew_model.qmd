@@ -50,7 +50,7 @@ We check that we can simulate from the prior predictive
 n_forecast_days = 35
 
 prior_predictive = my_pyrenew_hew_model.prior_predictive(
-    n_datapoints=len(data_observed_disease_ed_visits) + n_forecast_days,
+    n_observed_disease_ed_visits_datapoints=len(data_observed_disease_ed_visits) + n_forecast_days,
     numpyro_predictive_args={"num_samples": 200},
 )
 ```
@@ -75,7 +75,7 @@ Create the posterior predictive and forecast:
 ```{python}
 # | label: posterior predictive
 posterior_predictive = my_pyrenew_hew_model.posterior_predictive(
-    n_datapoints=len(data_observed_disease_ed_visits) + n_forecast_days
+    n_observed_disease_ed_visits_datapoints=len(data_observed_disease_ed_visits) + n_forecast_days
 )
 ```
 

@@ -17,9 +17,9 @@ from pygit2 import Repository
 numpyro.set_host_device_count(4)
 
 from fit_pyrenew_model import fit_and_save_model  # noqa
-from generate_predictive import (
+from generate_predictive import (  # noqa
     generate_and_save_predictions,
-)  # noqa
+)
 
 
 def record_git_info(model_run_dir: Path):
@@ -324,6 +324,7 @@ def main(
         output_data_dir=Path(model_run_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
     )
+    logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
     generate_epiweekly(model_run_dir)

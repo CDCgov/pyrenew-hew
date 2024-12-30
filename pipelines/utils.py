@@ -10,12 +10,14 @@ from pathlib import Path
 
 import polars as pl
 from forecasttools import ensure_listlike, location_table
+from forecasttools import ensure_listlike
+
 
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
 loc_abbrs_ = location_table["short_name"].to_list()
 
 
-def parse_model_batch_dir_name(model_batch_dir_name):
+def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
     """
     Parse the name of a model batch directory,
     returning a dictionary of parsed values.
