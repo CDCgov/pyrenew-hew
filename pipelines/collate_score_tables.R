@@ -195,31 +195,67 @@ collate_all_score_tables <- function(model_base_dir,
   return(full_score_table)
 }
 
+main <- function(dir_of_forecast_dirs,
+                 diseases = c("COVID-19", "Influenza"),
+                 score_file_names = c(
+                   "score_table",
+                   "epiweekly_score_table"
+                 ),
+                 score_file_ext = "rds",
+                 save_batch_scores = FALSE) {
+  forecast_dirs <- fs::dir_ls(dir_of_forecast_dirs,
+    type = "directory"
+  )
+  collate <- function(dir, filename, disease) {
+    savename <- glue::glue("{disease}_{filename}")
+    savepath <- fs::path(dir, savename, ext = score_file_ext)
+    collate_all_score_tables(
+      dir,
+      disease,
+      score_file_name = filename,
+      score_file_ext = score_file_ext,
+      score_file_save_path = savepath,
+      save_batch_scores = save_batch_scores
+    )
+  }
+
+  purrr::pwalk(
+    tidyr::crossing(
+      dir = forecast_dirs,
+      filename = score_file_names,
+      disease = diseases
+    ),
+    collate
+  )
+}
+
 
 p <- arg_parser(
   "Collate tables of scores into a single table across locations and dates."
 ) |>
   add_argument(
-    "model_base_dir",
+    "dir_of_forecast_dirs",
     help = paste0(
       "Base directory containing subdirectories that represent ",
       "individual forecast dates, each of which in turn has ",
-      "subdirectories that represent individual location forecasts."
+      "subdirectories that represent individual disease forecasts."
     )
   ) |>
   add_argument(
-    "disease",
+    "--diseases",
     help = paste0(
-      "Name of the disease for which to collate scores."
-    )
-  ) |>
-  add_argument(
-    "--score-file-name",
-    help = paste0(
-      "Basename of the score file to look for, ",
-      "without the file extension"
+      "Name(s) of the disease(s) for which to collate scores, ",
+      "as a whitespace-separated string."
     ),
-    default = "score_table"
+    default = "COVID-19 Influenza"
+  ) |>
+  add_argument(
+    "--score-file-names",
+    help = paste0(
+      "Basename(s) of the score file(s) to look for, ",
+      "without the file extension, as a whitespace-separated string."
+    ),
+    default = "score_table epiweekly_score_table"
   ) |>
   add_argument(
     "--score-file-ext",
@@ -237,15 +273,10 @@ p <- arg_parser(
 
 argv <- parse_args(p)
 
-collate_all_score_tables(
-  argv$model_base_dir,
-  argv$disease,
-  score_file_name = argv$score_file_name,
+main(
+  argv$dir_of_forecast_dirs,
+  diseases = stringr::str_split_1(argv$diseases, " "),
+  score_file_names = stringr::str_split_1(argv$score_file_names, " "),
   score_file_ext = argv$score_file_ext,
-  score_file_save_path =
-    fs::path(argv$model_base_dir,
-      glue::glue("{argv$disease}_{argv$score_file_name}"),
-      ext = argv$score_file_ext
-    ),
   save_batch_scores = argv$save_batch_scores
 )
