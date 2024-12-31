@@ -4,8 +4,8 @@
 #' and [scoringutils::score()] with reasonable defaults for
 #' `pyrenew-hew` production.
 #'
-#' @param scoreable_table Table to score, as the output
-#' of [forecasttools::quantile_table_to_scoreable()].
+#' @param scorable_table Table to score, as the output
+#' of [forecasttools::quantile_table_to_scorable()].
 #' @param transform transformation passed as the
 #' `fun` argument to [scoringutils::transform_forecasts()].
 #' Default [scoringutils::log_shift()].
@@ -23,12 +23,12 @@
 #' [scoringutils::score()], filtered to include only the
 #' transformed_scale.
 #' @export
-score_hewr <- function(scoreable_table,
+score_hewr <- function(scorable_table,
                        transform = scoringutils::log_shift,
                        append_transformed = FALSE,
                        offset = 1,
                        ...) {
-  to_score <- scoreable_table |>
+  to_score <- scorable_table |>
     scoringutils::transform_forecasts(
       fun = transform,
       append = append_transformed,
