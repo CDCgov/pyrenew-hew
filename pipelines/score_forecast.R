@@ -17,24 +17,24 @@ purrr::walk(script_packages, \(pkg) {
 
 #' Score Forecasts
 #'
-#' This function scores forecast data using the `scoringutils` package. It takes
-#' in scoreable data, that is data which has a joined truth data and forecast
-#' data, and scores it.
+#' This function scores forecast data using the `scoringutils` package.
+#' It takes in scorable data, that is data which has a joined truth data
+#' and forecast data, and scores it.
 #'
 #' This function aims at scoring _sampled_ forecasts. Care must be taken to
-#' select the appropriate columns for the observed and predicted values, as well
-#' as the forecast unit. The expected `sample_id` column is `.draw` due to
-#' expecting input from a tidybayes format.
+#' select the appropriate columns for the observed and predicted values, as
+#' well as the forecast unit. The expected `sample_id` column is `.draw`
+#' due to expecting input from a tidybayes format.
 #'
-#' NB: this function assumes that _log-scale_ scoring is the default. If you
-#' want to vary this behaviour, you can splat additional arguments to
-#' `scoringutils::transform_forecasts` such as the identity transformation e.g.
-#' `fun = identity` with `label = "identity"`.
+#' NB: this function assumes that _log-scale_ scoring is the default. If
+#' you want to vary this behaviour, you can splat additional arguments to
+#' `scoringutils::transform_forecasts` such as the identity transformation
+#' e.g. `fun = identity` with `label = "identity"`.
 #'
-#' If more than one model is present in the data, in the column `model_col` the
-#' function will add relative skill metrics to the output.
+#' If more than one model is present in the data in the column
+#' `model_col`, the function will add relative skill metrics to the output.
 #'
-#' @param scoreable_data A data frame containing the data to be scored.
+#' @param scorable_data A data frame containing the data to be scored.
 #' @param forecast_unit A string specifying the forecast unit.
 #' @param observed A string specifying the column name for observed
 #' values.
@@ -50,7 +50,7 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
-score_single_run <- function(scoreable_data,
+score_single_run <- function(scorable_data,
                              quantile_only_data,
                              forecast_unit,
                              observed,
@@ -59,7 +59,7 @@ score_single_run <- function(scoreable_data,
                              strict = TRUE,
                              model_col = "model",
                              ...) {
-  if (!nrow(scoreable_data) > 0) {
+  if (!nrow(scorable_data) > 0) {
     if (strict) {
       stop(paste0(
         "Nothing to score. ",
@@ -71,7 +71,7 @@ score_single_run <- function(scoreable_data,
     }
   }
 
-  forecast_sample_df <- scoreable_data |>
+  forecast_sample_df <- scorable_data |>
     scoringutils::as_forecast_sample(
       forecast_unit = forecast_unit,
       observed = observed,
@@ -125,7 +125,7 @@ score_single_run <- function(scoreable_data,
     scoringutils::transform_forecasts(...) |>
     scoringutils::score(metrics = quantile_metrics)
   # Add relative skill if more than one model is present
-  if (n_distinct(scoreable_data[[model_col]]) > 1) {
+  if (n_distinct(scorable_data[[model_col]]) > 1) {
     sample_scores <- scoringutils::add_relative_skill(sample_scores)
     quantile_scores <- scoringutils::add_relative_skill(quantile_scores)
   }

@@ -17,9 +17,9 @@ get_hubverse_table_paths <- function(dir,
 }
 
 
-plot_pred_act_by_horizon <- function(scoreable_table,
+plot_pred_act_by_horizon <- function(scorable_table,
                                      location) {
-  to_plot <- scoreable_table |>
+  to_plot <- scorable_table |>
     dplyr::filter(
       location == !!location,
       quantile_level %in% c(0.025, 0.25, 0.5, 0.75, 0.975, NA)
@@ -94,10 +94,10 @@ plot_pred_act_by_horizon <- function(scoreable_table,
   return(plot)
 }
 
-plot_pred_act_by_forecast_date <- function(scoreable_table,
+plot_pred_act_by_forecast_date <- function(scorable_table,
                                            location,
                                            disease) {
-  to_plot <- scoreable_table |>
+  to_plot <- scorable_table |>
     dplyr::filter(
       location == !!location,
       disease == !!disease
@@ -221,8 +221,8 @@ score_and_save <- function(observed_data_path,
       )
 
 
-    scoreable_table <- if (nrow(to_score) > 0) {
-      forecasttools::quantile_table_to_scoreable(
+    scorable_table <- if (nrow(to_score) > 0) {
+      forecasttools::quantile_table_to_scorable(
         to_score,
         observation_table = observed_data,
         obs_value_column =
@@ -234,17 +234,17 @@ score_and_save <- function(observed_data_path,
       NULL
     }
 
-    return(scoreable_table)
+    return(scorable_table)
   }
 
-  full_scoreable_table <- all_paths |>
+  full_scorable_table <- all_paths |>
     purrr::pmap(read_and_prep_for_scoring) |>
     dplyr::bind_rows()
 
   message("Finished reading in forecasts and preparing for scoring.")
   message("Scoring forecasts...")
   full_scores <- hewr::score_hewr(
-    full_scoreable_table
+    full_scorable_table
   )
 
   message("Scoring complete.")
@@ -280,14 +280,14 @@ score_and_save <- function(observed_data_path,
     }
   )
 
-  locations <- unique(full_scoreable_table$location)
+  locations <- unique(full_scorable_table$location)
 
   pred_actual_by_horizon <-
     purrr::map(
       locations,
       \(x) {
         plot_pred_act_by_horizon(
-          full_scoreable_table,
+          full_scorable_table,
           x
         )
       }
@@ -298,7 +298,7 @@ score_and_save <- function(observed_data_path,
       locations,
       \(x) {
         plot_pred_act_by_forecast_date(
-          full_scoreable_table,
+          full_scorable_table,
           x,
           "covid-19"
         )
@@ -308,7 +308,7 @@ score_and_save <- function(observed_data_path,
       locations,
       \(x) {
         plot_pred_act_by_forecast_date(
-          full_scoreable_table,
+          full_scorable_table,
           x,
           "influenza"
         )
