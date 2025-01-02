@@ -120,13 +120,17 @@ read_and_combine_data <- function(model_run_dir,
 #' @param value_colname Name of the column in
 #' `tidy_forecast` for the sampled values.
 #' Default `".value"`.
+#' @param epiweekly Is the timeseries epiweekly (as opposed
+#' to daily)? Boolean, default `FALSE` (i.e. daily timeseries).
 to_tidy_draws_timeseries <- function(tidy_forecast,
                                      observed,
                                      disease_name,
                                      date_colname = "date",
                                      sample_id_colname = ".draw",
-                                     value_colname = ".value") {
+                                     value_colname = ".value",
+                                     epiweekly = FALSE) {
   first_forecast_date <- min(tidy_forecast[[date_colname]])
+  day_count <- if (epiweekly) 7 else 1
   n_draws <- max(tidy_forecast[[sample_id_colname]])
   transformed_obs <- observed |>
     dplyr::filter(
@@ -141,7 +145,7 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 
   stopifnot(
     max(as.Date(transformed_obs[[date_colname]])) +
-      lubridate::ddays(1) == first_forecast_date
+      lubridate::ddays(day_count) == first_forecast_date
   )
 
   dplyr::bind_rows(
