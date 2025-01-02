@@ -298,7 +298,7 @@ process_state_forecast <- function(model_run_dir,
 
   forecast_with_epiweekly_other <- epiweekly_forecast_samples_raw |>
     dplyr::select(-"Other") |>
-    dpylr::left_join(epiweekly_other_samples,
+    dplyr::left_join(epiweekly_other_samples,
       by = c(".draw", "date")
     ) |>
     with_prop_disease_ed_visits() |>
