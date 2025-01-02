@@ -40,6 +40,9 @@ combine_training_and_eval_data <- function(train_dat,
       names_from = "disease",
       values_from = "ed_visits"
     ) |>
+    dplyr::mutate(
+      Other = .data$Total - .data$Disease
+    ) |>
     with_prop_disease_ed_visits() |>
     dplyr::select(-"Total") |>
     dplyr::mutate(time = dplyr::dense_rank(.data$date)) |>
