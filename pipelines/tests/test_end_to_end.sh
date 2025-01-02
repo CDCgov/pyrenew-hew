@@ -34,7 +34,7 @@ do
 	       --n-samples 250 \
 	       --n-warmup 250 \
 	       --score \
-	       --eval-data-path "$BASE_DIR/private_data/nssp-archival-vintages"
+	       --eval-data-path "$BASE_DIR/private_data/nssp-etl"
 	if [ $? -ne 0 ]; then
 	    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
 	    exit 1
@@ -50,7 +50,7 @@ echo "TEST-MODE: Running batch postprocess..."
 
 python pipelines/postprocess_forecast_batches.py \
        $BASE_DIR/private_data \
-       $BASE_DIR/private_data/nssp-archival-vintages/latest_comprehensive.parquet
+       $BASE_DIR/private_data/nssp-etl/latest_comprehensive.parquet
 
 if [ $? -ne 0 ]; then
     echo "TEST-MODE FAIL: Batch postprocess failed."
