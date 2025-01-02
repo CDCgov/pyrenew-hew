@@ -253,7 +253,8 @@ process_state_forecast <- function(model_run_dir,
     epiweekly_combined_dat |> dplyr::filter(.data$data_type == "train"),
     ## use this rather than epiweekly_train_dat since it has "Other"
     ## (as opposed to "Total") pre-computed
-    disease_name = "Other"
+    disease_name = "Other",
+    epiweekly = TRUE
   )
 
 
