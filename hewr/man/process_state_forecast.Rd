@@ -23,9 +23,15 @@ model outputs}
 \item{save}{Logical indicating whether or not to save}
 }
 \value{
-a list with four tibbles: \code{combined_dat},
-\code{forecast_samples}, \code{epiweekly_forecast_samples},
-and \code{forecast_ci}
+a list of 8 tibbles:
+\code{combined_dat},
+\code{epiweekly_combined_dat},
+\code{forecast_samples},
+\code{epiweekly_forecast_samples},
+\code{forecast_with_epiweekly_other},
+\code{forecast_ci},
+\code{epiweekly_forecast_ci},
+\code{forecast_with_epiweekly_other_ci}
 }
 \description{
 Process state forecast
