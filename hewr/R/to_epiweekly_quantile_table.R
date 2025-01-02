@@ -27,88 +27,40 @@ to_epiweekly_quantiles <- function(model_run_dir,
                                    report_date,
                                    max_lookback_days,
                                    disease_model_name = "pyrenew_e",
-                                   other_model_name = "timeseries_e",
                                    epiweekly_other = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
+  draws_name <- if (epiweekly_other) {
+    "foreacst_with_epiweekly_other"
+  } else {
+    "epiweekly_forecast_samples"
+  }
   draws_path <- fs::path(model_run_dir,
     disease_model_name,
-    "forecast_samples",
+    draws_name,
     ext = "parquet"
   )
 
   location <- fs::path_file(model_run_dir)
 
   draws <- arrow::read_parquet(draws_path) |>
-    dplyr::filter(.data$date >= lubridate::ymd(!!report_date) -
-      lubridate::days(!!max_lookback_days))
+    dplyr::filter(
+      .data$date >= lubridate::ymd(!!report_date) -
+        lubridate::days(!!max_lookback_days),
+      .data$disease == "prop_disease_ed_visits"
+    )
 
   if (nrow(draws) < 1) {
     return(NULL)
   }
 
-  epiweekly_disease_draws <- draws |>
-    dplyr::filter(
-      .data$disease == "Disease"
-    ) |>
-    forecasttools::daily_to_epiweekly(
-      date_col = "date",
-      value_col = ".value",
-      id_cols = ".draw",
-      weekly_value_name = "epiweekly_disease",
-      strict = TRUE
-    )
-
-  if (!epiweekly_other) {
-    epiweekly_other_draws <- draws |>
-      dplyr::filter(.data$disease == "Other") |>
-      forecasttools::daily_to_epiweekly(
-        date_col = "date",
-        value_col = ".value",
-        id_cols = ".draw",
-        weekly_value_name = "epiweekly_other",
-        strict = TRUE
-      )
-  } else {
-    denom_path <- fs::path(model_run_dir,
-      other_model_name,
-      "epiweekly_other_ed_visits_forecast",
-      ext = "parquet"
-    )
-
-    epiweekly_other_draws <- arrow::read_parquet(denom_path) |>
-      dplyr::filter(.data$date >= lubridate::ymd(!!report_date) -
-        lubridate::days(!!max_lookback_days)) |>
-      dplyr::rename("epiweekly_other" = "other_ed_visits") |>
-      dplyr::mutate(
-        epiweek = lubridate::epiweek(.data$date),
-        epiyear = lubridate::epiyear(.data$date)
-      )
-  }
-  epiweekly_prop_draws <- dplyr::inner_join(
-    epiweekly_disease_draws,
-    epiweekly_other_draws,
-    by = c(
-      "epiweek",
-      "epiyear",
-      ".draw"
-    )
-  ) |>
-    dplyr::mutate(
-      "epiweekly_proportion" =
-        .data$epiweekly_disease / (.data$epiweekly_disease +
-          .data$epiweekly_other)
-    )
-
-
-  epiweekly_quantiles <- epiweekly_prop_draws |>
+  epiweekly_quantiles <- draws |>
     forecasttools::trajectories_to_quantiles(
       timepoint_cols = c("epiweek", "epiyear"),
-      value_col = "epiweekly_proportion"
+      value_col = ".value"
     ) |>
     dplyr::mutate(
       "location" = !!location
     )
-
   message(glue::glue("Done processing {model_run_dir}"))
   return(epiweekly_quantiles)
 }
