@@ -20,24 +20,58 @@ save_forecast_figures <- function(model_run_dir,
     pyrenew_model_name,
     timeseries_model_name
   )
-
+  transform_to_suffix <- c("identity" = "", "log10" = "_log")
+  timescale_to_dat_prefix <- c(
+    "daily" = "",
+    "epiweekly" = "epiweekly_",
+    "epiweekly_other" = "epiweekly_"
+  )
+  timescale_to_ci_name <- c(
+    "daily" = "forecast_ci",
+    "epiweekly" = "epiweekly_forecast_ci",
+    "epiweekly_other" =
+      "forecast_with_epiweekly_other_ci"
+  )
   figure_save_tbl <-
     expand_grid(
       target_disease = unique(processed_forecast$combined_dat$disease),
-      y_transform = c("identity", "log10")
+      y_transform = c("identity", "log10"),
+      timescale = c("daily", "epiweekly", "epiweekly_other"),
     ) |>
-    mutate(path_suffix = c("identity" = "", "log10" = "_log")[y_transform]) |>
-    mutate(figure_path = path(model_run_dir,
-      glue("{target_disease}_forecast_plot{path_suffix}"),
-      ext = "pdf"
-    )) |>
-    mutate(figure = map2(
-      target_disease, y_transform,
-      \(target_disease, y_transform) {
+    filter(!(target_disease == "Disease" &
+      timescale == "epiweekly_other")) |>
+    mutate(
+      transform_suffix = transform_to_suffix[y_transform],
+      dat_prefix = timescale_to_dat_prefix[timescale],
+    ) |>
+    mutate(
+      figure_path = path(
+        model_run_dir,
+        glue(paste0(
+          "{target_disease}_",
+          "forecast_plot_",
+          "{timescale}{transform_suffix}"
+        )),
+        ext = "pdf"
+      ),
+      dat_to_use = glue("{dat_prefix}combined_dat"),
+      ci_to_use = timescale_to_ci_name[timescale]
+    ) |>
+    mutate(figure = pmap(
+      list(
+        target_disease,
+        y_transform,
+        dat_to_use,
+        ci_to_use
+      ),
+      \(target_disease,
+        y_transform,
+        dat_to_use,
+        ci_to_use) {
         make_forecast_figure(
           target_disease = target_disease,
-          combined_dat = processed_forecast$combined_dat,
-          forecast_ci = processed_forecast$forecast_ci,
+          combined_dat = processed_forecast[[dat_to_use]],
+          forecast_ci = processed_forecast[[ci_to_use]],
           disease_name = parsed_model_run_dir$disease,
           data_vintage_date = parsed_model_run_dir$report_date,
           y_transform = y_transform
