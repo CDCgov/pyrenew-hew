@@ -8,6 +8,7 @@ process_state_forecast(
   model_run_dir,
   pyrenew_model_name,
   timeseries_model_name,
+  ci_widths = c(0.5, 0.8, 0.95),
   save = TRUE
 )
 }
@@ -20,12 +21,17 @@ model outputs}
 \item{timeseries_model_name}{Name of directory containing timeseries
 model outputs}
 
-\item{save}{Logical indicating whether or not to save}
+\item{ci_widths}{Vector of probabilities indicating one or more
+central credible intervals to compute. Passed as the \code{.width}
+argument to \code{\link[ggdist:point_interval]{ggdist::median_qi()}}. Default \code{c(0.5, 0.8, 0.95)}.}
+
+\item{save}{Boolean indicating whether or not to save the output
+to parquet files. Default \code{TRUE}.}
 }
 \value{
 a list of 8 tibbles:
-\code{combined_dat},
-\code{epiweekly_combined_dat},
+\code{combined_training_eval_data},
+\code{epiweekly_combined_training_eval_data},
 \code{forecast_samples},
 \code{epiweekly_forecast_samples},
 \code{forecast_with_epiweekly_other},

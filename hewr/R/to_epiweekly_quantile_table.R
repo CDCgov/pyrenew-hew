@@ -87,9 +87,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
   locations_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
   ) |>
-    purrr::discard(~ .x %in% exclude)
-
-
+    purrr::discard(~ fs::path_file(.x) %in% exclude)
 
   batch_params <- hewr::parse_model_batch_dir_path(
     model_batch_dir

@@ -11,7 +11,6 @@ to_epiweekly_quantiles(
   report_date,
   max_lookback_days,
   disease_model_name = "pyrenew_e",
-  other_model_name = "timeseries_e",
   epiweekly_other = FALSE
 )
 }
@@ -32,14 +31,14 @@ quantiles will be generated.}
 disease to use when making the quantile table. Default
 \code{"pyrenew_e"}.}
 
+\item{epiweekly_other}{Use an expressly epiweekly forecast
+for non-target ED visits instead of a daily forecast aggregated
+to epiweekly? Boolean, default \code{FALSE}.}
+
 \item{other_model_name}{Name of the model for other ed visits
 to use when making the quantile table if "epiweekly_other" is
 \code{TRUE} (ignored when \code{epiweekly_other} is \code{FALSE}). Default
 \code{"timeseries_e"}.}
-
-\item{epiweekly_other}{Use an expressly epiweekly forecast
-for non-target ED visits instead of a daily forecast aggregated
-to epiweekly? Boolean, default \code{FALSE}.}
 }
 \value{
 A \code{\link[tibble:tibble]{tibble}} of quantiles.
