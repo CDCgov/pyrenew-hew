@@ -73,7 +73,7 @@ read_and_combine_data <- function(model_run_dir,
     ed_visits = readr::col_double()
   )
 
-  prefix <- if (epiweekly) "epiweekly_" else ""
+  prefix <- ifelse(epiweekly, "epiweekly_", "")
 
   train_data_path <- fs::path(model_run_dir,
     "data",
@@ -130,7 +130,7 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
                                      value_colname = ".value",
                                      epiweekly = FALSE) {
   first_forecast_date <- min(tidy_forecast[[date_colname]])
-  day_count <- if (epiweekly) 7 else 1
+  day_count <- ifelse(epiweekly, 7, 1)
   n_draws <- max(tidy_forecast[[sample_id_colname]])
   transformed_obs <- observed |>
     dplyr::filter(

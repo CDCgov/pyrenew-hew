@@ -47,11 +47,11 @@ save_forecast_figures <- function(model_run_dir,
     mutate(
       figure_path = path(
         model_run_dir,
-        glue(paste0(
+        glue(
           "{target_disease}_",
           "forecast_plot{transform_name}_",
           "{timescale}"
-        )),
+        ),
         ext = "pdf"
       ),
       dat_to_use = glue("{dat_prefix}combined_dat"),

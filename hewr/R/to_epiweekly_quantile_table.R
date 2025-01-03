@@ -29,11 +29,7 @@ to_epiweekly_quantiles <- function(model_run_dir,
                                    disease_model_name = "pyrenew_e",
                                    epiweekly_other = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
-  draws_name <- if (epiweekly_other) {
-    "forecast_with_epiweekly_other"
-  } else {
-    "epiweekly_forecast_samples"
-  }
+  draws_name <- ifelse(epiweekly_other, "forecast_with_epiweekly_other", "epiweekly_forecast_samples")
   draws_path <- fs::path(model_run_dir,
     disease_model_name,
     draws_name,
