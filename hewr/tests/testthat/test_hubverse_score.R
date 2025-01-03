@@ -18,11 +18,11 @@ testthat::test_that("score_hubverse works as expected with valid inputs", {
     location = c("loc1", "loc2")
   )
 
-  scored <- score_hubverse(forecast, observed)
+  scored <- score_hewr(forecast, observed)
   expect_setequal(forecast$location, scored$location)
   expect_setequal(scored$horizon, c(0, 1))
 
-  scored_all_horizon <- score_hubverse(
+  scored_all_horizon <- score_hewr(
     forecast, observed,
     horizons = c(0, 1, 2)
   )
@@ -51,7 +51,7 @@ testthat::test_that("score_hubverse handles missing location data", {
     location = c("loc1")
   )
 
-  result <- score_hubverse(forecast, observed)
+  result <- score_hewr(forecast, observed)
   expect_false("loc2" %in% result$location)
   expect_setequal(observed$location, result$location)
 })
@@ -78,7 +78,7 @@ testthat::test_that("score_hubverse handles zero length forecast table", {
   )
 
   expect_error(
-    result <- score_hubverse(forecast, observed),
+    result <- score_hewr(forecast, observed),
     "Assertion on 'data' failed: Must have at least 1 rows, but has 0 rows."
   )
 })
