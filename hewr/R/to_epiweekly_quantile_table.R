@@ -29,7 +29,10 @@ to_epiweekly_quantiles <- function(model_run_dir,
                                    disease_model_name = "pyrenew_e",
                                    epiweekly_other = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
-  draws_name <- ifelse(epiweekly_other, "forecast_with_epiweekly_other", "epiweekly_forecast_samples")
+  draws_name <- ifelse(epiweekly_other,
+    "forecast_with_epiweekly_other",
+    "epiweekly_forecast_samples"
+  )
   draws_path <- fs::path(model_run_dir,
     disease_model_name,
     draws_name,
@@ -83,13 +86,10 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
 
   locations_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
-  )
+  ) |>
+    purrr::discard(~ .x %in% exclude)
 
-  if (!is.null(exclude)) {
-    locations_to_process <- locations_to_process[
-      !(fs::path_file(locations_to_process) %in% exclude)
-    ]
-  }
+
 
   batch_params <- hewr::parse_model_batch_dir_path(
     model_batch_dir
