@@ -27,28 +27,21 @@ save_forecast_figures <- function(model_run_dir,
   y_transforms <- c("identity" = "", "log10" = "_log")
 
   timescales <- c(
-    "daily" = "",
-    "epiweekly" = "epiweekly_",
-    "epiweekly_other" = "epiweekly_"
+    "daily",
+    "epiweekly",
+    "epiweekly_with_epiweekly_other"
   )
 
-  timescales_to_ci_names <- c(
-    "daily" = "forecast_ci",
-    "epiweekly" = "epiweekly_forecast_ci",
-    "epiweekly_other" =
-      "forecast_with_epiweekly_other_ci"
-  )
   figure_save_tbl <-
     expand_grid(
       target_disease = diseases,
       y_transform = names(y_transforms),
-      timescale = names(timescales),
+      timescale = timescales,
     ) |>
     filter(!(target_disease == "Disease" &
-      timescale == "epiweekly_other")) |>
+      timescale == "epiweekly_with_epiweekly_other")) |>
     mutate(
-      transform_name = y_transforms[y_transform],
-      dat_prefix = timescales[timescale],
+      transform_name = y_transforms[y_transform]
     ) |>
     mutate(
       figure_path = path(
@@ -60,8 +53,8 @@ save_forecast_figures <- function(model_run_dir,
         ),
         ext = "pdf"
       ),
-      dat_to_use = glue("{dat_prefix}combined_dat"),
-      ci_to_use = timescales_to_ci_names[timescale]
+      dat_to_use = glue("{timescale}_combined_training_eval_data"),
+      ci_to_use = glue("{timescale}_ci")
     ) |>
     mutate(figure = pmap(
       list(
