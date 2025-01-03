@@ -30,14 +30,14 @@ to parquet files. Default \code{TRUE}.}
 }
 \value{
 a list of 8 tibbles:
-\code{combined_training_eval_data},
+\code{daily_combined_training_eval_data},
 \code{epiweekly_combined_training_eval_data},
-\code{forecast_samples},
-\code{epiweekly_forecast_samples},
-\code{forecast_with_epiweekly_other},
-\code{forecast_ci},
-\code{epiweekly_forecast_ci},
-\code{forecast_with_epiweekly_other_ci}
+\code{daily_samples},
+\code{epiweekly_samples},
+\code{epiweekly_with_epiweekly_other_samples},
+\code{daily_ci},
+\code{epiweekly_ci},
+\code{epiweekly_with_epiweekly_other_ci}
 }
 \description{
 Process state forecast
