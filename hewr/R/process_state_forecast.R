@@ -184,11 +184,14 @@ pivot_ed_visit_df_longer <- function(df) {
 #' model outputs
 #' @param timeseries_model_name Name of directory containing timeseries
 #' model outputs
-#' @param save Logical indicating whether or not to save
-#'
+#' @param ci_widths Vector of probabilities indicating one or more
+#' central credible intervals to compute. Passed as the `.width`
+#' argument to [ggdist::median_qi()]. Default `c(0.5, 0.8, 0.95)`.
+#' @param save Boolean indicating whether or not to save the output
+#' to parquet files. Default `TRUE`.
 #' @return a list of 8 tibbles:
-#' `combined_dat`,
-#' `epiweekly_combined_dat`,
+#' `combined_training_eval_data`,
+#' `epiweekly_combined_training_eval_data`,
 #' `forecast_samples`,
 #' `epiweekly_forecast_samples`,
 #' `forecast_with_epiweekly_other`,
@@ -199,6 +202,7 @@ pivot_ed_visit_df_longer <- function(df) {
 process_state_forecast <- function(model_run_dir,
                                    pyrenew_model_name,
                                    timeseries_model_name,
+                                   ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
   pyrenew_model_dir <- fs::path(model_run_dir, pyrenew_model_name)
   timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
@@ -212,6 +216,12 @@ process_state_forecast <- function(model_run_dir,
     model_run_dir, disease_name,
     epiweekly = TRUE
   )
+
+  data_list <- list(
+    combined_training_eval_data = combined_dat,
+    epiweekly_combined_training_eval_data = epiweekly_combined_dat
+  )
+
 
   posterior_predictive_path <- fs::path(pyrenew_model_dir, "mcmc_tidy",
     "pyrenew_posterior_predictive",
@@ -304,33 +314,39 @@ process_state_forecast <- function(model_run_dir,
     with_prop_disease_ed_visits() |>
     pivot_ed_visit_df_longer()
 
-  forecast_ci <-
-    forecast_samples |>
-    dplyr::select("date", "disease", ".value") |>
-    dplyr::group_by(.data$date, .data$disease) |>
-    ggdist::median_qi(.width = c(0.5, 0.8, 0.95))
-
-  epiweekly_forecast_ci <-
-    epiweekly_forecast_samples |>
-    dplyr::select("date", "disease", ".value") |>
-    dplyr::group_by(.data$date, .data$disease) |>
-    ggdist::median_qi(.width = c(0.5, 0.8, 0.95))
-
-  forecast_w_epiweekly_other_ci <-
-    forecast_with_epiweekly_other |>
-    dplyr::select("date", "disease", ".value") |>
-    dplyr::group_by(.data$date, .data$disease) |>
-    ggdist::median_qi(.width = c(0.5, 0.8, 0.95))
-
-  result <- list(
-    combined_training_eval_data = combined_dat,
-    epiweekly_combined_dat = epiweekly_combined_dat,
+  forecast_samples_list <- list(
     forecast_samples = forecast_samples,
     epiweekly_forecast_samples = epiweekly_forecast_samples,
-    forecast_with_epiweekly_other = forecast_with_epiweekly_other,
-    forecast_ci = forecast_ci,
-    epiweekly_forecast_ci = epiweekly_forecast_ci,
-    forecast_with_epiweekly_other_ci = forecast_w_epiweekly_other_ci
+    forecast_with_epiweekly_other = forecast_with_epiweekly_other
+  )
+
+  ci_targets <- forecast_samples_list |>
+    purrr::set_names(
+      ~ glue::glue("{stringr::str_remove(., '_samples')}_ci")
+    )
+
+  forecast_ci_list <-
+    purrr::map(
+      ci_targets,
+      \(x) {
+        dplyr::select(
+          x,
+          "date",
+          "disease",
+          ".value"
+        ) |>
+          dplyr::group_by(
+            .data$date,
+            .data$disease
+          ) |>
+          ggdist::median_qi(.width = ci_widths)
+      }
+    )
+
+  result <- c(
+    data_list,
+    forecast_samples_list,
+    forecast_ci_list
   )
 
   if (save) {
