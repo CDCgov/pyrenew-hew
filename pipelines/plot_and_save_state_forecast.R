@@ -20,7 +20,7 @@ save_forecast_figures <- function(model_run_dir,
     pyrenew_model_name,
     timeseries_model_name
   )
-  transform_to_suffix <- c("identity" = "", "log10" = "_log")
+  transform_to_name <- c("identity" = "", "log10" = "_log")
   timescale_to_dat_prefix <- c(
     "daily" = "",
     "epiweekly" = "epiweekly_",
@@ -41,7 +41,7 @@ save_forecast_figures <- function(model_run_dir,
     filter(!(target_disease == "Disease" &
       timescale == "epiweekly_other")) |>
     mutate(
-      transform_suffix = transform_to_suffix[y_transform],
+      transform_name = transform_to_name[y_transform],
       dat_prefix = timescale_to_dat_prefix[timescale],
     ) |>
     mutate(
@@ -49,8 +49,8 @@ save_forecast_figures <- function(model_run_dir,
         model_run_dir,
         glue(paste0(
           "{target_disease}_",
-          "forecast_plot_",
-          "{timescale}{transform_suffix}"
+          "forecast_plot{transform_name}_",
+          "{timescale}"
         )),
         ext = "pdf"
       ),
