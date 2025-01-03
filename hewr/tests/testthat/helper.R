@@ -1,5 +1,9 @@
-create_tidy_forecast_data <- function(
-    directory, filename, date_cols, disease_cols, n_draw) {
+create_tidy_forecast_data <- function(directory,
+                                      filename,
+                                      date_cols,
+                                      disease_cols,
+                                      n_draw,
+                                      with_epiweek = FALSE) {
   data <- tidyr::expand_grid(
     date = date_cols,
     disease = disease_cols,
@@ -11,6 +15,15 @@ create_tidy_forecast_data <- function(
       dplyr::rename(!!disease_cols := ".value") |>
       dplyr::select(-disease)
   }
+
+  if (with_epiweek) {
+    data <- data |>
+      dplyr::mutate(
+        epiweek = lubridate::epiweek(.data$date),
+        epiyear = lubridate::epiyear(.data$date)
+      )
+  }
+
   arrow::write_parquet(data, fs::path(directory, filename))
 }
 

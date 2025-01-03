@@ -30,7 +30,7 @@ to_epiweekly_quantiles <- function(model_run_dir,
                                    epiweekly_other = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
   draws_name <- if (epiweekly_other) {
-    "foreacst_with_epiweekly_other"
+    "forecast_with_epiweekly_other"
   } else {
     "epiweekly_forecast_samples"
   }
