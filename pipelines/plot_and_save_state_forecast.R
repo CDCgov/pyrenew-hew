@@ -20,13 +20,19 @@ save_forecast_figures <- function(model_run_dir,
     pyrenew_model_name,
     timeseries_model_name
   )
-  transform_to_name <- c("identity" = "", "log10" = "_log")
-  timescale_to_dat_prefix <- c(
+  diseases <- unique(
+    processed_forecast$combined_training_eval_data$disease
+  )
+
+  y_transforms <- c("identity" = "", "log10" = "_log")
+
+  timescales <- c(
     "daily" = "",
     "epiweekly" = "epiweekly_",
     "epiweekly_other" = "epiweekly_"
   )
-  timescale_to_ci_name <- c(
+
+  timescales_to_ci_names <- c(
     "daily" = "forecast_ci",
     "epiweekly" = "epiweekly_forecast_ci",
     "epiweekly_other" =
@@ -34,15 +40,15 @@ save_forecast_figures <- function(model_run_dir,
   )
   figure_save_tbl <-
     expand_grid(
-      target_disease = unique(processed_forecast$combined_dat$disease),
-      y_transform = c("identity", "log10"),
-      timescale = c("daily", "epiweekly", "epiweekly_other"),
+      target_disease = diseases,
+      y_transform = names(y_transforms),
+      timescale = names(timescales),
     ) |>
     filter(!(target_disease == "Disease" &
       timescale == "epiweekly_other")) |>
     mutate(
-      transform_name = transform_to_name[y_transform],
-      dat_prefix = timescale_to_dat_prefix[timescale],
+      transform_name = y_transforms[y_transform],
+      dat_prefix = timescales[timescale],
     ) |>
     mutate(
       figure_path = path(
@@ -55,7 +61,7 @@ save_forecast_figures <- function(model_run_dir,
         ext = "pdf"
       ),
       dat_to_use = glue("{dat_prefix}combined_dat"),
-      ci_to_use = timescale_to_ci_name[timescale]
+      ci_to_use = timescales_to_ci_names[timescale]
     ) |>
     mutate(figure = pmap(
       list(

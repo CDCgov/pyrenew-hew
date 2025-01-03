@@ -322,56 +322,8 @@ process_state_forecast <- function(model_run_dir,
     dplyr::group_by(.data$date, .data$disease) |>
     ggdist::median_qi(.width = c(0.5, 0.8, 0.95))
 
-  # Optionally save data to parquet
-  if (save) {
-    to_save <- list(
-      list(
-        table = combined_dat,
-        save_name = "combined_training_eval_data"
-      ),
-      list(
-        table = forecast_samples,
-        save_name = "forecast_samples"
-      ),
-      list(
-        table = epiweekly_forecast_samples,
-        save_name = "epiweekly_forecast_samples"
-      ),
-      list(
-        table = forecast_with_epiweekly_other,
-        save_name = "forecast_with_epiweekly_other"
-      ),
-      list(
-        table = forecast_ci,
-        save_name = "forecast_ci"
-      ),
-      list(
-        table = epiweekly_forecast_ci,
-        save_name = "epiweekly_forecast_ci"
-      ),
-      list(
-        table = forecast_w_epiweekly_other_ci,
-        save_name = "forecast_with_epiweekly_other_ci"
-      )
-    )
-
-
-    purrr::walk(
-      to_save,
-      \(x) {
-        arrow::write_parquet(
-          x$table,
-          fs::path(pyrenew_model_dir,
-            x$save_name,
-            ext = "parquet"
-          )
-        )
-      }
-    )
-  }
-
-  return(list(
-    combined_dat = combined_dat,
+  result <- list(
+    combined_training_eval_data = combined_dat,
     epiweekly_combined_dat = epiweekly_combined_dat,
     forecast_samples = forecast_samples,
     epiweekly_forecast_samples = epiweekly_forecast_samples,
@@ -379,5 +331,22 @@ process_state_forecast <- function(model_run_dir,
     forecast_ci = forecast_ci,
     epiweekly_forecast_ci = epiweekly_forecast_ci,
     forecast_with_epiweekly_other_ci = forecast_w_epiweekly_other_ci
-  ))
+  )
+
+  if (save) {
+    purrr::iwalk(
+      result,
+      \(tab, name) {
+        arrow::write_parquet(
+          tab,
+          fs::path(pyrenew_model_dir,
+            name,
+            ext = "parquet"
+          )
+        )
+      }
+    )
+  }
+
+  return(result)
 }
