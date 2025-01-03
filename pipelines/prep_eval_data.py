@@ -6,13 +6,14 @@ import polars as pl
 from prep_data import (
     get_state_pop_df,
     process_state_level_data,
+    get_nhsn,
+    combine_nssp_and_nhsn,
 )
 
 
 def save_eval_data(
     state: str,
     disease: str,
-    report_date: datetime.date,
     first_training_date,
     last_training_date,
     latest_comprehensive_path: Path | str,
@@ -31,7 +32,7 @@ def save_eval_data(
             pl.col("reference_date") <= last_eval_date
         )
 
-    state_level_data = (
+    nssp_data = (
         process_state_level_data(
             state_level_nssp_data=state_level_nssp_data,
             state_abb=state,
@@ -43,8 +44,23 @@ def save_eval_data(
         .sort(["date", "disease"])
     )
 
-    state_level_data.write_csv(
-        Path(output_data_dir, output_file_name), separator="\t"
+    nhsn_data = get_nhsn(
+        start_date=first_training_date,
+        end_date=last_training_date,
+        disease=disease,
+        state_abb=state,
     )
 
+    combined_eval_dat = combine_nssp_and_nhsn(
+        nssp_data=nssp_data,
+        nhsn_data=nhsn_data,
+        disease=disease,
+    )
+
+    nssp_data.write_csv(
+        Path(output_data_dir, output_file_name), separator="\t"
+    )
+    combined_eval_dat.write_csv(
+        Path(output_data_dir, "combined_" + output_file_name), separator="\t"
+    )
     return None
