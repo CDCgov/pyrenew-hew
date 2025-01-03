@@ -316,7 +316,6 @@ def main(
         raise ValueError("No path to an evaluation dataset provided.")
     save_eval_data(
         state=state,
-        report_date=report_date,
         disease=disease,
         first_training_date=first_training_date,
         last_training_date=last_training_date,

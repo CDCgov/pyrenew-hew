@@ -72,6 +72,40 @@ def get_nhsn(
     return dat
 
 
+def combine_nssp_and_nhsn(
+    nssp_data: pl.DataFrame,
+    nhsn_data: pl.DataFrame,
+    disease: str,
+):
+    nssp_data_long = nssp_data.unpivot(
+        on="ed_visits",
+        index=cs.exclude("ed_visits"),
+        variable_name="value_type",
+    )
+
+    nhsn_data_long = (
+        nhsn_data.rename(
+            {"weekendingdate": "date", "jurisdiction": "geo_value"}
+        )
+        .unpivot(
+            on="hospital_admissions",
+            index=cs.exclude("hospital_admissions"),
+            variable_name="value_type",
+        )
+        .with_columns(
+            pl.lit(disease).alias("disease"),
+            pl.lit("train").alias("data_type"),
+        )
+    )
+
+    combined_dat = pl.concat(
+        [nssp_data_long, nhsn_data_long],
+        how="diagonal_relaxed",
+    ).sort(["date", "geo_value", "value_type"])
+
+    return combined_dat
+
+
 def aggregate_to_national(
     data: pl.LazyFrame,
     geo_values_to_include,
@@ -397,31 +431,11 @@ def process_and_save_state(
     with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file, default=str)
 
-    nssp_training_data_long = nssp_training_data.unpivot(
-        on="ed_visits",
-        index=cs.exclude("ed_visits"),
-        variable_name="value_type",
+    combined_training_dat = combine_nssp_and_nhsn(
+        nssp_data=nssp_training_data,
+        nhsn_data=nhsn_training_data,
+        disease=disease,
     )
-
-    nhsn_training_data_long = (
-        nhsn_training_data.rename(
-            {"weekendingdate": "date", "jurisdiction": "geo_value"}
-        )
-        .unpivot(
-            on="hospital_admissions",
-            index=cs.exclude("hospital_admissions"),
-            variable_name="value_type",
-        )
-        .with_columns(
-            pl.lit(disease).alias("disease"),
-            pl.lit("train").alias("data_type"),
-        )
-    )
-
-    combined_training_dat = pl.concat(
-        [nssp_training_data_long, nhsn_training_data_long],
-        how="diagonal_relaxed",
-    ).sort(["date", "geo_value", "value_type"])
 
     if logger is not None:
         logger.info(f"Saving {state_abb} to {data_dir}")
