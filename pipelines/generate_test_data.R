@@ -167,7 +167,7 @@ generate_fake_state_level_data <-
     gold_dir <- path(private_data_dir, "nssp_state_level_gold")
     dir_create(gold_dir, recurse = TRUE)
 
-    comp_dir <- path(private_data_dir, "nssp-archival-vintages")
+    comp_dir <- path(private_data_dir, "nssp-etl")
     dir_create(comp_dir, recurse = TRUE)
 
     state_data <-
