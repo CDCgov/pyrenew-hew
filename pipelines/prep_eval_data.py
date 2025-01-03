@@ -4,10 +4,10 @@ from pathlib import Path
 
 import polars as pl
 from prep_data import (
+    combine_nssp_and_nhsn,
+    get_nhsn,
     get_state_pop_df,
     process_state_level_data,
-    get_nhsn,
-    combine_nssp_and_nhsn,
 )
 
 
