@@ -190,25 +190,31 @@ pivot_ed_visit_df_longer <- function(df) {
 #' @param save Boolean indicating whether or not to save the output
 #' to parquet files. Default `TRUE`.
 #' @return a list of 8 tibbles:
-#' `combined_training_eval_data`,
+#' `daily_combined_training_eval_data`,
 #' `epiweekly_combined_training_eval_data`,
-#' `forecast_samples`,
-#' `epiweekly_forecast_samples`,
-#' `forecast_with_epiweekly_other`,
-#' `forecast_ci`,
-#' `epiweekly_forecast_ci`,
-#' `forecast_with_epiweekly_other_ci`
+#' `daily_samples`,
+#' `epiweekly_samples`,
+#' `epiweekly_with_epiweekly_other_samples`,
+#' `daily_ci`,
+#' `epiweekly_ci`,
+#' `epiweekly_with_epiweekly_other_ci`
 #' @export
 process_state_forecast <- function(model_run_dir,
                                    pyrenew_model_name,
                                    timeseries_model_name,
                                    ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
-  pyrenew_model_dir <- fs::path(model_run_dir, pyrenew_model_name)
-  timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
+  pyrenew_model_dir <- fs::path(
+    model_run_dir,
+    pyrenew_model_name
+  )
+  timeseries_model_dir <- fs::path(
+    model_run_dir,
+    timeseries_model_name
+  )
   disease_name <- parse_model_run_dir_path(model_run_dir)$disease
 
-  combined_dat <- read_and_combine_data(
+  daily_combined_dat <- read_and_combine_data(
     model_run_dir, disease_name,
     epiweekly = FALSE
   )
@@ -217,59 +223,59 @@ process_state_forecast <- function(model_run_dir,
     epiweekly = TRUE
   )
 
+  daily_training_dat <- daily_combined_dat |>
+    dplyr::filter(.data$data_type == "train")
+  epiweekly_training_dat <- epiweekly_combined_dat |>
+    dplyr::filter(.data$data_type == "train")
+
   data_list <- list(
-    combined_training_eval_data = combined_dat,
-    epiweekly_combined_training_eval_data = epiweekly_combined_dat
+    daily_combined_training_eval_data = daily_combined_dat,
+    epiweekly_combined_training_eval_data =
+      epiweekly_combined_dat
   )
 
+  pyrenew_posterior_predictive <-
+    arrow::read_parquet(
+      fs::path(pyrenew_model_dir,
+        "mcmc_tidy",
+        "pyrenew_posterior_predictive",
+        ext = "parquet"
+      )
+    )
 
-  posterior_predictive_path <- fs::path(pyrenew_model_dir, "mcmc_tidy",
-    "pyrenew_posterior_predictive",
-    ext = "parquet"
-  )
-
-  posterior_predictive <- arrow::read_parquet(posterior_predictive_path)
-
-  other_ed_visits_forecast <-
+  ## augment daily and epiweekly other ed visits forecast
+  ## with "sample" format observed data
+  daily_other_ed_visits_samples <-
     arrow::read_parquet(
       fs::path(timeseries_model_dir,
         "other_ed_visits_forecast",
         ext = "parquet"
       )
     ) |>
-    dplyr::rename(Other = "other_ed_visits")
+    dplyr::rename(Other = "other_ed_visits") |>
+    to_tidy_draws_timeseries(
+      daily_training_dat,
+      disease_name = "Other",
+      epiweekly = FALSE
+    )
 
-  epiweekly_other_forecast <-
+  ewkly_other_ed_visits_samples <-
     arrow::read_parquet(
       fs::path(timeseries_model_dir,
         "epiweekly_other_ed_visits_forecast",
         ext = "parquet"
       )
     ) |>
-    dplyr::rename(Other = "other_ed_visits")
+    dplyr::rename(Other = "other_ed_visits") |>
+    to_tidy_draws_timeseries(
+      epiweekly_training_dat,
+      disease_name = "Other",
+      epiweekly = TRUE
+    )
 
 
-  ## augment other ed visits forecast with "sample"
-  ## format observed data
-  other_ed_visits_samples <- to_tidy_draws_timeseries(
-    other_ed_visits_forecast,
-    combined_dat |> dplyr::filter(.data$data_type == "train"),
-    ## use this rather than train_dat since it has "Other"
-    ## (as opposed to "Total") pre-computed
-    disease_name = "Other"
-  )
-  epiweekly_other_samples <- to_tidy_draws_timeseries(
-    epiweekly_other_forecast,
-    epiweekly_combined_dat |> dplyr::filter(.data$data_type == "train"),
-    ## use this rather than epiweekly_train_dat since it has "Other"
-    ## (as opposed to "Total") pre-computed
-    disease_name = "Other",
-    epiweekly = TRUE
-  )
-
-
-  forecast_samples <-
-    posterior_predictive |>
+  daily_samples <-
+    pyrenew_posterior_predictive |>
     tidybayes::gather_draws(observed_ed_visits[time]) |>
     tidyr::pivot_wider(
       names_from = ".variable",
@@ -284,7 +290,7 @@ process_state_forecast <- function(model_run_dir,
     with_prop_disease_ed_visits() |>
     pivot_ed_visit_df_longer()
 
-  epiweekly_forecast_samples_raw <- forecast_samples |>
+  epiweekly_samples_raw <- daily_samples |>
     dplyr::filter(.data$disease != "prop_disease_ed_visits") |>
     forecasttools::daily_to_epiweekly(
       value_col = ".value",
@@ -302,11 +308,12 @@ process_state_forecast <- function(model_run_dir,
       day_of_week = 7
     ))
 
-  epiweekly_forecast_samples <- epiweekly_forecast_samples_raw |>
+  epiweekly_samples <- epiweekly_samples_raw |>
     with_prop_disease_ed_visits() |>
     pivot_ed_visit_df_longer()
 
-  forecast_with_epiweekly_other <- epiweekly_forecast_samples_raw |>
+  ewkly_with_ewkly_other_samples <-
+    epiweekly_samples_raw |>
     dplyr::select(-"Other") |>
     dplyr::left_join(epiweekly_other_samples,
       by = c(".draw", "date")
@@ -314,18 +321,19 @@ process_state_forecast <- function(model_run_dir,
     with_prop_disease_ed_visits() |>
     pivot_ed_visit_df_longer()
 
-  forecast_samples_list <- list(
-    forecast_samples = forecast_samples,
-    epiweekly_forecast_samples = epiweekly_forecast_samples,
-    forecast_with_epiweekly_other = forecast_with_epiweekly_other
+  samples_list <- list(
+    daily_samples = daily_samples,
+    epiweekly_samples = epiweekly_samples,
+    epiweekly_with_epiweekly_other_samples =
+      ewkly_with_ewkly_other_samples
   )
 
-  ci_targets <- forecast_samples_list |>
+  ci_targets <- samples_list |>
     purrr::set_names(
-      ~ glue::glue("{stringr::str_remove(., '_samples')}_ci")
+      ~ stringr::str_replace(., "samples", "ci")
     )
 
-  forecast_ci_list <-
+  ci_list <-
     purrr::map(
       ci_targets,
       \(x) {
@@ -345,8 +353,8 @@ process_state_forecast <- function(model_run_dir,
 
   result <- c(
     data_list,
-    forecast_samples_list,
-    forecast_ci_list
+    samples_list,
+    ci_list
   )
 
   if (save) {
