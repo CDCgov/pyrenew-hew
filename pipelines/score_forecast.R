@@ -210,7 +210,7 @@ read_and_score_location <- function(model_run_dir,
 
   forecast_path <- fs::path(
     model_run_dir, "pyrenew_e",
-    glue::glue("{prefix}forecast_samples"),
+    glue::glue("{prefix}_samples"),
     ext = parquet_file_ext
   )
   ts_baseline_path <- fs::path(
