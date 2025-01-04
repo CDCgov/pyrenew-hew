@@ -283,7 +283,7 @@ process_state_forecast <- function(model_run_dir,
     ) |>
     dplyr::rename(Disease = "observed_ed_visits") |>
     dplyr::ungroup() |>
-    dplyr::mutate(date = min(combined_dat$date) + .data$time) |>
+    dplyr::mutate(date = min(daily_combined_dat$date) + .data$time) |>
     dplyr::left_join(other_ed_visits_samples,
       by = c(".draw", "date")
     ) |>
