@@ -203,7 +203,7 @@ read_and_score_location <- function(model_run_dir,
   }
   sample_prefix <- if_else(epiweekly, "epiweekly_", "daily_")
   gen_prefix <- ifelse(epiweekly, "epiweekly_", "")
-  eval_data_filename <- glue::glue("{dat_prefix}{eval_data_filename}")
+  eval_data_filename <- glue::glue("{gen_prefix}{eval_data_filename}")
 
   report_date <- hewr::parse_model_run_dir_path(
     model_run_dir
