@@ -91,7 +91,7 @@ def main(
         "python pipelines/score_location.py "
         "{model_batch_dir_path} "
         "nssp-archival-vintages/latest_comprehensive.parquet "
-        "--state {location}"
+        "--location {location}"
         "'"
     )
 
