@@ -21,7 +21,7 @@ save_forecast_figures <- function(model_run_dir,
     timeseries_model_name
   )
   diseases <- unique(
-    processed_forecast$combined_training_eval_data$disease
+    processed_forecast$daily_combined_training_eval_data$disease
   )
 
   y_transforms <- c("identity" = "", "log10" = "_log")
@@ -36,10 +36,10 @@ save_forecast_figures <- function(model_run_dir,
     expand_grid(
       target_disease = diseases,
       y_transform = names(y_transforms),
-      timescale = timescales,
+      timescale = timescales
     ) |>
-    filter(!(target_disease == "Disease" &
-      timescale == "epiweekly_with_epiweekly_other")) |>
+    filter(!(.data$target_disease == "Disease" &
+      .data$timescale == "epiweekly_with_epiweekly_other")) |>
     mutate(
       transform_name = y_transforms[y_transform]
     ) |>
