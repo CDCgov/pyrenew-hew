@@ -41,7 +41,11 @@ save_forecast_figures <- function(model_run_dir,
     filter(!(.data$target_disease == "Disease" &
       .data$timescale == "epiweekly_with_epiweekly_other")) |>
     mutate(
-      transform_name = y_transforms[y_transform]
+      transform_name = y_transforms[y_transform],
+      dat_timescale = ifelse(timescale == "daily",
+        "daily",
+        "epiweekly"
+      )
     ) |>
     mutate(
       figure_path = path(
@@ -53,7 +57,7 @@ save_forecast_figures <- function(model_run_dir,
         ),
         ext = "pdf"
       ),
-      dat_to_use = glue("{timescale}_combined_training_eval_data"),
+      dat_to_use = glue("{dat_timescale}_combined_training_eval_data"),
       ci_to_use = glue("{timescale}_ci")
     ) |>
     mutate(figure = pmap(
