@@ -201,8 +201,8 @@ read_and_score_location <- function(model_run_dir,
   } else {
     message(glue::glue("Scoring daily {model_run_dir}..."))
   }
-  prefix <- if_else(epiweekly, "epiweekly_", "daily_")
-  dat_prefix <- ifelse(epiweekly, "epiweekly_", "")
+  sample_prefix <- if_else(epiweekly, "epiweekly_", "daily_")
+  gen_prefix <- ifelse(epiweekly, "epiweekly_", "")
   eval_data_filename <- glue::glue("{dat_prefix}{eval_data_filename}")
 
   report_date <- hewr::parse_model_run_dir_path(
@@ -211,17 +211,17 @@ read_and_score_location <- function(model_run_dir,
 
   forecast_path <- fs::path(
     model_run_dir, "pyrenew_e",
-    glue::glue("{prefix}samples"),
+    glue::glue("{sample_prefix}samples"),
     ext = parquet_file_ext
   )
   ts_baseline_path <- fs::path(
     model_run_dir, "timeseries_e",
-    glue::glue("{prefix}baseline_ts_prop_ed_visits_forecast"),
+    glue::glue("{gen_prefix}baseline_ts_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
   cdc_baseline_path <- fs::path(
     model_run_dir, "timeseries_e",
-    glue::glue("{prefix}baseline_cdc_prop_ed_visits_forecast"),
+    glue::glue("{gen_prefix}baseline_cdc_prop_ed_visits_forecast"),
     ext = parquet_file_ext
   )
 
