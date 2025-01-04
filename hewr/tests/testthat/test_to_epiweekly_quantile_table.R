@@ -36,7 +36,7 @@ test_that("to_epiweekly_quantiles works as expected", {
       report_date = "2024-12-14",
       max_lookback_days = 8,
       epiweekly_other = epiweekly_other_bool
-    )
+    ) |> suppressMessages()
 
     expect_s3_class(result, "tbl_df")
     expect_setequal(c(
@@ -71,7 +71,7 @@ test_that("to_epiweekly_quantiles calculates quantiles accurately", {
     report_date = "2024-12-14",
     max_lookback_days = 8,
     epiweekly_other = FALSE
-  )
+  ) |> suppressMessages()
 
   forecast_path <- fs::path(
     temp_dir,
@@ -119,7 +119,7 @@ test_that("to_epiweekly_quantiles handles missing forecast files", {
       model_run_dir = temp_dir,
       report_date = "2024-12-14",
       max_lookback_days = 8
-    ),
+    ) |> suppressMessages(),
     "Failed to open local file"
   )
 })
@@ -150,7 +150,8 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
     )
   })
 
-  result_w_both_locations <- to_epiweekly_quantile_table(temp_batch_dir)
+  result_w_both_locations <- to_epiweekly_quantile_table(temp_batch_dir) |>
+    suppressMessages()
 
   expect_s3_class(result_w_both_locations, "tbl_df")
   expect_gt(nrow(result_w_both_locations), 0)
@@ -163,7 +164,8 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
   result_w_one_location <- to_epiweekly_quantile_table(
     model_batch_dir = temp_batch_dir,
     exclude = "loc1"
-  )
+  ) |>
+    suppressMessages()
   expect_true("loc2" %in% result_w_one_location$location)
   expect_false("loc1" %in% result_w_one_location$location)
 })
