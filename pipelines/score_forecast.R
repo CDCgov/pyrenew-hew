@@ -300,7 +300,7 @@ read_and_score_location <- function(model_run_dir,
   )
 
   readr::write_rds(scored, fs::path(model_run_dir,
-    glue::glue("{prefix}score_table"),
+    glue::glue("{gen_prefix}score_table"),
     ext = rds_file_ext
   ))
 }
