@@ -7,7 +7,7 @@ test_that("to_epiweekly_quantiles works as expected", {
 
   create_tidy_forecast_data(
     directory = fs::path(temp_dir, "pyrenew_e"),
-    filename = "epiweekly_forecast_samples.parquet",
+    filename = "epiweekly_samples.parquet",
     date_cols = seq(
       lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
       by = "week"
@@ -19,7 +19,7 @@ test_that("to_epiweekly_quantiles works as expected", {
 
   create_tidy_forecast_data(
     directory = fs::path(temp_dir, "pyrenew_e"),
-    filename = "forecast_with_epiweekly_other.parquet",
+    filename = "epiweekly_with_epiweekly_other_samples.parquet",
     date_cols = seq(
       lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
       by = "week"
@@ -30,12 +30,12 @@ test_that("to_epiweekly_quantiles works as expected", {
   )
 
 
-  check_epiweekly_quantiles <- function(epiweekly_other_bool) {
+  check_epiweekly_quantiles <- function(draws_file_name) {
     result <- to_epiweekly_quantiles(
       model_run_dir = temp_dir,
       report_date = "2024-12-14",
       max_lookback_days = 8,
-      epiweekly_other = epiweekly_other_bool
+      draws_file_name = draws_file_name,
     ) |> suppressMessages()
 
     expect_s3_class(result, "tbl_df")
@@ -45,8 +45,10 @@ test_that("to_epiweekly_quantiles works as expected", {
     expect_gt(nrow(result), 0)
   }
 
-  check_epiweekly_quantiles(epiweekly_other_bool = FALSE)
-  check_epiweekly_quantiles(epiweekly_other_bool = TRUE)
+  check_epiweekly_quantiles(draws_file_name = "epiweekly_samples")
+  check_epiweekly_quantiles(
+    draws_file_name = "epiweekly_with_epiweekly_other_samples"
+  )
 })
 
 
@@ -56,7 +58,7 @@ test_that("to_epiweekly_quantiles calculates quantiles accurately", {
 
   create_tidy_forecast_data(
     directory = fs::path(temp_dir, "pyrenew_e"),
-    filename = "epiweekly_forecast_samples.parquet",
+    filename = "epiweekly_samples.parquet",
     date_cols = seq(
       lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
       by = "week"
@@ -70,13 +72,12 @@ test_that("to_epiweekly_quantiles calculates quantiles accurately", {
     model_run_dir = temp_dir,
     report_date = "2024-12-14",
     max_lookback_days = 8,
-    epiweekly_other = FALSE
   ) |> suppressMessages()
 
   forecast_path <- fs::path(
     temp_dir,
     "pyrenew_e",
-    "epiweekly_forecast_samples",
+    "epiweekly_samples",
     ext = "parquet"
   )
 
@@ -139,7 +140,7 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
 
     create_tidy_forecast_data(
       directory = loc_dir,
-      filename = "epiweekly_forecast_samples.parquet",
+      filename = "epiweekly_samples.parquet",
       date_cols = seq(
         lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
         by = "week"

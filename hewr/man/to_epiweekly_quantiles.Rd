@@ -10,8 +10,10 @@ to_epiweekly_quantiles(
   model_run_dir,
   report_date,
   max_lookback_days,
+  disease_name = "prop_disease_ed_visits",
+  draws_file_name = "epiweekly_samples",
   disease_model_name = "pyrenew_e",
-  epiweekly_other = FALSE
+  strict = FALSE
 )
 }
 \arguments{
@@ -27,21 +29,22 @@ to look back when generating epiweekly quantiles (determines how
 many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 quantiles will be generated.}
 
+\item{disease_name}{Name of the disease quantity for which to
+produced epiweekly quantiles. Default \code{"prop_disease_ed_visits"}.}
+
+\item{draws_file_name}{Name of the parquet file containing
+forecast draws. Default \code{"epiweekly_samples"}.}
+
 \item{disease_model_name}{Name of the model for the target
-disease to use when making the quantile table. Default
-\code{"pyrenew_e"}.}
+disease. Default \code{"pyrenew_e"}.}
 
-\item{epiweekly_other}{Use an expressly epiweekly forecast
-for non-target ED visits instead of a daily forecast aggregated
-to epiweekly? Boolean, default \code{FALSE}.}
-
-\item{other_model_name}{Name of the model for other ed visits
-to use when making the quantile table if "epiweekly_other" is
-\code{TRUE} (ignored when \code{epiweekly_other} is \code{FALSE}). Default
-\code{"timeseries_e"}.}
+\item{strict}{Boolean. If \code{TRUE}, raise an error if no
+valid draws are available to aggregate. Otherwise return
+\code{NULL} in that case. Default \code{FALSE}.}
 }
 \value{
-A \code{\link[tibble:tibble]{tibble}} of quantiles.
+A \code{\link[tibble:tibble]{tibble}} of quantiles, or \code{NULL}
+if the draws file contains no vale
 }
 \description{
 Read in daily forecast draws from a model run directory
