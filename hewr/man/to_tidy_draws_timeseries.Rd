@@ -12,7 +12,8 @@ to_tidy_draws_timeseries(
   disease_name,
   date_colname = "date",
   sample_id_colname = ".draw",
-  value_colname = ".value"
+  value_colname = ".value",
+  epiweekly = FALSE
 )
 }
 \arguments{
@@ -35,6 +36,9 @@ posterior samples / draws. Default \code{".draw"}.}
 \item{value_colname}{Name of the column in
 \code{tidy_forecast} for the sampled values.
 Default \code{".value"}.}
+
+\item{epiweekly}{Is the timeseries epiweekly (as opposed
+to daily)? Boolean, default \code{FALSE} (i.e. daily timeseries).}
 }
 \description{
 Observed timepoints have the observed value as

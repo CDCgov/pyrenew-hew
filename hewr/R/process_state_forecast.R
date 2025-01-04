@@ -1,3 +1,19 @@
+#' Annotate a dataframe of ED visits data with the
+#' proportion of visits due to a target disease.
+#'
+#' @param df dataframe to annotate, with columns
+#' `"Disease"` and `"Other"`.
+#' @return the dataframe with an additional column
+#' `prop_disease_ed_visits`.
+#' @export
+with_prop_disease_ed_visits <- function(df) {
+  return(
+    df |>
+      dplyr::mutate(prop_disease_ed_visits = .data$Disease /
+        (.data$Disease + .data$Other))
+  )
+}
+
 #' Combine training and evaluation data for
 #' postprocessing.
 #'
@@ -20,11 +36,14 @@ combine_training_and_eval_data <- function(train_dat,
       )
     ) |>
     dplyr::filter(.data$disease %in% c("Total", "Disease")) |>
-    tidyr::pivot_wider(names_from = "disease", values_from = "ed_visits") |>
-    dplyr::mutate(
-      Other = .data$Total - .data$Disease,
-      prop_disease_ed_visits = .data$Disease / .data$Total
+    tidyr::pivot_wider(
+      names_from = "disease",
+      values_from = "ed_visits"
     ) |>
+    dplyr::mutate(
+      Other = .data$Total - .data$Disease
+    ) |>
+    with_prop_disease_ed_visits() |>
     dplyr::select(-"Total") |>
     dplyr::mutate(time = dplyr::dense_rank(.data$date)) |>
     tidyr::pivot_longer(
@@ -34,6 +53,50 @@ combine_training_and_eval_data <- function(train_dat,
     )
 
   return(combined_dat)
+}
+
+
+#' Read in and combine training and evaluation
+#' data from a model run directory.
+#'
+#' @param model_run_dir model run directoryh in which to look
+#' for data.
+#' @param disease_name name of the disease for which to get
+#' combined training and evaluation data.
+#' @param epiweekly Get epiweekly data instead of daily data?
+#' Boolean, default `FALSE`.
+read_and_combine_data <- function(model_run_dir,
+                                  disease_name,
+                                  epiweekly = FALSE) {
+  data_cols <- readr::cols(
+    date = readr::col_date(),
+    ed_visits = readr::col_double()
+  )
+
+  prefix <- ifelse(epiweekly, "epiweekly_", "")
+
+  train_data_path <- fs::path(model_run_dir,
+    "data",
+    glue::glue("{prefix}data"),
+    ext = "tsv"
+  )
+  train_dat <- readr::read_tsv(train_data_path,
+    col_types = data_cols
+  )
+
+  eval_data_path <- fs::path(model_run_dir,
+    "data",
+    glue::glue("{prefix}eval_data"),
+    ext = "tsv"
+  )
+  eval_dat <- readr::read_tsv(eval_data_path, col_types = data_cols) |>
+    dplyr::mutate(data_type = "eval")
+
+  combined_dat <- combine_training_and_eval_data(
+    train_dat,
+    eval_dat,
+    disease_name
+  )
 }
 
 #' Combine a forecast in tidy draws based format
@@ -57,13 +120,17 @@ combine_training_and_eval_data <- function(train_dat,
 #' @param value_colname Name of the column in
 #' `tidy_forecast` for the sampled values.
 #' Default `".value"`.
+#' @param epiweekly Is the timeseries epiweekly (as opposed
+#' to daily)? Boolean, default `FALSE` (i.e. daily timeseries).
 to_tidy_draws_timeseries <- function(tidy_forecast,
                                      observed,
                                      disease_name,
                                      date_colname = "date",
                                      sample_id_colname = ".draw",
-                                     value_colname = ".value") {
+                                     value_colname = ".value",
+                                     epiweekly = FALSE) {
   first_forecast_date <- min(tidy_forecast[[date_colname]])
+  day_count <- ifelse(epiweekly, 7, 1)
   n_draws <- max(tidy_forecast[[sample_id_colname]])
   transformed_obs <- observed |>
     dplyr::filter(
@@ -78,7 +145,7 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 
   stopifnot(
     max(as.Date(transformed_obs[[date_colname]])) +
-      lubridate::ddays(1) == first_forecast_date
+      lubridate::ddays(day_count) == first_forecast_date
   )
 
   dplyr::bind_rows(
@@ -87,22 +154,6 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
   )
 }
 
-
-#' Annotate a dataframe of ED visits data with the
-#' proportion of visits due to a target disease.
-#'
-#' @param df dataframe to annotate, with columns
-#' `"Disease"` and `"Other"`.
-#' @return the dataframe with an additional column
-#' `prop_disease_ed_visits`.
-#' @export
-with_prop_disease_ed_visits <- function(df) {
-  return(
-    df |>
-      dplyr::mutate(prop_disease_ed_visits = .data$Disease /
-        (.data$Disease + .data$Other))
-  )
-}
 
 #' Pivot a data table of counts and proportions of
 #' ED visits to long format.
@@ -133,68 +184,98 @@ pivot_ed_visit_df_longer <- function(df) {
 #' model outputs
 #' @param timeseries_model_name Name of directory containing timeseries
 #' model outputs
-#' @param save Logical indicating whether or not to save
-#'
-#' @return a list with four tibbles: `combined_dat`,
-#' `forecast_samples`, `epiweekly_forecast_samples`,
-#' and `forecast_ci`
+#' @param ci_widths Vector of probabilities indicating one or more
+#' central credible intervals to compute. Passed as the `.width`
+#' argument to [ggdist::median_qi()]. Default `c(0.5, 0.8, 0.95)`.
+#' @param save Boolean indicating whether or not to save the output
+#' to parquet files. Default `TRUE`.
+#' @return a list of 8 tibbles:
+#' `daily_combined_training_eval_data`,
+#' `epiweekly_combined_training_eval_data`,
+#' `daily_samples`,
+#' `epiweekly_samples`,
+#' `epiweekly_with_epiweekly_other_samples`,
+#' `daily_ci`,
+#' `epiweekly_ci`,
+#' `epiweekly_with_epiweekly_other_ci`
 #' @export
 process_state_forecast <- function(model_run_dir,
                                    pyrenew_model_name,
                                    timeseries_model_name,
+                                   ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
-  pyrenew_model_dir <- fs::path(model_run_dir, pyrenew_model_name)
-  timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
+  pyrenew_model_dir <- fs::path(
+    model_run_dir,
+    pyrenew_model_name
+  )
+  timeseries_model_dir <- fs::path(
+    model_run_dir,
+    timeseries_model_name
+  )
   disease_name <- parse_model_run_dir_path(model_run_dir)$disease
-  data_cols <- readr::cols(
-    date = readr::col_date(),
-    ed_visits = readr::col_double()
+
+  daily_combined_dat <- read_and_combine_data(
+    model_run_dir, disease_name,
+    epiweekly = FALSE
+  )
+  epiweekly_combined_dat <- read_and_combine_data(
+    model_run_dir, disease_name,
+    epiweekly = TRUE
   )
 
-  train_data_path <- fs::path(model_run_dir, "data", "data", ext = "tsv")
-  train_dat <- readr::read_tsv(train_data_path,
-    col_types = data_cols
+  daily_training_dat <- daily_combined_dat |>
+    dplyr::filter(.data$data_type == "train")
+  epiweekly_training_dat <- epiweekly_combined_dat |>
+    dplyr::filter(.data$data_type == "train")
+
+  data_list <- list(
+    daily_combined_training_eval_data = daily_combined_dat,
+    epiweekly_combined_training_eval_data =
+      epiweekly_combined_dat
   )
 
-  eval_data_path <- fs::path(model_run_dir, "data",
-    "eval_data",
-    ext = "tsv"
-  )
-  eval_dat <- readr::read_tsv(eval_data_path, col_types = data_cols) |>
-    dplyr::mutate(data_type = "eval")
+  pyrenew_posterior_predictive <-
+    arrow::read_parquet(
+      fs::path(pyrenew_model_dir,
+        "mcmc_tidy",
+        "pyrenew_posterior_predictive",
+        ext = "parquet"
+      )
+    )
 
-  posterior_predictive_path <- fs::path(pyrenew_model_dir, "mcmc_tidy",
-    "pyrenew_posterior_predictive",
-    ext = "parquet"
-  )
-  posterior_predictive <- arrow::read_parquet(posterior_predictive_path)
+  ## augment daily and epiweekly other ed visits forecast
+  ## with "sample" format observed data
+  daily_other_ed_visits_samples <-
+    arrow::read_parquet(
+      fs::path(timeseries_model_dir,
+        "other_ed_visits_forecast",
+        ext = "parquet"
+      )
+    ) |>
+    dplyr::rename(Other = "other_ed_visits") |>
+    to_tidy_draws_timeseries(
+      daily_training_dat,
+      disease_name = "Other",
+      epiweekly = FALSE
+    )
 
-  other_ed_visits_path <- fs::path(timeseries_model_dir,
-    "other_ed_visits_forecast",
-    ext = "parquet"
-  )
-  other_ed_visits_forecast <- arrow::read_parquet(other_ed_visits_path) |>
-    dplyr::rename(Other = "other_ed_visits")
-
-  combined_dat <- combine_training_and_eval_data(
-    train_dat,
-    eval_dat,
-    disease_name
-  )
-
-  ## augement other ed visits forecast with "sample"
-  ## format observed data
-  other_ed_visits_samples <- to_tidy_draws_timeseries(
-    other_ed_visits_forecast,
-    combined_dat |> dplyr::filter(.data$data_type == "train"),
-    ## use this rather than train_dat since it has "Other"
-    ## (as opposed to "Total") pre-computed
-    disease_name = "Other"
-  )
+  ewkly_other_ed_visits_samples <-
+    arrow::read_parquet(
+      fs::path(timeseries_model_dir,
+        "epiweekly_other_ed_visits_forecast",
+        ext = "parquet"
+      )
+    ) |>
+    dplyr::rename(Other = "other_ed_visits") |>
+    to_tidy_draws_timeseries(
+      epiweekly_training_dat,
+      disease_name = "Other",
+      epiweekly = TRUE
+    )
 
 
-  forecast_samples <-
-    posterior_predictive |>
+  daily_samples <-
+    pyrenew_posterior_predictive |>
     tidybayes::gather_draws(observed_ed_visits[time]) |>
     tidyr::pivot_wider(
       names_from = ".variable",
@@ -202,21 +283,21 @@ process_state_forecast <- function(model_run_dir,
     ) |>
     dplyr::rename(Disease = "observed_ed_visits") |>
     dplyr::ungroup() |>
-    dplyr::mutate(date = min(combined_dat$date) + .data$time) |>
-    dplyr::left_join(other_ed_visits_samples,
+    dplyr::mutate(date = min(daily_combined_dat$date) + .data$time) |>
+    dplyr::left_join(daily_other_ed_visits_samples,
       by = c(".draw", "date")
     ) |>
     with_prop_disease_ed_visits() |>
     pivot_ed_visit_df_longer()
 
-  epiweekly_forecast_samples <- forecast_samples |>
+  epiweekly_samples_raw <- daily_samples |>
     dplyr::filter(.data$disease != "prop_disease_ed_visits") |>
-    dplyr::group_by(.data$disease) |>
-    dplyr::group_modify(~ forecasttools::daily_to_epiweekly(.x,
-      value_col = ".value", weekly_value_name = ".value",
+    forecasttools::daily_to_epiweekly(
+      value_col = ".value",
+      weekly_value_name = ".value",
+      id_cols = c(".draw", "disease"),
       strict = TRUE
-    )) |>
-    dplyr::ungroup() |>
+    ) |>
     tidyr::pivot_wider(
       names_from = "disease",
       values_from = ".value"
@@ -225,46 +306,65 @@ process_state_forecast <- function(model_run_dir,
       .data$epiweek,
       .data$epiyear,
       day_of_week = 7
-    )) |>
+    ))
+
+  epiweekly_samples <- epiweekly_samples_raw |>
     with_prop_disease_ed_visits() |>
     pivot_ed_visit_df_longer()
 
+  ewkly_with_ewkly_other_samples <-
+    epiweekly_samples_raw |>
+    dplyr::select(-"Other") |>
+    dplyr::left_join(ewkly_other_ed_visits_samples,
+      by = c(".draw", "date")
+    ) |>
+    with_prop_disease_ed_visits() |>
+    pivot_ed_visit_df_longer()
 
-  forecast_ci <-
-    forecast_samples |>
-    dplyr::select("date", "disease", ".value") |>
-    dplyr::group_by(.data$date, .data$disease) |>
-    ggdist::median_qi(.width = c(0.5, 0.8, 0.95))
+  samples_list <- list(
+    daily_samples = daily_samples,
+    epiweekly_samples = epiweekly_samples,
+    epiweekly_with_epiweekly_other_samples =
+      ewkly_with_ewkly_other_samples
+  )
 
-  # Optionally save data to parquet
-  if (save) {
-    to_save <- list(
-      list(
-        table = combined_dat,
-        save_name = "combined_training_eval_data"
-      ),
-      list(
-        table = forecast_samples,
-        save_name = "forecast_samples"
-      ),
-      list(
-        table = epiweekly_forecast_samples,
-        save_name = "epiweekly_forecast_samples"
-      ),
-      list(
-        table = forecast_ci,
-        save_name = "forecast_ci"
-      )
+  ci_targets <- samples_list |>
+    purrr::set_names(
+      ~ stringr::str_replace(., "samples", "ci")
     )
 
-
-    purrr::walk(
-      to_save,
+  ci_list <-
+    purrr::map(
+      ci_targets,
       \(x) {
+        dplyr::select(
+          x,
+          "date",
+          "disease",
+          ".value"
+        ) |>
+          dplyr::group_by(
+            .data$date,
+            .data$disease
+          ) |>
+          ggdist::median_qi(.width = ci_widths)
+      }
+    )
+
+  result <- c(
+    data_list,
+    samples_list,
+    ci_list
+  )
+
+  if (save) {
+    purrr::iwalk(
+      result,
+      \(tab, name) {
         arrow::write_parquet(
-          x$table,
+          tab,
           fs::path(pyrenew_model_dir,
-            x$save_name,
+            name,
             ext = "parquet"
           )
         )
@@ -272,10 +372,5 @@ process_state_forecast <- function(model_run_dir,
     )
   }
 
-  return(list(
-    combined_dat = combined_dat,
-    forecast_samples = forecast_samples,
-    epiweekly_forecast_samples = epiweekly_forecast_samples,
-    forecast_ci = forecast_ci
-  ))
+  return(result)
 }

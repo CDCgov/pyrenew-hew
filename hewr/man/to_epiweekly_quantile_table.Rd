@@ -9,7 +9,8 @@ for multiple locations as daily MCMC draws.}
 to_epiweekly_quantile_table(
   model_batch_dir,
   exclude = NULL,
-  epiweekly_other = FALSE
+  epiweekly_other = FALSE,
+  strict = FALSE
 )
 }
 \arguments{
@@ -24,6 +25,12 @@ Default \code{NULL} (exclude nothing).}
 \item{epiweekly_other}{Use an expressly epiweekly forecast
 for non-target ED visits instead of a daily forecast aggregated
 to epiweekly? Boolean, default \code{FALSE}.}
+
+\item{strict}{Boolean. If \code{TRUE}, raise an error if no
+valid draws are available to aggregate for any given location.
+Otherwise return \code{NULL} for that location but continue with other.
+locations. Passed as the \code{strict} argument to \code{\link[=to_epiweekly_quantiles]{to_epiweekly_quantiles()}}.
+Default \code{FALSE}.}
 }
 \value{
 The complete hubverse-format \code{\link[tibble:tibble]{tibble}}.

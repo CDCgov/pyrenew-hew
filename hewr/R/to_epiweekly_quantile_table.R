@@ -11,104 +11,62 @@
 #' to look back when generating epiweekly quantiles (determines how
 #' many negative epiweekly forecast horizons (i.e. nowcast/backcast)
 #' quantiles will be generated.
+#' @param disease_name Name of the disease quantity for which to
+#' produced epiweekly quantiles. Default `"prop_disease_ed_visits"`.
+#' @param draws_file_name Name of the parquet file containing
+#' forecast draws. Default `"epiweekly_samples"`.
 #' @param disease_model_name Name of the model for the target
-#' disease to use when making the quantile table. Default
-#' `"pyrenew_e"`.
-#' @param other_model_name Name of the model for other ed visits
-#' to use when making the quantile table if "epiweekly_other" is
-#' `TRUE` (ignored when `epiweekly_other` is `FALSE`). Default
-#' `"timeseries_e"`.
-#' @param epiweekly_other Use an expressly epiweekly forecast
-#' for non-target ED visits instead of a daily forecast aggregated
-#' to epiweekly? Boolean, default `FALSE`.
-#' @return A [`tibble`][tibble::tibble()] of quantiles.
+#' disease. Default `"pyrenew_e"`.
+#' @param strict Boolean. If `TRUE`, raise an error if no
+#' valid draws are available to aggregate. Otherwise return
+#' `NULL` in that case. Default `FALSE`.
+#' @return A [`tibble`][tibble::tibble()] of quantiles, or `NULL`
+#' if the draws file contains no vale
 #' @export
 to_epiweekly_quantiles <- function(model_run_dir,
                                    report_date,
                                    max_lookback_days,
+                                   disease_name = "prop_disease_ed_visits",
+                                   draws_file_name = "epiweekly_samples",
                                    disease_model_name = "pyrenew_e",
-                                   other_model_name = "timeseries_e",
-                                   epiweekly_other = FALSE) {
+                                   strict = FALSE) {
   message(glue::glue("Processing {model_run_dir}..."))
   draws_path <- fs::path(model_run_dir,
     disease_model_name,
-    "forecast_samples",
+    draws_file_name,
     ext = "parquet"
   )
 
   location <- fs::path_file(model_run_dir)
 
   draws <- arrow::read_parquet(draws_path) |>
-    dplyr::filter(.data$date >= lubridate::ymd(!!report_date) -
-      lubridate::days(!!max_lookback_days))
+    dplyr::filter(
+      .data$date >= lubridate::ymd(!!report_date) -
+        lubridate::days(!!max_lookback_days),
+      .data$disease == !!disease_name
+    )
 
   if (nrow(draws) < 1) {
+    if (strict) {
+      stop(glue::glue(
+        "to_epiweekly_quantiles() did not find valid draws for ",
+        "{disease_name} to convert to quantiles. It is raising an ",
+        "error because `strict` was set to `TRUE`. Looked for draws ",
+        "in the parquet file {draws_path}, with report date {report_date}",
+        "and max max lookback days {max_lookback_days}."
+      ))
+    }
     return(NULL)
   }
 
-  epiweekly_disease_draws <- draws |>
-    dplyr::filter(
-      .data$disease == "Disease"
-    ) |>
-    forecasttools::daily_to_epiweekly(
-      date_col = "date",
-      value_col = ".value",
-      id_cols = ".draw",
-      weekly_value_name = "epiweekly_disease",
-      strict = TRUE
-    )
-
-  if (!epiweekly_other) {
-    epiweekly_other_draws <- draws |>
-      dplyr::filter(.data$disease == "Other") |>
-      forecasttools::daily_to_epiweekly(
-        date_col = "date",
-        value_col = ".value",
-        id_cols = ".draw",
-        weekly_value_name = "epiweekly_other",
-        strict = TRUE
-      )
-  } else {
-    denom_path <- fs::path(model_run_dir,
-      other_model_name,
-      "epiweekly_other_ed_visits_forecast",
-      ext = "parquet"
-    )
-
-    epiweekly_other_draws <- arrow::read_parquet(denom_path) |>
-      dplyr::filter(.data$date >= lubridate::ymd(!!report_date) -
-        lubridate::days(!!max_lookback_days)) |>
-      dplyr::rename("epiweekly_other" = "other_ed_visits") |>
-      dplyr::mutate(
-        epiweek = lubridate::epiweek(.data$date),
-        epiyear = lubridate::epiyear(.data$date)
-      )
-  }
-  epiweekly_prop_draws <- dplyr::inner_join(
-    epiweekly_disease_draws,
-    epiweekly_other_draws,
-    by = c(
-      "epiweek",
-      "epiyear",
-      ".draw"
-    )
-  ) |>
-    dplyr::mutate(
-      "epiweekly_proportion" =
-        .data$epiweekly_disease / (.data$epiweekly_disease +
-          .data$epiweekly_other)
-    )
-
-
-  epiweekly_quantiles <- epiweekly_prop_draws |>
+  epiweekly_quantiles <- draws |>
     forecasttools::trajectories_to_quantiles(
       timepoint_cols = c("epiweek", "epiyear"),
-      value_col = "epiweekly_proportion"
+      value_col = ".value"
     ) |>
     dplyr::mutate(
       "location" = !!location
     )
-
   message(glue::glue("Done processing {model_run_dir}"))
   return(epiweekly_quantiles)
 }
@@ -126,22 +84,28 @@ to_epiweekly_quantiles <- function(model_run_dir,
 #' @param epiweekly_other Use an expressly epiweekly forecast
 #' for non-target ED visits instead of a daily forecast aggregated
 #' to epiweekly? Boolean, default `FALSE`.
+#' @param strict Boolean. If `TRUE`, raise an error if no
+#' valid draws are available to aggregate for any given location.
+#' Otherwise return `NULL` for that location but continue with other.
+#' locations. Passed as the `strict` argument to [to_epiweekly_quantiles()].
+#' Default `FALSE`.
 #' @return The complete hubverse-format [`tibble`][tibble::tibble()].
 #' @export
 to_epiweekly_quantile_table <- function(model_batch_dir,
                                         exclude = NULL,
-                                        epiweekly_other = FALSE) {
+                                        epiweekly_other = FALSE,
+                                        strict = FALSE) {
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
+
+  draws_file_name <- ifelse(epiweekly_other,
+    "epiweekly_with_epiweekly_other_samples",
+    "epiweekly_samples"
+  )
 
   locations_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
-  )
-
-  if (!is.null(exclude)) {
-    locations_to_process <- locations_to_process[
-      !(fs::path_file(locations_to_process) %in% exclude)
-    ]
-  }
+  ) |>
+    purrr::discard(~ fs::path_file(.x) %in% exclude)
 
   batch_params <- hewr::parse_model_batch_dir_path(
     model_batch_dir
@@ -169,7 +133,8 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
         x,
         report_date = report_date,
         max_lookback_days = 8,
-        epiweekly_other = epiweekly_other
+        draws_file_name = draws_file_name,
+        strict = strict
       )
     }
     ## max_lookback_days = 8 ensures we get
