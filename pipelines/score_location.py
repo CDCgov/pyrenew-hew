@@ -1,23 +1,34 @@
+#!/usr/bin/env python3
+
+"""
+Score pyrenew-hew forecast output for a single
+location against evaluation data.
+"""
+
 import argparse
 import logging
 import subprocess
 from datetime import timedelta
 from pathlib import Path
 
-import numpyro
-
-numpyro.set_host_device_count(4)
-
-
-from prep_eval_data import save_eval_data  # noqa
-from utils import parse_model_batch_dir_name  # noqa
-from fit_pyrenew_model import fit_and_save_model  # noqa
-from generate_predictive import (  # noqa
-    generate_and_save_predictions,
-)
+from prep_eval_data import save_eval_data
+from utils import parse_model_batch_dir_name
 
 
 def generate_epiweekly(model_run_dir: Path) -> None:
+    """
+    Run pipelines/generate_epiweekly.R on a given
+    model run directory, capturing output.
+
+    Parameters
+    ----------
+    model_run_dir
+        Target model run directory.
+
+    Returns
+    -------
+    None
+    """
     result = subprocess.run(
         [
             "Rscript",
@@ -32,6 +43,19 @@ def generate_epiweekly(model_run_dir: Path) -> None:
 
 
 def score_forecast(model_run_dir: Path) -> None:
+    """
+    Run pipelines/score_forecast.R on the given
+    model run directory, capturing output.
+
+    Parameters
+    ----------
+    model_run_dir
+        Target model run directory.
+
+    Returns
+    -------
+    None
+    """
     result = subprocess.run(
         [
             "Rscript",
@@ -45,18 +69,41 @@ def score_forecast(model_run_dir: Path) -> None:
     return None
 
 
-def main(state, model_batch_dir_path: Path, eval_data_path: Path):
+def main(
+    location: str, model_batch_dir_path: Path, eval_data_path: Path
+) -> None:
+    """
+    Score a pyrenew-hew model run for a given location.
+
+    Parameters
+    ----------
+    location
+        Location to score, as a two-letter location code
+        (e.g. "AK", "US").
+
+    model_batch_dir_path
+        Model batch directory containing location-specific
+        runs to score.
+
+    eval_data_path
+        Path to a parquet file containing evaluation data
+        against which to score.
+
+    Returns
+    -------
+    None
+    """
     model_batch_dir_path = Path(model_batch_dir_path)
     eval_data_path = Path(eval_data_path)
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
     batch_info = parse_model_batch_dir_name(model_batch_dir_path.name)
-    model_run_dir_path = Path(model_batch_dir_path, "model_runs", state)
+    model_run_dir_path = Path(model_batch_dir_path, "model_runs", location)
 
     logger.info("Getting eval data...")
     save_eval_data(
-        state=state,
+        state=location,
         latest_comprehensive_path=eval_data_path,
         output_data_dir=Path(model_run_dir_path, "data"),
         last_eval_date=(batch_info["report_date"] + timedelta(days=50)),
@@ -69,7 +116,7 @@ def main(state, model_batch_dir_path: Path, eval_data_path: Path):
     logger.info("Scoring forecast...")
     score_forecast(model_run_dir_path)
 
-    logger.info(f"Scoring complete for state {state}. ")
+    logger.info(f"Scoring complete for location {location}. ")
     return None
 
 
@@ -91,11 +138,11 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--state",
+        "--location",
         type=str,
         required=True,
         help=(
-            "Two letter abbreviation for the state to score"
+            "Two letter abbreviation for the location to score"
             "(e.g. 'AK', 'AL', 'AZ', etc.)."
         ),
     )
