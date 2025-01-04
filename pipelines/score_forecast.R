@@ -201,7 +201,7 @@ read_and_score_location <- function(model_run_dir,
   } else {
     message(glue::glue("Scoring daily {model_run_dir}..."))
   }
-  prefix <- if_else(epiweekly, "epiweekly_", "")
+  prefix <- if_else(epiweekly, "epiweekly_", "daily_")
   eval_data_filename <- glue::glue("{prefix}{eval_data_filename}")
 
   report_date <- hewr::parse_model_run_dir_path(
@@ -210,7 +210,7 @@ read_and_score_location <- function(model_run_dir,
 
   forecast_path <- fs::path(
     model_run_dir, "pyrenew_e",
-    glue::glue("{prefix}_samples"),
+    glue::glue("{prefix}samples"),
     ext = parquet_file_ext
   )
   ts_baseline_path <- fs::path(
