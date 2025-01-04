@@ -133,10 +133,15 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
 
   temp_batch_dir <- fs::dir_create(fs::path(tempdir, batch_dir_name))
 
-  locations <- c("loc1", "loc2")
+  locations <- c("loc1", "loc2", "loc3")
   purrr::walk(locations, function(loc) {
     loc_dir <- fs::path(temp_batch_dir, "model_runs", loc, "pyrenew_e")
     fs::dir_create(loc_dir)
+
+    disease_cols <- c("Other", "Disease")
+    if (loc != "loc3") {
+      disease_cols <- c(disease_cols, "prop_disease_ed_visits")
+    }
 
     create_tidy_forecast_data(
       directory = loc_dir,
@@ -145,14 +150,23 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
         lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
         by = "week"
       ),
-      disease_cols = c("Disease", "Other", "prop_disease_ed_visits"),
+      disease_cols = disease_cols,
       n_draw = 20,
       with_epiweek = TRUE
     )
   })
 
+  ## should succeed despite loc3 not having valid draws with strict = FALSE
   result_w_both_locations <- to_epiweekly_quantile_table(temp_batch_dir) |>
     suppressMessages()
+
+  ## should error if strict = TRUE because loc3 does not have
+  ## valid draws.
+  expect_error(
+    to_epiweekly_quantile_table(temp_batch_dir, strict = TRUE) |>
+      suppressMessages(),
+    "did not find valid draws"
+  )
 
   expect_s3_class(result_w_both_locations, "tbl_df")
   expect_gt(nrow(result_w_both_locations), 0)
@@ -160,7 +174,11 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
     "reference_date", "target", "horizon", "target_end_date",
     "location", "output_type", "output_type_id", "value"
   ), colnames(result_w_both_locations))
-  expect_setequal(locations, result_w_both_locations$location)
+  expect_setequal(
+    c("loc1", "loc2"),
+    result_w_both_locations$location
+  )
+  expect_false("loc3" %in% result_w_both_locations$location)
 
   result_w_one_location <- to_epiweekly_quantile_table(
     model_batch_dir = temp_batch_dir,
