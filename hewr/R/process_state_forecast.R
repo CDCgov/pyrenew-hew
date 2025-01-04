@@ -284,7 +284,7 @@ process_state_forecast <- function(model_run_dir,
     dplyr::rename(Disease = "observed_ed_visits") |>
     dplyr::ungroup() |>
     dplyr::mutate(date = min(daily_combined_dat$date) + .data$time) |>
-    dplyr::left_join(other_ed_visits_samples,
+    dplyr::left_join(daily_other_ed_visits_samples,
       by = c(".draw", "date")
     ) |>
     with_prop_disease_ed_visits() |>
@@ -315,7 +315,7 @@ process_state_forecast <- function(model_run_dir,
   ewkly_with_ewkly_other_samples <-
     epiweekly_samples_raw |>
     dplyr::select(-"Other") |>
-    dplyr::left_join(epiweekly_other_samples,
+    dplyr::left_join(ewkly_other_ed_visits_samples,
       by = c(".draw", "date")
     ) |>
     with_prop_disease_ed_visits() |>
