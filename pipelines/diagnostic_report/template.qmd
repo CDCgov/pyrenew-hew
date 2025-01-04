@@ -81,10 +81,10 @@ model_info |>
 ```{r Example Forecast}
 theme_set(cowplot::theme_cowplot())
 forecast_ci <- read_parquet(
-  path(pyrenew_model_dir, "forecast_ci", ext = "parquet")
+  path(pyrenew_model_dir, "daily_ci", ext = "parquet")
 )
 combined_dat <- read_parquet(
-  path(pyrenew_model_dir, "combined_training_eval_data", ext = "parquet")
+  path(pyrenew_model_dir, "daily_combined_training_eval_data", ext = "parquet")
 )
 
 figure_save_tbl <-

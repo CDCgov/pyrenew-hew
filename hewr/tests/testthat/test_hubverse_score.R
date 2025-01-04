@@ -1,21 +1,38 @@
+hubverse_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, 0.05), 0.975, 0.99)
+
 testthat::test_that("score_hubverse works as expected with valid inputs", {
+  date_range <- seq(
+    lubridate::ymd("2023-11-01"), lubridate::ymd("2024-01-29"),
+    by = "day"
+  )
+
+  horizons <- c(0, 1, 2)
+  locations <- c("loc1", "loc2")
+
   forecast <- create_hubverse_table(
-    date_cols = seq(
-      lubridate::ymd("2023-11-01"), lubridate::ymd("2024-01-29"),
-      by = "day"
-    ),
-    horizon = c(0, 1, 2),
-    location = c("loc1", "loc2"),
+    date_range = date_range,
+    horizons = horizons,
+    locations = locations,
     output_type = "quantile",
-    output_type_id = c(0.01, 0.025, seq(0.05, 0.95, 0.05), 0.975, 0.99)
+    output_type_id = hubverse_quantiles
+  )
+
+  expect_equal(
+    nrow(forecast),
+    length(date_range) *
+      length(horizons) *
+      length(locations) *
+      length(hubverse_quantiles)
   )
 
   observed <- create_observation_data(
-    date_cols = seq(
-      lubridate::ymd("2023-11-01"), lubridate::ymd("2024-01-29"),
-      by = "day"
-    ),
-    location = c("loc1", "loc2")
+    date_range = date_range,
+    locations = locations
+  )
+
+  expect_equal(
+    nrow(observed),
+    length(date_range) * length(locations)
   )
 
   scored <- score_hewr(forecast, observed)
@@ -33,22 +50,22 @@ testthat::test_that("score_hubverse works as expected with valid inputs", {
 
 testthat::test_that("score_hubverse handles missing location data", {
   forecast <- create_hubverse_table(
-    date_cols = seq(
+    date_range = seq(
       lubridate::ymd("2024-11-01"), lubridate::ymd("2024-11-29"),
       by = "day"
     ),
-    horizon = c(0, 1),
-    location = c("loc1", "loc2"),
+    horizons = c(0, 1),
+    locations = c("loc1", "loc2"),
     output_type = "quantile",
-    output_type_id = seq(0.05, 0.95, 0.05)
+    output_type_id = hubverse_quantiles
   )
 
   observed <- create_observation_data(
-    date_cols = seq(
+    date_range = seq(
       lubridate::ymd("2024-11-01"), lubridate::ymd("2024-11-29"),
       by = "day"
     ),
-    location = c("loc1")
+    locations = c("loc1")
   )
 
   result <- score_hewr(forecast, observed)
@@ -70,7 +87,7 @@ testthat::test_that("score_hubverse handles zero length forecast table", {
   )
 
   observed <- create_observation_data(
-    date_cols = seq(
+    date_range = seq(
       lubridate::ymd("2024-11-01"), lubridate::ymd("2024-11-02"),
       by = "day"
     ),
