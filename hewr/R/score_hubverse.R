@@ -36,6 +36,10 @@
 #' @param observed_date_column Name of the column containing
 #' date values in the `observed` table, as a string.
 #' Default `"reference_date"`
+#' @param quantile_tol Round quantile level values to this many
+#' decimal places, to avoid problems with floating point number
+#' comparisons. Passed as the `digits` argument to [base::round()].
+#' Default 10.
 #' @param ... Other keyword arguments passed to
 #' [scoringutils::transform_forecasts()].
 #' @return A table of scores, as the output of
@@ -51,12 +55,13 @@ score_hubverse <- function(forecast,
                            observed_value_column = "value",
                            observed_location_column = "location",
                            observed_date_column = "reference_date",
+                           quantile_tol = 10,
                            ...) {
   obs <- observed |>
     dplyr::select(
-      location = .data[[observed_location_column]],
-      target_end_date = .data[[observed_date_column]],
-      observed = .data[[observed_value_column]]
+      location = !!observed_location_column,
+      target_end_date = !!observed_date_column,
+      observed = !!observed_value_column
     )
 
   to_score <- forecast |>
@@ -67,6 +72,9 @@ score_hubverse <- function(forecast,
         "target_end_date"
       )
     ) |>
+    dplyr::mutate(output_type_id = output_type_id |>
+      as.numeric() |>
+      round(digits = !!quantile_tol)) |>
     scoringutils::as_forecast_quantile(
       predicted = "value",
       observed = "observed",

@@ -14,6 +14,7 @@ score_hubverse(
   observed_value_column = "value",
   observed_location_column = "location",
   observed_date_column = "reference_date",
+  quantile_tol = 10,
   ...
 )
 }
@@ -52,6 +53,11 @@ Default \code{"location"}}
 \item{observed_date_column}{Name of the column containing
 date values in the \code{observed} table, as a string.
 Default \code{"reference_date"}}
+
+\item{quantile_tol}{Round quantile level values to this many
+decimal places, to avoid problems with floating point number
+comparisons. Passed as the \code{digits} argument to \code{\link[base:Round]{base::round()}}.
+Default 10.}
 
 \item{...}{Other keyword arguments passed to
 \code{\link[scoringutils:transform_forecasts]{scoringutils::transform_forecasts()}}.}
