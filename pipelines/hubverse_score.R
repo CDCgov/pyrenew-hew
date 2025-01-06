@@ -295,9 +295,10 @@ score_and_save <- function(observed_data_path,
 
   pred_act_plot_targets <-
     tidyr::crossing(
-      location = locations,
-      disease = c("covid-19", "influenza")
+      disease = c("covid-19", "influenza"),
+      location = locations
     )
+
   pred_actual_by_date <- purrr::pmap(
     pred_act_plot_targets,
     pred_act_plot_fn
