@@ -114,7 +114,7 @@ convert_comb_daily_to_ewkly <- function(
 
   # Verify hospital admissions dates are epiweekly
   invalid_dates <-
-    epiweekly_hospital_admission_data |>
+    ewkly_hospital_admission_data |>
     mutate(implied_date = epiweek_to_date(epiweek,
       epiyear,
       day_of_week = day_of_week
@@ -143,7 +143,7 @@ convert_comb_daily_to_ewkly <- function(
 
   epiweekly_data <- bind_rows(
     epiweekly_ed_visit_data,
-    epiweekly_hospital_admission_data
+    ewkly_hospital_admission_data
   ) |>
     arrange(date, value_type, disease) |>
     select(date, everything())
