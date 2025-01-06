@@ -122,6 +122,8 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             n_observed_hospital_admissions_datapoints = len(
                 data_observed_disease_hospital_admissions
             )
+        elif n_observed_hospital_admissions_datapoints is None:
+            n_observed_hospital_admissions_datapoints = 0
 
         n_weeks_post_init = n_observed_disease_ed_visits_datapoints // 7 + 1
         i0 = self.infection_initialization_process()
@@ -168,25 +170,49 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
-        sampled_ed_visits = self.sample_ed_visits(
-            latent_infections=latent_infections,
-            data_observed_disease_ed_visits=(data_observed_disease_ed_visits),
-            n_observed_disease_ed_visits_datapoints=(
-                n_observed_disease_ed_visits_datapoints
-            ),
-            n_weeks_post_init=n_weeks_post_init,
-            right_truncation_offset=right_truncation_offset,
-        )
-        self.sample_hospital_admissions(
-            latent_infections=latent_infections,
-            n_admissions_sampled=(n_observed_hospital_admissions_datapoints),
-            data_observed_disease_hospital_admissions=(
-                data_observed_disease_hospital_admissions
-            ),
-        )
-        self.sample_wastewater()
+        # observation proceses
 
-        return sampled_ed_visits
+        sample_ed_visits = True
+        sample_admissions = n_observed_hospital_admissions_datapoints > 0
+        sample_wastewater = False
+
+        sampled_ed_visits, sampled_admissions, sampled_wastewater = (
+            None,
+            None,
+            None,
+        )
+
+        if sample_ed_visits:
+            sampled_ed_visits = self.sample_ed_visits(
+                latent_infections=latent_infections,
+                data_observed_disease_ed_visits=(
+                    data_observed_disease_ed_visits
+                ),
+                n_observed_disease_ed_visits_datapoints=(
+                    n_observed_disease_ed_visits_datapoints
+                ),
+                n_weeks_post_init=n_weeks_post_init,
+                right_truncation_offset=right_truncation_offset,
+            )
+
+        if sample_admissions:
+            self.sample_hospital_admissions(
+                latent_infections=latent_infections,
+                n_admissions_sampled=(
+                    n_observed_hospital_admissions_datapoints
+                ),
+                data_observed_disease_hospital_admissions=(
+                    data_observed_disease_hospital_admissions
+                ),
+            )
+        if sample_wastewater:
+            self.sample_wastewater()
+
+        return {
+            "ed_visits": sampled_ed_visits,
+            "admissions": sampled_admissions,
+            "wasewater": sampled_wastewater,
+        }
 
     def sample_hospital_admissions(
         self,
