@@ -177,7 +177,12 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             n_weeks_post_init=n_weeks_post_init,
             right_truncation_offset=right_truncation_offset,
         )
-        self.sample_hospital_admissions()
+        self.sample_hospital_admissions(
+            latent_infections=latent_infections,
+            n_observed_hospital_admissions_datapoints=(
+                n_observed_hospital_admissions_datapoints
+            ),
+        )
         self.sample_wastewater()
 
         return sampled_ed_visits
