@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
+from jax.typing import ArrayLike
 from pyrenew.arrayutils import repeat_until_n, tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
 from pyrenew.deterministic import DeterministicVariable
@@ -39,7 +40,9 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         ed_wday_effect_rv,
         inf_to_ed_rv,
         phi_rv,
-        right_truncation_pmf_rv,  # when unnamed deterministic variables are allowed, we could default this to 1.
+        right_truncation_pmf_rv,
+        # when unnamed deterministic variables are allowed,
+        # we could default this to 1.
         n_initialization_points,
     ):  # numpydoc ignore=GL08
         self.infection_initialization_process = InfectionInitializationProcess(
@@ -95,7 +98,8 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             and data_observed_disease_ed_visits is None
         ):
             raise ValueError(
-                "Either n_observed_disease_ed_visits_datapoints or data_observed_disease_ed_visits "
+                "Either n_observed_disease_ed_visits_datapoints or "
+                "data_observed_disease_ed_visits "
                 "must be passed."
             )
         elif (
@@ -103,7 +107,8 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             and data_observed_disease_ed_visits is not None
         ):
             raise ValueError(
-                "Cannot pass both n_observed_disease_ed_visits_datapoints and data_observed_disease_ed_visits."
+                "Cannot pass both n_observed_disease_ed_visits_datapoints "
+                "and data_observed_disease_ed_visits."
             )
         elif n_observed_disease_ed_visits_datapoints is None:
             n_observed_disease_ed_visits_datapoints = len(
@@ -163,6 +168,55 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
+        sampled_ed_visits = self.sample_ed_visits(
+            latent_infections=latent_infections,
+            data_observed_disease_ed_visits=data_observed_disease_ed_visits,
+            n_observed_disease_ed_visits_datapoints=(
+                n_observed_disease_ed_visits_datapoints
+            ),
+            n_weeks_post_init=n_weeks_post_init,
+            right_truncation_offset=right_truncation_offset,
+        )
+        self.observe_hospital_admissions()
+        self.observe_wastewater()
+
+        return sampled_ed_visits
+
+    def sample_hospital_admissions(
+        latent_infections: ArrayLike,
+        n_observed_hospital_admissions_datapoints: int,
+    ) -> ArrayLike:
+        """
+        Observe and/or predict incident hospital admissions.
+        """
+        if n_observed_hospital_admissions_datapoints is not None:
+            hospital_admissions_obs_rv = PoissonObservation(
+                "observed_hospital_admissions"
+            )
+            data_observed_disease_hospital_admissions = (
+                hospital_admissions_obs_rv(
+                    mu=jnp.ones(n_observed_hospital_admissions_datapoints) + 50
+                )
+            )
+        return data_observed_disease_hospital_admissions
+
+    def sample_wastewater(self):
+        """
+        Placeholder for when W component implemented.
+        """
+        pass
+
+    def sample_ed_visits(
+        self,
+        latent_infections,
+        data_observed_disease_ed_visits: ArrayLike,
+        n_observed_disease_ed_visits_datapoints: int,
+        n_weeks_post_init: int,
+        right_truncation_offset: ArrayLike = None,
+    ) -> ArrayLike:
+        """
+        Observe and/or predict ED visit values
+        """
         p_ed_mean = self.p_ed_mean_rv()
         p_ed_w_sd = self.p_ed_w_sd_rv()
         autoreg_p_ed = self.autoreg_p_ed_rv()
@@ -188,7 +242,9 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
         )[:n_observed_disease_ed_visits_datapoints]
-        # this is only applied after the ed visits are generated, not to all the latent infections. This is why we cannot apply the iedr in compute_delay_ascertained_incidence
+        # this is only applied after the ed visits are generated, not to all
+        # the latent infections. This is why we cannot apply the iedr in
+        # compute_delay_ascertained_incidence
         # see https://github.com/CDCgov/ww-inference-model/issues/43
 
         numpyro.deterministic("iedr", iedr)
@@ -238,16 +294,6 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             mu=latent_ed_visits_now,
             obs=data_observed_disease_ed_visits,
         )
-
-        if n_observed_hospital_admissions_datapoints is not None:
-            hospital_admissions_obs_rv = PoissonObservation(
-                "observed_hospital_admissions"
-            )
-            data_observed_disease_hospital_admissions = (
-                hospital_admissions_obs_rv(
-                    mu=jnp.ones(n_observed_hospital_admissions_datapoints) + 50
-                )
-            )
 
         return observed_ed_visits
 
