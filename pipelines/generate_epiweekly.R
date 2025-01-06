@@ -4,7 +4,8 @@ script_packages <- c(
   "dplyr",
   "forecasttools",
   "fs",
-  "readr"
+  "readr",
+  "lubridate"
 )
 
 ## load in packages without messages
@@ -81,9 +82,95 @@ convert_daily_to_epiweekly <- function(
   write_delim(epiweekly_data, output_file, delim = delim)
 }
 
+convert_comb_daily_to_ewkly <- function(
+    model_run_dir, dataname = "combined_training_data.tsv",
+    strict = FALSE, day_of_week = 7) {
+  message(glue::glue("Generating epi-weekly data {model_run_dir}..."))
+
+  data_basename <- path_ext_remove(dataname)
+  data_path <- path(model_run_dir, "data", dataname)
+
+  raw_data <- read_tsv(
+    data_path,
+    col_types = cols(
+      date = col_date(),
+      geo_value = col_character(),
+      disease = col_character(),
+      data_type = col_character(),
+      value_type = col_character(),
+      value = col_double()
+    )
+  )
+
+  daily_ed_visit_data <- raw_data |>
+    filter(value_type == "ed_visits")
+
+  ewkly_hospital_admission_data <- raw_data |>
+    filter(value_type == "hospital_admissions") |>
+    mutate(
+      epiweek = epiweek(date),
+      epiyear = epiyear(date)
+    )
+
+  # Verify hospital admissions dates are epiweekly
+  invalid_dates <-
+    epiweekly_hospital_admission_data |>
+    mutate(implied_date = epiweek_to_date(epiweek,
+      epiyear,
+      day_of_week = day_of_week
+    )) |>
+    filter(date != implied_date) |>
+    pull(date)
+
+  if (length(invalid_dates) > 0) {
+    stop(glue::glue(
+      "Invalid dates found in hospital admissions data: ",
+      "{paste0(invalid_dates, collapse = ', ')}"
+    ))
+  }
+
+  epiweekly_ed_visit_data <- daily_ed_visit_data |>
+    forecasttools::daily_to_epiweekly(
+      value_col = "value",
+      weekly_value_name = "value",
+      id_cols = c("disease", "geo_value", "data_type", "value_type"),
+      strict = strict
+    ) |>
+    mutate(date = epiweek_to_date(epiweek,
+      epiyear,
+      day_of_week = day_of_week
+    ))
+
+  epiweekly_data <- bind_rows(
+    epiweekly_ed_visit_data,
+    epiweekly_hospital_admission_data
+  ) |>
+    arrange(date, value_type, disease) |>
+    select(date, everything())
+
+  output_file <- path(
+    model_run_dir, "data",
+    glue::glue("epiweekly_{data_basename}"),
+    ext = "tsv"
+  )
+
+  write_tsv(epiweekly_data, output_file)
+}
+
+
 main <- function(model_run_dir) {
-  convert_daily_to_epiweekly(model_run_dir, dataname = "data.tsv")
-  convert_daily_to_epiweekly(model_run_dir, dataname = "eval_data.tsv")
+  convert_daily_to_epiweekly(model_run_dir,
+    dataname = "data.tsv"
+  )
+  convert_daily_to_epiweekly(model_run_dir,
+    dataname = "eval_data.tsv"
+  )
+  convert_comb_daily_to_ewkly(model_run_dir,
+    dataname = "combined_training_data.tsv"
+  )
+  convert_comb_daily_to_ewkly(model_run_dir,
+    dataname = "combined_eval_data.tsv"
+  )
 }
 
 # Create a parser
