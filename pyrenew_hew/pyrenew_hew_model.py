@@ -196,7 +196,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
             )
 
         if sample_admissions:
-            self.sample_hospital_admissions(
+            sampled_admissions = self.sample_hospital_admissions(
                 latent_infections=latent_infections,
                 n_admissions_sampled=(
                     n_observed_hospital_admissions_datapoints
@@ -206,7 +206,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
                 ),
             )
         if sample_wastewater:
-            self.sample_wastewater()
+            sampled_wastewater = self.sample_wastewater()
 
         return {
             "ed_visits": sampled_ed_visits,
