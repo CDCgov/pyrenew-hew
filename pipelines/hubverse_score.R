@@ -1,6 +1,7 @@
 library(argparser)
 library(ggplot2)
 library(ggdist)
+library(forecasttools)
 
 get_hubverse_table_paths <- function(dir,
                                      disease) {
@@ -89,11 +90,10 @@ plot_pred_act_by_horizon <- function(scorable_table,
       labels = scales::label_percent(),
       transform = "log10"
     ) +
-    forecasttools::theme_forecasttools()
+    theme_forecasttools()
 
   return(plot)
 }
-
 
 
 score_and_save <- function(observed_data_path,
@@ -149,13 +149,12 @@ score_and_save <- function(observed_data_path,
     ) |>
       dplyr::mutate(disease = !!disease) |>
       dplyr::filter(
-        .data$target_end_date <= !!last_target_date,
-        .data$horizon %in% !!horizons
+        .data$target_end_date <= !!last_target_date
       )
 
 
     scorable_table <- if (nrow(to_score) > 0) {
-      forecasttools::quantile_table_to_scorable(
+      quantile_table_to_scorable(
         to_score,
         observation_table = observed_data,
         obs_value_column =
@@ -177,7 +176,9 @@ score_and_save <- function(observed_data_path,
   message("Finished reading in forecasts and preparing for scoring.")
   message("Scoring forecasts...")
   full_scores <- hewr::score_hewr(
-    full_scorable_table
+    full_scorable_table |> dplyr::filter(
+      .data$horizon %in% !!horizons
+    )
   )
 
   message("Scoring complete.")
@@ -206,10 +207,10 @@ score_and_save <- function(observed_data_path,
   coverage_figs <- purrr::map(
     c(0.5, 0.95),
     \(x) {
-      forecasttools::plot_coverage_by_date(
+      plot_coverage_by_date(
         full_scores, x
       ) +
-        ggplot2::theme_minimal()
+        theme_forecasttools()
     }
   )
 
@@ -220,33 +221,86 @@ score_and_save <- function(observed_data_path,
       locations,
       \(x) {
         plot_pred_act_by_horizon(
-          full_scorable_table,
+          full_scorable_table |>
+            dplyr::filter(
+              .data$horizon %in% !!horizons
+            ),
           x
         )
       }
     )
 
-  pred_actual_by_date <- c(
-    purrr::map(
-      locations,
-      \(x) {
-        plot_pred_act_by_forecast_date(
-          full_scorable_table,
-          x,
-          "covid-19"
+  pred_act_plot_fn <- function(location, disease) {
+    loc_table <- full_scorable_table |>
+      dplyr::filter(
+        location == !!location,
+        disease == !!disease,
+        horizon %in% c(-1, !!horizons)
+      )
+
+    ## use observed for -1 if no explicit -1 provided
+    if (!-1 %in% loc_table$horizon) {
+      obs <- loc_table |>
+        dplyr::distinct(
+          target_end_date, observed, quantile_level,
+          .keep_all = TRUE
+        ) |>
+        dplyr::mutate(
+          predicted = .data$observed,
+          horizon = -1
+        ) |>
+        dplyr::select(-"reference_date")
+      needed <- loc_table |>
+        dplyr::distinct(reference_date) |>
+        dplyr::mutate(
+          horizon = -1,
+          target_end_date = reference_date +
+            lubridate::dweeks(.data$horizon)
         )
-      }
-    ),
-    purrr::map(
-      locations,
-      \(x) {
-        plot_pred_act_by_forecast_date(
-          full_scorable_table,
-          x,
-          "influenza"
+
+      synth_minus_one <- dplyr::left_join(needed,
+        obs,
+        by = c(
+          "target_end_date",
+          "horizon"
         )
-      }
+      )
+      loc_table <- dplyr::bind_rows(
+        synth_minus_one,
+        loc_table
+      )
+    }
+
+    plot <- plot_pred_obs_by_forecast_date(
+      loc_table,
+      facet_columns = "reference_date"
+    ) |>
+      suppressMessages()
+
+    return(suppressMessages(plot +
+      labs(
+        title = glue::glue(
+          "Predicted and observed ",
+          "{disease} %ED visits in ",
+          "{location}."
+        ),
+        y = "%ED visits"
+      ) +
+      scale_y_continuous(
+        transform = "identity",
+        labels = scales::label_percent()
+      )))
+    ## plot the -1 horizon for pred/obs by forecast date
+  }
+
+  pred_act_plot_targets <-
+    tidyr::crossing(
+      location = locations,
+      disease = c("covid-19", "influenza")
     )
+  pred_actual_by_date <- purrr::pmap(
+    pred_act_plot_targets,
+    pred_act_plot_fn
   )
 
   wis_by_loc <- scoringutils::plot_wis(
@@ -280,7 +334,7 @@ score_and_save <- function(observed_data_path,
     height = 11
   )
 
-  forecasttools::plots_to_pdf(
+  plots_to_pdf(
     coverage_figs,
     make_output_path(
       "coverage",
@@ -289,7 +343,7 @@ score_and_save <- function(observed_data_path,
     width = 11,
     height = 8.5
   )
-  forecasttools::plots_to_pdf(
+  plots_to_pdf(
     pred_actual_by_horizon,
     make_output_path(
       "predicted_actual_by_horizon",
@@ -299,7 +353,7 @@ score_and_save <- function(observed_data_path,
     height = 8.5
   )
 
-  forecasttools::plots_to_pdf(
+  plots_to_pdf(
     pred_actual_by_date,
     make_output_path(
       "predicted_actual_by_forecast_date",
