@@ -188,6 +188,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         return sampled_ed_visits
 
     def sample_hospital_admissions(
+        self,
         latent_infections: ArrayLike,
         n_observed_hospital_admissions_datapoints: int,
     ) -> ArrayLike:
