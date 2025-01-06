@@ -94,74 +94,7 @@ plot_pred_act_by_horizon <- function(scorable_table,
   return(plot)
 }
 
-plot_pred_act_by_forecast_date <- function(scorable_table,
-                                           location,
-                                           disease) {
-  to_plot <- scorable_table |>
-    dplyr::filter(
-      location == !!location,
-      disease == !!disease
-    )
 
-  to_plot_obs <- to_plot |>
-    dplyr::distinct(target_end_date, observed)
-
-  to_plot_forecast <- to_plot |>
-    dplyr::filter(quantile_level %in% c(0.025, 0.5, 0.975)) |>
-    tidyr::pivot_wider(
-      id_cols = c(
-        reference_date,
-        target_end_date,
-        horizon,
-        disease,
-        observed
-      ),
-      names_from = quantile_level,
-      names_glue = "q_{quantile_level * 100}",
-      values_from = predicted
-    )
-
-  plot <- to_plot_forecast |>
-    ggplot(aes(
-      x = target_end_date,
-      y = q_50
-    )) +
-    geom_point(color = "blue") +
-    geom_line(
-      color = "blue",
-      linetype = "dashed"
-    ) +
-    geom_ribbon(
-      aes(
-        ymin = q_2.5,
-        ymax = q_97.5
-      ),
-      fill = "blue",
-      alpha = 0.5
-    ) +
-    geom_point(
-      mapping = aes(y = observed),
-      data = to_plot_obs
-    ) +
-    geom_line(
-      mapping = aes(y = observed),
-      data = to_plot_obs
-    ) +
-    facet_wrap(~reference_date) +
-    labs(
-      title =
-        glue::glue(paste0(
-          "Predictions and observations across ",
-          "horizons for {disease} in {location}"
-        )),
-      x = "Date",
-      y = "%ED visits"
-    ) +
-    scale_y_continuous(labels = scales::label_percent()) +
-    forecasttools::theme_forecasttools()
-
-  return(plot)
-}
 
 score_and_save <- function(observed_data_path,
                            influenza_table_dir,
