@@ -18,7 +18,7 @@ Imports:
     fable,
     feasts,
     forcats,
-    forecasttools (>= 0.0.0.9000),
+    forecasttools (>= 0.1.1),
     fs,
     ggdist,
     ggplot2,
