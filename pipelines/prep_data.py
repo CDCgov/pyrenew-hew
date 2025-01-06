@@ -94,7 +94,6 @@ def combine_nssp_and_nhsn(
         )
         .with_columns(
             pl.lit(disease).alias("disease"),
-            pl.lit("train").alias("data_type"),
         )
     )
 
@@ -379,7 +378,7 @@ def process_and_save_state(
         end_date=last_training_date,
         disease=disease,
         state_abb=state_abb,
-    )
+    ).with_columns(pl.lit("train").alias("data_type"))
 
     nssp_training_dates = (
         nssp_training_data.get_column("date").unique().to_list()
