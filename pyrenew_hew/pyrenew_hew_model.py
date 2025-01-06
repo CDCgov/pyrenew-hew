@@ -92,7 +92,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         data_observed_disease_ed_visits=None,
         data_observed_disease_hospital_admissions=None,
         right_truncation_offset=None,
-    ):  # numpydoc ignore=GL08
+    ) -> ArrayLike:  # numpydoc ignore=GL08
         if (
             n_observed_disease_ed_visits_datapoints is None
             and data_observed_disease_ed_visits is None
@@ -170,7 +170,7 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
 
         sampled_ed_visits = self.sample_ed_visits(
             latent_infections=latent_infections,
-            data_observed_disease_ed_visits=data_observed_disease_ed_visits,
+            data_observed_disease_ed_visits=(data_observed_disease_ed_visits),
             n_observed_disease_ed_visits_datapoints=(
                 n_observed_disease_ed_visits_datapoints
             ),
@@ -179,8 +179,9 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
         )
         self.sample_hospital_admissions(
             latent_infections=latent_infections,
-            n_observed_hospital_admissions_datapoints=(
-                n_observed_hospital_admissions_datapoints
+            n_admissions_sampled=(n_observed_hospital_admissions_datapoints),
+            data_observed_disease_hospital_admissions=(
+                data_observed_disease_hospital_admissions
             ),
         )
         self.sample_wastewater()
@@ -190,21 +191,22 @@ class pyrenew_hew_model(Model):  # numpydoc ignore=GL08
     def sample_hospital_admissions(
         self,
         latent_infections: ArrayLike,
-        n_observed_hospital_admissions_datapoints: int,
+        n_admissions_sampled: int,
+        data_observed_disease_hospital_admissions: ArrayLike | None = None,
     ) -> ArrayLike:
         """
         Observe and/or predict incident hospital admissions.
         """
-        if n_observed_hospital_admissions_datapoints is not None:
-            hospital_admissions_obs_rv = PoissonObservation(
-                "observed_hospital_admissions"
-            )
-            data_observed_disease_hospital_admissions = (
-                hospital_admissions_obs_rv(
-                    mu=jnp.ones(n_observed_hospital_admissions_datapoints) + 50
-                )
-            )
-        return data_observed_disease_hospital_admissions
+        hospital_admissions_obs_rv = PoissonObservation(
+            "observed_hospital_admissions"
+        )
+        # placeholder mean
+        predicted_admissions = jnp.ones(n_admissions_sampled)
+        sampled_admissions = hospital_admissions_obs_rv(
+            mu=predicted_admissions,
+            obs=data_observed_disease_hospital_admissions,
+        )
+        return sampled_admissions
 
     def sample_wastewater(self):
         """
