@@ -7,7 +7,10 @@ import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from pyrenew.arrayutils import repeat_until_n, tile_until_n
-from pyrenew.convolve import compute_delay_ascertained_incidence
+from pyrenew.convolve import (
+    compute_delay_ascertained_incidence,
+    daily_to_weekly,
+)
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
@@ -15,9 +18,10 @@ from pyrenew.latent import (
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.metaclass import Model, RandomVariable
-from pyrenew.observation import NegativeBinomialObservation, PoissonObservation
+from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
+from pyrenew.utils import daily_t
 
 from pyrenew_hew.utils import convert_to_logmean_log_sd
 
@@ -252,6 +256,7 @@ class HospAdmitObservationProcess(RandomVariable):
     def sample(
         self,
         latent_infections: ArrayLike,
+        first_latent_infection_dow: int,
         population_size: int,
         n_observed_hospital_admissions_datapoints: int,
         data_observed_disease_hospital_admissions: ArrayLike | None = None,
@@ -265,15 +270,24 @@ class HospAdmitObservationProcess(RandomVariable):
             p_observed_given_incident=1,
             latent_incidence=latent_infections,
             delay_incidence_to_observation_pmf=inf_to_hosp_admit,
+        )
+
+        assert latent_hospital_admissions.shape == latent_infections.shape
+
+        first_latent_admission_dow = first_latent_infection_dow
+
+        predicted_weekly_admissions = daily_to_weekly(
+            latent_hospital_admissions,
+            input_data_first_dow=first_latent_admission_dow,
+            week_start_dow=6,  # MMWR epiweek, starts Sunday
         )[-n_observed_hospital_admissions_datapoints:]
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
             concentration_rv=self.hosp_admit_neg_bin_concentration_rv,
         )
-        predicted_admissions = latent_hospital_admissions
         sampled_admissions = hospital_admissions_obs_rv(
-            mu=predicted_admissions,
+            mu=predicted_weekly_admissions,
             obs=data_observed_disease_hospital_admissions,
         )
         return sampled_admissions
