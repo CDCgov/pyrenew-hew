@@ -8,7 +8,12 @@ library(pak)
 pak::local_install("hewr", ask = FALSE)
 pak::pkg_install("epidatr", ask = FALSE)
 library(fable)
+library(tsibble)
 library(epidatr)
+library(dplyr)
+library(lubridate)
+library(forecasttools)
+library(tidyr)
 ```
 
 ## Load data
@@ -16,14 +21,39 @@ library(epidatr)
 
 ```{r}
 signals <- c("pct_ed_visits_covid","pct_ed_visits_influenza", "pct_ed_visits_rsv")
-latest_us_data <- pub_covidcast(
+
+latest_us_nhsn <- pull_nhsn(
+            columns = "totalconfflunewadm",
+        ) 
+
+latest_us_nssp <- pub_covidcast(
   source = "nssp",
   signals = signals,
   geo_type = "nation",
   time_type = "week",
   as_of = NULL,
 )
+```   
+
+```{r}   
+nssp <- latest_us_nssp |>
+        select(geo_value, signal, time_value, issue, value)     
+nhsn <- latest_us_nhsn |>
+        mutate(time_value = lubridate::as_date(weekendingdate) + 1)|>
+        rename(hospital_admissions = totalconfflunewadm) |>
+        mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
+        group_by(time_value) |>
+        summarise(value = sum(hospital_admissions, na.rm = TRUE)) |>
+        mutate(geo_value = "us", signal = "nhsn", issue = max(time_value)) |>
+        filter(time_value %in% nssp$time_value)
+
+us_data <- bind_rows(nssp,nhsn) |>
+  pivot_wider(names_from = signal, values_from = value) |>
+  as_tsibble(index = time_value)
+
+```
 
 
-head(latest_us_data)
+```{r}
+
 ```
