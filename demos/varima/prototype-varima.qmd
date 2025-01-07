@@ -1,0 +1,29 @@
+---
+title: "Prototype VARIMA"
+format: html
+---
+
+```{r}
+library(pak)
+pak::local_install("hewr", ask = FALSE)
+pak::pkg_install("epidatr", ask = FALSE)
+library(fable)
+library(epidatr)
+```
+
+## Load data
+
+
+```{r}
+signals <- c("pct_ed_visits_covid","pct_ed_visits_influenza", "pct_ed_visits_rsv")
+latest_us_data <- pub_covidcast(
+  source = "nssp",
+  signals = signals,
+  geo_type = "nation",
+  time_type = "week",
+  as_of = NULL,
+)
+
+
+head(latest_us_data)
+```
