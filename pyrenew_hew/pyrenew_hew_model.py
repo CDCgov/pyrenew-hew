@@ -4,6 +4,8 @@ import json
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
+import numpyro.distributions.transforms as transforms
+from numpyro.infer.reparam import LocScaleReparam
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from pyrenew.arrayutils import repeat_until_n, tile_until_n
@@ -25,23 +27,25 @@ from pyrenew_hew.utils import convert_to_logmean_log_sd
 class LatentInfectionProcess(RandomVariable):
     def __init__(
         self,
-        i0_first_obs_n_rv: RandomVariable,
-        initialization_rate_rv: RandomVariable,
         log_r_mu_intercept_rv: RandomVariable,
         autoreg_rt_rv: RandomVariable,  # ar coefficient of AR(1) process on R'(t)
         eta_sd_rv: RandomVariable,  # sd of random walk for ar process on R'(t)
         generation_interval_pmf_rv: RandomVariable,
         infection_feedback_strength_rv: RandomVariable,
         infection_feedback_pmf_rv: RandomVariable,
+        i_first_obs_over_n_rv: RandomVariable,
+        mean_initial_exp_growth_rate_rv: RandomVariable,
+        offset_ref_logit_i_first_obs_rv: RandomVariable,
+        offset_ref_initial_exp_growth_rate_rv: RandomVariable,
+        offset_ref_log_r_t_rv: RandomVariable,
         n_initialization_points: int,
+        pop_fraction: float = 1,
+        n_subpops: int = 1,
+        autoreg_rt_subpop_rv: RandomVariable = None,
+        sigma_rt_rv: RandomVariable = None,
+        sigma_i_first_obs_rv: RandomVariable = None,
+        sigma_initial_exp_growth_rate_rv: RandomVariable = None,
     ) -> None:
-        self.infection_initialization_process = InfectionInitializationProcess(
-            "I0_initialization",
-            i0_first_obs_n_rv,
-            InitializeInfectionsExponentialGrowth(
-                n_initialization_points, initialization_rate_rv, t_pre_init=0
-            ),
-        )
 
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
@@ -53,11 +57,26 @@ class LatentInfectionProcess(RandomVariable):
             differencing_order=1,
         )
 
+        self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
-        self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
         self.infection_feedback_pmf_rv = infection_feedback_pmf_rv
+
+        self.i_first_obs_over_n_rv = i_first_obs_over_n_rv
+        self.mean_initial_exp_growth_rate_rv = mean_initial_exp_growth_rate_rv
+        self.offset_ref_logit_i_first_obs_rv = offset_ref_logit_i_first_obs_rv
+        self.offset_ref_initial_exp_growth_rate_rv = (
+            offset_ref_initial_exp_growth_rate_rv
+        )
+        self.offset_ref_log_r_t_rv = offset_ref_log_r_t_rv
+        self.autoreg_rt_subpop_rv = autoreg_rt_subpop_rv
+        self.sigma_rt_rv = sigma_rt_rv
+        self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
+        self.sigma_initial_exp_growth_rate_rv = sigma_initial_exp_growth_rate_rv
+        self.n_initialization_points = n_initialization_points
+        self.pop_fraction = pop_fraction
+        self.n_subpops = n_subpops
 
     def validate(self):
         pass
@@ -66,8 +85,6 @@ class LatentInfectionProcess(RandomVariable):
         """
         Sample latent infections.
         """
-        i0 = self.infection_initialization_process()
-
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
         log_r_mu_intercept = self.log_r_mu_intercept_rv()
@@ -85,32 +102,161 @@ class LatentInfectionProcess(RandomVariable):
             noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
         )
 
-        rtu = repeat_until_n(
-            data=jnp.exp(log_rtu_weekly),
-            n_timepoints=n_days_post_init,
-            offset=0,
-            period_size=7,
+        i_first_obs_over_n = self.i_first_obs_over_n_rv()
+        offset_ref_logit_i_first_obs = self.offset_ref_logit_i_first_obs_rv()
+
+        mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
+        offset_ref_initial_exp_growth_rate = (
+            self.offset_ref_initial_exp_growth_rate_rv()
+        )
+
+        i_first_obs_over_n_ref_subpop = transforms.SigmoidTransform()(
+            transforms.logit(i_first_obs_over_n)
+            + jnp.where(self.n_subpops > 1, offset_ref_logit_i_first_obs, 0)
+        )
+        initial_exp_growth_rate_ref_subpop = mean_initial_exp_growth_rate + jnp.where(
+            self.n_subpops > 1, offset_ref_initial_exp_growth_rate, 0
+        )
+
+        offset_ref_log_r_t = self.offset_ref_log_r_t_rv()
+        log_rtu_ref_subpop_in_week = log_rtu_weekly + jnp.where(
+            self.n_subpops > 1, offset_ref_log_r_t, 0
+        )
+
+        if self.n_subpops == 1:
+            i_first_obs_over_n_subpop = i_first_obs_over_n_ref_subpop
+            initial_exp_growth_rate_subpop = initial_exp_growth_rate_ref_subpop
+            log_rtu_weekly_subpop = log_rtu_ref_subpop_in_week[:, jnp.newaxis]
+        else:
+            sigma_i_first_obs = self.sigma_i_first_obs_rv()
+            i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
+                "i_first_obs_over_n_non_ref_subpop",
+                DistributionalVariable(
+                    "i_first_obs_over_n_non_ref_subpop_raw",
+                    dist.Normal(
+                        transforms.logit(i_first_obs_over_n), sigma_i_first_obs
+                    ),
+                    reparam=LocScaleReparam(0),
+                ),
+                transforms=transforms.SigmoidTransform(),
+            )
+            sigma_initial_exp_growth_rate = self.sigma_initial_exp_growth_rate_rv()
+            initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
+                "initial_exp_growth_rate_non_ref_subpop_raw",
+                dist.Normal(
+                    mean_initial_exp_growth_rate,
+                    sigma_initial_exp_growth_rate,
+                ),
+                reparam=LocScaleReparam(0),
+            )
+
+            autoreg_rt_subpop = self.autoreg_rt_subpop_rv()
+            sigma_rt = self.sigma_rt_rv()
+            rtu_subpop_ar_init_rv = DistributionalVariable(
+                "rtu_subpop_ar_init",
+                dist.Normal(
+                    0,
+                    sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_subpop, 2)),
+                ),
+            )
+
+            with numpyro.plate("n_subpops", self.n_subpops - 1):
+                initial_exp_growth_rate_non_ref_subpop = (
+                    initial_exp_growth_rate_non_ref_subpop_rv()
+                )
+                i_first_obs_over_n_non_ref_subpop = (
+                    i_first_obs_over_n_non_ref_subpop_rv()
+                )
+                rtu_subpop_ar_init = rtu_subpop_ar_init_rv()
+
+            i_first_obs_over_n_subpop = jnp.hstack(
+                [
+                    i_first_obs_over_n_ref_subpop,
+                    i_first_obs_over_n_non_ref_subpop,
+                ]
+            )
+            initial_exp_growth_rate_subpop = jnp.hstack(
+                [
+                    initial_exp_growth_rate_ref_subpop,
+                    initial_exp_growth_rate_non_ref_subpop,
+                ]
+            )
+
+            rtu_subpop_ar_proc = ARProcess()
+            rtu_subpop_ar_weekly = rtu_subpop_ar_proc(
+                noise_name="rtu_ar_proc",
+                n=n_weeks_post_init,
+                init_vals=rtu_subpop_ar_init[jnp.newaxis],
+                autoreg=autoreg_rt_subpop[jnp.newaxis],
+                noise_sd=sigma_rt,
+            )
+
+            log_rtu_non_ref_subpop_in_week = (
+                rtu_subpop_ar_weekly + log_rtu_weekly[:, jnp.newaxis]
+            )
+            log_rtu_weekly_subpop = jnp.concat(
+                [
+                    log_rtu_ref_subpop_in_week[:, jnp.newaxis],
+                    log_rtu_non_ref_subpop_in_week,
+                ],
+                axis=1,
+            )
+
+        rtu_subpop = jnp.squeeze(
+            jnp.repeat(
+                jnp.exp(log_rtu_weekly_subpop),
+                repeats=7,
+                axis=0,
+            )[:n_days_post_init, :]
+        )
+
+        log_i0_subpop = (
+            jnp.log(i_first_obs_over_n_subpop)
+            - self.unobs_time * initial_exp_growth_rate_subpop
+        )
+        i0_subpop_rv = DeterministicVariable("i0_subpop", jnp.exp(log_i0_subpop))
+        initial_exp_growth_rate_subpop_rv = DeterministicVariable(
+            "initial_exp_growth_rate_subpop", initial_exp_growth_rate_subpop
+        )
+        infection_initialization_process = InfectionInitializationProcess(
+            "I0_initialization",
+            i0_subpop_rv,
+            InitializeInfectionsExponentialGrowth(
+                self.n_initialization_points,
+                initial_exp_growth_rate_subpop_rv,
+                t_pre_init=0,
+            ),
         )
 
         generation_interval_pmf = self.generation_interval_pmf_rv()
+        i0 = infection_initialization_process()
 
         inf_with_feedback_proc_sample = self.inf_with_feedback_proc(
-            Rt=rtu,
+            Rt=rtu_subpop,
             I0=i0,
             gen_int=generation_interval_pmf,
         )
 
-        latent_infections = jnp.concat(
-            [
-                i0,
-                inf_with_feedback_proc_sample.post_initialization_infections,
-            ]
+        latent_infections_subpop = jnp.atleast_2d(
+            jnp.concat(
+                [
+                    i0,
+                    inf_with_feedback_proc_sample.post_initialization_infections,
+                ]
+            )
         )
-        numpyro.deterministic("rtu", rtu)
-        numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
-        numpyro.deterministic("latent_infections", latent_infections)
+        if latent_infections_subpop.shape[0] == 1:
+            latent_infections_subpop = latent_infections_subpop.T
 
-        return latent_infections
+        latent_infections_total = jnp.sum(
+            self.pop_fraction * latent_infections_subpop, axis=1
+        )
+
+        numpyro.deterministic("rtu_subpop", rtu_subpop)
+        numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
+        numpyro.deterministic("latent_infections_total", latent_infections_total)
+
+        return latent_infections_total
 
 
 class EDVisitObservationProcess(RandomVariable):
@@ -196,10 +342,7 @@ class EDVisitObservationProcess(RandomVariable):
         )[-n_observed_disease_ed_visits_datapoints:]
 
         latent_ed_visits_final = (
-            potential_latent_ed_visits
-            * iedr
-            * ed_wday_effect
-            * population_size
+            potential_latent_ed_visits * iedr * ed_wday_effect * population_size
         )
 
         if right_truncation_offset is not None:
@@ -216,9 +359,7 @@ class EDVisitObservationProcess(RandomVariable):
                 mode="constant",
                 constant_values=(1, 0),
             )
-            latent_ed_visits_now = (
-                latent_ed_visits_final * prop_already_reported
-            )
+            latent_ed_visits_now = latent_ed_visits_final * prop_already_reported
         else:
             latent_ed_visits_now = latent_ed_visits_final
 
@@ -242,9 +383,7 @@ class HospAdmitObservationProcess(RandomVariable):
         hosp_admit_neg_bin_concentration_rv: RandomVariable,
     ):
         self.inf_to_hosp_admit_rv = inf_to_hosp_admit_rv
-        self.hosp_admit_neg_bin_concentration_rv = (
-            hosp_admit_neg_bin_concentration_rv
-        )
+        self.hosp_admit_neg_bin_concentration_rv = hosp_admit_neg_bin_concentration_rv
 
     def validate(self):
         pass
@@ -374,9 +513,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             sampled_ed_visits = self.ed_visit_obs_process_rv(
                 latent_infections=latent_infections,
                 population_size=self.population_size,
-                data_observed_disease_ed_visits=(
-                    data_observed_disease_ed_visits
-                ),
+                data_observed_disease_ed_visits=(data_observed_disease_ed_visits),
                 n_observed_disease_ed_visits_datapoints=(
                     n_observed_disease_ed_visits_datapoints
                 ),
@@ -469,9 +606,7 @@ def create_pyrenew_hew_model_from_stan_data(stan_data_file):
         "inf_feedback",
         DistributionalVariable(
             "inf_feedback_raw",
-            dist.LogNormal(
-                inf_feedback_prior_logmean, inf_feedback_prior_logsd
-            ),
+            dist.LogNormal(inf_feedback_prior_logmean, inf_feedback_prior_logsd),
         ),
         transforms=transformation.AffineTransform(loc=0, scale=-1),
     )
@@ -503,9 +638,7 @@ def create_pyrenew_hew_model_from_stan_data(stan_data_file):
         "ed_wday_effect",
         DistributionalVariable(
             "ed_wday_effect_raw",
-            dist.Dirichlet(
-                jnp.array(stan_data["hosp_wday_effect_prior_alpha"])
-            ),
+            dist.Dirichlet(jnp.array(stan_data["hosp_wday_effect_prior_alpha"])),
         ),
         transformation.AffineTransform(loc=0, scale=7),
     )
@@ -580,9 +713,7 @@ def create_pyrenew_hew_model_from_stan_data(stan_data_file):
 
     my_hosp_admit_obs_model = HospAdmitObservationProcess(
         inf_to_hosp_admit_rv=inf_to_hosp_admit_rv,
-        hosp_admit_neg_bin_concentration_rv=(
-            hosp_admit_neg_bin_concentration_rv
-        ),
+        hosp_admit_neg_bin_concentration_rv=(hosp_admit_neg_bin_concentration_rv),
     )
 
     my_wastewater_obs_model = WastewaterObservationProcess()
