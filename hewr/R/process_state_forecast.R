@@ -45,7 +45,6 @@ combine_training_and_eval_data <- function(train_dat,
     ) |>
     with_prop_disease_ed_visits() |>
     dplyr::select(-"Total") |>
-    dplyr::mutate(time = dplyr::dense_rank(.data$date)) |>
     tidyr::pivot_longer(
       c("Disease", "Other", "prop_disease_ed_visits"),
       names_to = "disease",

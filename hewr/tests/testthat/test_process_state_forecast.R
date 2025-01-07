@@ -47,7 +47,6 @@ test_that("combine_training_and_eval_data works as expected", {
 
     checkmate::assert_names(names(result),
       permutation.of = c(
-        "time",
         "date",
         "data_type",
         "disease",
