@@ -65,4 +65,11 @@ ed_visit_wday_effect_rv = TransformedVariable(
 )
 
 # Based on looking at some historical posteriors.
-phi_rv = DistributionalVariable("phi", dist.LogNormal(6, 1))
+ed_neg_bin_concentration_rv = DistributionalVariable(
+    "ed_visit_neg_bin_concentration", dist.LogNormal(4, 1)
+)
+
+# more diffuse than ED visit, same mean
+hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
+    "hosp_admit_neg_bin_concentration", dist.LogNormal(4, 2)
+)
