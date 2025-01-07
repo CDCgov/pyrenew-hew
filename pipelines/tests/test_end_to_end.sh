@@ -26,7 +26,7 @@ do
 	       --state $state \
 	       --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
 	       --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
-	       --priors-path "$BASE_DIR/test_output/priors.py" \
+	       --priors-path pipelines/priors/prod_priors.py \
 	       --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
 	       --output-dir "$BASE_DIR/private_data" \
 	       --n-training-days 60 \
