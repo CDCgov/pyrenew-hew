@@ -31,6 +31,7 @@ def fit_and_save_model(
         data_observed_disease_ed_visits,
         data_observed_disease_hospital_admissions,
         right_truncation_offset,
+        first_observation_date,
     ) = build_model_from_dir(model_run_dir)
     my_model.run(
         num_warmup=n_warmup,
@@ -38,6 +39,7 @@ def fit_and_save_model(
         rng_key=rng_key,
         data_observed_disease_ed_visits=(data_observed_disease_ed_visits),
         right_truncation_offset=right_truncation_offset,
+        first_observation_date=first_observation_date,
         mcmc_args=dict(num_chains=n_chains, progress_bar=True),
         nuts_args=dict(find_heuristic_step_size=True),
     )

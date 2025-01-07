@@ -1,3 +1,4 @@
+import datetime
 import json
 import runpy
 
@@ -62,6 +63,10 @@ def build_model_from_dir(model_dir):
         - 1
     )
 
+    first_observation_date = datetime.datetime.strptime(
+        model_data["nssp_training_dates"][0], "%Y-%m-%d"
+    )
+
     priors = runpy.run_path(str(prior_path))
 
     right_truncation_offset = model_data["right_truncation_offset"]
@@ -110,4 +115,5 @@ def build_model_from_dir(model_dir):
         data_observed_disease_ed_visits,
         data_observed_disease_hospital_admissions,
         right_truncation_offset,
+        first_observation_date,
     )

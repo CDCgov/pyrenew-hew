@@ -20,6 +20,7 @@ def generate_and_save_predictions(
         data_observed_disease_ed_visits,
         data_observed_disease_hospital_admissions,
         right_truncation_offset,
+        first_observation_date,
     ) = build_model_from_dir(model_run_dir)
 
     my_model._init_model(1, 1)
@@ -42,6 +43,7 @@ def generate_and_save_predictions(
             data_observed_disease_hospital_admissions
         )
         + n_forecast_points // 7,
+        first_observation_date=first_observation_date,
     )
 
     idata = az.from_numpyro(

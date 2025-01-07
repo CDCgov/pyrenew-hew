@@ -1,4 +1,5 @@
 # numpydoc ignore=GL08
+import datetime
 import json
 
 import jax.numpy as jnp
@@ -21,7 +22,6 @@ from pyrenew.metaclass import Model, RandomVariable
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
-from pyrenew.utils import daily_t
 
 from pyrenew_hew.utils import convert_to_logmean_log_sd
 
@@ -32,8 +32,8 @@ class LatentInfectionProcess(RandomVariable):
         i0_first_obs_n_rv: RandomVariable,
         initialization_rate_rv: RandomVariable,
         log_r_mu_intercept_rv: RandomVariable,
-        autoreg_rt_rv: RandomVariable,  # ar coefficient of AR(1) process on R'(t)
-        eta_sd_rv: RandomVariable,  # sd of random walk for ar process on R'(t)
+        autoreg_rt_rv: RandomVariable,  # ar coeff for AR(1) on R'(t)
+        eta_sd_rv: RandomVariable,  # sd of random walk for AR(1) on R'(t)
         generation_interval_pmf_rv: RandomVariable,
         infection_feedback_strength_rv: RandomVariable,
         infection_feedback_pmf_rv: RandomVariable,
@@ -149,7 +149,7 @@ class EDVisitObservationProcess(RandomVariable):
         data_observed_disease_ed_visits: ArrayLike,
         n_observed_disease_ed_visits_datapoints: int,
         n_weeks_post_init: int,
-        right_truncation_offset: ArrayLike = None,
+        right_truncation_offset: int = None,
     ) -> ArrayLike:
         """
         Observe and/or predict ED visit values
@@ -272,9 +272,13 @@ class HospAdmitObservationProcess(RandomVariable):
             delay_incidence_to_observation_pmf=inf_to_hosp_admit,
         )
 
-        assert latent_hospital_admissions.shape == latent_infections.shape
+        longest_possible_delay = inf_to_hosp_admit.shape[0]
 
-        first_latent_admission_dow = first_latent_infection_dow
+        # we should add functionality to automate this,
+        # along with tests
+        first_latent_admission_dow = (
+            first_latent_infection_dow + longest_possible_delay
+        ) % 7
 
         predicted_weekly_admissions = daily_to_weekly(
             latent_hospital_admissions,
@@ -328,11 +332,12 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
 
     def sample(
         self,
-        n_observed_disease_ed_visits_datapoints=None,
-        n_observed_hospital_admissions_datapoints=None,
-        data_observed_disease_ed_visits=None,
-        data_observed_disease_hospital_admissions=None,
-        right_truncation_offset=None,
+        n_observed_disease_ed_visits_datapoints: int = None,
+        n_observed_hospital_admissions_datapoints: int = None,
+        data_observed_disease_ed_visits: ArrayLike = None,
+        data_observed_disease_hospital_admissions: ArrayLike = None,
+        right_truncation_offset: int = None,
+        first_observation_date: datetime.datetime.date = None,
     ) -> ArrayLike:  # numpydoc ignore=GL08
         if (
             n_observed_disease_ed_visits_datapoints is None
@@ -373,6 +378,10 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             n_days_post_init=n_days_post_init,
             n_weeks_post_init=n_weeks_post_init,
         )
+        n_init_days = self.latent_infection_process_rv.infection_initialization_process.infection_init_method.n_timepoints
+        first_latent_infection_dow = (
+            first_observation_date - datetime.timedelta(days=n_init_days)
+        ).weekday()
 
         sample_ed_visits = True
         sample_admissions = n_observed_hospital_admissions_datapoints > 0
@@ -401,6 +410,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         if sample_admissions:
             sampled_admissions = self.hosp_admit_obs_process_rv(
                 latent_infections=latent_infections,
+                first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
                 n_observed_hospital_admissions_datapoints=(
                     n_observed_hospital_admissions_datapoints
