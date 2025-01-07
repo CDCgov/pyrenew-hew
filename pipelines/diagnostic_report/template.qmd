@@ -7,7 +7,7 @@ format:
     - custom.scss
     embed-resources: false
 params:
-  model_dir_raw: "/home/xum8/pyrenew-hew/private_data/pyrenew-test-output/covid-19_r_2024-11-22_f_2024-08-19_t_2024-11-16/model_runs/MN/" # pragma: allowlist-secret
+  model_dir_raw: "/Users/damon/Documents/GitHub/pyrenew-hew/pipelines/tests/private_data/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA" # pragma: allowlist-secret
 ---
 <!-- Would like embed-resources to be true, but the current version is problematic with blobfuse -->
 
@@ -184,7 +184,8 @@ figure_save_tbl |>
 ```{r Rt Plot}
 #| title: Posterior Rt
 date_time_map <- combined_dat |>
-  distinct(time, date)
+  distinct(date) |>
+  mutate(time = dense_rank(date) - 1)
 
 last_training_date <- combined_dat |>
   dplyr::filter(data_type == "train") |>
