@@ -59,7 +59,7 @@ save_hubverse_table <- function(model_batch_dir) {
     forecasttools::get_hubverse_table(
       report_epiweek_end,
       target_name =
-        glue::glue("wk inc {disease_abbr} prop ed visits")
+        glue::glue("wk inc {disease_abbr} hosp")
     ) |>
     dplyr::arrange(
       .data$target,
@@ -68,9 +68,10 @@ save_hubverse_table <- function(model_batch_dir) {
       .data$reference_date,
       .data$horizon,
       .data$output_type_id
-    )
-  hubverse_file_name <- path(glue::glue("{report_date}-{str_to_lower(disease)}-hubverse-table"), ext = "tsv")
-  write_tsv(hubverse_table, path(model_batch_dir, hubverse_file_name))
+    ) |>
+    mutate(location = forecasttools::us_loc_abbr_to_code(location))
+  hubverse_file_name <- path(glue::glue("{report_date}-{str_to_lower(disease)}-hubverse-table"), ext = "csv")
+  write_csv(hubverse_table, path(model_batch_dir, hubverse_file_name))
 }
 
 
