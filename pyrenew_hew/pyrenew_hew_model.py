@@ -252,7 +252,7 @@ class HospAdmitObservationProcess(RandomVariable):
     ) -> None:
         self.inf_to_hosp_admit_rv = inf_to_hosp_admit_rv
         self.hosp_admit_neg_bin_concentration_rv = (
-            (hosp_admit_neg_bin_concentration_rv),
+            hosp_admit_neg_bin_concentration_rv
         )
         self.ihr_rv = ihr_rv
         self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
