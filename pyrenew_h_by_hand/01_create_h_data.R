@@ -13,6 +13,8 @@ model_run_dirs <- dir_ls(path(dir_ls(super_dir), "model_runs"))
 walk(
   model_run_dirs,
   \(model_run_dir) {
+    print("creating h data for")
+    print(model_run_dir)
     file_delete(dir_ls(model_run_dir, glob = "*.pdf"))
     file_delete(dir_ls(model_run_dir, glob = "*.rds"))
 
