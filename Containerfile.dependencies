@@ -1,6 +1,6 @@
 FROM python:3.13
 
-ARG PYRENEW_VERSION=v0.1.1
+ARG PYRENEW_VERSION=v0.1.2
 
 RUN apt-get update
 RUN apt-get install -y r-base
