@@ -86,8 +86,6 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
           file: ./Containerfile.dependencies
-          build-args: |
-            PYRENEW_VERSION=${{ env.PYRENEW_VERSION }}
 
   build-pipeline-image:
 
