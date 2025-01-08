@@ -135,12 +135,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       max_lookback_days = 15,
       draws_file_name = draws_file,
       strict = strict
-    ) |>
-      dplyr::mutate(other_ed_visit_forecast = ifelse(
-        epiweekly_other,
-        "aggregated_daily_fit",
-        "direct_epiweekly_fit"
-      )))
+    ))
   }
 
   hubverse_table <- purrr::map(
@@ -160,7 +155,12 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       .data$reference_date,
       .data$horizon,
       .data$output_type_id
-    )
+    ) |>
+    dplyr::mutate(other_ed_visit_forecast = ifelse(
+      .data$location %in% !!epiweekly_other_locations,
+      "aggregated_daily_fit",
+      "direct_epiweekly_fit"
+    ))
 
   return(hubverse_table)
 }
