@@ -30,7 +30,7 @@ def fit_and_save_model(
     my_model.run(
         data=my_data,
         sample_ed_visits=True,
-        sample_hospital_admissions=False,
+        sample_hospital_admissions=True,
         sample_wastewater=False,
         num_warmup=n_warmup,
         num_samples=n_samples,
