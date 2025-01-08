@@ -158,8 +158,8 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     ) |>
     dplyr::mutate(other_ed_visit_forecast = ifelse(
       .data$location %in% !!epiweekly_other_locations,
-      "aggregated_daily_fit",
-      "direct_epiweekly_fit"
+      "direct_epiweekly_fit",
+      "aggregated_daily_fit"
     ))
 
   return(hubverse_table)
