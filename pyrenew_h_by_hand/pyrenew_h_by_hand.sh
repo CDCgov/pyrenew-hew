@@ -20,3 +20,7 @@ echo "Finished running 02_process_h_data.R"
 echo "Running 03_create_hubverse_table.R..."
 Rscript pyrenew_h_by_hand/03_create_hubverse_table.R "$SUPER_DIR"
 echo "Finished running 03_create_hubverse_table.R"
+
+echo "Running 04_make_figures.R..."
+Rscript pyrenew_h_by_hand/04_make_figures.R "$SUPER_DIR"
+echo "Finished running 04_make_figures.R"
