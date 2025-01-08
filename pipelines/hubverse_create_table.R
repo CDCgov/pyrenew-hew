@@ -16,7 +16,7 @@
 main <- function(model_batch_dir,
                  output_path,
                  exclude = NULL,
-                 epiweekly_other = c()) {
+                 epiweekly_other_locations = c()) {
   hewr::to_epiweekly_quantile_table(
     model_batch_dir,
     exclude = exclude,
