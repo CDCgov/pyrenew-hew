@@ -7,7 +7,6 @@ import jax.numpy as jnp
 from pyrenew.deterministic import DeterministicVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
-
 from pyrenew_hew.pyrenew_hew_model import (
     EDVisitObservationProcess,
     HospAdmitObservationProcess,
@@ -108,7 +107,6 @@ def build_model_from_dir(
         ),
         ihr_rel_iedr_rv=priors["ihr_rel_iedr_rv"],
         ihr_rv=priors["ihr_rv"],
-
     )
 
     # placeholder
@@ -119,7 +117,7 @@ def build_model_from_dir(
         latent_infection_process_rv=my_latent_infection_model,
         ed_visit_obs_process_rv=my_ed_visit_obs_model,
         hosp_admit_obs_process_rv=my_hosp_admit_obs_model,
-        wastewater_obs_process_rv=my_wastewater_obs_model
+        wastewater_obs_process_rv=my_wastewater_obs_model,
     )
 
     my_data = PyrenewHEWData(
@@ -127,7 +125,7 @@ def build_model_from_dir(
         data_observed_disease_hospital_admissions=(
             data_observed_disease_hospital_admissions
         ),
-        data_observed_disease_wastewater=None, # placeholder
+        data_observed_disease_wastewater=None,  # placeholder
         right_truncation_offset=right_truncation_offset,
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,

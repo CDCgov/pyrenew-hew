@@ -248,11 +248,12 @@ class HospAdmitObservationProcess(RandomVariable):
         inf_to_hosp_admit_rv: RandomVariable,
         hosp_admit_neg_bin_concentration_rv: RandomVariable,
         ihr_rv: RandomVariable = None,
-        ihr_rel_iedr_rv: RandomVariable = None) -> None:
+        ihr_rel_iedr_rv: RandomVariable = None,
+    ) -> None:
         self.inf_to_hosp_admit_rv = inf_to_hosp_admit_rv
         self.hosp_admit_neg_bin_concentration_rv = (
-            hosp_admit_neg_bin_concentration_rv
-        ),
+            (hosp_admit_neg_bin_concentration_rv),
+        )
         self.ihr_rv = ihr_rv
         self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
 
@@ -305,10 +306,11 @@ class HospAdmitObservationProcess(RandomVariable):
             "observed_hospital_admissions",
             concentration_rv=self.hosp_admit_neg_bin_concentration_rv,
         )
-        
+
         sampled_admissions = hospital_admissions_obs_rv(
-            mu=predicted_weekly_admissions[-n_datapoints:],
-            obs=data_observed,
+            mu=predicted_weekly_admissions[-n_datapoints:], obs=data_observed
+        )
+
         return sampled_admissions
 
 
@@ -385,7 +387,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 n_datapoints=data.n_hospital_admissions_datapoints,
                 data_observed=(data.data_observed_disease_hospital_admissions),
                 iedr=iedr,
-
             )
         if sample_wastewater:
             sampled_wastewater = self.wastewater_obs_process_rv()
