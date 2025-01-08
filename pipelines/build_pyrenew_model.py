@@ -1,10 +1,12 @@
 import datetime
 import json
 import runpy
+from pathlib import Path
 
 import jax.numpy as jnp
 from pyrenew.deterministic import DeterministicVariable
 
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
     EDVisitObservationProcess,
     HospAdmitObservationProcess,
@@ -14,9 +16,11 @@ from pyrenew_hew.pyrenew_hew_model import (
 )
 
 
-def build_model_from_dir(model_dir):
-    data_path = model_dir / "data" / "data_for_model_fit.json"
-    prior_path = model_dir / "priors.py"
+def build_model_from_dir(
+    model_dir: Path,
+) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
+    data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
+    prior_path = Path(model_dir) / "priors.py"
 
     with open(
         data_path,
@@ -63,8 +67,11 @@ def build_model_from_dir(model_dir):
         - 1
     )
 
-    first_observation_date = datetime.datetime.strptime(
+    first_ed_visits_date = datetime.datetime.strptime(
         model_data["nssp_training_dates"][0], "%Y-%m-%d"
+    )
+    first_hospital_admissions_date = datetime.datetime.strptime(
+        model_data["nhsn_training_dates"][0], "%Y-%m-%d"
     )
 
     priors = runpy.run_path(str(prior_path))
@@ -98,6 +105,8 @@ def build_model_from_dir(model_dir):
         hosp_admit_neg_bin_concentration_rv=(
             priors["hosp_admit_neg_bin_concentration_rv"]
         ),
+        ihr_rel_iedr_rv=priors["ihr_rel_iedr_rv"],
+        ihr_rv=priors["ihr_rv"],
     )
 
     my_wastewater_obs_model = WastewaterObservationProcess()
@@ -110,10 +119,14 @@ def build_model_from_dir(model_dir):
         wastewater_obs_process_rv=my_wastewater_obs_model,
     )
 
-    return (
-        my_model,
-        data_observed_disease_ed_visits,
-        data_observed_disease_hospital_admissions,
-        right_truncation_offset,
-        first_observation_date,
+    my_data = PyrenewHEWData(
+        data_observed_disease_ed_visits=data_observed_disease_ed_visits,
+        data_observed_disease_hospital_admissions=(
+            data_observed_disease_hospital_admissions
+        ),
+        right_truncation_offset=right_truncation_offset,
+        first_ed_visits_date=first_ed_visits_date,
+        first_hospital_admissions_date=first_hospital_admissions_date,
     )
+
+    return (my_model, my_data)

@@ -45,6 +45,18 @@ p_ed_visit_mean_rv = DistributionalVariable(
     ),
 )  # logit scale
 
+ihr_rv = TransformedVariable(
+    "ihr",
+    DistributionalVariable(
+        "logit_ihr",
+        dist.Normal(
+            transformation.SigmoidTransform().inv(0.005),
+            0.3,
+        ),
+    ),
+    transforms=transformation.SigmoidTransform(),
+)
+
 
 p_ed_visit_w_sd_rv = DistributionalVariable(
     "p_ed_visit_w_sd_sd", dist.TruncatedNormal(0, 0.01, low=0)
@@ -62,6 +74,10 @@ ed_visit_wday_effect_rv = TransformedVariable(
         dist.Dirichlet(jnp.array([5, 5, 5, 5, 5, 5, 5])),
     ),
     transformation.AffineTransform(loc=0, scale=7),
+)
+
+ihr_rel_iedr_rv = DistributionalVariable(
+    "ihr_rel_iedr", dist.LogNormal(0, jnp.log(jnp.sqrt(2)))
 )
 
 # Based on looking at some historical posteriors.
