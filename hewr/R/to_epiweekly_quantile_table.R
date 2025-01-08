@@ -43,7 +43,11 @@ to_epiweekly_quantiles <- function(model_run_dir,
     dplyr::filter(
       .data$date >= lubridate::ymd(!!report_date) -
         lubridate::days(!!max_lookback_days),
-      .data$disease == !!disease_name
+      .data$.variable == !!disease_name
+    ) |>
+    mutate(
+      epiweek = epiweek(date),
+      epiyear = epiyear(date)
     )
 
   if (nrow(draws) < 1) {
