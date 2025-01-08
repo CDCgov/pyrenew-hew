@@ -123,14 +123,14 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
   )
 
   get_location_table <- \(loc) {
-    epiweekly_other <- x %in% epiweekly_other_locations
+    epiweekly_other <- loc %in% epiweekly_other_locations
     draws_file <- ifelse(
       epiweekly_other,
       "epiweekly_with_epiweekly_other_samples",
       "epiweekly_samples"
     )
     return(to_epiweekly_quantiles(
-      x,
+      loc,
       report_date = report_date,
       max_lookback_days = 15,
       draws_file_name = draws_file,
