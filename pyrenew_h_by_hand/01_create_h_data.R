@@ -19,9 +19,11 @@ walk(
     pyrenew_e_path <- fs::path(model_run_dir, "pyrenew_e")
     pyrenew_h_path <- fs::path(model_run_dir, "pyrenew_h")
     pyrenew_he_path <- fs::path(model_run_dir, "pyrenew_he")
+    timeseries_e_path <- fs::path(model_run_dir, "timeseries_e")
 
 
     file_delete(dir_ls(pyrenew_e_path, glob = "*.parquet"))
+    fs::dir_delete(timeseries_e_path)
     dir_delete(path(pyrenew_e_path, "mcmc_tidy"))
 
     fs::dir_copy(pyrenew_e_path, pyrenew_h_path)

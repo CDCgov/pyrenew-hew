@@ -9,6 +9,14 @@ fi
 SUPER_DIR=$1
 
 # Run the R scripts with the provided argument
-Rscript 01_create_h_data.R "$SUPER_DIR"
-Rscript 02_process_h_data.R "$SUPER_DIR"
-Rscript 03_create_hubverse_table.R "$SUPER_DIR"
+echo "Running 01_create_h_data.R..."
+Rscript pyrenew_h_by_hand/01_create_h_data.R "$SUPER_DIR"
+echo "Finished running 01_create_h_data.R"
+
+echo "Running 02_process_h_data.R..."
+Rscript pyrenew_h_by_hand/02_process_h_data.R "$SUPER_DIR"
+echo "Finished running 02_process_h_data.R"
+
+echo "Running 03_create_hubverse_table.R..."
+Rscript pyrenew_h_by_hand/03_create_hubverse_table.R "$SUPER_DIR"
+echo "Finished running 03_create_hubverse_table.R"

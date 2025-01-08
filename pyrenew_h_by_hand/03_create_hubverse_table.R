@@ -1,4 +1,6 @@
 library(argparser)
+library(fs)
+library(tidyverse)
 p <- arg_parser("Process model batch directories")
 p <- add_argument(p, "super_dir", help = "Directory containing model batch directories")
 argv <- parse_args(p)
