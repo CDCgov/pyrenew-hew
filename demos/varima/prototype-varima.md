@@ -233,8 +233,8 @@ We choose three dates to evaluate the model matrix with a target of
 COVID-19:
 
 - 31st Dec 2023. The week before the last major peak.
-- 16th June 2024. The week before the summer upturn.
-- 3rd Nov 2024. The week before the winter upturn.
+- 16th June 2024. A week near start of the summer upturn.
+- 3rd Nov 2024. A week near start of the winter upturn.
 
 #### COVID-19: Last peak
 
@@ -347,7 +347,7 @@ We choose two dates to evaluate the model matrix with a target of
 Influenza:
 
 - 24th Dec 2023. The week before the last major peak.
-- 13th Oct 2024. A week at the beginning of the winter upturn.
+- 13th Oct 2024. A week near the beginning of the winter upturn.
 
 #### Influenza: Last peak
 
