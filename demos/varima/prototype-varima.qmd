@@ -138,23 +138,23 @@ generate_fits_and_scores <- function(model_configs, us_data, cutoff_data,
 ```
 
 ```{r}
-summary_forecasts <- D$fits |>
-    map(
-        function(x){
-            x |>
-            generate(times = 2000, h = forecast_horizon) |>
-            as_tibble() |>
-            rename_with(\(z) "log_nhsn_covid", any_of(c(".sim", "log_nhsn_covid"))) |>
-            select(.model, time_value, log_nhsn_covid, .rep) |>
-            group_by(time_value, .model) |>
-            summarise(
-                median_forecast = median(log_nhsn_covid),
-                lower_ci = quantile(log_nhsn_covid, probs = 0.025),
-                upper_ci = quantile(log_nhsn_covid, probs = 0.975)
-            )
-        }
-    ) |>
-    bind_rows()
+# summary_forecasts <- D$fits |>
+#     map(
+#         function(x){
+#             x |>
+#             generate(times = 2000, h = forecast_horizon) |>
+#             as_tibble() |>
+#             rename_with(\(z) "log_nhsn_covid", any_of(c(".sim", "log_nhsn_covid"))) |>
+#             select(.model, time_value, log_nhsn_covid, .rep) |>
+#             group_by(time_value, .model) |>
+#             summarise(
+#                 median_forecast = median(log_nhsn_covid),
+#                 lower_ci = quantile(log_nhsn_covid, probs = 0.025),
+#                 upper_ci = quantile(log_nhsn_covid, probs = 0.975)
+#             )
+#         }
+#     ) |>
+#     bind_rows()
 
 summarize_forecasts <- function(fits, target_col, forecast_horizon,
     times = 2000){
@@ -162,15 +162,15 @@ summarize_forecasts <- function(fits, target_col, forecast_horizon,
             map(
                 function(x){
                     x |>
-                    generate(times = 2000, h = forecast_horizon) |>
+                    generate(times = times, h = forecast_horizon) |>
                     as_tibble() |>
-                    rename_with(\(z) !!target_col, any_of(c(".sim", !!target_col))) |>
+                    rename_with(\(z) target_col, any_of(c(".sim", target_col))) |>
                     select(.model, time_value, !!target_col, .rep) |>
                     group_by(time_value, .model) |>
                     summarise(
                         median_forecast = median(!!target_col),
-                        lower_ci = quantile(!!target_col, probs = 0.025),
-                        upper_ci = quantile(!!target_col, probs = 0.975)
+                        # lower_ci = quantile(!!target_col, probs = 0.025),
+                        # upper_ci = quantile(!!target_col, probs = 0.975)
                     )
                 }
             ) |>
@@ -186,38 +186,22 @@ Define relevant dates
 wk_bf_mj_peak <- as.Date("2023-12-31")
 
 D <- generate_fits_and_scores(model_configs_covid, us_data, wk_bf_mj_peak,
-    fc_str = forecast_horizon)
+    target_name = "covid", target_col = "log_nhsn_covid", fc_str = forecast_horizon)
 D$scores
 ```
 
 ```{r}
-summary_forecasts <- D$fits |>
-    map(
-        function(x){
-            x |>
-            generate(times = 2000, h = forecast_horizon) |>
-            as_tibble() |>
-            rename_with(\(z) "log_nhsn_covid", any_of(c(".sim", "log_nhsn_covid"))) |>
-            select(.model, time_value, log_nhsn_covid, .rep) |>
-            group_by(time_value, .model) |>
-            summarise(
-                median_forecast = median(log_nhsn_covid),
-                lower_ci = quantile(log_nhsn_covid, probs = 0.025),
-                upper_ci = quantile(log_nhsn_covid, probs = 0.975)
-            )
-        }
-    ) |>
-    bind_rows()
+summary_forecasts <- summarize_forecasts(D$fits, "log_nhsn_covid", forecast_horizon)
 
-    ggplot() +
-        geom_line(data = us_data, aes(x = time_value, y = log_nhsn_covid)) +
-        geom_ribbon(data = summary_forecasts, aes(x = time_value, ymin = lower_ci, ymax = upper_ci, fill = .model), alpha = 0.2) +
-        geom_line(data = summary_forecasts, aes(x = time_value, y = median_forecast, color = .model)) +
-        labs(title = "Log of NHSN COVID Data Over Time: Forecasting with Uncertainty",
-            x = "Date",
-            y = "Log(NHSN COVID)") +
-        theme(legend.position = "bottom") +
-        facet_wrap(~ .model, scales = "free_y")
+ggplot() +
+    geom_line(data = us_data, aes(x = time_value, y = log_nhsn_covid)) +
+    geom_ribbon(data = summary_forecasts, aes(x = time_value, ymin = lower_ci, ymax = upper_ci, fill = .model), alpha = 0.2) +
+    geom_line(data = summary_forecasts, aes(x = time_value, y = median_forecast, color = .model)) +
+    labs(title = "Log of NHSN COVID Data Over Time: Forecasting with Uncertainty",
+        x = "Date",
+        y = "Log(NHSN COVID)") +
+    theme(legend.position = "bottom") +
+    facet_wrap(~ .model, scales = "free_y")
 ```
 
 ### Summer upturn
