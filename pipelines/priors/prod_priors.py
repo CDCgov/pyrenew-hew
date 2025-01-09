@@ -31,7 +31,7 @@ inf_feedback_strength_rv = TransformedVariable(
     "inf_feedback",
     DistributionalVariable(
         "inf_feedback_raw",
-        dist.LogNormal(jnp.log(50), jnp.log(1.5)),
+        dist.LogNormal(jnp.log(150), jnp.log(1.5)),
     ),
     transforms=transformation.AffineTransform(loc=0, scale=-1),
 )
