@@ -274,12 +274,7 @@ class HospAdmitObservationProcess(RandomVariable):
         """
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
-        if iedr is not None:
-            ihr_rel_iedr = self.ihr_rel_iedr_rv()
-            ihr = iedr[0] * ihr_rel_iedr
-            numpyro.deterministic("ihr", ihr)
-        else:
-            ihr = self.ihr_rv()
+        ihr = self.ihr_rv()
 
         latent_admissions = population_size * ihr * latent_infections
         latent_hospital_admissions = compute_delay_ascertained_incidence(

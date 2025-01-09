@@ -45,12 +45,13 @@ p_ed_visit_mean_rv = DistributionalVariable(
     ),
 )  # logit scale
 
+
 ihr_rv = TransformedVariable(
     "ihr",
     DistributionalVariable(
         "logit_ihr",
         dist.Normal(
-            transformation.SigmoidTransform().inv(0.005),
+            transformation.SigmoidTransform().inv(0.01),
             0.3,
         ),
     ),
@@ -85,7 +86,7 @@ ed_neg_bin_concentration_rv = DistributionalVariable(
     "ed_visit_neg_bin_concentration", dist.LogNormal(4, 1)
 )
 
-# more diffuse than ED visit, same mean
+# similar to for ED visits
 hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
-    "hosp_admit_neg_bin_concentration", dist.LogNormal(4, 2)
+    "hosp_admit_neg_bin_concentration", dist.LogNormal(4, 1)
 )

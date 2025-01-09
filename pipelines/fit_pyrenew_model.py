@@ -29,7 +29,7 @@ def fit_and_save_model(
     (my_model, my_data) = build_model_from_dir(model_run_dir)
     my_model.run(
         data=my_data,
-        sample_ed_visits=True,
+        sample_ed_visits=False,
         sample_hospital_admissions=True,
         sample_wastewater=False,
         num_warmup=n_warmup,
