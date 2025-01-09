@@ -43,6 +43,9 @@ to improve forecast accuracy.
   so that only data before the forecast date was used, e.g. the
   “nowcast” is a one week ahead forecast using data up to the previous
   week.
+- Each scoring run was only evaluated against a single target. We may
+  want to consider joint scoring across targets, e.g jointly forecasting
+  COVID-19 and Influenza.
 
 ### Implications
 
