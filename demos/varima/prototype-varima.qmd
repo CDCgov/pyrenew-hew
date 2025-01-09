@@ -7,6 +7,7 @@ format: html
 library(pak)
 pak::local_install("hewr", ask = FALSE) #For deps
 pak::pkg_install("epidatr", ask = FALSE)
+
 library(fable)
 library(fabletools)
 library(tsibble)
@@ -86,11 +87,13 @@ model_configs_influenza = list(
     list(name = "varima_op_target", model = VARIMA(vars(log_nhsn_influenza, log_pct_ed_visits_covid) ~ pdq())),
     list(name = "varima_all", model = VARIMA(vars(log_nhsn_covid, log_nhsn_influenza, log_pct_ed_visits_covid, log_pct_ed_visits_influenza) ~ pdq(0:5,1,0:5)))
 )
+
+forecast_horizon <- "4 weeks"
 ```
 
 ```{r}
 generate_fits_and_scores <- function(model_configs, us_data, cutoff_data,
-    fc_str = "4 weeks"){
+    target_name, target_col, fc_str = "4 weeks"){
     us_data_redacted  <- us_data |> filter(time_value < cutoff_data)
 
     fits <- model_configs |>
@@ -103,12 +106,76 @@ generate_fits_and_scores <- function(model_configs, us_data, cutoff_data,
     scores <- forecasts |>
         map(\(x) accuracy(x, us_data, measures = list(crps_score = CRPS))) |>
         bind_rows() |>
-        mutate(.response = ifelse(is.na(.response), "log_nhsn_covid", .response)) |>
-        filter(.response == "log_nhsn_covid") |>
+        mutate(.response = ifelse(is.na(.response), !!target_col, .response)) |>
+        filter(.response == !!target_col) |>
         arrange(crps_score) |>
-        mutate(target = "covid")
+        mutate(target = !!target_name)
 
     return(list(fits = fits, scores = scores))
+}
+
+# generate_fits_and_scores <- function(model_configs, us_data, cutoff_data,
+#     target_name, target_col, fc_str = "4 weeks"){
+#     us_data_redacted  <- us_data |> filter(time_value < cutoff_data)
+
+#     fits <- model_configs |>
+#         map(function(x) {
+#         us_data_redacted |> model(!!x$name := x$model) } )
+
+#     forecasts <- fits |>
+#         map(\(x) forecast(x, h = fc_str))
+
+#     scores <- forecasts |>
+#         map(\(x) accuracy(x, us_data, measures = list(crps_score = CRPS))) |>
+#         bind_rows() |>
+#         mutate(.response = ifelse(is.na(.response), "log_nhsn_covid", .response)) |>
+#         filter(.response == "log_nhsn_covid") |>
+#         arrange(crps_score) |>
+#         mutate(target = "covid")
+
+#     return(list(fits = fits, scores = scores))
+# }
+```
+
+```{r}
+summary_forecasts <- D$fits |>
+    map(
+        function(x){
+            x |>
+            generate(times = 2000, h = forecast_horizon) |>
+            as_tibble() |>
+            rename_with(\(z) "log_nhsn_covid", any_of(c(".sim", "log_nhsn_covid"))) |>
+            select(.model, time_value, log_nhsn_covid, .rep) |>
+            group_by(time_value, .model) |>
+            summarise(
+                median_forecast = median(log_nhsn_covid),
+                lower_ci = quantile(log_nhsn_covid, probs = 0.025),
+                upper_ci = quantile(log_nhsn_covid, probs = 0.975)
+            )
+        }
+    ) |>
+    bind_rows()
+
+summarize_forecasts <- function(fits, target_col, forecast_horizon,
+    times = 2000){
+        summary_forecasts <- fits |>
+            map(
+                function(x){
+                    x |>
+                    generate(times = 2000, h = forecast_horizon) |>
+                    as_tibble() |>
+                    rename_with(\(z) !!target_col, any_of(c(".sim", !!target_col))) |>
+                    select(.model, time_value, !!target_col, .rep) |>
+                    group_by(time_value, .model) |>
+                    summarise(
+                        median_forecast = median(!!target_col),
+                        lower_ci = quantile(!!target_col, probs = 0.025),
+                        upper_ci = quantile(!!target_col, probs = 0.975)
+                    )
+                }
+            ) |>
+    bind_rows()
+    return(summary_forecasts)
 }
 ```
 ## Covid-19
@@ -117,37 +184,18 @@ generate_fits_and_scores <- function(model_configs, us_data, cutoff_data,
 Define relevant dates
 ```{r}
 wk_bf_mj_peak <- as.Date("2023-12-31")
-us_data_mjr_peak <- us_data |> filter(time_value < wk_bf_mj_peak)
 
-fits_mjr_peak <- model_configs_covid |>
-    map(function(x) {
-    us_data_mjr_peak |> model(!!x$name := x$model) } )
-
-forecasts_mjr_peak <- fits_mjr_peak |>
-    map(\(x) forecast(x, h = fc_str))
-
-accuracy_results <- forecasts_mjr_peak |>
-    map(\(x) accuracy(x, us_data, measures = list(crps_score = CRPS))) |>
-    bind_rows() |>
-    mutate(.response = ifelse(is.na(.response), "log_nhsn_covid", .response)) |>
-    filter(.response == "log_nhsn_covid") |>
-    arrange(crps_score) |>
-    mutate(target = "covid")
-
-accuracy_results
-
-
-
-D <- generate_fits_and_scores(model_configs_covid, us_data, wk_bf_mj_peak)
-
+D <- generate_fits_and_scores(model_configs_covid, us_data, wk_bf_mj_peak,
+    fc_str = forecast_horizon)
+D$scores
 ```
 
 ```{r}
-summary_forecasts <- fits_mjr_peak |>
+summary_forecasts <- D$fits |>
     map(
         function(x){
             x |>
-            generate(times = 2000, h = fc_str) |>
+            generate(times = 2000, h = forecast_horizon) |>
             as_tibble() |>
             rename_with(\(z) "log_nhsn_covid", any_of(c(".sim", "log_nhsn_covid"))) |>
             select(.model, time_value, log_nhsn_covid, .rep) |>
