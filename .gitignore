@@ -37,6 +37,12 @@
 *.rar
 *.zip
 
+# Style output
+
+*.css
+*.js
+*.woff
+
 # Allowlist
 # !your_data_file.csv
 # !your_data_directory/
@@ -406,3 +412,9 @@ private_data/*
 
 # Ignore test pipe output
 pipelines/tests/private_data/*
+
+# Varima prototype exceptions
+
+!demos/varima/prototype-varima_files/
+!demos/varima/prototype-varima_files/figure-commonmark/
+!demos/varima/prototype-varima_files/figure-commonmark/*.png
