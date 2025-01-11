@@ -49,7 +49,7 @@ def save_eval_data(
         end_date=last_training_date,
         disease=disease,
         state_abb=state,
-    )
+    ).with_columns(data_type=pl.lit("eval"))
 
     combined_eval_dat = combine_nssp_and_nhsn(
         nssp_data=nssp_data,
