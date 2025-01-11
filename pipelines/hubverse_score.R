@@ -171,7 +171,8 @@ score_and_save <- function(observed_data_path,
 
   full_scorable_table <- all_paths |>
     purrr::pmap(read_and_prep_for_scoring) |>
-    dplyr::bind_rows()
+    dplyr::bind_rows() |>
+    dplyr::select(-"other_ed_visit_forecast")
 
   message("Finished reading in forecasts and preparing for scoring.")
   message("Scoring forecasts...")
@@ -208,13 +209,20 @@ score_and_save <- function(observed_data_path,
     c(0.5, 0.95),
     \(x) {
       plot_coverage_by_date(
-        full_scores, x
+        full_scores, x,
+        date_col = "target_end_date"
       ) +
         theme_forecasttools()
     }
   )
 
   locations <- unique(full_scorable_table$location)
+
+  print(full_scorable_table |>
+    dplyr::filter(
+      is.na(.data$quantile_level),
+      .data$location == "US"
+    ))
 
   pred_actual_by_horizon <-
     purrr::map(
@@ -231,48 +239,57 @@ score_and_save <- function(observed_data_path,
     )
 
   pred_act_plot_fn <- function(location, disease) {
+    all_horizons <- unique(horizons)
+
     loc_table <- full_scorable_table |>
       dplyr::filter(
         location == !!location,
         disease == !!disease,
-        horizon %in% c(-1, !!horizons)
+        horizon %in% !!all_horizons
       )
 
-    ## use observed for -1 if no explicit -1 provided
-    if (!-1 %in% loc_table$horizon) {
-      obs <- loc_table |>
-        dplyr::distinct(
-          target_end_date, observed, quantile_level,
-          .keep_all = TRUE
-        ) |>
-        dplyr::mutate(
-          predicted = .data$observed,
-          horizon = -1
-        ) |>
-        dplyr::select(-"reference_date")
-      needed <- loc_table |>
-        dplyr::distinct(reference_date) |>
-        dplyr::mutate(
-          horizon = -1,
-          target_end_date = reference_date +
-            lubridate::dweeks(.data$horizon)
-        )
-
-      synth_minus_one <- dplyr::left_join(needed,
-        obs,
+    obs <- loc_table |>
+      dplyr::distinct(
+        target_end_date,
+        observed,
+        quantile_level,
+        .keep_all = TRUE
+      ) |>
+      dplyr::mutate(
+        predicted = .data$observed,
+        horizon = -1
+      ) |>
+      dplyr::select(-"reference_date")
+    needed <- loc_table |>
+      dplyr::distinct(.data$reference_date) |>
+      dplyr::mutate(
+        horizon = -1,
+        target_end_date = reference_date +
+          lubridate::dweeks(.data$horizon)
+      ) |>
+      dplyr::anti_join(loc_table,
         by = c(
-          "target_end_date",
-          "horizon"
+          "reference_date",
+          "horizon",
+          "target_end_date"
         )
       )
-      loc_table <- dplyr::bind_rows(
-        synth_minus_one,
-        loc_table
+
+    synth_minus_one <- dplyr::inner_join(needed,
+      obs,
+      by = c(
+        "target_end_date",
+        "horizon"
       )
-    }
+    )
+
+    table_with_synth <- dplyr::bind_rows(
+      synth_minus_one,
+      loc_table
+    )
 
     plot <- plot_pred_obs_by_forecast_date(
-      loc_table,
+      table_with_synth,
       facet_columns = "reference_date"
     ) |>
       suppressMessages()
