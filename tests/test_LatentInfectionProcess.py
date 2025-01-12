@@ -1,16 +1,17 @@
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
-from pyrenew.deterministic import DeterministicVariable
-from pyrenew.randomvariable import DistributionalVariable
-from pyrenew_hew.pyrenew_hew_model import LatentInfectionProcess
 from pyrenew.arrayutils import repeat_until_n
+from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.process import ARProcess, DifferencedProcess
+from pyrenew.randomvariable import DistributionalVariable
+
+from pyrenew_hew.pyrenew_hew_model import LatentInfectionProcess
 
 
 def test_LatentInfectionProcess():
@@ -69,7 +70,9 @@ def test_LatentInfectionProcess():
 
         rt_init_rate_of_change = DistributionalVariable(
             "rt_init_rate_of_change",
-            dist.Normal(0, eta_sd_rv() / jnp.sqrt(1 - jnp.pow(autoreg_rt_rv(), 2))),
+            dist.Normal(
+                0, eta_sd_rv() / jnp.sqrt(1 - jnp.pow(autoreg_rt_rv(), 2))
+            ),
         )()
 
         log_rtu_weekly = ar_diff(
