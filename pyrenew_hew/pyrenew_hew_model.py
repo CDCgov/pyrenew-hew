@@ -102,13 +102,15 @@ class LatentInfectionProcess(RandomVariable):
             noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
         )
 
+        i0_first_obs_n = self.i0_first_obs_n_rv()
+        initial_exp_growth_rate = self.initialization_rate_rv()
         if self.n_subpops == 1:
-            i_first_obs_over_n_subpop = self.i0_first_obs_n_rv()
-            initial_exp_growth_rate_subpop = self.initialization_rate_rv()
+            i_first_obs_over_n_subpop = i0_first_obs_n
+            initial_exp_growth_rate_subpop = initial_exp_growth_rate
             log_rtu_weekly_subpop = log_rtu_weekly[:, jnp.newaxis]
         else:
             i_first_obs_over_n_ref_subpop = transforms.SigmoidTransform()(
-                transforms.logit(self.i0_first_obs_n_rv())
+                transforms.logit(i0_first_obs_n)
                 + jnp.where(
                     self.n_subpops > 1,
                     self.offset_ref_logit_i_first_obs_rv(),
@@ -116,7 +118,7 @@ class LatentInfectionProcess(RandomVariable):
                 )
             )
             initial_exp_growth_rate_ref_subpop = (
-                self.initialization_rate_rv()
+                initial_exp_growth_rate
                 + jnp.where(
                     self.n_subpops > 1,
                     self.offset_ref_initial_exp_growth_rate_rv(),
@@ -131,7 +133,7 @@ class LatentInfectionProcess(RandomVariable):
                 DistributionalVariable(
                     "i_first_obs_over_n_non_ref_subpop_raw",
                     dist.Normal(
-                        transforms.logit(self.i0_first_obs_n_rv()),
+                        transforms.logit(i0_first_obs_n),
                         self.sigma_i_first_obs_rv(),
                     ),
                     reparam=LocScaleReparam(0),
@@ -141,7 +143,7 @@ class LatentInfectionProcess(RandomVariable):
             initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
                 "initial_exp_growth_rate_non_ref_subpop_raw",
                 dist.Normal(
-                    self.initialization_rate_rv(),
+                    initial_exp_growth_rate,
                     self.sigma_initial_exp_growth_rate_rv(),
                 ),
                 reparam=LocScaleReparam(0),
@@ -207,12 +209,8 @@ class LatentInfectionProcess(RandomVariable):
             )[:n_days_post_init, :]
         )
 
-        log_i0_subpop = (
-            jnp.log(i_first_obs_over_n_subpop)
-            - self.unobs_time * initial_exp_growth_rate_subpop
-        )
         i0_subpop_rv = DeterministicVariable(
-            "i0_subpop", jnp.exp(log_i0_subpop)
+            "i0_subpop", i_first_obs_over_n_subpop
         )
         initial_exp_growth_rate_subpop_rv = DeterministicVariable(
             "initial_exp_growth_rate_subpop", initial_exp_growth_rate_subpop
