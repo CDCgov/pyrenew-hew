@@ -352,7 +352,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_ed_visits: bool = False,
         sample_hospital_admissions: bool = False,
         sample_wastewater: bool = False,
-    ) -> ArrayLike:  # numpydoc ignore=GL08
+    ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
         latent_infections = self.latent_infection_process_rv(
             n_days_post_init=data.n_days_post_init,
         )
