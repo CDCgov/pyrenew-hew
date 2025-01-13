@@ -9,7 +9,7 @@ from jax.typing import ArrayLike
 from pyrenew.arrayutils import repeat_until_n, tile_until_n
 from pyrenew.convolve import (
     compute_delay_ascertained_incidence,
-    daily_to_weekly,
+    daily_to_mmwr_epiweekly,
 )
 from pyrenew.latent import (
     InfectionInitializationProcess,
@@ -296,10 +296,9 @@ class HospAdmitObservationProcess(RandomVariable):
             first_latent_infection_dow + longest_possible_delay
         ) % 7
 
-        predicted_weekly_admissions = daily_to_weekly(
+        predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
             input_data_first_dow=first_latent_admission_dow,
-            week_start_dow=6,  # MMWR epiweek, starts Sunday
         )
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
