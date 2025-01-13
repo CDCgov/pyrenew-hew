@@ -1,19 +1,3 @@
-#' Annotate a dataframe of ED visits data with the
-#' proportion of visits due to a target disease.
-#'
-#' @param df dataframe to annotate, with columns
-#' `"Disease"` and `"Other"`.
-#' @return the dataframe with an additional column
-#' `prop_disease_ed_visits`.
-#' @export
-with_prop_disease_ed_visits <- function(df) {
-  return(
-    df |>
-      dplyr::mutate(prop_disease_ed_visits = .data$Disease /
-        (.data$Disease + .data$Other))
-  )
-}
-
 #' Combine training and evaluation data for
 #' postprocessing.
 #'
@@ -153,35 +137,33 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
   )
 }
 
-
-#' Pivot a data table of counts and proportions of
-#' ED visits to long format.
+#' Title
 #'
-#' @param df data frame to pivot. Should have columns
-#' `"Disease"`, `"Other"`, and `"prop_disease_ed_visits"`.
-#' @return the pivoted data frame, with disease names in
-#' a column named `disease` and counts / proportions in
-#' a column named `.value`.
+#' @param pyrenew_model_name
+#'
+#' @returns
 #' @export
-pivot_ed_visit_df_longer <- function(df) {
-  return(tidyr::pivot_longer(
-    df,
-    c(
-      "Disease",
-      "Other",
-      "prop_disease_ed_visits"
-    ),
-    names_to = "disease",
-    values_to = ".value"
-  ))
-}
-
+#'
+#' @examples
 parse_pyrenew_model_name <- function(pyrenew_model_name) {
-  pyrenew_model_tail <- str_extract(pyrenew_model_name, "(?<=_).+$") |> str_split_1("")
+  pyrenew_model_tail <- str_extract(pyrenew_model_name, "(?<=_).+$") |>
+    str_split_1("")
   model_components <- c("h", "e", "w")
   model_components %in% pyrenew_model_tail |> set_names(model_components)
 }
 
+#' Title
+#'
+#' @param group_time_index
+#' @param variable
+#' @param first_nssp_date
+#' @param first_nhsn_date
+#' @param nhsn_step_size
+#'
+#' @returns
+#' @export
+#'
+#' @examples
 group_time_index_to_date <- function(group_time_index,
                                      variable,
                                      first_nssp_date,
@@ -302,85 +284,134 @@ process_state_forecast <- function(model_run_dir,
     )) |>
     select(-group_time_index)
 
+  samples_list <- list(daily_samples = daily_samples)
+
+  # For the E model, do epiweekly
   if (pyrenew_model_components["e"]) {
-    # do epiweekly stuff
     epiweekly_samples_ed <- daily_samples |>
       filter(.variable == "observed_ed_visits") |>
       forecasttools::daily_to_epiweekly(
         value_col = ".value",
         weekly_value_name = ".value",
-        id_cols = c(".draw", ".variable"),
-        strict = T
+        id_cols = c(".chain", ".iteration", ".draw", ".variable"),
+        strict = TRUE
       ) |>
       dplyr::mutate(date = forecasttools::epiweek_to_date(
         .data$epiweek,
         .data$epiyear,
         day_of_week = 7
       )) |>
-      select(-epiweek, -epiyear, )
+      select(-epiweek, -epiyear)
 
     epiweekly_samples <-
       daily_samples |>
       filter(.variable != "observed_ed_visits") |>
       bind_rows(epiweekly_samples_ed) |>
       select(starts_with("."), date, .variable, .value)
-  }
-  # working here
-  ## Process timeseries posterior
-  if (!is.null(timeseries_model_name)) {
-    timeseries_model_dir <- fs::path(
-      model_run_dir,
-      timeseries_model_name
-    )
 
-    ## augment daily and epiweekly other ed visits forecast
-    ## with "sample" format observed data
-    daily_other_ed_visits_samples <-
-      arrow::read_parquet(
-        fs::path(timeseries_model_dir,
-          "other_ed_visits_forecast",
-          ext = "parquet"
-        )
-      ) |>
-      dplyr::rename(Other = "other_ed_visits") |>
-      to_tidy_draws_timeseries(
-        daily_training_dat,
-        disease_name = "Other",
-        epiweekly = FALSE
+    samples_list$epiweekly_samples <- epiweekly_samples
+
+    ## Process timeseries posterior
+    if (!is.null(timeseries_model_name)) {
+      timeseries_model_dir <- fs::path(
+        model_run_dir,
+        timeseries_model_name
       )
 
-    ewkly_other_ed_visits_samples <-
-      arrow::read_parquet(
-        fs::path(timeseries_model_dir,
-          "epiweekly_other_ed_visits_forecast",
-          ext = "parquet"
-        )
-      ) |>
-      dplyr::rename(Other = "other_ed_visits") |>
-      to_tidy_draws_timeseries(
-        epiweekly_training_dat,
-        disease_name = "Other",
-        epiweekly = TRUE
-      )
+      ## augment daily and epiweekly other ed visits forecast
+      ## with "sample" format observed data
+      daily_other_ed_visits_samples <-
+        arrow::read_parquet(
+          fs::path(timeseries_model_dir,
+            "other_ed_visits_forecast",
+            ext = "parquet"
+          )
+        ) |>
+        dplyr::rename(Other = "other_ed_visits") |>
+        to_tidy_draws_timeseries(
+          daily_training_dat,
+          disease_name = "Other",
+          epiweekly = FALSE
+        ) |>
+        dplyr::rename(other_ed_visits = "Other")
 
-    ewkly_with_ewkly_other_samples <-
-      epiweekly_samples_raw |>
-      dplyr::select(-"Other") |>
-      dplyr::left_join(ewkly_other_ed_visits_samples,
-        by = c(".draw", "date")
-      ) |>
-      with_prop_disease_ed_visits() |>
-      pivot_ed_visit_df_longer()
+      ewkly_other_ed_visits_samples <-
+        arrow::read_parquet(
+          fs::path(timeseries_model_dir,
+            "epiweekly_other_ed_visits_forecast",
+            ext = "parquet"
+          )
+        ) |>
+        dplyr::rename(Other = "other_ed_visits") |>
+        to_tidy_draws_timeseries(
+          epiweekly_training_dat,
+          disease_name = "Other",
+          epiweekly = TRUE
+        ) |>
+        dplyr::rename(other_ed_visits = "Other")
+
+      # Daily Numerator, Daily Denominator
+      daily_samples_w_prop <-
+        daily_samples |>
+        pivot_wider(names_from = ".variable", values_from = ".value") |>
+        left_join(daily_other_ed_visits_samples, by = join_by(.draw, date)) |>
+        mutate(prop_disease_ed_visits = observed_ed_visits /
+          (observed_ed_visits + other_ed_visits)) |>
+        pivot_longer(
+          cols = -c(starts_with("."), "date"),
+          names_to = ".variable", values_to = ".value"
+        )
+
+      samples_list$daily_samples <- daily_samples_w_prop
+
+      # Daily numberator aggregated, daily denominator aggregated
+      ewkly_agg_other_ed_samples <-
+        daily_other_ed_visits_samples |>
+        forecasttools::daily_to_epiweekly(
+          value_col = "other_ed_visits",
+          weekly_value_name = "other_ed_visits",
+          id_cols = ".draw",
+          strict = TRUE
+        ) |>
+        dplyr::mutate(date = forecasttools::epiweek_to_date(
+          .data$epiweek,
+          .data$epiyear,
+          day_of_week = 7
+        )) |>
+        select(-epiweek, -epiyear)
+
+      ewkly_agg_samples_w_prop <-
+        epiweekly_samples |>
+        pivot_wider(names_from = ".variable", values_from = ".value") |>
+        left_join(ewkly_agg_other_ed_samples,
+          by = join_by(.draw, date)
+        ) |>
+        mutate(prop_disease_ed_visits = observed_ed_visits /
+          (observed_ed_visits + other_ed_visits)) |>
+        pivot_longer(
+          cols = -c(starts_with("."), "date"),
+          names_to = ".variable", values_to = ".value"
+        )
+
+      samples_list$epiweekly_samples <- ewkly_agg_samples_w_prop
+
+      # Daily numerator aggregated, epiweekly denominator
+      ewkly_samples_w_prop <-
+        epiweekly_samples |>
+        pivot_wider(names_from = ".variable", values_from = ".value") |>
+        left_join(ewkly_other_ed_visits_samples, by = join_by(.draw, date)) |>
+        mutate(prop_disease_ed_visits = observed_ed_visits /
+          (observed_ed_visits + other_ed_visits)) |>
+        pivot_longer(
+          cols = -c(starts_with("."), "date"),
+          names_to = ".variable", values_to = ".value"
+        )
+
+      samples_list$epiweekly_with_epiweekly_other_samples <-
+        ewkly_samples_w_prop
+    }
   }
 
-  # samples_list <- list(
-  #   daily_samples = daily_samples,
-  #   epiweekly_samples = epiweekly_samples,
-  #   epiweekly_with_epiweekly_other_samples =
-  #     ewkly_with_ewkly_other_samples
-  # )
-
-  samples_list <- list(daily_samples = daily_samples)
 
   ci_list <- purrr::map(
     samples_list |>
@@ -391,7 +422,8 @@ process_state_forecast <- function(model_run_dir,
         ggdist::median_qi(.width = ci_widths)
     }
   )
-
+  # data_list should actually only be generated once per model_run,
+  # not per model
   result <- c(
     data_list,
     samples_list,
