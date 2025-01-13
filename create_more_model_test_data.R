@@ -36,13 +36,14 @@ walk(model_batch_dirs, \(model_batch_dir) {
       fs::dir_copy(pyrenew_e_path, pyrenew_h_path)
       fs::dir_copy(pyrenew_e_path, pyrenew_he_path)
 
-
       raw_csv <- path(pyrenew_h_path, "inference_data", ext = "csv") |>
         read_csv()
 
       new_colnames <- map_chr(
         0:(11 - 4),
-        \(i) glue("('log_likelihood','observed_hospital_admissions[{i}]', {i})")
+        \(i) {
+          glue("('log_likelihood', 'observed_hospital_admissions[{i}]', {i})")
+        }
       )
 
 
