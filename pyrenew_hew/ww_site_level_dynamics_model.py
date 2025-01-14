@@ -350,20 +350,20 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             gen_int=generation_interval_pmf,
         )
 
-        latent_infections_subpop = jnp.atleast_2d(
-            jnp.concat(
-                [
-                    i0,
-                    inf_with_feedback_proc_sample.post_initialization_infections,
-                ]
-            )
+        latent_infections_subpop = jnp.concat(
+            [
+                i0,
+                inf_with_feedback_proc_sample.post_initialization_infections,
+            ]
         )
-        if latent_infections_subpop.shape[0] == 1:
-            latent_infections_subpop = latent_infections_subpop.T
 
-        latent_infections = jnp.sum(
-            self.pop_fraction * latent_infections_subpop, axis=1
-        )
+        if self.n_subpops == 1:
+            latent_infections = latent_infections_subpop
+        else:
+            latent_infections = jnp.sum(
+                self.pop_fraction * latent_infections_subpop, axis=1
+            )
+
         numpyro.deterministic("latent_infections", latent_infections)
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
 

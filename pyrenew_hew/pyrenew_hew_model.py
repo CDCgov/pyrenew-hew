@@ -35,8 +35,7 @@ class LatentInfectionProcess(RandomVariable):
         infection_feedback_strength_rv: RandomVariable,
         infection_feedback_pmf_rv: RandomVariable,
         n_initialization_points: int,
-        pop_fraction: float = 1,
-        n_subpops: int = 1,
+        pop_fraction: ArrayLike = jnp.array([1]),
         autoreg_rt_subpop_rv: RandomVariable = None,
         sigma_rt_rv: RandomVariable = None,
         sigma_i_first_obs_rv: RandomVariable = None,
@@ -75,7 +74,7 @@ class LatentInfectionProcess(RandomVariable):
         )
         self.n_initialization_points = n_initialization_points
         self.pop_fraction = pop_fraction
-        self.n_subpops = n_subpops
+        self.n_subpops = len(pop_fraction)
 
     def validate(self):
         pass
@@ -110,22 +109,15 @@ class LatentInfectionProcess(RandomVariable):
         else:
             i_first_obs_over_n_ref_subpop = transformation.SigmoidTransform()(
                 transformation.logit(i0_first_obs_n)
-                + jnp.where(
-                    self.n_subpops > 1,
-                    self.offset_ref_logit_i_first_obs_rv(),
-                    0,
-                )
+                + self.offset_ref_logit_i_first_obs_rv(),
             )
             initial_exp_growth_rate_ref_subpop = (
                 initial_exp_growth_rate
-                + jnp.where(
-                    self.n_subpops > 1,
-                    self.offset_ref_initial_exp_growth_rate_rv(),
-                    0,
-                )
+                + self.offset_ref_initial_exp_growth_rate_rv()
             )
-            log_rtu_weekly_ref_subpop = log_rtu_weekly + jnp.where(
-                self.n_subpops > 1, self.offset_ref_log_rt_rv(), 0
+
+            log_rtu_weekly_ref_subpop = (
+                log_rtu_weekly + self.offset_ref_log_rt_rv()
             )
             i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
                 "i_first_obs_over_n_non_ref_subpop",
@@ -233,20 +225,19 @@ class LatentInfectionProcess(RandomVariable):
             gen_int=generation_interval_pmf,
         )
 
-        latent_infections_subpop = jnp.atleast_2d(
-            jnp.concat(
-                [
-                    i0,
-                    inf_with_feedback_proc_sample.post_initialization_infections,
-                ]
-            )
+        latent_infections_subpop = jnp.concat(
+            [
+                i0,
+                inf_with_feedback_proc_sample.post_initialization_infections,
+            ]
         )
-        if latent_infections_subpop.shape[0] == 1:
-            latent_infections_subpop = latent_infections_subpop.T
 
-        latent_infections = jnp.sum(
-            self.pop_fraction * latent_infections_subpop, axis=1
-        )
+        if self.n_subpops == 1:
+            latent_infections = latent_infections_subpop
+        else:
+            latent_infections = jnp.sum(
+                self.pop_fraction * latent_infections_subpop, axis=1
+            )
 
         numpyro.deterministic("rtu_subpop", rtu_subpop)
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)

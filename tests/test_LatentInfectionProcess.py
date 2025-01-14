@@ -15,6 +15,11 @@ from pyrenew_hew.pyrenew_hew_model import LatentInfectionProcess
 
 
 def test_LatentInfectionProcess():
+    """
+    Tests when there is a single sub-population,
+    the hierarchical construct and manual construction
+    without the hierarchical component are equivalent.
+    """
     i0_first_obs_n_rv = DeterministicVariable("i0_first_obs_n_rv", 1e-6)
     initialization_rate_rv = DeterministicVariable("rate", 0.001)
     log_r_mu_intercept_rv = DeterministicVariable("log_r_mu_intercept", 0.08)
