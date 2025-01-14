@@ -4,7 +4,6 @@ import json
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
-import numpyro.distributions.transforms as transforms
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from numpyro.infer.reparam import LocScaleReparam
@@ -109,8 +108,8 @@ class LatentInfectionProcess(RandomVariable):
             initial_exp_growth_rate_subpop = initial_exp_growth_rate
             log_rtu_weekly_subpop = log_rtu_weekly[:, jnp.newaxis]
         else:
-            i_first_obs_over_n_ref_subpop = transforms.SigmoidTransform()(
-                transforms.logit(i0_first_obs_n)
+            i_first_obs_over_n_ref_subpop = transformation.SigmoidTransform()(
+                transformation.logit(i0_first_obs_n)
                 + jnp.where(
                     self.n_subpops > 1,
                     self.offset_ref_logit_i_first_obs_rv(),
@@ -133,12 +132,12 @@ class LatentInfectionProcess(RandomVariable):
                 DistributionalVariable(
                     "i_first_obs_over_n_non_ref_subpop_raw",
                     dist.Normal(
-                        transforms.logit(i0_first_obs_n),
+                        transformation.logit(i0_first_obs_n),
                         self.sigma_i_first_obs_rv(),
                     ),
                     reparam=LocScaleReparam(0),
                 ),
-                transforms=transforms.SigmoidTransform(),
+                transforms=transformation.SigmoidTransform(),
             )
             initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
                 "initial_exp_growth_rate_non_ref_subpop_raw",
