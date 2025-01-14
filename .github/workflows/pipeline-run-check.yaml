@@ -22,6 +22,8 @@ jobs:
         with:
           r-version: "release"
           use-public-rspm: true
+      - name: "Set up Quarto"
+        uses: quarto-dev/quarto-actions/setup@v2
       - name: "Install poetry"
         run: pip install poetry
       - name: "Install pyrenew-hew"
