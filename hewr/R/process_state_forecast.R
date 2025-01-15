@@ -38,7 +38,7 @@ combine_training_and_eval_data <- function(train_dat,
     dplyr::filter(.data$disease %in% c("Total", "Disease")) |>
     tidyr::pivot_wider(
       names_from = "disease",
-      values_from = "ed_visits"
+      values_from = "value"
     ) |>
     dplyr::mutate(
       Other = .data$Total - .data$Disease
@@ -49,7 +49,8 @@ combine_training_and_eval_data <- function(train_dat,
       c("Disease", "Other", "prop_disease_ed_visits"),
       names_to = "disease",
       values_to = ".value"
-    )
+    ) |>
+    drop_na()
 
   return(combined_dat)
 }
@@ -69,33 +70,32 @@ read_and_combine_data <- function(model_run_dir,
                                   epiweekly = FALSE) {
   data_cols <- readr::cols(
     date = readr::col_date(),
-    ed_visits = readr::col_double()
+    value = readr::col_double()
   )
 
   prefix <- ifelse(epiweekly, "epiweekly_", "")
 
   train_data_path <- fs::path(model_run_dir,
     "data",
-    glue::glue("{prefix}data"),
+    glue::glue("{prefix}combined_training_data"),
     ext = "tsv"
   )
-  train_dat <- readr::read_tsv(train_data_path,
-    col_types = data_cols
-  )
+  train_dat <- readr::read_tsv(train_data_path, col_types = data_cols)
 
   eval_data_path <- fs::path(model_run_dir,
     "data",
-    glue::glue("{prefix}eval_data"),
+    glue::glue("{prefix}combined_eval_data"),
     ext = "tsv"
   )
-  eval_dat <- readr::read_tsv(eval_data_path, col_types = data_cols) |>
-    dplyr::mutate(data_type = "eval")
+  eval_dat <- readr::read_tsv(eval_data_path, col_types = data_cols)
 
   combined_dat <- combine_training_and_eval_data(
     train_dat,
     eval_dat,
     disease_name
   )
+
+  combined_dat
 }
 
 #' Combine a forecast in tidy draws based format
@@ -176,6 +176,32 @@ pivot_ed_visit_df_longer <- function(df) {
   ))
 }
 
+parse_pyrenew_model_name <- function(pyrenew_model_name) {
+  pyrenew_model_tail <- str_extract(pyrenew_model_name, "(?<=_).+$") |> str_split_1("")
+  model_components <- c("h", "e", "w")
+  model_components %in% pyrenew_model_tail |> set_names(model_components)
+}
+
+group_time_index_to_date <- function(group_time_index,
+                                     variable,
+                                     first_nssp_date,
+                                     first_nhsn_date,
+                                     nhsn_step_size) {
+  first_date_key <- c(
+    observed_hospital_admissions = first_nhsn_date,
+    observed_ed_visits = first_nssp_date
+  ) |>
+    map_vec(as.Date)
+
+  step_size_key <- c(
+    observed_hospital_admissions = nhsn_step_size,
+    observed_ed_visits = 1
+  )
+
+  first_date_key[variable] + days(step_size_key[variable]) *
+    group_time_index
+}
+
 #' Process state forecast
 #'
 #' @param model_run_dir Model run directory
@@ -200,30 +226,34 @@ pivot_ed_visit_df_longer <- function(df) {
 #' @export
 process_state_forecast <- function(model_run_dir,
                                    pyrenew_model_name,
-                                   timeseries_model_name,
+                                   timeseries_model_name = NULL,
                                    ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
-  pyrenew_model_dir <- fs::path(
-    model_run_dir,
-    pyrenew_model_name
-  )
-  timeseries_model_dir <- fs::path(
-    model_run_dir,
-    timeseries_model_name
-  )
   disease_name <- parse_model_run_dir_path(model_run_dir)$disease
+  pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
+
+  ## Process data
+  data_for_model_fit <- jsonlite::read_json(
+    path(model_run_dir, "data", "data_for_model_fit", ext = "json")
+  )
+
+  first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
+  first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
+  nhsn_step_size <- data_for_model_fit$nhsn_step_size
 
   daily_combined_dat <- read_and_combine_data(
     model_run_dir, disease_name,
     epiweekly = FALSE
   )
+
+  daily_training_dat <- daily_combined_dat |>
+    dplyr::filter(.data$data_type == "train")
+
   epiweekly_combined_dat <- read_and_combine_data(
     model_run_dir, disease_name,
     epiweekly = TRUE
   )
 
-  daily_training_dat <- daily_combined_dat |>
-    dplyr::filter(.data$data_type == "train")
   epiweekly_training_dat <- epiweekly_combined_dat |>
     dplyr::filter(.data$data_type == "train")
 
@@ -231,6 +261,12 @@ process_state_forecast <- function(model_run_dir,
     daily_combined_training_eval_data = daily_combined_dat,
     epiweekly_combined_training_eval_data =
       epiweekly_combined_dat
+  )
+
+  ## Process PyRenew posterior
+  pyrenew_model_dir <- fs::path(
+    model_run_dir,
+    pyrenew_model_name
   )
 
   pyrenew_posterior_predictive <-
@@ -242,113 +278,119 @@ process_state_forecast <- function(model_run_dir,
       )
     )
 
-  ## augment daily and epiweekly other ed visits forecast
-  ## with "sample" format observed data
-  daily_other_ed_visits_samples <-
-    arrow::read_parquet(
-      fs::path(timeseries_model_dir,
-        "other_ed_visits_forecast",
-        ext = "parquet"
-      )
-    ) |>
-    dplyr::rename(Other = "other_ed_visits") |>
-    to_tidy_draws_timeseries(
-      daily_training_dat,
-      disease_name = "Other",
-      epiweekly = FALSE
-    )
+  posterior_predictive_variables <-
+    pyrenew_posterior_predictive |>
+    colnames() |>
+    str_remove("\\[.+\\]$") |>
+    unique() |>
+    keep(~ str_starts(., "observed_")) |>
+    str_c("[group_time_index]") |>
+    map(rlang::parse_expr)
 
-  ewkly_other_ed_visits_samples <-
-    arrow::read_parquet(
-      fs::path(timeseries_model_dir,
-        "epiweekly_other_ed_visits_forecast",
-        ext = "parquet"
-      )
-    ) |>
-    dplyr::rename(Other = "other_ed_visits") |>
-    to_tidy_draws_timeseries(
-      epiweekly_training_dat,
-      disease_name = "Other",
-      epiweekly = TRUE
-    )
-
-
+  # must use gather_draws
+  # use of spread_draws results in indices being dropped
   daily_samples <-
     pyrenew_posterior_predictive |>
-    tidybayes::gather_draws(observed_ed_visits[time]) |>
-    tidyr::pivot_wider(
-      names_from = ".variable",
-      values_from = ".value"
-    ) |>
-    dplyr::rename(Disease = "observed_ed_visits") |>
-    dplyr::ungroup() |>
-    dplyr::mutate(date = min(daily_combined_dat$date) + .data$time) |>
-    dplyr::left_join(daily_other_ed_visits_samples,
-      by = c(".draw", "date")
-    ) |>
-    with_prop_disease_ed_visits() |>
-    pivot_ed_visit_df_longer()
+    tidybayes::gather_draws(!!!posterior_predictive_variables) |>
+    ungroup() |>
+    mutate(date = group_time_index_to_date(
+      group_time_index = group_time_index,
+      variable = .variable,
+      first_nssp_date = first_nssp_date,
+      first_nhsn_date = first_nhsn_date,
+      nhsn_step_size = nhsn_step_size
+    )) |>
+    select(-group_time_index)
 
-  epiweekly_samples_raw <- daily_samples |>
-    dplyr::filter(.data$disease != "prop_disease_ed_visits") |>
-    forecasttools::daily_to_epiweekly(
-      value_col = ".value",
-      weekly_value_name = ".value",
-      id_cols = c(".draw", "disease"),
-      strict = TRUE
-    ) |>
-    tidyr::pivot_wider(
-      names_from = "disease",
-      values_from = ".value"
-    ) |>
-    dplyr::mutate(date = forecasttools::epiweek_to_date(
-      .data$epiweek,
-      .data$epiyear,
-      day_of_week = 7
-    ))
+  if (pyrenew_model_components["e"]) {
+    # do epiweekly stuff
+    epiweekly_samples_ed <- daily_samples |>
+      filter(.variable == "observed_ed_visits") |>
+      forecasttools::daily_to_epiweekly(
+        value_col = ".value",
+        weekly_value_name = ".value",
+        id_cols = c(".draw", ".variable"),
+        strict = T
+      ) |>
+      dplyr::mutate(date = forecasttools::epiweek_to_date(
+        .data$epiweek,
+        .data$epiyear,
+        day_of_week = 7
+      )) |>
+      select(-epiweek, -epiyear, )
 
-  epiweekly_samples <- epiweekly_samples_raw |>
-    with_prop_disease_ed_visits() |>
-    pivot_ed_visit_df_longer()
+    epiweekly_samples <-
+      daily_samples |>
+      filter(.variable != "observed_ed_visits") |>
+      bind_rows(epiweekly_samples_ed) |>
+      select(starts_with("."), date, .variable, .value)
+  }
+  # working here
+  ## Process timeseries posterior
+  if (!is.null(timeseries_model_name)) {
+    timeseries_model_dir <- fs::path(
+      model_run_dir,
+      timeseries_model_name
+    )
 
-  ewkly_with_ewkly_other_samples <-
-    epiweekly_samples_raw |>
-    dplyr::select(-"Other") |>
-    dplyr::left_join(ewkly_other_ed_visits_samples,
-      by = c(".draw", "date")
-    ) |>
-    with_prop_disease_ed_visits() |>
-    pivot_ed_visit_df_longer()
+    ## augment daily and epiweekly other ed visits forecast
+    ## with "sample" format observed data
+    daily_other_ed_visits_samples <-
+      arrow::read_parquet(
+        fs::path(timeseries_model_dir,
+          "other_ed_visits_forecast",
+          ext = "parquet"
+        )
+      ) |>
+      dplyr::rename(Other = "other_ed_visits") |>
+      to_tidy_draws_timeseries(
+        daily_training_dat,
+        disease_name = "Other",
+        epiweekly = FALSE
+      )
 
-  samples_list <- list(
-    daily_samples = daily_samples,
-    epiweekly_samples = epiweekly_samples,
-    epiweekly_with_epiweekly_other_samples =
-      ewkly_with_ewkly_other_samples
+    ewkly_other_ed_visits_samples <-
+      arrow::read_parquet(
+        fs::path(timeseries_model_dir,
+          "epiweekly_other_ed_visits_forecast",
+          ext = "parquet"
+        )
+      ) |>
+      dplyr::rename(Other = "other_ed_visits") |>
+      to_tidy_draws_timeseries(
+        epiweekly_training_dat,
+        disease_name = "Other",
+        epiweekly = TRUE
+      )
+
+    ewkly_with_ewkly_other_samples <-
+      epiweekly_samples_raw |>
+      dplyr::select(-"Other") |>
+      dplyr::left_join(ewkly_other_ed_visits_samples,
+        by = c(".draw", "date")
+      ) |>
+      with_prop_disease_ed_visits() |>
+      pivot_ed_visit_df_longer()
+  }
+
+  # samples_list <- list(
+  #   daily_samples = daily_samples,
+  #   epiweekly_samples = epiweekly_samples,
+  #   epiweekly_with_epiweekly_other_samples =
+  #     ewkly_with_ewkly_other_samples
+  # )
+
+  samples_list <- list(daily_samples = daily_samples)
+
+  ci_list <- purrr::map(
+    samples_list |>
+      purrr::set_names(~ stringr::str_replace(., "samples", "ci")),
+    \(x) {
+      dplyr::select(x, "date", ".variable", ".value") |>
+        dplyr::group_by(.data$date, .data$.variable) |>
+        ggdist::median_qi(.width = ci_widths)
+    }
   )
-
-  ci_targets <- samples_list |>
-    purrr::set_names(
-      ~ stringr::str_replace(., "samples", "ci")
-    )
-
-  ci_list <-
-    purrr::map(
-      ci_targets,
-      \(x) {
-        dplyr::select(
-          x,
-          "date",
-          "disease",
-          ".value"
-        ) |>
-          dplyr::group_by(
-            .data$date,
-            .data$disease
-          ) |>
-          ggdist::median_qi(.width = ci_widths)
-      }
-    )
 
   result <- c(
     data_list,
@@ -357,18 +399,12 @@ process_state_forecast <- function(model_run_dir,
   )
 
   if (save) {
-    purrr::iwalk(
-      result,
-      \(tab, name) {
-        arrow::write_parquet(
-          tab,
-          fs::path(pyrenew_model_dir,
-            name,
-            ext = "parquet"
-          )
-        )
-      }
-    )
+    purrr::iwalk(result, \(tab, name) {
+      arrow::write_parquet(
+        tab,
+        fs::path(pyrenew_model_dir, name, ext = "parquet")
+      )
+    })
   }
 
   return(result)
