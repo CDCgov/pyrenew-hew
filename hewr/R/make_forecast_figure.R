@@ -20,6 +20,12 @@ make_forecast_figure <- function(target_disease,
                                  data_vintage_date,
                                  y_transform = "identity") {
   disease_name <- rlang::arg_match(disease_name)
+  target_variable <- c(
+    "Disease" = "observed_ed_visits",
+    "Other" = "other_ed_visits",
+    "prop_disease_ed_visits" = "prop_disease_ed_visits"
+  )[target_disease]
+
   disease_name_pretty <- c(
     "COVID-19" = "COVID-19",
     "Influenza" = "Flu"
@@ -52,7 +58,7 @@ make_forecast_figure <- function(target_disease,
 
   ggplot2::ggplot(mapping = ggplot2::aes(date, .value)) +
     ggdist::geom_lineribbon(
-      data = forecast_ci |> dplyr::filter(disease == target_disease),
+      data = forecast_ci |> dplyr::filter(.variable == target_variable),
       mapping = ggplot2::aes(ymin = .lower, ymax = .upper),
       color = "#08519c",
       key_glyph = ggplot2::draw_key_rect,
