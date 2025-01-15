@@ -163,8 +163,8 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 #'
 #' @examples parse_pyrenew_model_name("pyrenew_h")
 parse_pyrenew_model_name <- function(pyrenew_model_name) {
-  pyrenew_model_tail <- str_extract(pyrenew_model_name, "(?<=_).+$") |>
-    str_split_1("")
+  pyrenew_model_tail <- stringr::str_extract(pyrenew_model_name, "(?<=_).+$") |>
+    stringr::str_split_1("")
   model_components <- c("h", "e", "w")
   model_components %in% pyrenew_model_tail |> set_names(model_components)
 }

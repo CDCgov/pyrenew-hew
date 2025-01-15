@@ -83,7 +83,7 @@ walk(model_batch_dirs, \(model_batch_dir) {
         "pipelines/convert_inferencedata_to_parquet.R",
         model_run_dir, "--model-name", "pyrenew_h"
       ))
-
+      ## Process state forecasts
       process_state_forecast(model_run_dir,
         "pyrenew_he",
         "timeseries_e",
