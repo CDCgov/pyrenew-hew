@@ -86,7 +86,9 @@ ed_neg_bin_concentration_rv = DistributionalVariable(
     "ed_visit_neg_bin_concentration", dist.LogNormal(4, 1)
 )
 
-# similar to for ED visits
+# more concentrated than ED visits because it's the sum of
+# 7 and sum of neg bins is neg bin, so concentration mode
+# should be roughly * 7. log(7) ~= 2
 hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
-    "hosp_admit_neg_bin_concentration", dist.LogNormal(4, 1)
+    "hosp_admit_neg_bin_concentration", dist.LogNormal(6, 1.5)
 )
