@@ -1,6 +1,7 @@
 library(tidyverse)
 library(fs)
 library(glue)
+source("hewr/R/process_state_forecast.R")
 model_batch_dirs <- c(
   path(
     "/Users/damon/Documents/GitHub/pyrenew-hew/pipelines/tests/private_data",
@@ -82,6 +83,27 @@ walk(model_batch_dirs, \(model_batch_dir) {
         "pipelines/convert_inferencedata_to_parquet.R",
         model_run_dir, "--model-name", "pyrenew_h"
       ))
+
+      process_state_forecast(model_run_dir,
+        "pyrenew_he",
+        "timeseries_e",
+        ci_widths = c(0.5, 0.8, 0.95),
+        save = TRUE
+      )
+
+      process_state_forecast(model_run_dir,
+        "pyrenew_e",
+        "timeseries_e",
+        ci_widths = c(0.5, 0.8, 0.95),
+        save = TRUE
+      )
+
+      process_state_forecast(model_run_dir,
+        "pyrenew_h",
+        NULL,
+        ci_widths = c(0.5, 0.8, 0.95),
+        save = TRUE
+      )
     }
   )
 })
