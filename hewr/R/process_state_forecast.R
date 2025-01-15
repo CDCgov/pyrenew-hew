@@ -196,7 +196,7 @@ group_time_index_to_date <- function(group_time_index,
     observed_hospital_admissions = first_nhsn_date,
     observed_ed_visits = first_nssp_date
   ) |>
-    map_vec(as.Date)
+    purrr::map_vec(as.Date)
 
   step_size_key <- c(
     observed_hospital_admissions = nhsn_step_size,
@@ -286,11 +286,11 @@ process_state_forecast <- function(model_run_dir,
   posterior_predictive_variables <-
     pyrenew_posterior_predictive |>
     colnames() |>
-    str_remove("\\[.+\\]$") |>
+    stringr::str_remove("\\[.+\\]$") |>
     unique() |>
-    keep(~ str_starts(., "observed_")) |>
-    str_c("[group_time_index]") |>
-    map(rlang::parse_expr)
+    purrr::keep(~ stringr::str_starts(., "observed_")) |>
+    stringr::str_c("[group_time_index]") |>
+    purrr::map(rlang::parse_expr)
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
