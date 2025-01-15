@@ -1,3 +1,19 @@
+#' Annotate a dataframe of ED visits data with the
+#' proportion of visits due to a target disease.
+#'
+#' @param df dataframe to annotate, with columns
+#' `"Disease"` and `"Other"`.
+#' @return the dataframe with an additional column
+#' `prop_disease_ed_visits`.
+#' @export
+with_prop_disease_ed_visits <- function(df) {
+  return(
+    df |>
+      dplyr::mutate(prop_disease_ed_visits = .data$Disease /
+        (.data$Disease + .data$Other))
+  )
+}
+
 #' Combine training and evaluation data for
 #' postprocessing.
 #'
@@ -137,14 +153,15 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
   )
 }
 
-#' Title
+#' Parse PyRenew Model Name
 #'
-#' @param pyrenew_model_name
+#' @param pyrenew_model_name name of a pyrenew model ("pyrenew_h", "pyrenew_he",
+#' "pyrnew_hew", etc)
 #'
-#' @returns
+#' @returns a named logical vector indicating which components are present
 #' @export
 #'
-#' @examples
+#' @examples parse_pyrenew_model_name("pyrenew_h")
 parse_pyrenew_model_name <- function(pyrenew_model_name) {
   pyrenew_model_tail <- str_extract(pyrenew_model_name, "(?<=_).+$") |>
     str_split_1("")
@@ -152,18 +169,21 @@ parse_pyrenew_model_name <- function(pyrenew_model_name) {
   model_components %in% pyrenew_model_tail |> set_names(model_components)
 }
 
-#' Title
+#' Convert group time index to date
 #'
-#' @param group_time_index
-#' @param variable
-#' @param first_nssp_date
-#' @param first_nhsn_date
-#' @param nhsn_step_size
+#' @param group_time_index integer vector of group time indices
+#' @param variable variable name
+#' @param first_nssp_date first date in the nssp training data
+#' @param first_nhsn_date first date in the nhsn training data
+#' @param nhsn_step_size step size for nhsn data
 #'
-#' @returns
+#' @returns a vector of dates
 #' @export
 #'
-#' @examples
+#' @examples group_time_index_to_date(
+#'   3,
+#'   "observed_hospital_admissions", "2024-01-01", "2024-01-01", 7
+#' )
 group_time_index_to_date <- function(group_time_index,
                                      variable,
                                      first_nssp_date,
@@ -238,7 +258,7 @@ process_state_forecast <- function(model_run_dir,
 
   epiweekly_training_dat <- epiweekly_combined_dat |>
     dplyr::filter(.data$data_type == "train")
-
+  # This needs to be run once for every model_run, but not for every model type
   data_list <- list(
     daily_combined_training_eval_data = daily_combined_dat,
     epiweekly_combined_training_eval_data =
@@ -360,7 +380,8 @@ process_state_forecast <- function(model_run_dir,
         pivot_longer(
           cols = -c(starts_with("."), "date"),
           names_to = ".variable", values_to = ".value"
-        )
+        ) |>
+        drop_na()
 
       samples_list$daily_samples <- daily_samples_w_prop
 
@@ -391,7 +412,8 @@ process_state_forecast <- function(model_run_dir,
         pivot_longer(
           cols = -c(starts_with("."), "date"),
           names_to = ".variable", values_to = ".value"
-        )
+        ) |>
+        drop_na()
 
       samples_list$epiweekly_samples <- ewkly_agg_samples_w_prop
 
