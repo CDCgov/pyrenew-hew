@@ -7,7 +7,11 @@ on:
 
 jobs:
   run-pipeline:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest]
+    runs-on:  ${{matrix.os}}
+
     env:
       NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
       NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
