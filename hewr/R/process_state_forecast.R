@@ -177,9 +177,14 @@ pivot_ed_visit_df_longer <- function(df) {
 }
 
 parse_pyrenew_model_name <- function(pyrenew_model_name) {
-  pyrenew_model_tail <- str_extract(pyrenew_model_name, "(?<=_).+$") |> str_split_1("")
+  pyrenew_model_tail <- stringr::str_extract(
+    pyrenew_model_name,
+    "(?<=_).+$"
+  ) |>
+    stringr::str_split_1("")
   model_components <- c("h", "e", "w")
-  model_components %in% pyrenew_model_tail |> set_names(model_components)
+  model_components %in% pyrenew_model_tail |>
+    purrr::set_names(model_components)
 }
 
 group_time_index_to_date <- function(group_time_index,
@@ -310,7 +315,7 @@ process_state_forecast <- function(model_run_dir,
         value_col = ".value",
         weekly_value_name = ".value",
         id_cols = c(".draw", ".variable"),
-        strict = T
+        strict = TRUE
       ) |>
       dplyr::mutate(date = forecasttools::epiweek_to_date(
         .data$epiweek,
@@ -372,13 +377,6 @@ process_state_forecast <- function(model_run_dir,
       with_prop_disease_ed_visits() |>
       pivot_ed_visit_df_longer()
   }
-
-  # samples_list <- list(
-  #   daily_samples = daily_samples,
-  #   epiweekly_samples = epiweekly_samples,
-  #   epiweekly_with_epiweekly_other_samples =
-  #     ewkly_with_ewkly_other_samples
-  # )
 
   samples_list <- list(daily_samples = daily_samples)
 
