@@ -30,6 +30,8 @@ a vector of dates
 Convert group time index to date
 }
 \examples{
-group_time_index_to_date(3,
-"observed_hospital_admissions", "2024-01-01", "2024-01-01", 7)
+group_time_index_to_date(
+  3,
+  "observed_hospital_admissions", "2024-01-01", "2024-01-01", 7
+)
 }
