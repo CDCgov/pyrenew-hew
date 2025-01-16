@@ -465,8 +465,6 @@ def process_and_save_state(
     if logger is not None:
         logger.info(f"Saving {state_abb} to {data_dir}")
 
-    # post processing not yet updated for combined nhsn and nssp data
-    nssp_training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
     combined_training_dat.write_csv(
         Path(data_dir, "combined_training_data.tsv"), separator="\t"
     )

@@ -57,9 +57,6 @@ def save_eval_data(
         disease=disease,
     )
 
-    nssp_data.write_csv(
-        Path(output_data_dir, output_file_name), separator="\t"
-    )
     combined_eval_dat.write_csv(
         Path(output_data_dir, "combined_" + output_file_name), separator="\t"
     )
