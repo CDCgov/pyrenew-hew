@@ -203,8 +203,9 @@ group_time_index_to_date <- function(group_time_index,
     observed_ed_visits = 1
   )
 
-  first_date_key[variable] + days(step_size_key[variable]) *
-    group_time_index
+  first_date_key[variable] +
+    lubridate::days(step_size_key[variable]) *
+      group_time_index
 }
 
 #' Process state forecast
