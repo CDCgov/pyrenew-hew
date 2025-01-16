@@ -406,3 +406,4 @@ private_data/*
 
 # Ignore test pipe output
 pipelines/tests/private_data/*
+pipelines/tests/private_data copy/*

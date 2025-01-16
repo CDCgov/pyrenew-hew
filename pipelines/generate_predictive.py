@@ -15,12 +15,7 @@ def generate_and_save_predictions(
     model_dir = Path(model_run_dir, model_name)
     if not model_dir.exists():
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
-    (
-        my_model,
-        data_observed_disease_ed_visits,
-        data_observed_disease_hospital_admissions,
-        right_truncation_offset,
-    ) = build_model_from_dir(model_run_dir)
+    (my_model, my_data) = build_model_from_dir(model_run_dir)
 
     my_model._init_model(1, 1)
     fresh_sampler = my_model.mcmc.sampler
@@ -32,21 +27,17 @@ def generate_and_save_predictions(
         my_model.mcmc = pickle.load(file)
 
     my_model.mcmc.sampler = fresh_sampler
+    forecast_data = my_data.to_forecast_data(n_forecast_points)
 
     posterior_predictive = my_model.posterior_predictive(
-        n_observed_disease_ed_visits_datapoints=len(
-            data_observed_disease_ed_visits
-        )
-        + n_forecast_points,
-        n_observed_hospital_admissions_datapoints=len(
-            data_observed_disease_hospital_admissions
-        )
-        + n_forecast_points // 7,
+        data=forecast_data,
+        sample_ed_visits=True,
+        sample_hospital_admissions=True,
+        sample_wastewater=True,
     )
 
     idata = az.from_numpyro(
-        my_model.mcmc,
-        posterior_predictive=posterior_predictive,
+        my_model.mcmc, posterior_predictive=posterior_predictive
     )
 
     idata.to_dataframe().to_csv(model_dir / "inference_data.csv", index=False)

@@ -31,7 +31,7 @@ inf_feedback_strength_rv = TransformedVariable(
     "inf_feedback",
     DistributionalVariable(
         "inf_feedback_raw",
-        dist.LogNormal(jnp.log(50), jnp.log(1.5)),
+        dist.LogNormal(jnp.log(150), jnp.log(1.5)),
     ),
     transforms=transformation.AffineTransform(loc=0, scale=-1),
 )
@@ -44,6 +44,19 @@ p_ed_visit_mean_rv = DistributionalVariable(
         0.3,
     ),
 )  # logit scale
+
+
+ihr_rv = TransformedVariable(
+    "ihr",
+    DistributionalVariable(
+        "logit_ihr",
+        dist.Normal(
+            transformation.SigmoidTransform().inv(0.01),
+            0.3,
+        ),
+    ),
+    transforms=transformation.SigmoidTransform(),
+)
 
 
 p_ed_visit_w_sd_rv = DistributionalVariable(
@@ -64,12 +77,18 @@ ed_visit_wday_effect_rv = TransformedVariable(
     transformation.AffineTransform(loc=0, scale=7),
 )
 
+ihr_rel_iedr_rv = DistributionalVariable(
+    "ihr_rel_iedr", dist.LogNormal(0, jnp.log(jnp.sqrt(2)))
+)
+
 # Based on looking at some historical posteriors.
 ed_neg_bin_concentration_rv = DistributionalVariable(
     "ed_visit_neg_bin_concentration", dist.LogNormal(4, 1)
 )
 
-# more diffuse than ED visit, same mean
+# more concentrated than ED visits because it's the sum of
+# 7 and sum of neg bins is neg bin, so concentration mode
+# should be roughly * 7. log(7) ~= 2
 hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
-    "hosp_admit_neg_bin_concentration", dist.LogNormal(4, 2)
+    "hosp_admit_neg_bin_concentration", dist.LogNormal(6, 1.5)
 )
