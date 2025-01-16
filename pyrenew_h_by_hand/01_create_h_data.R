@@ -9,14 +9,16 @@ super_dir <- path(argv$super_dir)
 
 diag_report <- path(dir_ls(super_dir), "diagnostic_report")
 purrr::walk(diag_report, \(x) {
-    if(dir_exists(x))
-        dir_delete(x)
+  if (dir_exists(x)) {
+    dir_delete(x)
+  }
 })
 
 fig_dir <- path(dir_ls(super_dir), "figures")
 purrr::walk(fig_dir, \(x) {
-    if(dir_exists(x))
-        dir_delete(x)
+  if (dir_exists(x)) {
+    dir_delete(x)
+  }
 })
 
 file_delete(dir_ls(dir_ls(super_dir), glob = "*.tsv"))
@@ -31,58 +33,62 @@ walk(
 
     pyrenew_e_path <- fs::path(model_run_dir, "pyrenew_e")
 
-    if(!dir_exists(pyrenew_e_path)) {
-        message(glue::glue("pyrenew_e output not found,",
-                           "deleting {model_run_dir}..."))
-        dir_delete(model_run_dir)
-     } else {
-    pyrenew_h_path <- fs::path(model_run_dir, "pyrenew_h")
-    pyrenew_he_path <- fs::path(model_run_dir, "pyrenew_he")
-    timeseries_e_path <- fs::path(model_run_dir, "timeseries_e")
+    if (!dir_exists(pyrenew_e_path)) {
+      message(glue::glue(
+        "pyrenew_e output not found,",
+        "deleting {model_run_dir}..."
+      ))
+      dir_delete(model_run_dir)
+    } else {
+      pyrenew_h_path <- fs::path(model_run_dir, "pyrenew_h")
+      pyrenew_he_path <- fs::path(model_run_dir, "pyrenew_he")
+      timeseries_e_path <- fs::path(model_run_dir, "timeseries_e")
 
 
-    file_delete(dir_ls(pyrenew_e_path, glob = "*.parquet"))
+      file_delete(dir_ls(pyrenew_e_path, glob = "*.parquet"))
 
-    if(dir_exists(timeseries_e_path))
+      if (dir_exists(timeseries_e_path)) {
         fs::dir_delete(timeseries_e_path)
-    if(dir_exists(path(pyrenew_e_path, "mcmc_tidy")))
+      }
+      if (dir_exists(path(pyrenew_e_path, "mcmc_tidy"))) {
         dir_delete(path(pyrenew_e_path, "mcmc_tidy"))
+      }
 
-    fs::dir_copy(pyrenew_e_path, pyrenew_h_path, overwrite = TRUE)
-
-
-    raw_csv <- path(pyrenew_h_path, "inference_data", ext = "csv") |>
-      read_csv()
-
-    # new_colnames <- map_chr(0:(11 - 4), \(i) glue("('log_likelihood', 'observed_hospital_admissions[{i}]', {i})"))
-    #
-    #
-    # if (all(new_colnames %in% colnames(raw_csv))) {
-    new_tbl <- raw_csv
-    # } else {
-    #   new_tbl <-
-    #     raw_csv |>
-    #     bind_cols(
-    #       map(new_colnames, \(x) rnorm(nrow(raw_csv))) |>
-    #         set_names(new_colnames) |>
-    #         bind_cols()
-    #     )
-    # }
+      fs::dir_copy(pyrenew_e_path, pyrenew_h_path, overwrite = TRUE)
 
 
-    # new_tbl |>
-    #   write_csv(path(pyrenew_he_path, "inference_data", ext = "csv"))
-    # system2("Rscript", c("pipelines/convert_inferencedata_to_parquet.R", model_run_dir, "--model-name", "pyrenew_he"))
+      raw_csv <- path(pyrenew_h_path, "inference_data", ext = "csv") |>
+        read_csv()
 
-    # new_tbl |>
-    #   select(-contains("observed_hospital_admissions")) |>
-    #   write_csv(path(pyrenew_e_path, "inference_data", ext = "csv"))
-    # system2("Rscript", c("pipelines/convert_inferencedata_to_parquet.R", model_run_dir, "--model-name", "pyrenew_e"))
+      # new_colnames <- map_chr(0:(11 - 4), \(i) glue("('log_likelihood', 'observed_hospital_admissions[{i}]', {i})"))
+      #
+      #
+      # if (all(new_colnames %in% colnames(raw_csv))) {
+      new_tbl <- raw_csv
+      # } else {
+      #   new_tbl <-
+      #     raw_csv |>
+      #     bind_cols(
+      #       map(new_colnames, \(x) rnorm(nrow(raw_csv))) |>
+      #         set_names(new_colnames) |>
+      #         bind_cols()
+      #     )
+      # }
 
-    new_tbl |>
-      select(-contains("observed_ed_visits")) |>
-      write_csv(path(pyrenew_h_path, "inference_data", ext = "csv"))
-    system2("Rscript", c("pipelines/convert_inferencedata_to_parquet.R", model_run_dir, "--model-name", "pyrenew_h"))
+
+      # new_tbl |>
+      #   write_csv(path(pyrenew_he_path, "inference_data", ext = "csv"))
+      # system2("Rscript", c("pipelines/convert_inferencedata_to_parquet.R", model_run_dir, "--model-name", "pyrenew_he"))
+
+      # new_tbl |>
+      #   select(-contains("observed_hospital_admissions")) |>
+      #   write_csv(path(pyrenew_e_path, "inference_data", ext = "csv"))
+      # system2("Rscript", c("pipelines/convert_inferencedata_to_parquet.R", model_run_dir, "--model-name", "pyrenew_e"))
+
+      new_tbl |>
+        select(-contains("observed_ed_visits")) |>
+        write_csv(path(pyrenew_h_path, "inference_data", ext = "csv"))
+      system2("Rscript", c("pipelines/convert_inferencedata_to_parquet.R", model_run_dir, "--model-name", "pyrenew_h"))
     }
   }
 )
