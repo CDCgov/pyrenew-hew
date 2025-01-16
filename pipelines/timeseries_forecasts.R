@@ -29,14 +29,14 @@ purrr::walk(script_packages, \(pkg) {
 to_prop_forecast <- function(forecast_disease_count,
                              forecast_other_count,
                              disease_count_col =
-                               "baseline_ed_visit_count_forecast",
+                               "observed_ed_visits",
                              other_count_col =
                                "other_ed_visits",
                              output_col = "prop_disease_ed_visits") {
   result <- inner_join(
     forecast_disease_count,
     forecast_other_count,
-    by = c(".draw", "date")
+    by = join_by(date, .draw)
   ) |>
     mutate(
       !!output_col :=
@@ -150,30 +150,30 @@ main <- function(
     model_run_dir, model_name, n_forecast_days = 28, n_samples = 2000,
     epiweekly = FALSE) {
   prefix <- if_else(epiweekly, "epiweekly_", "")
+  base_data_name <- "combined_training_data"
+  data_name <- if_else(epiweekly, str_c(prefix, base_data_name), base_data_name)
   data_frequency <- if_else(epiweekly, "1 week", "1 day")
-  dataname <- if_else(epiweekly, "epiweekly_data", "data")
-  # to do: do this with json data that has dates
-  data_path <- path(model_run_dir, "data", dataname, ext = "tsv")
+
+  data_path <- path(model_run_dir, "data", data_name, ext = "tsv")
 
   target_and_other_data <- read_tsv(
     data_path,
     col_types = cols(
+      date = col_date(),
+      geo_value = col_character(),
       disease = col_character(),
       data_type = col_character(),
-      ed_visits = col_double(),
-      date = col_date()
+      .variable = col_character(),
+      .value = col_double()
     )
   ) |>
-    mutate(disease = if_else(
-      disease == disease_name_nssp,
-      "Disease", disease
-    )) |>
-    pivot_wider(names_from = disease, values_from = ed_visits) |>
-    mutate(Other = Total - Disease) |>
-    select(date,
-      ed_visits_target = Disease, ed_visits_other = Other,
-      data_type
-    )
+    filter(str_ends(.variable, "ed_visits")) |>
+    pivot_wider(names_from = ".variable", values_from = ".value")
+
+  geo_value <- target_and_other_data$geo_value[1]
+  disease <- target_and_other_data$disease[1]
+  data_type <- target_and_other_data$data_type[1]
+
   ## Time series forecasting
   ## Fit and forecast other (non-target-disease) ED visits using a combination
   ## ensemble model
@@ -181,21 +181,23 @@ main <- function(
     target_and_other_data,
     n_forecast_days,
     n_samples,
-    target_col = "ed_visits_other",
+    target_col = "other_ed_visits",
     output_col = "other_ed_visits"
   )
+
   baseline_ts_count <- fit_and_forecast(
     target_and_other_data,
     n_forecast_days,
     n_samples,
-    target_col = "ed_visits_target",
-    output_col = "baseline_ed_visit_count_forecast"
+    target_col = "observed_ed_visits",
+    output_col = "observed_ed_visits"
   )
+
   ## Generate CDC flat forecast for the target disease number of ED visits
   baseline_cdc_count <- cdc_flat_forecast(
     target_and_other_data,
-    target_col = "ed_visits_target",
-    output_col = "baseline_ed_visit_count_forecast",
+    target_col = "observed_ed_visits",
+    output_col = "observed_ed_visits",
     data_frequency = data_frequency,
     aheads = 1:n_forecast_days
   )
@@ -205,10 +207,10 @@ main <- function(
 
   baseline_cdc_prop <- cdc_flat_forecast(
     target_and_other_data |>
-      mutate(ed_visits_prop = ed_visits_target /
-        (ed_visits_target + ed_visits_other)),
-    target_col = "ed_visits_prop",
-    output_col = "baseline_ed_visit_prop_forecast",
+      mutate(prop_disease_ed_visits = observed_ed_visits /
+        (observed_ed_visits + other_ed_visits)),
+    target_col = "prop_disease_ed_visits",
+    output_col = "prop_disease_ed_visits",
     data_frequency = data_frequency,
     aheads = 1:n_forecast_days
   )
@@ -216,16 +218,37 @@ main <- function(
   model_dir <- path(model_run_dir, model_name)
   dir_create(model_dir)
 
+  baseline_ts_forecast <-
+    baseline_ts_prop |>
+    pivot_longer(-c("date", ".draw"),
+      names_to = ".variable",
+      values_to = ".value"
+    ) |>
+    mutate(geo_value = geo_value, disease = disease, data_type = data_type) |>
+    select(
+      "date", ".draw", "geo_value", "disease", "data_type", ".variable",
+      ".value"
+    )
+
+  baseline_cdc_forecast <-
+    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop) |>
+    pivot_longer(-c("date", "quantile_level"),
+      names_to = ".variable", values_to = ".value"
+    ) |>
+    mutate(geo_value = geo_value, disease = disease, data_type = data_type) |>
+    select(
+      "date", "geo_value", "disease", "data_type", ".variable",
+      "quantile_level", ".value"
+    )
+
+
   to_save <- tribble(
-    ~basename, ~value,
-    "other_ed_visits_forecast", forecast_other,
-    "baseline_ts_count_ed_visits_forecast", baseline_ts_count,
-    "baseline_ts_prop_ed_visits_forecast", baseline_ts_prop,
-    "baseline_cdc_count_ed_visits_forecast", baseline_cdc_count,
-    "baseline_cdc_prop_ed_visits_forecast", baseline_cdc_prop
+    ~base_name, ~value,
+    "baseline_cdc_forecast", baseline_cdc_forecast,
+    "baseline_ts_prop", baseline_ts_prop
   ) |>
     mutate(save_path = path(
-      !!model_dir, glue::glue("{prefix}{basename}"),
+      !!model_dir, glue::glue("{prefix}{base_name}"),
       ext = "parquet"
     ))
 
