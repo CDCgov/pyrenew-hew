@@ -52,8 +52,8 @@ make_forecast_figure <- function(target_disease,
 
   ggplot2::ggplot(mapping = ggplot2::aes(date, .value)) +
     ggdist::geom_lineribbon(
-                data = forecast_ci |> dplyr::filter(.data$disease ==
-                                                    !!target_disease),
+      data = forecast_ci |> dplyr::filter(.data$disease ==
+        !!target_disease),
       mapping = ggplot2::aes(ymin = .lower, ymax = .upper),
       color = "#08519c",
       key_glyph = ggplot2::draw_key_rect,

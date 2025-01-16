@@ -45,7 +45,7 @@ to_epiweekly_quantiles <- function(model_run_dir,
         lubridate::days(!!max_lookback_days),
       .data$.variable == !!disease_name
     ) |>
-    mutate(
+    dplyr::mutate(
       epiweek = epiweek(date),
       epiyear = epiyear(date)
     )
