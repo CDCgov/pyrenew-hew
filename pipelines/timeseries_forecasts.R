@@ -245,7 +245,7 @@ main <- function(
   to_save <- tribble(
     ~base_name, ~value,
     "baseline_cdc_forecast", baseline_cdc_forecast,
-    "baseline_ts_prop", baseline_ts_prop
+    "baseline_ts_forecast", baseline_ts_forecast
   ) |>
     mutate(save_path = path(
       !!model_dir, glue::glue("{prefix}{base_name}"),
