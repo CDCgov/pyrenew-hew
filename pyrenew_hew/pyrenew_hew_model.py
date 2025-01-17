@@ -367,12 +367,12 @@ class EDVisitObservationProcess(RandomVariable):
             concentration_rv=self.ed_neg_bin_concentration_rv,
         )
 
-        sampled_ed_visits = ed_visit_obs_rv(
+        observed_ed_visits = ed_visit_obs_rv(
             mu=latent_ed_visits_now,
             obs=data_observed,
         )
 
-        return sampled_ed_visits, iedr
+        return observed_ed_visits, iedr
 
 
 class HospAdmitObservationProcess(RandomVariable):
@@ -511,14 +511,14 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             data.first_data_date_overall - datetime.timedelta(days=n_init_days)
         ).weekday()
 
-        sampled_ed_visits = None
-        sampled_admissions = None
-        sampled_wastewater = None
+        observed_ed_visits = None
+        observed_admissions = None
+        observed_wastewater = None
 
         iedr = None
 
         if sample_ed_visits:
-            sampled_ed_visits, iedr = self.ed_visit_obs_process_rv(
+            observed_ed_visits, iedr = self.ed_visit_obs_process_rv(
                 latent_infections=latent_infections,
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
@@ -527,7 +527,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             )
 
         if sample_hospital_admissions:
-            sampled_admissions = self.hosp_admit_obs_process_rv(
+            observed_admissions = self.hosp_admit_obs_process_rv(
                 latent_infections=latent_infections,
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
@@ -536,10 +536,10 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 iedr=iedr,
             )
         if sample_wastewater:
-            sampled_wastewater = self.wastewater_obs_process_rv()
+            observed_wastewater = self.wastewater_obs_process_rv()
 
         return {
-            "ed_visits": sampled_ed_visits,
-            "hospital_admissions": sampled_admissions,
-            "wasewater": sampled_wastewater,
+            "ed_visits": observed_ed_visits,
+            "hospital_admissions": observed_admissions,
+            "wasewater": observed_wastewater,
         }
