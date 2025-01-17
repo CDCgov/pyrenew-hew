@@ -172,7 +172,6 @@ main <- function(
 
   geo_value <- target_and_other_data$geo_value[1]
   disease <- target_and_other_data$disease[1]
-  data_type <- target_and_other_data$data_type[1]
 
   ## Time series forecasting
   ## Fit and forecast other (non-target-disease) ED visits using a combination
@@ -224,10 +223,9 @@ main <- function(
       names_to = ".variable",
       values_to = ".value"
     ) |>
-    mutate(geo_value = geo_value, disease = disease, data_type = data_type) |>
+    mutate(geo_value = geo_value, disease = disease) |>
     select(
-      "date", ".draw", "geo_value", "disease", "data_type", ".variable",
-      ".value"
+      "date", ".draw", "geo_value", "disease", ".variable", ".value"
     )
 
   baseline_cdc_forecast <-
@@ -235,10 +233,9 @@ main <- function(
     pivot_longer(-c("date", "quantile_level"),
       names_to = ".variable", values_to = ".value"
     ) |>
-    mutate(geo_value = geo_value, disease = disease, data_type = data_type) |>
+    mutate(geo_value = geo_value, disease = disease) |>
     select(
-      "date", "geo_value", "disease", "data_type", ".variable",
-      "quantile_level", ".value"
+      "date", "geo_value", "disease", ".variable", "quantile_level", ".value"
     )
 
 
