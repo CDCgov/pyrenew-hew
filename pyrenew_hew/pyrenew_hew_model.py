@@ -439,7 +439,7 @@ class HospAdmitObservationProcess(RandomVariable):
             concentration_rv=self.hosp_admit_neg_bin_concentration_rv,
         )
 
-        sampled_admissions = hospital_admissions_obs_rv(
+        observed_hospital_admissions = hospital_admissions_obs_rv(
             mu=predicted_weekly_admissions[-n_datapoints:], obs=data_observed
         )
 
