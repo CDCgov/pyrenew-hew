@@ -7,11 +7,11 @@ import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from numpyro.infer.reparam import LocScaleReparam
-from pyrenew.arrayutils import repeat_until_n, tile_until_n
 from pyrenew.convolve import (
     compute_delay_ascertained_incidence,
     daily_to_mmwr_epiweekly,
 )
+from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
@@ -20,11 +20,7 @@ from pyrenew.latent import (
 from pyrenew.metaclass import Model, RandomVariable
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
-from pyrenew.randomvariable import (
-    DeterministicVariable,
-    DistributionalVariable,
-    TransformedVariable,
-)
+from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
