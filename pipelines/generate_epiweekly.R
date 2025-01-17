@@ -158,18 +158,38 @@ convert_comb_daily_to_ewkly <- function(
 }
 
 
+convert_if_exists <- function(model_run_dir,
+                              dataname) {
+  exists <- fs::file_exists(fs::path(
+    model_run_dir,
+    dataname
+  ))
+  convert_fn <- ifelse(
+    "combined" %in% dataname,
+    convert_comb_daily_to_ewkly,
+    convert_daily_to_epiweekly
+  )
+
+  return(if (exists) {
+    convert_fn(model_run_dir,
+      dataname = dataname
+    )
+  } else {
+    NULL
+  })
+}
+
+
 main <- function(model_run_dir) {
-  convert_daily_to_epiweekly(model_run_dir,
-    dataname = "data.tsv"
+  datanames <- c(
+    "data.tsv",
+    "eval_data.tsv",
+    "combined_training_data.tsv",
+    "combined_eval_data.tsv"
   )
-  convert_daily_to_epiweekly(model_run_dir,
-    dataname = "eval_data.tsv"
-  )
-  convert_comb_daily_to_ewkly(model_run_dir,
-    dataname = "combined_training_data.tsv"
-  )
-  convert_comb_daily_to_ewkly(model_run_dir,
-    dataname = "combined_eval_data.tsv"
+  purrr::map(
+    datanames,
+    \(x) convert_if_exists(model_run_dir, dataname = x)
   )
 }
 
