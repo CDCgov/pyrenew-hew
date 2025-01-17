@@ -1,6 +1,6 @@
 script_packages <- c(
   "argparser", "cowplot", "dplyr", "fs", "glue", "hewr", "purrr",
-  "tidyr"
+  "tidyr", "stringr", "lubridate"
 )
 
 ## load in packages without messages
@@ -15,10 +15,12 @@ save_forecast_figures <- function(model_run_dir,
                                   pyrenew_model_name,
                                   timeseries_model_name) {
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
+  pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
   processed_forecast <- process_state_forecast(
     model_run_dir,
     pyrenew_model_name,
-    timeseries_model_name
+    timeseries_model_name,
+    save = FALSE
   )
   diseases <- unique(
     processed_forecast$daily_combined_training_eval_data$disease
@@ -26,11 +28,11 @@ save_forecast_figures <- function(model_run_dir,
 
   y_transforms <- c("identity" = "", "log10" = "_log")
 
-  timescales <- c(
-    "daily",
-    "epiweekly",
-    "epiweekly_with_epiweekly_other"
-  )
+
+  timescales <- "daily"
+  if (pyrenew_model_components[["e"]]) {
+    timescales <- c(timescales, "epiweekly", "epiweekly_with_epiweekly_other")
+  }
 
   figure_save_tbl <-
     expand_grid(
@@ -50,6 +52,7 @@ save_forecast_figures <- function(model_run_dir,
     mutate(
       figure_path = path(
         model_run_dir,
+        pyrenew_model_name,
         glue(
           "{target_disease}_",
           "forecast_plot{transform_name}_",

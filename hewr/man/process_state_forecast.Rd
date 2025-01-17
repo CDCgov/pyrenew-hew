@@ -7,7 +7,7 @@
 process_state_forecast(
   model_run_dir,
   pyrenew_model_name,
-  timeseries_model_name,
+  timeseries_model_name = NULL,
   ci_widths = c(0.5, 0.8, 0.95),
   save = TRUE
 )
