@@ -240,6 +240,10 @@ process_state_forecast <- function(model_run_dir,
     path(model_run_dir, "data", "data_for_model_fit", ext = "json")
   )
 
+  first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
+  first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
+  nhsn_step_size <- data_for_model_fit$nhsn_step_size
+
   # Used for augmenting denominator forecasts with training period denominator
   daily_training_dat <- read_tsv(path(
     model_run_dir, "data", "combined_training_data",
