@@ -104,10 +104,13 @@ def main(
     logger.info("Getting eval data...")
     save_eval_data(
         state=location,
+        disease=batch_info["disease"],
+        first_training_date=batch_info["first_training_date"],
+        last_training_date=batch_info["last_training_date"],
         latest_comprehensive_path=eval_data_path,
         output_data_dir=Path(model_run_dir_path, "data"),
         last_eval_date=(batch_info["report_date"] + timedelta(days=50)),
-        **batch_info,
+        output_file_name="eval_data.tsv",
     )
 
     logger.info("Generating epiweekly datasets from daily datasets...")
