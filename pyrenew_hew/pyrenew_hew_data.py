@@ -90,27 +90,27 @@ class PyrenewHEWData:
 
     @property
     def first_data_dates(self):
-        return [
-            self.first_ed_visits_date,
-            self.first_hospital_admissions_date,
-            self.first_wastewater_date,
-        ]
+        return dict(
+            ed_visits=self.first_ed_visits_date,
+            hospital_admissions=self.first_hospital_admissions_date,
+            wastewater=self.first_wastewater_date,
+        )
 
     @property
     def last_data_dates(self):
-        return [
-            self.last_ed_visits_date,
-            self.last_hospital_admissions_date,
-            self.last_wastewater_date,
-        ]
+        return dict(
+            ed_visits=self.last_ed_visits_date,
+            hospital_admissions=self.last_hospital_admissions_date,
+            wastewater=self.last_wastewater_date,
+        )
 
     @property
     def first_data_date_overall(self):
-        return min([x for x in self.first_data_dates if x is not None])
+        return min(filter(None, self.first_data_dates.values()))
 
     @property
     def last_data_date_overall(self):
-        return max([x for x in self.last_data_dates if x is not None])
+        return min(filter(None, self.last_data_dates.values()))
 
     @property
     def n_days_post_init(self):
