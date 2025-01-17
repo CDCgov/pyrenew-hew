@@ -494,7 +494,9 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             data.first_data_date_overall - datetime.timedelta(days=n_init_days)
         ).weekday()
 
-        sampled_ed_visits, sampled_admissions, sampled_wastewater = (
+        sampled_ed_visits = None
+        sampled_admissions = None
+        sampled_wastewater = None
             None,
             None,
             None,
