@@ -35,16 +35,15 @@ testthat::test_that("score_hubverse works as expected with valid inputs", {
     length(date_range) * length(locations)
   )
 
-  scored <- score_hubverse(forecast, observed)
-  expect_setequal(forecast$location, scored$location)
-  expect_setequal(scored$horizon, c(0, 1))
+  scored <- forecasttools::quantile_table_to_scorable(
+    forecast,
+    observed,
+    obs_date_column = "reference_date"
+  ) |>
+    score_hewr()
 
-  scored_all_horizon <- score_hubverse(
-    forecast, observed,
-    horizons = c(0, 1, 2)
-  )
-  expect_setequal(forecast$location, scored_all_horizon$location)
-  expect_setequal(forecast$horizon, scored_all_horizon$horizon)
+  expect_setequal(forecast$location, scored$location)
+  expect_setequal(forecast$horizon, scored$horizon)
 })
 
 
@@ -68,13 +67,18 @@ testthat::test_that("score_hubverse handles missing location data", {
     locations = c("loc1")
   )
 
-  result <- score_hubverse(forecast, observed)
+  result <- forecasttools::quantile_table_to_scorable(
+    forecast,
+    observed,
+    obs_date_column = "reference_date"
+  ) |>
+    score_hewr()
   expect_false("loc2" %in% result$location)
   expect_setequal(observed$location, result$location)
 })
 
 
-testthat::test_that("score_hubverse handles zero length forecast table", {
+testthat::test_that("score_hewr handles zero length forecast table", {
   forecast <- tibble::tibble(
     reference_date = as.Date(character(0)),
     horizon = integer(0),
@@ -95,7 +99,15 @@ testthat::test_that("score_hubverse handles zero length forecast table", {
   )
 
   expect_error(
-    result <- score_hubverse(forecast, observed),
-    "Assertion on 'data' failed: Must have at least 1 rows, but has 0 rows."
+    forecasttools::quantile_table_to_scorable(
+      forecast,
+      observed,
+      obs_date_column = "reference_date"
+    ) |>
+      score_hewr(),
+    paste0(
+      "Assertion on 'data' failed: ",
+      "Must have at least 1 rows, but has 0 rows."
+    )
   )
 })

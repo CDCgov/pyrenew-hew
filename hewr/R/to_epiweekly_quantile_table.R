@@ -132,12 +132,12 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       to_epiweekly_quantiles(
         x,
         report_date = report_date,
-        max_lookback_days = 8,
+        max_lookback_days = 15,
         draws_file_name = draws_file_name,
         strict = strict
       )
     }
-    ## max_lookback_days = 8 ensures we get
+    ## max_lookback_days = 15 ensures we get
     ## the full -1 horizon but do not waste
     ## time quantilizing draws that will not
     ## be included in the final table.

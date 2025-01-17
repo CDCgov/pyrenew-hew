@@ -1,4 +1,7 @@
 library(argparser)
+library(ggplot2)
+library(ggdist)
+library(forecasttools)
 
 get_hubverse_table_paths <- function(dir,
                                      disease) {
@@ -12,6 +15,84 @@ get_hubverse_table_paths <- function(dir,
   )
 
   return(path_df)
+}
+
+
+plot_pred_act_by_horizon <- function(scorable_table,
+                                     location) {
+  to_plot <- scorable_table |>
+    dplyr::filter(
+      location == !!location,
+      quantile_level %in% c(0.025, 0.25, 0.5, 0.75, 0.975, NA)
+    ) |>
+    tidyr::pivot_wider(
+      id_cols = c(
+        reference_date,
+        target_end_date,
+        horizon,
+        disease,
+        observed
+      ),
+      names_from = quantile_level,
+      names_glue = "q_{quantile_level * 100}",
+      values_from = predicted
+    )
+
+  plot <- to_plot |>
+    ggplot(aes(
+      x = target_end_date,
+      y = q_50
+    )) +
+    geom_pointinterval(
+      aes(
+        ymin = q_2.5,
+        ymax = q_97.5
+      ),
+      color = "blue",
+      alpha = 0.5,
+      linewidth = 10,
+      point_size = 0
+    ) +
+    geom_pointinterval(
+      aes(
+        ymin = q_25,
+        ymax = q_75
+      ),
+      color = "blue",
+      point_fill = "darkblue",
+      point_color = "black",
+      point_alpha = 1,
+      alpha = 0.75,
+      linewidth = 20,
+      point_size = 4,
+      shape = 23
+    ) +
+    geom_line(aes(y = observed),
+      size = 1
+    ) +
+    geom_point(aes(y = observed),
+      size = 4,
+      shape = 21,
+      fill = "darkred",
+      color = "black",
+      alpha = 1
+    ) +
+    facet_grid(disease ~ horizon,
+      scales = "free_y"
+    ) +
+    labs(
+      title =
+        glue::glue("Predictions and observations for {location}"),
+      x = "Target date",
+      y = "%ED visits"
+    ) +
+    scale_y_continuous(
+      labels = scales::label_percent(),
+      transform = "log10"
+    ) +
+    theme_forecasttools()
+
+  return(plot)
 }
 
 
@@ -56,7 +137,7 @@ score_and_save <- function(observed_data_path,
     last_target_date <- lubridate::ymd("9999-01-01")
   }
 
-  read_and_score <- function(path, disease) {
+  read_and_prep_for_scoring <- function(path, disease) {
     disease_short <- dplyr::case_when(
       disease == "covid-19" ~ "covid",
       TRUE ~ disease
@@ -68,29 +149,38 @@ score_and_save <- function(observed_data_path,
     ) |>
       dplyr::mutate(disease = !!disease) |>
       dplyr::filter(
-        .data$target_end_date <= !!last_target_date,
-        .data$horizon %in% !!horizons
+        .data$target_end_date <= !!last_target_date
       )
 
 
-    scored <- if (nrow(to_score) > 0) {
-      hewr::score_hubverse(
+    scorable_table <- if (nrow(to_score) > 0) {
+      quantile_table_to_scorable(
         to_score,
-        observed = observed_data,
-        observed_value_column =
+        observation_table = observed_data,
+        obs_value_column =
           glue::glue("prop_{disease_short}"),
-        horizons = horizons
+        obs_date_column = "reference_date",
+        obs_location_column = "location"
       )
     } else {
       NULL
     }
 
-    return(scored)
+    return(scorable_table)
   }
 
-  full_scores <- all_paths |>
-    purrr::pmap(read_and_score) |>
-    dplyr::bind_rows()
+  full_scorable_table <- all_paths |>
+    purrr::pmap(read_and_prep_for_scoring) |>
+    dplyr::bind_rows() |>
+    dplyr::select(-"other_ed_visit_forecast")
+
+  message("Finished reading in forecasts and preparing for scoring.")
+  message("Scoring forecasts...")
+  full_scores <- hewr::score_hewr(
+    full_scorable_table |> dplyr::filter(
+      .data$horizon %in% !!horizons
+    )
+  )
 
   message("Scoring complete.")
 
@@ -110,18 +200,141 @@ score_and_save <- function(observed_data_path,
   )
 
   summaries <- desired_summaries |>
-    purrr::map(\(x) scoringutils::summarise_scores(full_scores, by = x))
+    purrr::map(\(x) {
+      scoringutils::summarise_scores(full_scores, by = x)
+    })
 
 
   coverage_figs <- purrr::map(
     c(0.5, 0.95),
     \(x) {
-      forecasttools::plot_coverage_by_date(
-        full_scores, x
+      plot_coverage_by_date(
+        full_scores, x,
+        date_col = "target_end_date"
       ) +
-        ggplot2::theme_minimal()
+        theme_forecasttools()
     }
   )
+
+  locations <- unique(full_scorable_table$location)
+
+  print(full_scorable_table |>
+    dplyr::filter(
+      is.na(.data$quantile_level),
+      .data$location == "US"
+    ))
+
+  pred_actual_by_horizon <-
+    purrr::map(
+      locations,
+      \(x) {
+        plot_pred_act_by_horizon(
+          full_scorable_table |>
+            dplyr::filter(
+              .data$horizon %in% !!horizons
+            ),
+          x
+        )
+      }
+    )
+
+  pred_act_plot_fn <- function(location, disease) {
+    all_horizons <- unique(horizons)
+
+    loc_table <- full_scorable_table |>
+      dplyr::filter(
+        location == !!location,
+        disease == !!disease,
+        horizon %in% !!all_horizons
+      )
+
+    obs <- loc_table |>
+      dplyr::distinct(
+        target_end_date,
+        observed,
+        quantile_level,
+        .keep_all = TRUE
+      ) |>
+      dplyr::mutate(
+        predicted = .data$observed,
+        horizon = -1
+      ) |>
+      dplyr::select(-"reference_date")
+    needed <- loc_table |>
+      dplyr::distinct(.data$reference_date) |>
+      dplyr::mutate(
+        horizon = -1,
+        target_end_date = reference_date +
+          lubridate::dweeks(.data$horizon)
+      ) |>
+      dplyr::anti_join(loc_table,
+        by = c(
+          "reference_date",
+          "horizon",
+          "target_end_date"
+        )
+      )
+
+    synth_minus_one <- dplyr::inner_join(needed,
+      obs,
+      by = c(
+        "target_end_date",
+        "horizon"
+      )
+    )
+
+    table_with_synth <- dplyr::bind_rows(
+      synth_minus_one,
+      loc_table
+    )
+
+    plot <- plot_pred_obs_by_forecast_date(
+      table_with_synth,
+      facet_columns = "reference_date"
+    ) |>
+      suppressMessages()
+
+    return(suppressMessages(plot +
+      labs(
+        title = glue::glue(
+          "Predicted and observed ",
+          "{disease} %ED visits in ",
+          "{location}."
+        ),
+        y = "%ED visits"
+      ) +
+      scale_y_continuous(
+        transform = "identity",
+        labels = scales::label_percent()
+      )))
+    ## plot the -1 horizon for pred/obs by forecast date
+  }
+
+  pred_act_plot_targets <-
+    tidyr::crossing(
+      disease = c("covid-19", "influenza"),
+      location = locations
+    )
+
+  pred_actual_by_date <- purrr::pmap(
+    pred_act_plot_targets,
+    pred_act_plot_fn
+  )
+
+  wis_by_loc <- scoringutils::plot_wis(
+    summaries$summary_by_location |>
+      dplyr::arrange(horizon, target, wis) |>
+      dplyr::mutate(location = factor(
+        location,
+        levels = unique(
+          location
+        ),
+        ordered = TRUE
+      )),
+    x = "location"
+  ) +
+    facet_grid(horizon ~ target)
+
 
   make_output_path <- function(output_name,
                                extension) {
@@ -131,7 +344,15 @@ score_and_save <- function(observed_data_path,
     ))
   }
 
-  forecasttools::plots_to_pdf(
+  message("Saving WIS component plot...")
+  ggsave(
+    make_output_path("wis_components", "pdf"),
+    wis_by_loc,
+    width = 8.5,
+    height = 11
+  )
+
+  plots_to_pdf(
     coverage_figs,
     make_output_path(
       "coverage",
@@ -140,6 +361,26 @@ score_and_save <- function(observed_data_path,
     width = 11,
     height = 8.5
   )
+  plots_to_pdf(
+    pred_actual_by_horizon,
+    make_output_path(
+      "predicted_actual_by_horizon",
+      "pdf"
+    ),
+    width = 11,
+    height = 8.5
+  )
+
+  plots_to_pdf(
+    pred_actual_by_date,
+    make_output_path(
+      "predicted_actual_by_forecast_date",
+      "pdf"
+    ),
+    width = 11,
+    height = 8.5
+  )
+
 
   message("Saving summary tables...")
   purrr::walk2(
