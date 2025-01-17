@@ -407,18 +407,35 @@ class HospAdmitObservationProcess(RandomVariable):
         """
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
-        if iedr is not None:
-            ihr_rel_iedr = self.ihr_rel_iedr_rv()
-            ihr = iedr[0] * ihr_rel_iedr
+        if self.ihr_rel_iedr_rv is not None and self.ihr_rv is not None:
+            raise ValueError(
+                "IHR must either be specified "
+                "in absolute terms by a non-None "
+                "`ihr_rv` or specified relative "
+                "to the IEDR by a non-None "
+                "`ihr_rel_iedr_rv`, but not both. "
+                "Got non-None RVs for both "
+                "quantities"
+            )
+        elif self.ihr_rel_iedr_rv is not None:
+            if iedr is None:
+                raise ValueError(
+                    "Must pass in an IEDR to " "compute IHR relative to IEDR."
+                )
+            ihr = iedr[0] * self.ihr_rel_iedr_rv()
             numpyro.deterministic("ihr", ihr)
-        else:
+        elif self.ihr_rv is not None:
             ihr = self.ihr_rv()
-
-        latent_admissions = population_size * ihr * latent_infections
+        else:
+            raise ValueError(
+                "Must provide either an ihr_rv "
+                "or an ihr_rel_iedr_rv. "
+                "Got neither (both were None)."
+            )
         latent_hospital_admissions = compute_delay_ascertained_incidence(
             p_observed_given_incident=1,
-            latent_incidence=latent_admissions,
-            delay_incidence_to_observation_pmf=inf_to_hosp_admit,
+            latent_incidence=(population_size * ihr * latent_infections),
+            delay_incidence_to_observation_pmf=(inf_to_hosp_admit),
         )
 
         longest_possible_delay = inf_to_hosp_admit.shape[0]
@@ -443,7 +460,7 @@ class HospAdmitObservationProcess(RandomVariable):
             mu=predicted_weekly_admissions[-n_datapoints:], obs=data_observed
         )
 
-        return sampled_admissions
+        return observed_hospital_admissions
 
 
 class WastewaterObservationProcess(RandomVariable):
@@ -497,10 +514,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sampled_ed_visits = None
         sampled_admissions = None
         sampled_wastewater = None
-            None,
-            None,
-            None,
-        )
 
         iedr = None
 
