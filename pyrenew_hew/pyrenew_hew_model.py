@@ -20,7 +20,11 @@ from pyrenew.latent import (
 from pyrenew.metaclass import Model, RandomVariable
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
-from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
+from pyrenew.randomvariable import (
+    DeterministicVariable,
+    DistributionalVariable,
+    TransformedVariable,
+)
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
