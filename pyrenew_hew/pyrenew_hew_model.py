@@ -7,6 +7,7 @@ import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from numpyro.infer.reparam import LocScaleReparam
+from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import (
     compute_delay_ascertained_incidence,
     daily_to_mmwr_epiweekly,
@@ -185,7 +186,7 @@ class LatentInfectionProcess(RandomVariable):
             rtu_subpop_ar_proc = ARProcess()
             rtu_subpop_ar_weekly = rtu_subpop_ar_proc(
                 noise_name="rtu_ar_proc",
-                n=n_weeks_post_init,
+                n=n_weeks_rt,
                 init_vals=rtu_subpop_ar_init[jnp.newaxis],
                 autoreg=autoreg_rt_subpop[jnp.newaxis],
                 noise_sd=sigma_rt,
@@ -506,9 +507,9 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         latent_infections = self.latent_infection_process_rv(
             n_days_post_init=data.n_days_post_init,
         )
-        n_init_days = self.latent_infection_process_rv.infection_initialization_process.infection_init_method.n_timepoints
         first_latent_infection_dow = (
-            data.first_data_date_overall - datetime.timedelta(days=n_init_days)
+            data.first_data_date_overall
+            - datetime.timedelta(days=self.n_initialization_points)
         ).weekday()
 
         observed_ed_visits = None
