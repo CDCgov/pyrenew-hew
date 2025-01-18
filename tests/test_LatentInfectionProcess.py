@@ -34,7 +34,6 @@ def test_LatentInfectionProcess():
     infection_feedback_strength_rv = DeterministicVariable("inf_feedback", -2)
     n_initialization_points = 10
     n_days_post_init = 14
-    n_weeks_post_init = 2
 
     my_latent_infection_model = LatentInfectionProcess(
         i0_first_obs_n_rv=i0_first_obs_n_rv,
@@ -50,8 +49,7 @@ def test_LatentInfectionProcess():
 
     with numpyro.handlers.seed(rng_seed=223):
         latent_inf_w_hierarchical_effects = my_latent_infection_model(
-            n_days_post_init=n_days_post_init,
-            n_weeks_post_init=n_weeks_post_init,
+            n_days_post_init=n_days_post_init
         )
 
         # Calculate latent infections without hierarchical dynamics
