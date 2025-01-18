@@ -504,12 +504,12 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_hospital_admissions: bool = False,
         sample_wastewater: bool = False,
     ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
+        n_init_days = self.latent_infection_process_rv.n_initialization_points
         latent_infections = self.latent_infection_process_rv(
             n_days_post_init=data.n_days_post_init,
         )
         first_latent_infection_dow = (
-            data.first_data_date_overall
-            - datetime.timedelta(days=self.n_initialization_points)
+            data.first_data_date_overall - datetime.timedelta(days=n_init_days)
         ).weekday()
 
         observed_ed_visits = None
