@@ -105,7 +105,7 @@ def build_model_from_dir(
         hosp_admit_neg_bin_concentration_rv=(
             priors["hosp_admit_neg_bin_concentration_rv"]
         ),
-        ihr_rel_iedr_rv=priors["ihr_rel_iedr_rv"],
+        ihr_rel_iedr_rv=None,  # since for now we only use H or E, not HE
         ihr_rv=priors["ihr_rv"],
     )
 
