@@ -1,5 +1,5 @@
 # numpydoc ignore=GL08
-import json
+import datetime
 
 import jax.numpy as jnp
 import numpyro
@@ -7,8 +7,11 @@ import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from numpyro.infer.reparam import LocScaleReparam
-from pyrenew.arrayutils import repeat_until_n, tile_until_n
-from pyrenew.convolve import compute_delay_ascertained_incidence
+from pyrenew.arrayutils import tile_until_n
+from pyrenew.convolve import (
+    compute_delay_ascertained_incidence,
+    daily_to_mmwr_epiweekly,
+)
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
@@ -16,11 +19,11 @@ from pyrenew.latent import (
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.metaclass import Model, RandomVariable
-from pyrenew.observation import NegativeBinomialObservation, PoissonObservation
+from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-from pyrenew_hew.utils import convert_to_logmean_log_sd
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
 class LatentInfectionProcess(RandomVariable):
@@ -29,8 +32,8 @@ class LatentInfectionProcess(RandomVariable):
         i0_first_obs_n_rv: RandomVariable,
         initialization_rate_rv: RandomVariable,
         log_r_mu_intercept_rv: RandomVariable,
-        autoreg_rt_rv: RandomVariable,  # ar coefficient of AR(1) process on R'(t)
-        eta_sd_rv: RandomVariable,  # sd of random walk for ar process on R'(t)
+        autoreg_rt_rv: RandomVariable,  # ar coeff for AR(1) on R'(t)
+        eta_sd_rv: RandomVariable,  # sd of random walk for AR(1) on R'(t)
         generation_interval_pmf_rv: RandomVariable,
         infection_feedback_strength_rv: RandomVariable,
         infection_feedback_pmf_rv: RandomVariable,
@@ -79,9 +82,15 @@ class LatentInfectionProcess(RandomVariable):
     def validate(self):
         pass
 
-    def sample(self, n_days_post_init: int, n_weeks_post_init: int):
+    def sample(self, n_days_post_init: int):
         """
         Sample latent infections.
+
+        Parameters
+        ----------
+        n_days_post_init
+            Number of days of infections to sample, not including
+            the initialization period.
         """
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
@@ -91,8 +100,10 @@ class LatentInfectionProcess(RandomVariable):
             dist.Normal(0, eta_sd / jnp.sqrt(1 - jnp.pow(autoreg_rt, 2))),
         )()
 
+        n_weeks_rt = n_days_post_init // 7 + 1
+
         log_rtu_weekly = self.ar_diff(
-            n=n_weeks_post_init,
+            n=n_weeks_rt,
             init_vals=jnp.array(log_r_mu_intercept),
             autoreg=jnp.array(autoreg_rt),
             noise_sd=jnp.array(eta_sd),
@@ -175,7 +186,7 @@ class LatentInfectionProcess(RandomVariable):
             rtu_subpop_ar_proc = ARProcess()
             rtu_subpop_ar_weekly = rtu_subpop_ar_proc(
                 noise_name="rtu_ar_proc",
-                n=n_weeks_post_init,
+                n=n_weeks_rt,
                 init_vals=rtu_subpop_ar_init[jnp.newaxis],
                 autoreg=autoreg_rt_subpop[jnp.newaxis],
                 noise_sd=sigma_rt,
@@ -198,7 +209,7 @@ class LatentInfectionProcess(RandomVariable):
                 repeats=7,
                 axis=0,
             )[:n_days_post_init, :]
-        )
+        )  # indexed rel to first post-init day.
 
         i0_subpop_rv = DeterministicVariable(
             "i0_subpop", i_first_obs_over_n_subpop
@@ -275,17 +286,17 @@ class EDVisitObservationProcess(RandomVariable):
         self,
         latent_infections: ArrayLike,
         population_size: int,
-        data_observed_disease_ed_visits: ArrayLike,
-        n_observed_disease_ed_visits_datapoints: int,
-        n_weeks_post_init: int,
-        right_truncation_offset: ArrayLike = None,
-    ) -> ArrayLike:
+        data_observed: ArrayLike,
+        n_datapoints: int,
+        right_truncation_offset: int = None,
+    ) -> tuple[ArrayLike]:
         """
         Observe and/or predict ED visit values
         """
         p_ed_mean = self.p_ed_mean_rv()
         p_ed_w_sd = self.p_ed_w_sd_rv()
         autoreg_p_ed = self.autoreg_p_ed_rv()
+        n_weeks_p_ed_ar = n_datapoints // 7 + 1
 
         p_ed_ar_init_rv = DistributionalVariable(
             "p_ed_ar_init",
@@ -298,7 +309,7 @@ class EDVisitObservationProcess(RandomVariable):
 
         p_ed_ar = self.p_ed_ar_proc(
             noise_name="p_ed",
-            n=n_weeks_post_init,
+            n=n_weeks_p_ed_ar,
             autoreg=autoreg_p_ed,
             init_vals=p_ed_ar_init,
             noise_sd=p_ed_w_sd,
@@ -307,7 +318,7 @@ class EDVisitObservationProcess(RandomVariable):
         iedr = jnp.repeat(
             transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
-        )[:n_observed_disease_ed_visits_datapoints]
+        )[:n_datapoints]  # indexed rel to first ed report day
         # this is only applied after the ed visits are generated, not to all
         # the latent infections. This is why we cannot apply the iedr in
         # compute_delay_ascertained_incidence
@@ -316,9 +327,7 @@ class EDVisitObservationProcess(RandomVariable):
         numpyro.deterministic("iedr", iedr)
 
         ed_wday_effect_raw = self.ed_wday_effect_rv()
-        ed_wday_effect = tile_until_n(
-            ed_wday_effect_raw, n_observed_disease_ed_visits_datapoints
-        )
+        ed_wday_effect = tile_until_n(ed_wday_effect_raw, n_datapoints)
 
         inf_to_ed = self.inf_to_ed_rv()
 
@@ -326,7 +335,7 @@ class EDVisitObservationProcess(RandomVariable):
             p_observed_given_incident=1,
             latent_incidence=latent_infections,
             delay_incidence_to_observation_pmf=inf_to_ed,
-        )[-n_observed_disease_ed_visits_datapoints:]
+        )[-n_datapoints:]
 
         latent_ed_visits_final = (
             potential_latent_ed_visits
@@ -340,8 +349,7 @@ class EDVisitObservationProcess(RandomVariable):
                 self.ed_right_truncation_cdf_rv()[right_truncation_offset:]
             )
             n_points_to_prepend = (
-                n_observed_disease_ed_visits_datapoints
-                - prop_already_reported_tail.shape[0]
+                n_datapoints - prop_already_reported_tail.shape[0]
             )
             prop_already_reported = jnp.pad(
                 prop_already_reported_tail,
@@ -362,10 +370,10 @@ class EDVisitObservationProcess(RandomVariable):
 
         observed_ed_visits = ed_visit_obs_rv(
             mu=latent_ed_visits_now,
-            obs=data_observed_disease_ed_visits,
+            obs=data_observed,
         )
 
-        return observed_ed_visits
+        return observed_ed_visits, iedr
 
 
 class HospAdmitObservationProcess(RandomVariable):
@@ -373,11 +381,15 @@ class HospAdmitObservationProcess(RandomVariable):
         self,
         inf_to_hosp_admit_rv: RandomVariable,
         hosp_admit_neg_bin_concentration_rv: RandomVariable,
-    ):
+        ihr_rv: RandomVariable = None,
+        ihr_rel_iedr_rv: RandomVariable = None,
+    ) -> None:
         self.inf_to_hosp_admit_rv = inf_to_hosp_admit_rv
         self.hosp_admit_neg_bin_concentration_rv = (
             hosp_admit_neg_bin_concentration_rv
         )
+        self.ihr_rv = ihr_rv
+        self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
 
     def validate(self):
         pass
@@ -385,36 +397,76 @@ class HospAdmitObservationProcess(RandomVariable):
     def sample(
         self,
         latent_infections: ArrayLike,
+        first_latent_infection_dow: int,
         population_size: int,
-        n_observed_hospital_admissions_datapoints: int,
-        data_observed_disease_hospital_admissions: ArrayLike | None = None,
+        n_datapoints: int,
+        data_observed: ArrayLike = None,
+        iedr: ArrayLike = None,
     ) -> ArrayLike:
         """
         Observe and/or predict incident hospital admissions.
         """
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
+        if self.ihr_rel_iedr_rv is not None and self.ihr_rv is not None:
+            raise ValueError(
+                "IHR must either be specified "
+                "in absolute terms by a non-None "
+                "`ihr_rv` or specified relative "
+                "to the IEDR by a non-None "
+                "`ihr_rel_iedr_rv`, but not both. "
+                "Got non-None RVs for both "
+                "quantities"
+            )
+        elif self.ihr_rel_iedr_rv is not None:
+            if iedr is None:
+                raise ValueError(
+                    "Must pass in an IEDR to " "compute IHR relative to IEDR."
+                )
+            ihr = iedr[0] * self.ihr_rel_iedr_rv()
+            numpyro.deterministic("ihr", ihr)
+        elif self.ihr_rv is not None:
+            ihr = self.ihr_rv()
+        else:
+            raise ValueError(
+                "Must provide either an ihr_rv "
+                "or an ihr_rel_iedr_rv. "
+                "Got neither (both were None)."
+            )
         latent_hospital_admissions = compute_delay_ascertained_incidence(
             p_observed_given_incident=1,
-            latent_incidence=latent_infections,
-            delay_incidence_to_observation_pmf=inf_to_hosp_admit,
-        )[-n_observed_hospital_admissions_datapoints:]
+            latent_incidence=(population_size * ihr * latent_infections),
+            delay_incidence_to_observation_pmf=(inf_to_hosp_admit),
+        )
+
+        longest_possible_delay = inf_to_hosp_admit.shape[0]
+
+        # we should add functionality to automate this,
+        # along with tests
+        first_latent_admission_dow = (
+            first_latent_infection_dow + longest_possible_delay
+        ) % 7
+
+        predicted_weekly_admissions = daily_to_mmwr_epiweekly(
+            latent_hospital_admissions,
+            input_data_first_dow=first_latent_admission_dow,
+        )
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
             concentration_rv=self.hosp_admit_neg_bin_concentration_rv,
         )
-        predicted_admissions = latent_hospital_admissions
-        sampled_admissions = hospital_admissions_obs_rv(
-            mu=predicted_admissions,
-            obs=data_observed_disease_hospital_admissions,
+
+        observed_hospital_admissions = hospital_admissions_obs_rv(
+            mu=predicted_weekly_admissions[-n_datapoints:], obs=data_observed
         )
-        return sampled_admissions
+
+        return observed_hospital_admissions
 
 
 class WastewaterObservationProcess(RandomVariable):
     """
-    Placeholder for wasteater obs process
+    Placeholder for wastewater obs process
     """
 
     def __init__(self) -> None:
@@ -440,292 +492,55 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         self.latent_infection_process_rv = latent_infection_process_rv
         self.ed_visit_obs_process_rv = ed_visit_obs_process_rv
         self.hosp_admit_obs_process_rv = hosp_admit_obs_process_rv
-        return None
+        self.wastewater_obs_process_rv = wastewater_obs_process_rv
 
-    def validate(self):  # numpydoc ignore=GL08
-        return None
+    def validate(self) -> None:  # numpydoc ignore=GL08
+        pass
 
     def sample(
         self,
-        n_observed_disease_ed_visits_datapoints=None,
-        n_observed_hospital_admissions_datapoints=None,
-        data_observed_disease_ed_visits=None,
-        data_observed_disease_hospital_admissions=None,
-        right_truncation_offset=None,
-    ) -> ArrayLike:  # numpydoc ignore=GL08
-        if (
-            n_observed_disease_ed_visits_datapoints is None
-            and data_observed_disease_ed_visits is None
-        ):
-            raise ValueError(
-                "Either n_observed_disease_ed_visits_datapoints or "
-                "data_observed_disease_ed_visits "
-                "must be passed."
-            )
-        elif (
-            n_observed_disease_ed_visits_datapoints is not None
-            and data_observed_disease_ed_visits is not None
-        ):
-            raise ValueError(
-                "Cannot pass both n_observed_disease_ed_visits_datapoints "
-                "and data_observed_disease_ed_visits."
-            )
-        elif n_observed_disease_ed_visits_datapoints is None:
-            n_observed_disease_ed_visits_datapoints = len(
-                data_observed_disease_ed_visits
-            )
-
-        if (
-            n_observed_hospital_admissions_datapoints is None
-            and data_observed_disease_hospital_admissions is not None
-        ):
-            n_observed_hospital_admissions_datapoints = len(
-                data_observed_disease_hospital_admissions
-            )
-        elif n_observed_hospital_admissions_datapoints is None:
-            n_observed_hospital_admissions_datapoints = 0
-
-        n_weeks_post_init = n_observed_disease_ed_visits_datapoints // 7 + 1
-        n_days_post_init = n_observed_disease_ed_visits_datapoints
-
+        data: PyrenewHEWData = None,
+        sample_ed_visits: bool = False,
+        sample_hospital_admissions: bool = False,
+        sample_wastewater: bool = False,
+    ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
+        n_init_days = self.latent_infection_process_rv.n_initialization_points
         latent_infections = self.latent_infection_process_rv(
-            n_days_post_init=n_days_post_init,
-            n_weeks_post_init=n_weeks_post_init,
+            n_days_post_init=data.n_days_post_init,
         )
+        first_latent_infection_dow = (
+            data.first_data_date_overall - datetime.timedelta(days=n_init_days)
+        ).weekday()
 
-        sample_ed_visits = True
-        sample_admissions = n_observed_hospital_admissions_datapoints > 0
-        sample_wastewater = False
+        observed_ed_visits = None
+        observed_admissions = None
+        observed_wastewater = None
 
-        sampled_ed_visits, sampled_admissions, sampled_wastewater = (
-            None,
-            None,
-            None,
-        )
+        iedr = None
 
         if sample_ed_visits:
-            sampled_ed_visits = self.ed_visit_obs_process_rv(
+            observed_ed_visits, iedr = self.ed_visit_obs_process_rv(
                 latent_infections=latent_infections,
                 population_size=self.population_size,
-                data_observed_disease_ed_visits=(
-                    data_observed_disease_ed_visits
-                ),
-                n_observed_disease_ed_visits_datapoints=(
-                    n_observed_disease_ed_visits_datapoints
-                ),
-                n_weeks_post_init=n_weeks_post_init,
-                right_truncation_offset=right_truncation_offset,
+                data_observed=data.data_observed_disease_ed_visits,
+                n_datapoints=data.n_ed_visits_datapoints,
+                right_truncation_offset=data.right_truncation_offset,
             )
 
-        if sample_admissions:
-            sampled_admissions = self.hosp_admit_obs_process_rv(
+        if sample_hospital_admissions:
+            observed_admissions = self.hosp_admit_obs_process_rv(
                 latent_infections=latent_infections,
+                first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
-                n_observed_hospital_admissions_datapoints=(
-                    n_observed_hospital_admissions_datapoints
-                ),
-                data_observed_disease_hospital_admissions=(
-                    data_observed_disease_hospital_admissions
-                ),
+                n_datapoints=data.n_hospital_admissions_datapoints,
+                data_observed=(data.data_observed_disease_hospital_admissions),
+                iedr=iedr,
             )
         if sample_wastewater:
-            sampled_wastewater = self.wastewater_obs_process_rv()
+            observed_wastewater = self.wastewater_obs_process_rv()
 
         return {
-            "ed_visits": sampled_ed_visits,
-            "admissions": sampled_admissions,
-            "wasewater": sampled_wastewater,
+            "ed_visits": observed_ed_visits,
+            "hospital_admissions": observed_admissions,
+            "wasewater": observed_wastewater,
         }
-
-
-def create_pyrenew_hew_model_from_stan_data(stan_data_file):
-    with open(
-        stan_data_file,
-        "r",
-    ) as file:
-        stan_data = json.load(file)
-
-    i_first_obs_over_n_prior_a = stan_data["i_first_obs_over_n_prior_a"]
-    i_first_obs_over_n_prior_b = stan_data["i_first_obs_over_n_prior_b"]
-    i0_first_obs_n_rv = DistributionalVariable(
-        "i0_first_obs_n_rv",
-        dist.Beta(i_first_obs_over_n_prior_a, i_first_obs_over_n_prior_b),
-    )
-
-    mean_initial_exp_growth_rate_prior_mean = stan_data[
-        "mean_initial_exp_growth_rate_prior_mean"
-    ]
-    mean_initial_exp_growth_rate_prior_sd = stan_data[
-        "mean_initial_exp_growth_rate_prior_sd"
-    ]
-    initialization_rate_rv = DistributionalVariable(
-        "rate",
-        dist.TruncatedNormal(
-            loc=mean_initial_exp_growth_rate_prior_mean,
-            scale=mean_initial_exp_growth_rate_prior_sd,
-            low=-1,
-            high=1,
-        ),
-    )
-    # could reasonably switch to non-Truncated
-
-    r_prior_mean = stan_data["r_prior_mean"]
-    r_prior_sd = stan_data["r_prior_sd"]
-    r_logmean, r_logsd = convert_to_logmean_log_sd(r_prior_mean, r_prior_sd)
-    log_r_mu_intercept_rv = DistributionalVariable(
-        "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
-    )
-
-    eta_sd_sd = stan_data["eta_sd_sd"]
-    eta_sd_rv = DistributionalVariable(
-        "eta_sd", dist.TruncatedNormal(0, eta_sd_sd, low=0)
-    )
-
-    autoreg_rt_a = stan_data["autoreg_rt_a"]
-    autoreg_rt_b = stan_data["autoreg_rt_b"]
-    autoreg_rt_rv = DistributionalVariable(
-        "autoreg_rt", dist.Beta(autoreg_rt_a, autoreg_rt_b)
-    )
-
-    generation_interval_pmf_rv = DeterministicVariable(
-        "generation_interval_pmf", jnp.array(stan_data["generation_interval"])
-    )
-
-    infection_feedback_pmf_rv = DeterministicVariable(
-        "infection_feedback_pmf",
-        jnp.array(stan_data["infection_feedback_pmf"]),
-    )
-
-    inf_feedback_prior_logmean = stan_data["inf_feedback_prior_logmean"]
-    inf_feedback_prior_logsd = stan_data["inf_feedback_prior_logsd"]
-    inf_feedback_strength_rv = TransformedVariable(
-        "inf_feedback",
-        DistributionalVariable(
-            "inf_feedback_raw",
-            dist.LogNormal(
-                inf_feedback_prior_logmean, inf_feedback_prior_logsd
-            ),
-        ),
-        transforms=transformation.AffineTransform(loc=0, scale=-1),
-    )
-    # Could be reparameterized?
-
-    p_hosp_prior_mean = stan_data["p_hosp_prior_mean"]
-    p_hosp_sd_logit = stan_data["p_hosp_sd_logit"]
-
-    p_ed_mean_rv = DistributionalVariable(
-        "p_ed_mean",
-        dist.Normal(
-            transformation.SigmoidTransform().inv(p_hosp_prior_mean),
-            p_hosp_sd_logit,
-        ),
-    )  # logit scale
-
-    p_ed_w_sd_sd = stan_data["p_hosp_w_sd_sd"]
-    p_ed_w_sd_rv = DistributionalVariable(
-        "p_ed_w_sd_sd", dist.TruncatedNormal(0, p_ed_w_sd_sd, low=0)
-    )
-
-    autoreg_p_ed_a = stan_data["autoreg_p_hosp_a"]
-    autoreg_p_ed_b = stan_data["autoreg_p_hosp_b"]
-    autoreg_p_ed_rv = DistributionalVariable(
-        "autoreg_p_ed", dist.Beta(autoreg_p_ed_a, autoreg_p_ed_b)
-    )
-
-    ed_wday_effect_rv = TransformedVariable(
-        "ed_wday_effect",
-        DistributionalVariable(
-            "ed_wday_effect_raw",
-            dist.Dirichlet(
-                jnp.array(stan_data["hosp_wday_effect_prior_alpha"])
-            ),
-        ),
-        transformation.AffineTransform(loc=0, scale=7),
-    )
-
-    inf_to_ed_rv = DeterministicVariable(
-        "inf_to_ed", jnp.array(stan_data["inf_to_hosp"])
-    )
-
-    inv_sqrt_phi_prior_mean = stan_data["inv_sqrt_phi_prior_mean"]
-    inv_sqrt_phi_prior_sd = stan_data["inv_sqrt_phi_prior_sd"]
-
-    ed_neg_bin_concentration_rv = TransformedVariable(
-        "ed_visit_neg_bin_concentration",
-        DistributionalVariable(
-            "inv_sqrt_ed_visit_neg_bin_conc",
-            dist.TruncatedNormal(
-                loc=inv_sqrt_phi_prior_mean,
-                scale=inv_sqrt_phi_prior_sd,
-                low=1 / jnp.sqrt(5000),
-            ),
-        ),
-        transforms=transformation.PowerTransform(-2),
-    )
-
-    inf_to_hosp_admit_rv = DeterministicVariable(
-        "inf_to_hosp_admit", jnp.array(stan_data["inf_to_hosp"])
-    )
-
-    hosp_admit_neg_bin_concentration_rv = TransformedVariable(
-        "hosp_admit_neg_bin_concentration",
-        DistributionalVariable(
-            "inv_sqrt_hosp_admit_neg_bin_conc",
-            dist.TruncatedNormal(
-                loc=inv_sqrt_phi_prior_mean,
-                scale=inv_sqrt_phi_prior_sd,
-                low=1 / jnp.sqrt(5000),
-            ),
-        ),
-        transforms=transformation.PowerTransform(-2),
-    )
-
-    uot = stan_data["uot"]
-    uot = len(jnp.array(stan_data["inf_to_hosp"]))
-    population_size = stan_data["state_pop"]
-
-    data_observed_disease_ed_visits = jnp.array(stan_data["hosp"])
-    ed_right_truncation_pmf_rv = DeterministicVariable(
-        "ed_visit_right_truncation_pmf", jnp.array(1)
-    )
-
-    my_latent_infection_model = LatentInfectionProcess(
-        i0_first_obs_n_rv=i0_first_obs_n_rv,
-        initialization_rate_rv=initialization_rate_rv,
-        log_r_mu_intercept_rv=log_r_mu_intercept_rv,
-        autoreg_rt_rv=autoreg_rt_rv,
-        eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
-        generation_interval_pmf_rv=generation_interval_pmf_rv,
-        infection_feedback_pmf_rv=infection_feedback_pmf_rv,
-        infection_feedback_strength_rv=inf_feedback_strength_rv,
-        n_initialization_points=uot,
-    )
-
-    my_ed_visit_obs_model = EDVisitObservationProcess(
-        p_ed_mean_rv=p_ed_mean_rv,
-        p_ed_w_sd_rv=p_ed_w_sd_rv,
-        autoreg_p_ed_rv=autoreg_p_ed_rv,
-        ed_wday_effect_rv=ed_wday_effect_rv,
-        inf_to_ed_rv=inf_to_ed_rv,
-        ed_neg_bin_concentration_rv=ed_neg_bin_concentration_rv,
-        ed_right_truncation_pmf_rv=ed_right_truncation_pmf_rv,
-    )
-
-    my_hosp_admit_obs_model = HospAdmitObservationProcess(
-        inf_to_hosp_admit_rv=inf_to_hosp_admit_rv,
-        hosp_admit_neg_bin_concentration_rv=(
-            hosp_admit_neg_bin_concentration_rv
-        ),
-    )
-
-    my_wastewater_obs_model = WastewaterObservationProcess()
-
-    my_model = PyrenewHEWModel(
-        population_size=population_size,
-        latent_infection_process_rv=my_latent_infection_model,
-        ed_visit_obs_process_rv=my_ed_visit_obs_model,
-        hosp_admit_obs_process_rv=my_hosp_admit_obs_model,
-        wastewater_obs_process_rv=my_wastewater_obs_model,
-    )
-
-    return my_model, data_observed_disease_ed_visits
