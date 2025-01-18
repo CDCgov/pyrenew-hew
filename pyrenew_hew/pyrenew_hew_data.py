@@ -110,7 +110,7 @@ class PyrenewHEWData:
 
     @property
     def last_data_date_overall(self):
-        return min(filter(None, self.last_data_dates.values()))
+        return max(filter(None, self.last_data_dates.values()))
 
     @property
     def n_days_post_init(self):

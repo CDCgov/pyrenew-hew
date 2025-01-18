@@ -209,7 +209,7 @@ class LatentInfectionProcess(RandomVariable):
                 repeats=7,
                 axis=0,
             )[:n_days_post_init, :]
-        )
+        )  # indexed rel to first post-init day.
 
         i0_subpop_rv = DeterministicVariable(
             "i0_subpop", i_first_obs_over_n_subpop
@@ -318,7 +318,7 @@ class EDVisitObservationProcess(RandomVariable):
         iedr = jnp.repeat(
             transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
-        )[:n_datapoints]
+        )[:n_datapoints]  # indexed rel to first ed report day
         # this is only applied after the ed visits are generated, not to all
         # the latent infections. This is why we cannot apply the iedr in
         # compute_delay_ascertained_incidence
