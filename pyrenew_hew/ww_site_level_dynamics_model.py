@@ -187,16 +187,13 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
-        log_r_t_first_obs = self.log_r_t_first_obs_rv()
-
-        rt_init_rate_of_change_rv = DistributionalVariable(
+        log_r_t_first_obs = self.log_r_t_first_obs_rv()  # log_r_mu_intercept
+        rt_init_rate_of_change = DistributionalVariable(
             "rt_init_rate_of_change",
             dist.Normal(0, eta_sd / jnp.sqrt(1 - jnp.pow(autoreg_rt, 2))),
-        )
+        )()
 
-        rt_init_rate_of_change = rt_init_rate_of_change_rv()
-
-        log_r_t_in_weeks = self.ar_diff_rt(
+        log_rtu_weekly = self.ar_diff_rt(
             noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
             n=n_weeks_post_init,
             init_vals=jnp.array(log_r_t_first_obs),
@@ -204,57 +201,50 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             noise_sd=jnp.array(eta_sd),
             fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
         )
-        numpyro.deterministic("log_r_t_in_weeks", log_r_t_in_weeks)
+        numpyro.deterministic("log_rtu_weekly", log_rtu_weekly)
 
         i_first_obs_over_n = self.i_first_obs_over_n_rv()
-        offset_ref_logit_i_first_obs = self.offset_ref_logit_i_first_obs_rv()
-
         mean_initial_exp_growth_rate = self.mean_initial_exp_growth_rate_rv()
-        offset_ref_initial_exp_growth_rate = (
-            self.offset_ref_initial_exp_growth_rate_rv()
-        )
-
         i_first_obs_over_n_ref_subpop = transforms.SigmoidTransform()(
             transforms.logit(i_first_obs_over_n)
-            + jnp.where(self.n_subpops > 1, offset_ref_logit_i_first_obs, 0)
+            + jnp.where(
+                self.n_subpops > 1, self.offset_ref_logit_i_first_obs_rv(), 0
+            )
         )
         initial_exp_growth_rate_ref_subpop = (
             mean_initial_exp_growth_rate
             + jnp.where(
-                self.n_subpops > 1, offset_ref_initial_exp_growth_rate, 0
+                self.n_subpops > 1,
+                self.offset_ref_initial_exp_growth_rate_rv(),
+                0,
             )
         )
-
-        offset_ref_log_r_t = self.offset_ref_log_r_t_rv()
-        log_rtu_ref_subpop_in_week = log_r_t_in_weeks + jnp.where(
-            self.n_subpops > 1, offset_ref_log_r_t, 0
+        log_rtu_weekly_ref_subpop = log_rtu_weekly + jnp.where(
+            self.n_subpops > 1, self.offset_ref_log_rt_rv(), 0
         )
 
         if self.n_subpops == 1:
             i_first_obs_over_n_subpop = i_first_obs_over_n_ref_subpop
             initial_exp_growth_rate_subpop = initial_exp_growth_rate_ref_subpop
-            log_rtu_subpop_in_week = log_rtu_ref_subpop_in_week[:, jnp.newaxis]
+            log_rtu_weekly_subpop = log_rtu_weekly_ref_subpop[:, jnp.newaxis]
         else:
-            sigma_i_first_obs = self.sigma_i_first_obs_rv()
             i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
                 "i_first_obs_over_n_non_ref_subpop",
                 DistributionalVariable(
                     "i_first_obs_over_n_non_ref_subpop_raw",
                     dist.Normal(
-                        transforms.logit(i_first_obs_over_n), sigma_i_first_obs
+                        transforms.logit(i_first_obs_over_n),
+                        self.sigma_i_first_obs_rv(),
                     ),
                     reparam=LocScaleReparam(0),
                 ),
                 transforms=transforms.SigmoidTransform(),
             )
-            sigma_initial_exp_growth_rate = (
-                self.sigma_initial_exp_growth_rate_rv()
-            )
             initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
                 "initial_exp_growth_rate_non_ref_subpop_raw",
                 dist.Normal(
                     mean_initial_exp_growth_rate,
-                    sigma_initial_exp_growth_rate,
+                    self.sigma_initial_exp_growth_rate_rv(),
                 ),
                 reparam=LocScaleReparam(0),
             )
@@ -300,13 +290,13 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 noise_sd=sigma_rt,
             )
             numpyro.deterministic("rtu_subpop_ar_weekly", rtu_subpop_ar_weekly)
-            log_rtu_non_ref_subpop_in_week = (
-                rtu_subpop_ar_weekly + log_r_t_in_weeks[:, jnp.newaxis]
+            log_rtu_weekly_non_ref_subpop = (
+                rtu_subpop_ar_weekly + log_rtu_weekly[:, jnp.newaxis]
             )
-            log_rtu_subpop_in_week = jnp.concat(
+            log_rtu_weekly_subpop = jnp.concat(
                 [
-                    log_rtu_ref_subpop_in_week[:, jnp.newaxis],
-                    log_rtu_non_ref_subpop_in_week,
+                    log_rtu_weekly_ref_subpop[:, jnp.newaxis],
+                    log_rtu_weekly_non_ref_subpop,
                 ],
                 axis=1,
             )
@@ -326,7 +316,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         rtu_subpop = jnp.squeeze(
             jnp.repeat(
-                jnp.exp(log_rtu_subpop_in_week),
+                jnp.exp(log_rtu_weekly_subpop),
                 repeats=7,
                 axis=0,
             )[:n_datapoints, :]
@@ -360,24 +350,22 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             gen_int=generation_interval_pmf,
         )
 
-        new_i_subpop = jnp.atleast_2d(
-            jnp.concat(
-                [
-                    i0,
-                    inf_with_feedback_proc_sample.post_initialization_infections,
-                ]
+        latent_infections_subpop = jnp.concat(
+            [
+                i0,
+                inf_with_feedback_proc_sample.post_initialization_infections,
+            ]
+        )
+
+        if self.n_subpops == 1:
+            latent_infections = latent_infections_subpop
+        else:
+            latent_infections = jnp.sum(
+                self.pop_fraction * latent_infections_subpop, axis=1
             )
-        )
-        if new_i_subpop.shape[0] == 1:
-            new_i_subpop = new_i_subpop.T
 
-        r_subpop_t = inf_with_feedback_proc_sample.rt
-        numpyro.deterministic("r_subpop_t", r_subpop_t)
-
-        state_inf_per_capita = jnp.sum(
-            self.pop_fraction * new_i_subpop, axis=1
-        )
-        numpyro.deterministic("state_inf_per_capita", state_inf_per_capita)
+        numpyro.deterministic("latent_infections", latent_infections)
+        numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
 
         # Hospital admission component
         p_hosp_mean = self.p_hosp_mean_rv()
@@ -416,7 +404,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         potential_latent_hospital_admissions = (
             compute_delay_ascertained_incidence(
                 p_observed_given_incident=1,
-                latent_incidence=state_inf_per_capita,
+                latent_incidence=latent_infections,
                 delay_incidence_to_observation_pmf=inf_to_hosp,
             )[-n_datapoints:]
         )
@@ -455,7 +443,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
                 return jnp.convolve(m, s, mode="valid")
 
             model_net_i = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
-                new_i_subpop
+                latent_infections_subpop
             )[-n_datapoints:, :]
             numpyro.deterministic("model_net_i", model_net_i)
 
@@ -536,7 +524,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             )
 
             state_model_net_i = jnp.convolve(
-                state_inf_per_capita, s, mode="valid"
+                latent_infections, s, mode="valid"
             )[-n_datapoints:]
             numpyro.deterministic("state_model_net_i", state_model_net_i)
 
@@ -553,9 +541,9 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             )
 
             state_rt = (
-                state_inf_per_capita[-n_datapoints:]
+                latent_infections[-n_datapoints:]
                 / jnp.convolve(
-                    state_inf_per_capita,
+                    latent_infections,
                     jnp.hstack(
                         (jnp.array([0]), jnp.array(generation_interval_pmf))
                     ),
