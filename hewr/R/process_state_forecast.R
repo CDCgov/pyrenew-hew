@@ -47,11 +47,12 @@ combine_training_and_eval_data <- function(train_dat,
 #' for data.
 #' @param epiweekly Get epiweekly data instead of daily data?
 #' Boolean, default `FALSE`.
+#' @export
 read_and_combine_data <- function(model_run_dir,
                                   epiweekly = FALSE) {
   prefix <- ifelse(epiweekly, "epiweekly_", "")
 
-  data_cols <- cols(
+  data_cols <- readr::cols(
     date = col_date(),
     geo_value = col_character(),
     disease = col_character(),

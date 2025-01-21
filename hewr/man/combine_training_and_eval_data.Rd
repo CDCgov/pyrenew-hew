@@ -5,7 +5,7 @@
 \title{Combine training and evaluation data for
 postprocessing.}
 \usage{
-combine_training_and_eval_data(train_dat, eval_dat, disease_name)
+combine_training_and_eval_data(train_dat, eval_dat)
 }
 \arguments{
 \item{train_dat}{Training data, as a \code{\link[tibble:tibble]{tibble}}.}

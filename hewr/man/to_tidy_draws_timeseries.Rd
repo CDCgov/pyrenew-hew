@@ -9,7 +9,6 @@ of tidy posterior "samples".}
 to_tidy_draws_timeseries(
   tidy_forecast,
   observed,
-  disease_name,
   date_colname = "date",
   sample_id_colname = ".draw",
   value_colname = ".value",
@@ -21,10 +20,6 @@ to_tidy_draws_timeseries(
 a sample id column and a value column.}
 
 \item{observed}{observed data to join with the forecast.}
-
-\item{disease_name}{name of the disease in \code{tidy_forecast},
-for downsampling the observed data if it contains data
-for multiple diseases.}
 
 \item{date_colname}{Name of the column in \code{tidy_forecast}
 and \code{observed} that identifies dates. Default \code{"date"}.}
