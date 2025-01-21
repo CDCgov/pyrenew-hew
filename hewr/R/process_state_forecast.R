@@ -26,15 +26,15 @@ with_prop_disease_ed_visits <- function(df) {
 combine_training_and_eval_data <- function(train_dat,
                                            eval_dat) {
   combined_dat <-
-    bind_rows(train_dat, eval_dat) |>
-    pivot_wider(names_from = ".variable", values_from = ".value") |>
-    mutate(prop_disease_ed_visits = observed_ed_visits /
+    dplyr::bind_rows(train_dat, eval_dat) |>
+    tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
+    dplyr::mutate(prop_disease_ed_visits = observed_ed_visits /
       (observed_ed_visits + other_ed_visits)) |>
-    pivot_longer(
+    tidyr::pivot_longer(
       cols = -c("date", "geo_value", "disease", "data_type"),
       names_to = ".variable", values_to = ".value"
     ) |>
-    drop_na()
+    tidyr::drop_na()
 
   return(combined_dat)
 }
@@ -53,12 +53,12 @@ read_and_combine_data <- function(model_run_dir,
   prefix <- ifelse(epiweekly, "epiweekly_", "")
 
   data_cols <- readr::cols(
-    date = col_date(),
-    geo_value = col_character(),
-    disease = col_character(),
-    data_type = col_character(),
-    .variable = col_character(),
-    .value = col_double()
+    date = readr::col_date(),
+    geo_value = readr::col_character(),
+    disease = readr::col_character(),
+    data_type = readr::col_character(),
+    .variable = readr::col_character(),
+    .value = readr::col_double()
   )
 
   train_data_path <- fs::path(model_run_dir,
@@ -125,7 +125,7 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
     transformed_obs,
     tidy_forecast
   ) |>
-    select(.draw, everything())
+    dplyr::select(.draw, everything())
 }
 
 join_and_calc_prop <- function(model_1, model_2) {
@@ -155,7 +155,7 @@ parse_pyrenew_model_name <- function(pyrenew_model_name) {
   pyrenew_model_tail <- stringr::str_extract(pyrenew_model_name, "(?<=_).+$") |>
     stringr::str_split_1("")
   model_components <- c("h", "e", "w")
-  model_components %in% pyrenew_model_tail |> set_names(model_components)
+  model_components %in% pyrenew_model_tail |> purrr::set_names(model_components)
 }
 
 #' Convert group time index to date
@@ -182,14 +182,14 @@ group_time_index_to_date <- function(group_time_index,
     observed_hospital_admissions = first_nhsn_date,
     observed_ed_visits = first_nssp_date
   ) |>
-    map_vec(as.Date)
+    purrr::map_vec(as.Date)
 
   step_size_key <- c(
     observed_hospital_admissions = nhsn_step_size,
     observed_ed_visits = 1
   )
 
-  first_date_key[variable] + days(step_size_key[variable]) *
+  first_date_key[variable] + lubridate::days(step_size_key[variable]) *
     group_time_index
 }
 
@@ -225,20 +225,20 @@ process_state_forecast <- function(model_run_dir,
     "disease", ".variable", ".value"
   )
 
-  data_col_types <- cols(
-    date = col_date(),
-    geo_value = col_character(),
-    disease = col_character(),
-    data_type = col_character(),
-    .variable = col_character(),
-    .value = col_double()
+  data_col_types <- readr::cols(
+    date = readr::col_date(),
+    geo_value = readr::col_character(),
+    disease = readr::col_character(),
+    data_type = readr::col_character(),
+    .variable = readr::col_character(),
+    .value = readr::col_double()
   )
   model_info <- parse_model_run_dir_path(model_run_dir)
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
   ## Process data
   data_for_model_fit <- jsonlite::read_json(
-    path(model_run_dir, "data", "data_for_model_fit", ext = "json")
+    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json")
   )
 
   first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
@@ -246,14 +246,14 @@ process_state_forecast <- function(model_run_dir,
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
 
   # Used for augmenting denominator forecasts with training period denominator
-  daily_training_dat <- read_tsv(path(
+  daily_training_dat <- readr::read_tsv(fs::path(
     model_run_dir, "data", "combined_training_data",
     ext = "tsv"
   ), col_types = data_col_types)
 
 
   # Used for augmenting denominator forecasts with training period denominator
-  epiweekly_training_dat <- read_tsv(path(
+  epiweekly_training_dat <- readr::read_tsv(fs::path(
     model_run_dir, "data", "epiweekly_combined_training_data",
     ext = "tsv"
   ), col_types = data_col_types)
@@ -276,31 +276,31 @@ process_state_forecast <- function(model_run_dir,
   posterior_predictive_variables <-
     pyrenew_posterior_predictive |>
     colnames() |>
-    str_remove("\\[.+\\]$") |>
+    stringr::str_remove("\\[.+\\]$") |>
     unique() |>
-    keep(~ str_starts(., "observed_")) |>
-    str_c("[group_time_index]") |>
-    map(rlang::parse_expr)
+    purrr::keep(~ stringr::str_starts(., "observed_")) |>
+    stringr::str_c("[group_time_index]") |>
+    purrr::map(rlang::parse_expr)
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
   daily_samples <-
     pyrenew_posterior_predictive |>
     tidybayes::gather_draws(!!!posterior_predictive_variables) |>
-    ungroup() |>
-    mutate(date = group_time_index_to_date(
+    dplyr::ungroup() |>
+    dplyr::mutate(date = group_time_index_to_date(
       group_time_index = group_time_index,
       variable = .variable,
       first_nssp_date = first_nssp_date,
       first_nhsn_date = first_nhsn_date,
       nhsn_step_size = nhsn_step_size
     )) |>
-    select(-group_time_index) |>
-    mutate(
+    dplyr::select(-group_time_index) |>
+    dplyr::mutate(
       geo_value = model_info$location,
       disease = model_info$disease
     ) |>
-    select(all_of(required_columns))
+    dplyr::select(tidyselect::all_of(required_columns))
 
   samples_list <- list(daily_samples = daily_samples)
 
@@ -308,7 +308,7 @@ process_state_forecast <- function(model_run_dir,
   if (pyrenew_model_components["e"]) {
     epiweekly_obs_ed_samples <-
       daily_samples |>
-      filter(.variable == "observed_ed_visits") |>
+      dplyr::filter(.variable == "observed_ed_visits") |>
       forecasttools::daily_to_epiweekly(
         value_col = ".value",
         weekly_value_name = ".value",
@@ -323,13 +323,13 @@ process_state_forecast <- function(model_run_dir,
         .data$epiyear,
         day_of_week = 7
       )) |>
-      select(all_of(required_columns))
+      dplyr::select(tidyselect::all_of(required_columns))
 
     epiweekly_samples <-
       daily_samples |>
-      filter(.variable != "observed_ed_visits") |>
-      bind_rows(epiweekly_obs_ed_samples) |>
-      select(all_of(required_columns))
+      dplyr::filter(.variable != "observed_ed_visits") |>
+      dplyr::bind_rows(epiweekly_obs_ed_samples) |>
+      dplyr::select(tidyselect::all_of(required_columns))
 
     samples_list$epiweekly_samples <- epiweekly_samples
 
@@ -350,14 +350,14 @@ process_state_forecast <- function(model_run_dir,
           ext = "parquet"
         )
       ) |>
-        filter(.variable == "other_ed_visits") |>
+        dplyr::filter(.variable == "other_ed_visits") |>
         to_tidy_draws_timeseries(
           observed = daily_training_dat |>
-            filter(.variable == "other_ed_visits") |>
-            select(-"data_type"),
+            dplyr::filter(.variable == "other_ed_visits") |>
+            dplyr::select(-"data_type"),
           epiweekly = FALSE
         ) |>
-        select(any_of(required_columns))
+        dplyr::select(tidyselect::any_of(required_columns))
 
       ## ts model, daily denominator aggregated to epiweekly
       agg_ewkly_ts_denom_samples <-
@@ -373,7 +373,7 @@ process_state_forecast <- function(model_run_dir,
           .data$epiyear,
           day_of_week = 7
         )) |>
-        select(any_of(required_columns))
+        dplyr::select(tidyselect::any_of(required_columns))
 
       ## ts model, epiweekly denominator
       ewkly_ts_denom_samples <- arrow::read_parquet(
@@ -382,14 +382,14 @@ process_state_forecast <- function(model_run_dir,
           ext = "parquet"
         )
       ) |>
-        filter(.variable == "other_ed_visits") |>
+        dplyr::filter(.variable == "other_ed_visits") |>
         to_tidy_draws_timeseries(
           observed = epiweekly_training_dat |>
-            filter(.variable == "other_ed_visits") |>
-            select(-"data_type"),
+            dplyr::filter(.variable == "other_ed_visits") |>
+            dplyr::select(-"data_type"),
           epiweekly = TRUE
         ) |>
-        select(any_of(required_columns))
+        dplyr::select(tidyselect::any_of(required_columns))
 
       # Daily Numerator, Daily Denominator
       daily_samples_daily_n_daily_d <- join_and_calc_prop(
