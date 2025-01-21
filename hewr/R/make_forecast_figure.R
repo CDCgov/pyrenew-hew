@@ -1,6 +1,6 @@
 #' Make Forecast Figure
 #'
-#' @param target_disease a disease matching the disease columns
+#' @param target_variable a variable matching the .variable columns
 #' in `combined_dat` and `forecast_ci`
 #' @param combined_dat `combined_dat` from the result of
 #' [process_state_forecast()]
@@ -13,43 +13,36 @@
 #'
 #' @return a ggplot object
 #' @export
-make_forecast_figure <- function(target_disease,
+make_forecast_figure <- function(target_variable,
                                  combined_dat,
                                  forecast_ci,
-                                 disease_name = c("COVID-19", "Influenza"),
                                  data_vintage_date,
                                  y_transform = "identity") {
-  disease_name <- rlang::arg_match(disease_name)
-  target_variable <- c(
-    "Disease" = "observed_ed_visits",
-    "Other" = "other_ed_visits",
-    "prop_disease_ed_visits" = "prop_disease_ed_visits"
-  )[target_disease]
-
+  disease_name <- forecast_ci[["disease"]][1]
   disease_name_pretty <- c(
     "COVID-19" = "COVID-19",
     "Influenza" = "Flu"
   )[disease_name]
+
   state_abb <- unique(combined_dat$geo_value)[1]
 
-  y_scale <- if (stringr::str_starts(target_disease, "prop")) {
-    ggplot2::scale_y_continuous("Proportion of Emergency Department Visits",
-      labels = scales::label_percent(),
-      transform = y_transform
-    )
-  } else {
-    ggplot2::scale_y_continuous("Emergency Department Visits",
-      labels = scales::label_comma(),
-      transform = y_transform
-    )
-  }
+  y_axis_prefix <- ifelse(stringr::str_starts(target_variable, "prop"),
+    "Proportion of ", ""
+  )
+  y_axis_core <- case_when(
+    str_detect(target_variable, "ed_visits") ~ "Emergency Department Visits",
+    str_detect(target_variable, "hospital") ~ "Hospital Admissions",
+    TRUE ~ ""
+  )
+  y_axis_label <- str_c(y_axis_prefix, y_axis_core)
+  y_axis_labels <- ifelse(stringr::str_starts(target_variable, "prop"),
+    scales::label_percent(), scales::label_comma()
+  )
 
-
-  title <- if (target_disease == "Other") {
-    glue::glue("Other ED Visits in {state_abb}")
-  } else {
-    glue::glue("{disease_name_pretty} ED Visits in {state_abb}")
-  }
+  title_prefix <- ifelse(str_starts(target_variable, "observed"),
+    disease_name_pretty, "Other"
+  )
+  title <- glue("{title_prefix} {y_axis_core} in {state_abb}")
 
   last_training_date <- combined_dat |>
     dplyr::filter(data_type == "train") |>
@@ -72,7 +65,7 @@ make_forecast_figure <- function(target_disease,
       mapping = ggplot2::aes(color = data_type), size = 1.5,
       data = combined_dat |>
         dplyr::filter(
-          disease == target_disease,
+          .variable == target_variable,
           date <= max(forecast_ci$date)
         ) |>
         dplyr::mutate(data_type = forcats::fct_rev(data_type)) |>
@@ -102,7 +95,10 @@ make_forecast_figure <- function(target_disease,
     ggplot2::ggtitle(title,
       subtitle = glue::glue("as of {data_vintage_date}")
     ) +
-    y_scale +
+    ggplot2::scale_y_continuous(y_axis_label,
+      labels = y_axis_labels,
+      transform = y_transform
+    ) +
     ggplot2::scale_x_date("Date") +
     cowplot::theme_minimal_grid() +
     ggplot2::theme(legend.position = "bottom")

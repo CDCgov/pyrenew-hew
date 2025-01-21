@@ -134,7 +134,7 @@ join_and_calc_prop <- function(model_1, model_2) {
     pivot_wider(model_2, names_from = ".variable", values_from = ".value"),
     by = join_by(.draw, date, geo_value, disease)
   ) |>
-    mutate(prop_ed_visits = observed_ed_visits /
+    mutate(prop_disease_ed_visits = observed_ed_visits /
       (observed_ed_visits + other_ed_visits)) |>
     pivot_longer(-c(starts_with("."), date, geo_value, disease),
       names_to = ".variable", values_to = ".value"
