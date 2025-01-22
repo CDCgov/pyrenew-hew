@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY: cfaprdbatchcr.azurecr.io
+  REGISTRY: cfaprdbatchcr.azurecr.io/
   IMAGE_NAME: pyrenew-hew
 
 jobs:
