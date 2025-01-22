@@ -48,7 +48,7 @@ jobs:
           username: cfaprdbatchcr
           password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
           image: ${{ env.IMAGE_NAME }}
-          build-args-2:
+          build-args-2: |
             TAG=${{ steps.image.outputs.tag }}
             GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
             GIT_BRANCH_NAME=${{ steps.branch.outputs.name }}
