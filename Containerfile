@@ -1,7 +1,7 @@
 #syntax=docker/dockerfile:1.7-labs
 ARG TAG=latest
 
-FROM cfaprdbatchcr.azurecr.io/pyrenew-hew-dependencies:${TAG}
+FROM cfaprdbatchcr.azurecr.io/pyrenew-hew:${TAG}
 ARG GIT_COMMIT_SHA
 ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
