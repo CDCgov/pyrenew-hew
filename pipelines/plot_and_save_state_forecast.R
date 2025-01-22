@@ -27,7 +27,7 @@ save_forecast_figures <- function(model_run_dir,
   )
 
 
-  variables <- unique(processed_forecast$daily_data[[".variable"]])
+  variables <- unique(processed_forecast$daily_samples[[".variable"]])
 
   y_transforms <- c("identity" = "", "log10" = "_log")
 
@@ -38,7 +38,9 @@ save_forecast_figures <- function(model_run_dir,
       epiweekly = TRUE
     )
   }
-
+  # This isn't quite right. Gives misleading file names to h figures
+  # They are labelled "daily" but are actually epiweekly
+  # No prefix at all would also be fine
   figure_save_tbl <-
     expand_grid(
       target_variable = variables,
