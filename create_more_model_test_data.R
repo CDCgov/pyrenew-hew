@@ -2,6 +2,7 @@ library(tidyverse)
 library(fs)
 library(glue)
 source("hewr/R/process_state_forecast.R")
+source("pipelines/plot_and_save_state_forecast.R")
 model_batch_dirs <- c(
   path(
     "/Users/damon/Documents/GitHub/pyrenew-hew/pipelines/tests/private_data",
@@ -15,7 +16,7 @@ model_batch_dirs <- c(
 
 walk(model_batch_dirs, \(model_batch_dir) {
   dir_delete(path(model_batch_dir, "diagnostic_report"))
-  dir_delete(path(model_batch_dir, "figures"))
+
   file_delete(dir_ls(model_batch_dir, glob = "*.tsv"))
   model_run_dirs <- dir_ls(path(model_batch_dir, "model_runs"))
   walk(
@@ -23,8 +24,8 @@ walk(model_batch_dirs, \(model_batch_dir) {
     \(model_run_dir) {
       print("creating h data for")
       print(model_run_dir)
-      file_delete(dir_ls(model_run_dir, glob = "*.pdf"))
-      file_delete(dir_ls(model_run_dir, glob = "*.rds"))
+      file_delete(dir_ls(model_run_dir, glob = "*.pdf", recurse = TRUE))
+      file_delete(dir_ls(model_run_dir, glob = "*.rds", recurse = TRUE))
 
       pyrenew_e_path <- fs::path(model_run_dir, "pyrenew_e")
       pyrenew_h_path <- fs::path(model_run_dir, "pyrenew_h")
@@ -103,6 +104,25 @@ walk(model_batch_dirs, \(model_batch_dir) {
         NULL,
         ci_widths = c(0.5, 0.8, 0.95),
         save = TRUE
+      )
+
+      ## Save forecast figures
+      save_forecast_figures(
+        model_run_dir,
+        "pyrenew_he",
+        "timeseries_e"
+      )
+
+      save_forecast_figures(
+        model_run_dir,
+        "pyrenew_e",
+        "timeseries_e"
+      )
+
+      save_forecast_figures(
+        model_run_dir,
+        "pyrenew_h",
+        NULL
       )
     }
   )
