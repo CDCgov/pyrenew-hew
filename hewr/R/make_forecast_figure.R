@@ -42,7 +42,7 @@ make_forecast_figure <- function(target_variable,
   title_prefix <- ifelse(str_starts(target_variable, "observed"),
     disease_name_pretty, "Other"
   )
-  title <- glue("{title_prefix} {y_axis_core} in {state_abb}")
+  title <- glue::glue("{title_prefix} {y_axis_core} in {state_abb}")
 
   last_training_date <- combined_dat |>
     dplyr::filter(data_type == "train") |>

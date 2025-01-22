@@ -20,7 +20,7 @@ save_forecast_figures <- function(model_run_dir,
     model_run_dir,
     pyrenew_model_name,
     timeseries_model_name,
-    save = FALSE
+    save = TRUE
   )
   processed_forecast$daily_data <- read_and_combine_data(model_run_dir,
     epiweekly = FALSE
