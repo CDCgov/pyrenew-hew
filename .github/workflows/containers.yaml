@@ -12,9 +12,9 @@ env:
 
 jobs:
 
-  build-dependencies-image:
+  build-and-push-image:
     runs-on: cfa-cdcgov
-    name: Build dependencies image
+    name: Build and push image
 
     steps:
 
@@ -37,7 +37,7 @@ jobs:
             echo "tag=${{ steps.branch.outputs.name }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Building the image
+      - name: Building and push the image
         id: build-image
         uses: CDCgov/cfa-actions/twostep-container-build@v1.2.0
         with:
