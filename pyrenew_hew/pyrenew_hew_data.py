@@ -169,5 +169,6 @@ class PyrenewHEWData:
             first_ed_visits_date=self.first_data_date_overall,
             first_hospital_admissions_date=(self.first_data_date_overall),
             first_wastewater_date=self.first_data_date_overall,
-            right_truncation_offset=0,
+            right_truncation_offset=None,
+            # by default, want forecasts of complete reports
         )

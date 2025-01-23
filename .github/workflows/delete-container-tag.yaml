@@ -55,4 +55,4 @@ jobs:
           az acr repository delete \
             --yes \
             --name ${{ env.REGISTRY }} \
-            --image ${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
+            --image ${{ env.IMAGE_NAME }}:dependencies-${{ steps.image-tag.outputs.tag }}
