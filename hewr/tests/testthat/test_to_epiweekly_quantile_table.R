@@ -170,10 +170,20 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
 
   expect_s3_class(result_w_both_locations, "tbl_df")
   expect_gt(nrow(result_w_both_locations), 0)
-  expect_setequal(c(
-    "reference_date", "target", "horizon", "target_end_date",
-    "location", "output_type", "output_type_id", "value"
-  ), colnames(result_w_both_locations))
+  checkmate::expect_names(
+    colnames(result_w_both_locations),
+    identical.to = c(
+      "reference_date",
+      "target",
+      "horizon",
+      "target_end_date",
+      "location",
+      "output_type",
+      "output_type_id",
+      "value",
+      "other_ed_visit_forecast"
+    )
+  )
   expect_setequal(
     c("loc1", "loc2"),
     result_w_both_locations$location
