@@ -3,6 +3,8 @@ library(fs)
 library(glue)
 source("hewr/R/process_state_forecast.R")
 source("pipelines/plot_and_save_state_forecast.R")
+source("pipelines/score_forecast.R")
+
 model_batch_dirs <- c(
   path(
     "/Users/damon/Documents/GitHub/pyrenew-hew/pipelines/tests/private_data",
@@ -124,6 +126,11 @@ walk(model_batch_dirs, \(model_batch_dir) {
         "pyrenew_h",
         NULL
       )
+
+      ## Not Rendering Diagnostic Report
+
+      ## Scoring
+      read_and_score_location(model_run_dir)
     }
   )
 })
