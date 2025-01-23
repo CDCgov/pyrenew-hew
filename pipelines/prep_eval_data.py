@@ -46,7 +46,7 @@ def save_eval_data(
 
     nhsn_data = get_nhsn(
         start_date=first_training_date,
-        end_date=last_training_date,
+        end_date=None,
         disease=disease,
         state_abb=state,
     ).with_columns(data_type=pl.lit("eval"))
