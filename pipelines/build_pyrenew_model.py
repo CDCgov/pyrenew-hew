@@ -110,7 +110,25 @@ def build_model_from_dir(
     )
 
     # placeholder
-    my_wastewater_obs_model = WastewaterObservationProcess()
+    my_wastewater_obs_model = WastewaterObservationProcess(
+        t_peak_rv=None,
+        dur_shed_after_peak_rv=None,
+        log10_genome_per_inf_ind_rv=None,
+        mode_sigma_ww_site_rv=None,
+        sd_log_sigma_ww_site_rv=None,
+        mode_sd_ww_site_rv=None,
+        ww_ml_produced_per_day=None,
+        ww_uncensored=None,
+        ww_censored=None,
+        ww_sampled_lab_sites=None,
+        ww_sampled_subpops=None,
+        ww_sampled_times=None,
+        ww_log_lod=None,
+        lab_site_to_subpop_map=None,
+        max_ww_sampled_days=None,
+        n_ww_lab_sites=None,
+        max_shed_interval=None,
+    )
 
     my_model = PyrenewHEWModel(
         population_size=population_size,

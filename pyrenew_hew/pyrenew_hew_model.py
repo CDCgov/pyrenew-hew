@@ -256,7 +256,7 @@ class LatentInfectionProcess(RandomVariable):
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
-        return latent_infections
+        return latent_infections, latent_infections_subpop
 
 
 class EDVisitObservationProcess(RandomVariable):
@@ -653,8 +653,10 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_wastewater: bool = False,
     ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
         n_init_days = self.latent_infection_process_rv.n_initialization_points
-        latent_infections = self.latent_infection_process_rv(
-            n_days_post_init=data.n_days_post_init,
+        latent_infections, latent_infections_subpop = (
+            self.latent_infection_process_rv(
+                n_days_post_init=data.n_days_post_init,
+            )
         )
         first_latent_infection_dow = (
             data.first_data_date_overall - datetime.timedelta(days=n_init_days)
@@ -685,7 +687,12 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 iedr=iedr,
             )
         if sample_wastewater:
-            observed_wastewater = self.wastewater_obs_process_rv()
+            observed_wastewater = self.wastewater_obs_process_rv(
+                latent_infections=latent_infections,
+                latent_infections_subpop=latent_infections_subpop,
+                data_observed=data.data_observed_disease_wastewater,
+                n_datapoints=data.n_wastewater_datapoints,
+            )
 
         return {
             "ed_visits": observed_ed_visits,
