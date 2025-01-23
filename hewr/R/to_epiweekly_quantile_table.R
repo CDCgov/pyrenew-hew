@@ -81,9 +81,10 @@ to_epiweekly_quantiles <- function(model_run_dir,
 #' `{disease}_r_{reference_date}_f_{first_data_date}_t_{last_data_date}`.
 #' @param exclude Locations to exclude, if any, as a list of strings.
 #' Default `NULL` (exclude nothing).
-#' @param epiweekly_other Use an expressly epiweekly forecast
+#' @param epiweekly_other_locations Use an expressly epiweekly forecast
 #' for non-target ED visits instead of a daily forecast aggregated
-#' to epiweekly? Boolean, default `FALSE`.
+#' to epiweekly for the specified locations. Default `c()` (Use a
+#' an aggregated daily other forecast for all.
 #' @param strict Boolean. If `TRUE`, raise an error if no
 #' valid draws are available to aggregate for any given location.
 #' Otherwise return `NULL` for that location but continue with other.
@@ -93,14 +94,9 @@ to_epiweekly_quantiles <- function(model_run_dir,
 #' @export
 to_epiweekly_quantile_table <- function(model_batch_dir,
                                         exclude = NULL,
-                                        epiweekly_other = FALSE,
-                                        strict = FALSE) {
+                                        strict = FALSE,
+                                        epiweekly_other_locations = c()) {
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
-
-  draws_file_name <- ifelse(epiweekly_other,
-    "epiweekly_with_epiweekly_other_samples",
-    "epiweekly_samples"
-  )
 
   locations_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
@@ -126,21 +122,25 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     day_of_week = 7
   )
 
+  get_location_table <- \(loc) {
+    epiweekly_other <- loc %in% epiweekly_other_locations
+    draws_file <- ifelse(
+      epiweekly_other,
+      "epiweekly_with_epiweekly_other_samples",
+      "epiweekly_samples"
+    )
+    return(to_epiweekly_quantiles(
+      loc,
+      report_date = report_date,
+      max_lookback_days = 15,
+      draws_file_name = draws_file,
+      strict = strict
+    ))
+  }
+
   hubverse_table <- purrr::map(
     locations_to_process,
-    \(x) {
-      to_epiweekly_quantiles(
-        x,
-        report_date = report_date,
-        max_lookback_days = 8,
-        draws_file_name = draws_file_name,
-        strict = strict
-      )
-    }
-    ## max_lookback_days = 8 ensures we get
-    ## the full -1 horizon but do not waste
-    ## time quantilizing draws that will not
-    ## be included in the final table.
+    get_location_table
   ) |>
     dplyr::bind_rows() |>
     forecasttools::get_hubverse_table(
@@ -155,7 +155,12 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       .data$reference_date,
       .data$horizon,
       .data$output_type_id
-    )
+    ) |>
+    dplyr::mutate(other_ed_visit_forecast = ifelse(
+      .data$location %in% !!epiweekly_other_locations,
+      "direct_epiweekly_fit",
+      "aggregated_daily_fit"
+    ))
 
   return(hubverse_table)
 }
