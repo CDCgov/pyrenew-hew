@@ -37,6 +37,7 @@ inf_feedback_strength_rv = TransformedVariable(
 )
 # Could be reparameterized?
 
+# low confidence logit-Normal
 p_ed_visit_mean_rv = DistributionalVariable(
     "p_ed_visit_mean",
     dist.Normal(
@@ -44,6 +45,19 @@ p_ed_visit_mean_rv = DistributionalVariable(
         0.3,
     ),
 )  # logit scale
+
+# low confidence logit-Normal with same mode as IEDR
+ihr_rv = TransformedVariable(
+    "ihr",
+    DistributionalVariable(
+        "logit_ihr",
+        dist.Normal(
+            transformation.SigmoidTransform().inv(0.005),
+            0.3,
+        ),
+    ),
+    transforms=transformation.SigmoidTransform(),
+)
 
 
 p_ed_visit_w_sd_rv = DistributionalVariable(
@@ -62,6 +76,12 @@ ed_visit_wday_effect_rv = TransformedVariable(
         dist.Dirichlet(jnp.array([5, 5, 5, 5, 5, 5, 5])),
     ),
     transformation.AffineTransform(loc=0, scale=7),
+)
+
+# low confidence with a mode at equivalence and
+# plausiblity of 2x or 1/2 the rate
+ihr_rel_iedr_rv = DistributionalVariable(
+    "ihr_rel_iedr", dist.LogNormal(0, jnp.log(jnp.sqrt(2)))
 )
 
 # Based on looking at some historical posteriors.
