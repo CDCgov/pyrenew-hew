@@ -59,6 +59,16 @@ def build_model_from_dir(
         "right_truncation_pmf", jnp.array(model_data["right_truncation_pmf"])
     )
 
+    # Place holders for wastewater observation related randomvariables
+    t_peak_rv = DeterministicVariable("t_peak", 0)
+    dur_shed_after_peak_rv = DeterministicVariable("dur_shed_after_peak", 0)
+    log10_genome_per_inf_ind_rv = DeterministicVariable(
+        "log10_genome_per_inf_ind", 0
+    )
+    mode_sigma_ww_site_rv = DeterministicVariable("mode_sigma_ww_site", 0)
+    sd_log_sigma_ww_site_rv = DeterministicVariable("sd_log_sigma_ww_site", 0)
+    mode_sd_ww_site_rv = DeterministicVariable("mode_sd_ww_site", 0)
+
     uot = (
         max(
             len(model_data["generation_interval_pmf"]),
@@ -111,12 +121,12 @@ def build_model_from_dir(
 
     # placeholder
     my_wastewater_obs_model = WastewaterObservationProcess(
-        t_peak_rv=None,
-        dur_shed_after_peak_rv=None,
-        log10_genome_per_inf_ind_rv=None,
-        mode_sigma_ww_site_rv=None,
-        sd_log_sigma_ww_site_rv=None,
-        mode_sd_ww_site_rv=None,
+        t_peak_rv=t_peak_rv,
+        dur_shed_after_peak_rv=dur_shed_after_peak_rv,
+        log10_genome_per_inf_ind_rv=log10_genome_per_inf_ind_rv,
+        mode_sigma_ww_site_rv=mode_sigma_ww_site_rv,
+        sd_log_sigma_ww_site_rv=sd_log_sigma_ww_site_rv,
+        mode_sd_ww_site_rv=mode_sd_ww_site_rv,
         ww_ml_produced_per_day=None,
         ww_uncensored=None,
         ww_censored=None,
