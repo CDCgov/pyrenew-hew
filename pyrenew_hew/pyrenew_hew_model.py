@@ -521,12 +521,12 @@ class WastewaterObservationProcess(RandomVariable):
     ):
         t_peak = self.t_peak_rv()
         dur_shed = self.dur_shed_after_peak_rv()
-        viral_kinetics_trajectory = get_viral_trajectory(
+        viral_kinetics = get_viral_trajectory(
             t_peak, dur_shed, self.max_shed_interval
         )
 
         def batch_colvolve_fn(m):
-            return jnp.convolve(m, viral_kinetics_trajectory, mode="valid")
+            return jnp.convolve(m, viral_kinetics, mode="valid")
 
         model_net_inf_ind_shedding = jax.vmap(
             batch_colvolve_fn, in_axes=1, out_axes=1
@@ -611,7 +611,7 @@ class WastewaterObservationProcess(RandomVariable):
         )
 
         state_net_inf_ind_shedding = jnp.convolve(
-            latent_infections, viral_kinetics_trajectory, mode="valid"
+            latent_infections, viral_kinetics, mode="valid"
         )[-n_datapoints:]
         numpyro.deterministic(
             "state_net_inf_ind_shedding", state_net_inf_ind_shedding

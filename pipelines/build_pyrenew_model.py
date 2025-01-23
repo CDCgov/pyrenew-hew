@@ -4,7 +4,9 @@ import runpy
 from pathlib import Path
 
 import jax.numpy as jnp
+import numpyro.distributions as dist
 from pyrenew.deterministic import DeterministicVariable
+from pyrenew.randomvariable import DistributionalVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
@@ -111,16 +113,25 @@ def build_model_from_dir(
 
     # placeholder
     my_wastewater_obs_model = WastewaterObservationProcess(
-        t_peak_rv=DeterministicVariable("t_peak", 1),
-        dur_shed_after_peak_rv=DeterministicVariable("dur_shed_after_peak", 1),
+        t_peak_rv=DistributionalVariable(
+            "t_peak", dist.TruncatedNormal(5, 1, low=0)
+        ),
+        dur_shed_after_peak_rv=DistributionalVariable(
+            "dur_shed_after_peak", dist.TruncatedNormal(12, 3, low=0)
+        ),
         log10_genome_per_inf_ind_rv=DeterministicVariable(
-            "log10_genome_per_inf_ind", 0
+            "log10_genome_per_inf_ind", dist.Normal(12, 2)
         ),
-        mode_sigma_ww_site_rv=DeterministicVariable("mode_sigma_ww_site", 0),
-        sd_log_sigma_ww_site_rv=DeterministicVariable(
-            "sd_log_sigma_ww_site", 0
+        mode_sigma_ww_site_rv=DistributionalVariable(
+            "mode_sigma_ww_site",
+            dist.TruncatedNormal(1, 1, low=0),
         ),
-        mode_sd_ww_site_rv=DeterministicVariable("mode_sd_ww_site", 0),
+        sd_log_sigma_ww_site_rv=DistributionalVariable(
+            "sd_log_sigma_ww_site", dist.TruncatedNormal(0, 0.693, low=0)
+        ),
+        mode_sd_ww_site_rv=DistributionalVariable(
+            "mode_sd_ww_site", dist.TruncatedNormal(0, 0.25, low=0)
+        ),
         ww_ml_produced_per_day=None,
         ww_uncensored=None,
         ww_censored=None,
