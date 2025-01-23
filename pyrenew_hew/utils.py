@@ -9,7 +9,9 @@ def convert_to_logmean_log_sd(mean, sd):
     return logmean, logsd
 
 
-def normed_shedding_cdf(time: float, t_p: float, t_d: float, log_base: float) -> float:
+def normed_shedding_cdf(
+    time: float, t_p: float, t_d: float, log_base: float
+) -> float:
     """
     fraction of total fecal RNA shedding that has occurred
     by a given time post infection.
@@ -17,7 +19,9 @@ def normed_shedding_cdf(time: float, t_p: float, t_d: float, log_base: float) ->
     norm_const = (t_p + t_d) * ((log_base - 1) / jnp.log(log_base) - 1)
 
     def ad_pre(x):
-        return t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p) - x
+        return (
+            t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p) - x
+        )
 
     def ad_post(x):
         return (
