@@ -48,7 +48,7 @@ def test_LatentInfectionProcess():
     )
 
     with numpyro.handlers.seed(rng_seed=223):
-        latent_inf_w_hierarchical_effects = my_latent_infection_model(
+        latent_inf_w_hierarchical_effects, *_ = my_latent_infection_model(
             n_days_post_init=n_days_post_init
         )
 
@@ -73,9 +73,7 @@ def test_LatentInfectionProcess():
 
         rt_init_rate_of_change = DistributionalVariable(
             "rt_init_rate_of_change",
-            dist.Normal(
-                0, eta_sd_rv() / jnp.sqrt(1 - jnp.pow(autoreg_rt_rv(), 2))
-            ),
+            dist.Normal(0, eta_sd_rv() / jnp.sqrt(1 - jnp.pow(autoreg_rt_rv(), 2))),
         )()
 
         log_rtu_weekly = ar_diff(
