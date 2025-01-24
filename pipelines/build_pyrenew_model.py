@@ -111,7 +111,7 @@ def build_model_from_dir(
         ihr_rv=priors["ihr_rv"],
     )
 
-    # placeholder
+    # placeholder, to be replaced, not sure where model_data and priors files live
     my_wastewater_obs_model = WastewaterObservationProcess(
         t_peak_rv=DistributionalVariable("t_peak", dist.TruncatedNormal(5, 1, low=0)),
         dur_shed_after_peak_rv=DistributionalVariable(
@@ -130,17 +130,6 @@ def build_model_from_dir(
         mode_sd_ww_site_rv=DistributionalVariable(
             "mode_sd_ww_site", dist.TruncatedNormal(0, 0.25, low=0)
         ),
-        ww_ml_produced_per_day=None,
-        ww_uncensored=None,
-        ww_censored=None,
-        ww_sampled_lab_sites=None,
-        ww_sampled_subpops=None,
-        ww_sampled_times=None,
-        ww_log_lod=None,
-        lab_site_to_subpop_map=None,
-        max_ww_sampled_days=None,
-        n_ww_lab_sites=None,
-        max_shed_interval=None,
     )
 
     my_model = PyrenewHEWModel(
