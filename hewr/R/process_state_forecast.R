@@ -346,7 +346,7 @@ process_state_forecast <- function(model_run_dir,
       ## ts model, daily denominator
       daily_ts_denom_samples <- arrow::read_parquet(
         fs::path(timeseries_model_dir,
-          "baseline_ts_forecast_samples",
+          "daily_baseline_ts_forecast_samples",
           ext = "parquet"
         )
       ) |>

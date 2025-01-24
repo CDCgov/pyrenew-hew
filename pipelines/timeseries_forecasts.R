@@ -149,7 +149,7 @@ cdc_flat_forecast <- function(data,
 main <- function(
     model_run_dir, model_name, n_forecast_days = 28, n_samples = 2000,
     epiweekly = FALSE) {
-  prefix <- if_else(epiweekly, "epiweekly_", "")
+  prefix <- if_else(epiweekly, "epiweekly_", "daily_")
   base_data_name <- "combined_training_data"
   data_name <- if_else(epiweekly, str_c(prefix, base_data_name), base_data_name)
   data_frequency <- if_else(epiweekly, "1 week", "1 day")
