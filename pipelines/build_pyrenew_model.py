@@ -4,9 +4,7 @@ import runpy
 from pathlib import Path
 
 import jax.numpy as jnp
-import numpyro.distributions as dist
 from pyrenew.deterministic import DeterministicVariable
-from pyrenew.randomvariable import DistributionalVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
@@ -76,6 +74,9 @@ def build_model_from_dir(
         model_data["nhsn_training_dates"][0], "%Y-%m-%d"
     )
 
+    ww_ml_produced_per_day = 227000
+    max_shed_interval = 26
+
     priors = runpy.run_path(str(prior_path))
 
     right_truncation_offset = model_data["right_truncation_offset"]
@@ -111,27 +112,15 @@ def build_model_from_dir(
         ihr_rv=priors["ihr_rv"],
     )
 
-    # placeholder, to be replaced, not sure where model_data and priors files live
     my_wastewater_obs_model = WastewaterObservationProcess(
-        t_peak_rv=DistributionalVariable(
-            "t_peak", dist.TruncatedNormal(5, 1, low=0)
-        ),
-        dur_shed_after_peak_rv=DistributionalVariable(
-            "dur_shed_after_peak", dist.TruncatedNormal(12, 3, low=0)
-        ),
-        log10_genome_per_inf_ind_rv=DistributionalVariable(
-            "log10_genome_per_inf_ind", dist.Normal(12, 2)
-        ),
-        mode_sigma_ww_site_rv=DistributionalVariable(
-            "mode_sigma_ww_site",
-            dist.TruncatedNormal(1, 1, low=0),
-        ),
-        sd_log_sigma_ww_site_rv=DistributionalVariable(
-            "sd_log_sigma_ww_site", dist.TruncatedNormal(0, 0.693, low=0)
-        ),
-        mode_sd_ww_site_rv=DistributionalVariable(
-            "mode_sd_ww_site", dist.TruncatedNormal(0, 0.25, low=0)
-        ),
+        t_peak_rv=priors["t_peak_rv"],
+        dur_shed_after_peak_rv=priors["dur_shed_after_peak_rv"],
+        log10_genome_per_inf_ind_rv=priors["log10_genome_per_inf_ind_rv"],
+        mode_sigma_ww_site_rv=priors["mode_sigma_ww_site_rv"],
+        sd_log_sigma_ww_site_rv=priors["sd_log_sigma_ww_site_rv"],
+        mode_sd_ww_site_rv=priors["mode_sd_ww_site_rv"],
+        max_shed_interval=max_shed_interval,
+        ww_ml_produced_per_day=ww_ml_produced_per_day,
     )
 
     my_model = PyrenewHEWModel(

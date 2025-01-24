@@ -479,6 +479,8 @@ class WastewaterObservationProcess(RandomVariable):
         mode_sigma_ww_site_rv: RandomVariable,
         sd_log_sigma_ww_site_rv: RandomVariable,
         mode_sd_ww_site_rv: RandomVariable,
+        max_shed_interval: float,
+        ww_ml_produced_per_day: float,
     ) -> None:
         self.t_peak_rv = t_peak_rv
         self.dur_shed_after_peak_rv = dur_shed_after_peak_rv
@@ -486,6 +488,8 @@ class WastewaterObservationProcess(RandomVariable):
         self.mode_sigma_ww_site_rv = mode_sigma_ww_site_rv
         self.sd_log_sigma_ww_site_rv = sd_log_sigma_ww_site_rv
         self.mode_sd_ww_site_rv = mode_sd_ww_site_rv
+        self.max_shed_interval = max_shed_interval
+        self.ww_ml_produced_per_day = ww_ml_produced_per_day
 
     def validate(self):
         pass
@@ -496,7 +500,6 @@ class WastewaterObservationProcess(RandomVariable):
         latent_infections_subpop: ArrayLike,
         data_observed: ArrayLike,
         n_datapoints: int,
-        ww_ml_produced_per_day: float,
         ww_uncensored: ArrayLike,
         ww_censored: ArrayLike,
         ww_sampled_lab_sites: ArrayLike,
@@ -505,12 +508,11 @@ class WastewaterObservationProcess(RandomVariable):
         ww_log_lod: ArrayLike,
         lab_site_to_subpop_map: ArrayLike,
         n_ww_lab_sites: int,
-        max_shed_interval: float,
     ):
         t_peak = self.t_peak_rv()
         dur_shed = self.dur_shed_after_peak_rv()
         viral_kinetics = get_viral_trajectory(
-            t_peak, dur_shed, max_shed_interval
+            t_peak, dur_shed, self.max_shed_interval
         )
 
         def batch_colvolve_fn(m):
@@ -527,7 +529,7 @@ class WastewaterObservationProcess(RandomVariable):
         expected_obs_viral_genomes = (
             jnp.log(10) * log10_genome_per_inf_ind
             + jnp.log(model_net_inf_ind_shedding + 1e-8)
-            - jnp.log(ww_ml_produced_per_day)
+            - jnp.log(self.ww_ml_produced_per_day)
         )
         numpyro.deterministic(
             "expected_obs_viral_genomes", expected_obs_viral_genomes
@@ -602,7 +604,7 @@ class WastewaterObservationProcess(RandomVariable):
         state_log_ww_conc = (
             jnp.log(10) * log10_genome_per_inf_ind
             + jnp.log(state_net_inf_ind_shedding + 1e-8)
-            - jnp.log(ww_ml_produced_per_day)
+            - jnp.log(self.ww_ml_produced_per_day)
         )
         numpyro.deterministic("state_log_ww_conc", state_log_ww_conc)
 
@@ -674,7 +676,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 latent_infections_subpop=latent_infections_subpop,
                 data_observed=data.data_observed_disease_wastewater,
                 n_datapoints=data.n_wastewater_datapoints,
-                ww_ml_produced_per_day=None,  # placeholder
                 ww_uncensored=None,  # placeholder
                 ww_censored=None,  # placeholder
                 ww_sampled_lab_sites=None,  # placeholder
@@ -683,7 +684,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 ww_log_lod=None,  # placeholder
                 lab_site_to_subpop_map=None,  # placeholder
                 n_ww_lab_sites=None,  # placeholder
-                max_shed_interval=None,  # placeholder
             )
 
         return {
