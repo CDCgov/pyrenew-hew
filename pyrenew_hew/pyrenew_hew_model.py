@@ -74,7 +74,9 @@ class LatentInfectionProcess(RandomVariable):
         self.autoreg_rt_subpop_rv = autoreg_rt_subpop_rv
         self.sigma_rt_rv = sigma_rt_rv
         self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
-        self.sigma_initial_exp_growth_rate_rv = sigma_initial_exp_growth_rate_rv
+        self.sigma_initial_exp_growth_rate_rv = (
+            sigma_initial_exp_growth_rate_rv
+        )
         self.n_initialization_points = n_initialization_points
         self.pop_fraction = pop_fraction
         self.n_subpops = len(pop_fraction)
@@ -123,10 +125,13 @@ class LatentInfectionProcess(RandomVariable):
                 + self.offset_ref_logit_i_first_obs_rv(),
             )
             initial_exp_growth_rate_ref_subpop = (
-                initial_exp_growth_rate + self.offset_ref_initial_exp_growth_rate_rv()
+                initial_exp_growth_rate
+                + self.offset_ref_initial_exp_growth_rate_rv()
             )
 
-            log_rtu_weekly_ref_subpop = log_rtu_weekly + self.offset_ref_log_rt_rv()
+            log_rtu_weekly_ref_subpop = (
+                log_rtu_weekly + self.offset_ref_log_rt_rv()
+            )
             i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
                 "i_first_obs_over_n_non_ref_subpop",
                 DistributionalVariable(
@@ -208,7 +213,9 @@ class LatentInfectionProcess(RandomVariable):
             )[:n_days_post_init, :]
         )  # indexed rel to first post-init day.
 
-        i0_subpop_rv = DeterministicVariable("i0_subpop", i_first_obs_over_n_subpop)
+        i0_subpop_rv = DeterministicVariable(
+            "i0_subpop", i_first_obs_over_n_subpop
+        )
         initial_exp_growth_rate_subpop_rv = DeterministicVariable(
             "initial_exp_growth_rate_subpop", initial_exp_growth_rate_subpop
         )
@@ -313,9 +320,7 @@ class EDVisitObservationProcess(RandomVariable):
         iedr = jnp.repeat(
             transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
-        )[
-            :n_datapoints
-        ]  # indexed rel to first ed report day
+        )[:n_datapoints]  # indexed rel to first ed report day
         # this is only applied after the ed visits are generated, not to all
         # the latent infections. This is why we cannot apply the iedr in
         # compute_delay_ascertained_incidence
@@ -335,21 +340,28 @@ class EDVisitObservationProcess(RandomVariable):
         )[-n_datapoints:]
 
         latent_ed_visits_final = (
-            potential_latent_ed_visits * iedr * ed_wday_effect * population_size
+            potential_latent_ed_visits
+            * iedr
+            * ed_wday_effect
+            * population_size
         )
 
         if right_truncation_offset is not None:
             prop_already_reported_tail = jnp.flip(
                 self.ed_right_truncation_cdf_rv()[right_truncation_offset:]
             )
-            n_points_to_prepend = n_datapoints - prop_already_reported_tail.shape[0]
+            n_points_to_prepend = (
+                n_datapoints - prop_already_reported_tail.shape[0]
+            )
             prop_already_reported = jnp.pad(
                 prop_already_reported_tail,
                 (n_points_to_prepend, 0),
                 mode="constant",
                 constant_values=(1, 0),
             )
-            latent_ed_visits_now = latent_ed_visits_final * prop_already_reported
+            latent_ed_visits_now = (
+                latent_ed_visits_final * prop_already_reported
+            )
         else:
             latent_ed_visits_now = latent_ed_visits_final
 
@@ -375,7 +387,9 @@ class HospAdmitObservationProcess(RandomVariable):
         ihr_rel_iedr_rv: RandomVariable = None,
     ) -> None:
         self.inf_to_hosp_admit_rv = inf_to_hosp_admit_rv
-        self.hosp_admit_neg_bin_concentration_rv = hosp_admit_neg_bin_concentration_rv
+        self.hosp_admit_neg_bin_concentration_rv = (
+            hosp_admit_neg_bin_concentration_rv
+        )
         self.ihr_rv = ihr_rv
         self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
 
@@ -495,15 +509,19 @@ class WastewaterObservationProcess(RandomVariable):
     ):
         t_peak = self.t_peak_rv()
         dur_shed = self.dur_shed_after_peak_rv()
-        viral_kinetics = get_viral_trajectory(t_peak, dur_shed, max_shed_interval)
+        viral_kinetics = get_viral_trajectory(
+            t_peak, dur_shed, max_shed_interval
+        )
 
         def batch_colvolve_fn(m):
             return jnp.convolve(m, viral_kinetics, mode="valid")
 
-        model_net_inf_ind_shedding = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
-            latent_infections_subpop
-        )[-n_datapoints:, :]
-        numpyro.deterministic("model_net_inf_ind_shedding", model_net_inf_ind_shedding)
+        model_net_inf_ind_shedding = jax.vmap(
+            batch_colvolve_fn, in_axes=1, out_axes=1
+        )(latent_infections_subpop)[-n_datapoints:, :]
+        numpyro.deterministic(
+            "model_net_inf_ind_shedding", model_net_inf_ind_shedding
+        )
 
         log10_genome_per_inf_ind = self.log10_genome_per_inf_ind_rv()
         expected_obs_viral_genomes = (
@@ -511,7 +529,9 @@ class WastewaterObservationProcess(RandomVariable):
             + jnp.log(model_net_inf_ind_shedding + 1e-8)
             - jnp.log(ww_ml_produced_per_day)
         )
-        numpyro.deterministic("expected_obs_viral_genomes", expected_obs_viral_genomes)
+        numpyro.deterministic(
+            "expected_obs_viral_genomes", expected_obs_viral_genomes
+        )
 
         mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
         sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
@@ -549,7 +569,11 @@ class WastewaterObservationProcess(RandomVariable):
                 loc=expected_obs_log_v_site[ww_uncensored],
                 scale=sigma_ww_site[ww_sampled_lab_sites[ww_uncensored]],
             ),
-            obs=(data_observed[ww_uncensored] if data_observed is not None else None),
+            obs=(
+                data_observed[ww_uncensored]
+                if data_observed is not None
+                else None
+            ),
         )
         if ww_censored.shape[0] != 0:
             log_cdf_values = dist.Normal(
@@ -571,7 +595,9 @@ class WastewaterObservationProcess(RandomVariable):
         state_net_inf_ind_shedding = jnp.convolve(
             latent_infections, viral_kinetics, mode="valid"
         )[-n_datapoints:]
-        numpyro.deterministic("state_net_inf_ind_shedding", state_net_inf_ind_shedding)
+        numpyro.deterministic(
+            "state_net_inf_ind_shedding", state_net_inf_ind_shedding
+        )
 
         state_log_ww_conc = (
             jnp.log(10) * log10_genome_per_inf_ind
@@ -609,8 +635,10 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_wastewater: bool = False,
     ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
         n_init_days = self.latent_infection_process_rv.n_initialization_points
-        latent_infections, latent_infections_subpop = self.latent_infection_process_rv(
-            n_days_post_init=data.n_days_post_init,
+        latent_infections, latent_infections_subpop = (
+            self.latent_infection_process_rv(
+                n_days_post_init=data.n_days_post_init,
+            )
         )
         first_latent_infection_dow = (
             data.first_data_date_overall - datetime.timedelta(days=n_init_days)
@@ -654,7 +682,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 ww_sampled_times=None,  # placeholder
                 ww_log_lod=None,  # placeholder
                 lab_site_to_subpop_map=None,  # placeholder
-                max_ww_sampled_days=None,  # placeholder
                 n_ww_lab_sites=None,  # placeholder
                 max_shed_interval=None,  # placeholder
             )

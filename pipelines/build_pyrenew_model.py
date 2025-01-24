@@ -113,7 +113,9 @@ def build_model_from_dir(
 
     # placeholder, to be replaced, not sure where model_data and priors files live
     my_wastewater_obs_model = WastewaterObservationProcess(
-        t_peak_rv=DistributionalVariable("t_peak", dist.TruncatedNormal(5, 1, low=0)),
+        t_peak_rv=DistributionalVariable(
+            "t_peak", dist.TruncatedNormal(5, 1, low=0)
+        ),
         dur_shed_after_peak_rv=DistributionalVariable(
             "dur_shed_after_peak", dist.TruncatedNormal(12, 3, low=0)
         ),
