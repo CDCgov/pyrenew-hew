@@ -238,15 +238,17 @@ class LatentInfectionProcess(RandomVariable):
             gen_int=generation_interval_pmf,
         )
 
-        latent_infections_subpop = jnp.concat(
-            [
-                i0,
-                inf_with_feedback_proc_sample.post_initialization_infections,
-            ]
+        latent_infections_subpop = jnp.atleast_2d(
+            jnp.concat(
+                [
+                    i0,
+                    inf_with_feedback_proc_sample.post_initialization_infections,
+                ]
+            )
         )
 
         if self.n_subpops == 1:
-            latent_infections = latent_infections_subpop
+            latent_infections = jnp.squeeze(latent_infections_subpop)
         else:
             latent_infections = jnp.sum(
                 self.pop_fraction * latent_infections_subpop, axis=1

@@ -74,6 +74,7 @@ def build_model_from_dir(
         model_data["nhsn_training_dates"][0], "%Y-%m-%d"
     )
 
+    # model constants related to wastewater obs process
     ww_ml_produced_per_day = 227000
     max_shed_interval = 26
 

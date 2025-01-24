@@ -18,7 +18,7 @@ from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-from pyrenew_hew.utils import get_vl_trajectory
+from pyrenew_hew.utils import get_viral_trajectory
 
 
 class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
@@ -350,15 +350,17 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             gen_int=generation_interval_pmf,
         )
 
-        latent_infections_subpop = jnp.concat(
-            [
-                i0,
-                inf_with_feedback_proc_sample.post_initialization_infections,
-            ]
+        latent_infections_subpop = jnp.atleast_2d(
+            jnp.concat(
+                [
+                    i0,
+                    inf_with_feedback_proc_sample.post_initialization_infections,
+                ]
+            )
         )
 
         if self.n_subpops == 1:
-            latent_infections = latent_infections_subpop
+            latent_infections = jnp.squeeze(latent_infections_subpop)
         else:
             latent_infections = jnp.sum(
                 self.pop_fraction * latent_infections_subpop, axis=1
@@ -437,7 +439,7 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
         if self.include_ww:
             t_peak = self.t_peak_rv()
             dur_shed = self.dur_shed_after_peak_rv()
-            s = get_vl_trajectory(t_peak, dur_shed, self.max_shed_interval)
+            s = get_viral_trajectory(t_peak, dur_shed, self.max_shed_interval)
 
             def batch_colvolve_fn(m):
                 return jnp.convolve(m, s, mode="valid")
