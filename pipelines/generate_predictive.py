@@ -33,12 +33,10 @@ def generate_and_save_predictions(
         data=forecast_data,
         sample_ed_visits=True,
         sample_hospital_admissions=True,
-        sample_wastewater=True,
+        sample_wastewater=False,
     )
 
-    idata = az.from_numpyro(
-        my_model.mcmc, posterior_predictive=posterior_predictive
-    )
+    idata = az.from_numpyro(my_model.mcmc, posterior_predictive=posterior_predictive)
 
     idata.to_dataframe().to_csv(model_dir / "inference_data.csv", index=False)
 
