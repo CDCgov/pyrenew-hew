@@ -64,10 +64,8 @@ def create_hubverse_table(
     )
     if result.returncode != 0:
         raise RuntimeError(
-            "create_hubverse_table: " f"{result.stdout}\n" f"{result.stderr}"
+            f"create_hubverse_table: {result.stdout}\n {result.stderr}"
         )
-    else:
-        logger.info("create_hubverse_table", result.stdout)
 
     return None
 
