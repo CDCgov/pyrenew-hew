@@ -125,6 +125,9 @@ def process_model_batch_dir(
     logger.info("Collating plots...")
     cp.process_dir(model_batch_dir_path, target_filenames=plots_to_collate)
     logger.info("Creating hubverse table...")
+    logger.info(
+        "Using epiweekly other forecast for " f"{epiweekly_other_locations}..."
+    )
     create_hubverse_table(
         model_batch_dir_path,
         locations_exclude=locations_exclude,
