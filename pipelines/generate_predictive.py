@@ -36,7 +36,9 @@ def generate_and_save_predictions(
         sample_wastewater=False,
     )
 
-    idata = az.from_numpyro(my_model.mcmc, posterior_predictive=posterior_predictive)
+    idata = az.from_numpyro(
+        my_model.mcmc, posterior_predictive=posterior_predictive
+    )
 
     idata.to_dataframe().to_csv(model_dir / "inference_data.csv", index=False)
 
