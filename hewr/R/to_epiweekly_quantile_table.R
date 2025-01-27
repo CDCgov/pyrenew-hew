@@ -66,7 +66,7 @@ to_epiweekly_quantiles <- function(model_run_dir,
     ) |>
     dplyr::mutate(
       "location" = !!location,
-      "source_file" = !!draws_file_name
+      "source_samples" = !!draws_file_name
     )
   message(glue::glue("Done processing {model_run_dir}"))
   return(epiweekly_quantiles)
@@ -151,15 +151,23 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     ))
   }
 
-  hubverse_table <- purrr::map(
+  quant_table <- purrr::map(
     model_run_dirs_to_process,
     get_location_table
   ) |>
-    dplyr::bind_rows() |>
+    dplyr::bind_rows()
+
+  loc_sources <- quant_table |>
+    dplyr::distinct(.data$location, .data$source_samples)
+
+  hubverse_table <- quant_table |>
     forecasttools::get_hubverse_table(
       report_epiweek_end,
       target_name =
         glue::glue("wk inc {disease_abbr} prop ed visits")
+    ) |>
+    dplyr::inner_join(loc_sources,
+      by = "location"
     ) |>
     dplyr::arrange(
       .data$target,
