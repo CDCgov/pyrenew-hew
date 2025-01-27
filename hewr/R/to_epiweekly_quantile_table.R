@@ -98,7 +98,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
                                         epiweekly_other_locations = c()) {
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
 
-  locations_to_process <- fs::dir_ls(model_runs_path,
+  model_run_dirs_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
   ) |>
     purrr::discard(~ fs::path_file(.x) %in% exclude)
@@ -122,15 +122,27 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     day_of_week = 7
   )
 
-  get_location_table <- \(loc) {
+  get_location_table <- \(model_run_dir) {
+    loc <- fs::path_file(model_run_dir)
     epiweekly_other <- loc %in% epiweekly_other_locations
+    if (epiweekly_other) {
+      message(glue::glue(
+        "Using epiweekly non-target ED visit forecast ",
+        "for location {loc}"
+      ))
+    } else {
+      message(glue::glue(
+        "Using daily non-target ED visit ",
+        "forecast for location {loc}."
+      ))
+    }
     draws_file <- ifelse(
       epiweekly_other,
       "epiweekly_with_epiweekly_other_samples",
       "epiweekly_samples"
     )
     return(to_epiweekly_quantiles(
-      loc,
+      model_run_dir,
       report_date = report_date,
       max_lookback_days = 15,
       draws_file_name = draws_file,
@@ -139,7 +151,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
   }
 
   hubverse_table <- purrr::map(
-    locations_to_process,
+    model_run_dirs_to_process,
     get_location_table
   ) |>
     dplyr::bind_rows() |>
