@@ -116,3 +116,7 @@ sd_log_sigma_ww_site_rv = DistributionalVariable(
 mode_sd_ww_site_rv = DistributionalVariable(
     "mode_sd_ww_site", dist.TruncatedNormal(0, 0.25, low=0)
 )
+
+# model constants related to wastewater obs process
+ww_ml_produced_per_day = 227000
+max_shed_interval = 26
