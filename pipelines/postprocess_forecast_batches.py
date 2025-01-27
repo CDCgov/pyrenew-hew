@@ -56,9 +56,9 @@ def create_hubverse_table(
             f"{model_batch_dir_path}",
             f"{output_path}",
             "--exclude",
-            f"{locations_exclude}",
+            f"{' '.join(locations_exclude)}",
             "--epiweekly-other-locations",
-            f"{epiweekly_other_locations}",
+            f"{' '.join(epiweekly_other_locations)}",
         ],
         capture_output=True,
     )
