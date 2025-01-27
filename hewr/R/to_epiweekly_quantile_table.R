@@ -65,7 +65,8 @@ to_epiweekly_quantiles <- function(model_run_dir,
       value_col = ".value"
     ) |>
     dplyr::mutate(
-      "location" = !!location
+      "location" = !!location,
+      "source_file" = !!draws_file_name
     )
   message(glue::glue("Done processing {model_run_dir}"))
   return(epiweekly_quantiles)
@@ -124,8 +125,8 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
 
   get_location_table <- \(model_run_dir) {
     loc <- fs::path_file(model_run_dir)
-    epiweekly_other <- loc %in% epiweekly_other_locations
-    if (epiweekly_other) {
+    use_epiweekly_other <- loc %in% epiweekly_other_locations
+    if (use_epiweekly_other) {
       message(glue::glue(
         "Using epiweekly non-target ED visit forecast ",
         "for location {loc}"
@@ -137,7 +138,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       ))
     }
     draws_file <- ifelse(
-      epiweekly_other,
+      use_epiweekly_other,
       "epiweekly_with_epiweekly_other_samples",
       "epiweekly_samples"
     )
@@ -167,12 +168,6 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       .data$reference_date,
       .data$horizon,
       .data$output_type_id
-    ) |>
-    dplyr::mutate(other_ed_visit_forecast = ifelse(
-      .data$location %in% !!epiweekly_other_locations,
-      "direct_epiweekly_fit",
-      "aggregated_daily_fit"
-    ))
-
+    )
   return(hubverse_table)
 }
