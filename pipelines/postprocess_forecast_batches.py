@@ -34,6 +34,8 @@ def create_hubverse_table(
     locations_exclude: str | list[str] = "",
     epiweekly_other_locations: str | list[str] = "",
 ) -> None:
+    logger = logging.getLogger(__name__)
+
     locations_exclude = ensure_listlike(locations_exclude)
     epiweekly_other_locations = ensure_listlike(epiweekly_other_locations)
 
@@ -64,6 +66,9 @@ def create_hubverse_table(
         raise RuntimeError(
             "create_hubverse_table: " f"{result.stdout}\n" f"{result.stderr}"
         )
+    else:
+        logger.info("create_hubverse_table", result.stdout)
+
     return None
 
 
