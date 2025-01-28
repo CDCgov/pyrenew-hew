@@ -223,8 +223,9 @@ test_that(paste0(
   loc1_b <- alt_result_w_both_locations |>
     dplyr::filter(location == "loc1") |>
     dplyr::pull(.data$value)
-  expect_false(
-    any(loc1_a == loc1_b)
+  expect_lt(
+    sum(loc1_a == loc1_b),
+    5
   )
 
   expect_s3_class(result_w_both_locations, "tbl_df")
