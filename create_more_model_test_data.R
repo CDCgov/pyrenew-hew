@@ -133,4 +133,13 @@ walk(model_batch_dirs, \(model_batch_dir) {
       read_and_score_location(model_run_dir)
     }
   )
+  model_batch_params <- parse_model_batch_dir_path(model_batch_dir)
+  output_file <- glue(
+    "{model_batch_params$report_date}-",
+    "{str_to_lower(model_batch_params$disease)}-hubverse-table.tsv"
+  )
+  output_path <- path(model_batch_dir, output_file)
+
+  hewr::to_epiweekly_quantile_table(model_batch_dir) |>
+    readr::write_tsv(output_path)
 })

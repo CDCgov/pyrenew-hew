@@ -1,80 +1,3 @@
-#' Read in daily forecast draws from a model run directory
-#' and output a set of epiweekly quantiles, as a
-#' [`tibbble`][tibble::tibble()].
-#'
-#' @param model_run_dir Path to a directory containing
-#' forecast draws to process, whose basename is the forecasted
-#' location.
-#' @param report_date Report date for which to generate epiweekly
-#' quantiles.
-#' @param max_lookback_days How many days before the report date
-#' to look back when generating epiweekly quantiles (determines how
-#' many negative epiweekly forecast horizons (i.e. nowcast/backcast)
-#' quantiles will be generated.
-#' @param disease_name Name of the disease quantity for which to
-#' produced epiweekly quantiles. Default `"prop_disease_ed_visits"`.
-#' @param draws_file_name Name of the parquet file containing
-#' forecast draws. Default `"epiweekly_samples"`.
-#' @param disease_model_name Name of the model for the target
-#' disease. Default `"pyrenew_e"`.
-#' @param strict Boolean. If `TRUE`, raise an error if no
-#' valid draws are available to aggregate. Otherwise return
-#' `NULL` in that case. Default `FALSE`.
-#' @return A [`tibble`][tibble::tibble()] of quantiles, or `NULL`
-#' if the draws file contains no vale
-#' @export
-to_epiweekly_quantiles <- function(model_run_dir,
-                                   report_date,
-                                   max_lookback_days,
-                                   disease_name = "prop_disease_ed_visits",
-                                   draws_file_name = "epiweekly_samples",
-                                   disease_model_name = "pyrenew_e",
-                                   strict = FALSE) {
-  message(glue::glue("Processing {model_run_dir}..."))
-  draws_path <- fs::path(model_run_dir,
-    disease_model_name,
-    draws_file_name,
-    ext = "parquet"
-  )
-
-  location <- fs::path_file(model_run_dir)
-
-  draws <- arrow::read_parquet(draws_path) |>
-    dplyr::filter(
-      .data$date >= lubridate::ymd(!!report_date) -
-        lubridate::days(!!max_lookback_days),
-      .data$.variable == !!disease_name
-    ) |>
-    mutate(
-      epiweek = epiweek(date),
-      epiyear = epiyear(date)
-    )
-
-  if (nrow(draws) < 1) {
-    if (strict) {
-      stop(glue::glue(
-        "to_epiweekly_quantiles() did not find valid draws for ",
-        "{disease_name} to convert to quantiles. It is raising an ",
-        "error because `strict` was set to `TRUE`. Looked for draws ",
-        "in the parquet file {draws_path}, with report date {report_date}",
-        "and max max lookback days {max_lookback_days}."
-      ))
-    }
-    return(NULL)
-  }
-
-  epiweekly_quantiles <- draws |>
-    forecasttools::trajectories_to_quantiles(
-      timepoint_cols = c("epiweek", "epiyear"),
-      value_col = ".value"
-    ) |>
-    dplyr::mutate(
-      "location" = !!location
-    )
-  message(glue::glue("Done processing {model_run_dir}"))
-  return(epiweekly_quantiles)
-}
-
 #' Create an epiweekly hubverse-format forecast quantile table
 #' from a model batch directory containing forecasts
 #' for multiple locations as daily MCMC draws.
@@ -83,35 +6,17 @@ to_epiweekly_quantiles <- function(model_run_dir,
 #' the individual location forecast directories
 #' ("model run directories") to process. Name should be in the format
 #' `{disease}_r_{reference_date}_f_{first_data_date}_t_{last_data_date}`.
-#' @param exclude Locations to exclude, if any, as a list of strings.
-#' Default `NULL` (exclude nothing).
-#' @param epiweekly_other_locations Use an expressly epiweekly forecast
-#' for non-target ED visits instead of a daily forecast aggregated
-#' to epiweekly for the specified locations. Default `c()` (Use a
-#' an aggregated daily other forecast for all.
-#' @param strict Boolean. If `TRUE`, raise an error if no
-#' valid draws are available to aggregate for any given location.
-#' Otherwise return `NULL` for that location but continue with other.
-#' locations. Passed as the `strict` argument to [to_epiweekly_quantiles()].
-#' Default `FALSE`.
 #' @return The complete hubverse-format [`tibble`][tibble::tibble()].
 #' @export
-to_epiweekly_quantile_table <- function(model_batch_dir,
-                                        exclude = NULL,
-                                        strict = FALSE,
-                                        epiweekly_other_locations = c()) {
+to_epiweekly_quantile_table <- function(model_batch_dir) {
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
 
-  locations_to_process <- fs::dir_ls(model_runs_path,
-    type = "directory"
-  ) |>
-    purrr::discard(~ fs::path_file(.x) %in% exclude)
-
-  batch_params <- hewr::parse_model_batch_dir_path(
+  batch_params <- parse_model_batch_dir_path(
     model_batch_dir
   )
   report_date <- batch_params$report_date
   disease <- batch_params$disease
+  last_training_date <- batch_params$last_training_date
   disease_abbr <- dplyr::case_when(
     disease == "Influenza" ~ "flu",
     disease == "COVID-19" ~ "covid",
@@ -125,46 +30,87 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     report_epiyear,
     day_of_week = 7
   )
-
-  get_location_table <- \(loc) {
-    epiweekly_other <- loc %in% epiweekly_other_locations
-    draws_file <- ifelse(
-      epiweekly_other,
-      "epiweekly_with_epiweekly_other_samples",
-      "epiweekly_samples"
+  get_location_table <- function(model_run_dir) {
+    samples_paths <- fs::dir_ls(model_run_dir,
+      recurse = TRUE,
+      glob = "*_samples.parquet"
     )
-    return(to_epiweekly_quantiles(
-      loc,
-      report_date = report_date,
-      max_lookback_days = 15,
-      draws_file_name = draws_file,
-      strict = strict
-    ))
+    quantiles_paths <- fs::dir_ls(model_run_dir,
+      recurse = TRUE,
+      glob = "*_quantiles.parquet"
+    )
+
+    scorable_datasets <-
+      tibble::tibble(file_path = c(samples_paths, quantiles_paths)) |>
+      dplyr::mutate(
+        forecast_name = file_path |>
+          fs::path_file() |>
+          fs::path_ext_remove() |>
+          stringr::str_remove("_([^_]*)$"),
+        forecast_type = file_path |>
+          fs::path_file() |>
+          fs::path_ext_remove() |>
+          stringr::str_extract("(?<=_)([^_]*)$"),
+        resolution = file_path |>
+          fs::path_file() |>
+          fs::path_ext_remove() |>
+          stringr::str_extract("^.+?(?=_)"),
+        model_name = file_path |>
+          fs::path_dir() |>
+          fs::path_file()
+      ) |>
+      tidyr::unite("model", model_name, forecast_name, sep = "_") |>
+      dplyr::mutate(forecast_data = purrr::map(file_path, \(x) {
+        arrow::read_parquet(x) |>
+          dplyr::filter(date > last_training_date) |>
+          dplyr::rename(location = geo_value) |>
+          dplyr::mutate(
+            epiweek = lubridate::epiweek(date),
+            epiyear = lubridate::epiyear(date)
+          )
+      })) |>
+      dplyr::mutate(forecast_data = dplyr::case_when(
+        forecast_type == "samples" ~
+          purrr::map(forecast_data, \(x) {
+            forecasttools::trajectories_to_quantiles(x,
+              timepoint_cols = "date",
+              value_col = ".value",
+              id_cols = c(
+                "location", "disease", ".variable", "epiweek",
+                "epiyear"
+              )
+            )
+          }),
+        forecast_type == "quantiles" ~ purrr::map(
+          forecast_data,
+          \(x) dplyr::rename(x, "quantile_value" = .value)
+        )
+      )) |>
+      dplyr::select(-file_path)
+
+    loc_epiweekly_hubverse_table <-
+      scorable_datasets |>
+      dplyr::filter(resolution == "epiweekly") |>
+      dplyr::mutate(hubverse_data = purrr::map(forecast_data, \(x) {
+        x |>
+          dplyr::filter(.variable == "prop_disease_ed_visits") |>
+          forecasttools::get_hubverse_table(
+            report_epiweek_end,
+            target_name =
+              glue::glue("wk inc {disease_abbr} prop ed visits")
+          )
+      })) |>
+      dplyr::select(-forecast_data) |>
+      tidyr::unnest(hubverse_data)
+
+    return(loc_epiweekly_hubverse_table)
   }
 
   hubverse_table <- purrr::map(
-    locations_to_process,
+    fs::dir_ls(model_runs_path),
     get_location_table
   ) |>
-    dplyr::bind_rows() |>
-    forecasttools::get_hubverse_table(
-      report_epiweek_end,
-      target_name =
-        glue::glue("wk inc {disease_abbr} prop ed visits")
-    ) |>
-    dplyr::arrange(
-      .data$target,
-      .data$output_type,
-      .data$location,
-      .data$reference_date,
-      .data$horizon,
-      .data$output_type_id
-    ) |>
-    dplyr::mutate(other_ed_visit_forecast = ifelse(
-      .data$location %in% !!epiweekly_other_locations,
-      "direct_epiweekly_fit",
-      "aggregated_daily_fit"
-    ))
+    dplyr::bind_rows()
 
   return(hubverse_table)
 }
