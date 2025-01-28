@@ -9,8 +9,7 @@
 #' @param output_path path to save the table as a tsv
 #' @return Nothing, saving the table as a side effect.
 main <- function(model_batch_dir,
-                 output_path,
-                 epiweekly_other_locations = c()) {
+                 output_path) {
   hewr::to_epiweekly_quantile_table(model_batch_dir) |>
     readr::write_tsv(output_path)
 }
