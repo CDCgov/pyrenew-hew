@@ -224,7 +224,10 @@ test_that(paste0(
     dplyr::filter(location == "loc1") |>
     dplyr::pull(.data$value)
 
-  ## these confirm that the subsequent test is valid
+  ## length checks ensure that the
+  ## number of allowed equalities _could_
+  ## be reached if the vectors were mostly
+  ## or entirely identical
   expect_gt(length(loc1_a), 10)
   expect_gt(length(loc1_b), 10)
   expect_lt(
