@@ -223,6 +223,10 @@ test_that(paste0(
   loc1_b <- alt_result_w_both_locations |>
     dplyr::filter(location == "loc1") |>
     dplyr::pull(.data$value)
+
+  ## these confirm that the subsequent test is valid
+  expect_gt(length(loc1_a), 10)
+  expect_gt(length(loc1_b), 10)
   expect_lt(
     sum(loc1_a == loc1_b),
     5
