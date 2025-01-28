@@ -682,14 +682,8 @@ class WastewaterObservationProcess(RandomVariable):
             ),
         )
 
-        population_net_inf_ind_shedding = jax.scipy.special.logsumexp(
-            pop_fraction * model_net_inf_ind_shedding, axis=1
-        )
-
-        population_log_ww_conc = (
-            jnp.log(10) * log10_genome_per_inf_ind
-            + jnp.log(population_net_inf_ind_shedding + shedding_offset)
-            - jnp.log(self.ww_ml_produced_per_day)
+        population_log_ww_conc = jax.scipy.special.logsumexp(
+            pop_fraction * site_log_ww_conc, axis=1
         )
         numpyro.deterministic("population_log_ww_conc", population_log_ww_conc)
 
