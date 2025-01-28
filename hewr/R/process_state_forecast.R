@@ -1,19 +1,3 @@
-#' Annotate a dataframe of ED visits data with the
-#' proportion of visits due to a target disease.
-#'
-#' @param df dataframe to annotate, with columns
-#' `"Disease"` and `"Other"`.
-#' @return the dataframe with an additional column
-#' `prop_disease_ed_visits`.
-#' @export
-with_prop_disease_ed_visits <- function(df) {
-  return(
-    df |>
-      dplyr::mutate(prop_disease_ed_visits = .data$Disease /
-        (.data$Disease + .data$Other))
-  )
-}
-
 #' Combine training and evaluation data for
 #' postprocessing.
 #'
@@ -140,22 +124,6 @@ join_and_calc_prop <- function(model_1, model_2) {
       names_to = ".variable", values_to = ".value"
     ) |>
     drop_na()
-}
-
-#' Parse PyRenew Model Name
-#'
-#' @param pyrenew_model_name name of a pyrenew model ("pyrenew_h", "pyrenew_he",
-#' "pyrnew_hew", etc)
-#'
-#' @returns a named logical vector indicating which components are present
-#' @export
-#'
-#' @examples parse_pyrenew_model_name("pyrenew_h")
-parse_pyrenew_model_name <- function(pyrenew_model_name) {
-  pyrenew_model_tail <- stringr::str_extract(pyrenew_model_name, "(?<=_).+$") |>
-    stringr::str_split_1("")
-  model_components <- c("h", "e", "w")
-  model_components %in% pyrenew_model_tail |> purrr::set_names(model_components)
 }
 
 #' Convert group time index to date
