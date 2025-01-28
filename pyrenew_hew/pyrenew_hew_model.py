@@ -658,6 +658,7 @@ class WastewaterObservationProcess(RandomVariable):
                 loc=expected_obs_log_v_site[ww_uncensored],
                 scale=sigma_ww_site[ww_sampled_lab_sites[ww_uncensored]],
             ),
+        ).sample(
             obs=(
                 data_observed[ww_uncensored]
                 if data_observed is not None
@@ -680,7 +681,7 @@ class WastewaterObservationProcess(RandomVariable):
                 + mode_ww_site,
                 scale=sigma_ww_site,
             ),
-        )
+        )()
 
         population_log_ww_conc = jax.scipy.special.logsumexp(
             pop_fraction * site_log_ww_conc, axis=1
