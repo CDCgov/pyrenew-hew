@@ -65,7 +65,8 @@ to_epiweekly_quantiles <- function(model_run_dir,
       value_col = ".value"
     ) |>
     dplyr::mutate(
-      "location" = !!location
+      "location" = !!location,
+      "source_samples" = !!draws_file_name
     )
   message(glue::glue("Done processing {model_run_dir}"))
   return(epiweekly_quantiles)
@@ -98,7 +99,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
                                         epiweekly_other_locations = c()) {
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
 
-  locations_to_process <- fs::dir_ls(model_runs_path,
+  model_run_dirs_to_process <- fs::dir_ls(model_runs_path,
     type = "directory"
   ) |>
     purrr::discard(~ fs::path_file(.x) %in% exclude)
@@ -122,15 +123,25 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     day_of_week = 7
   )
 
-  get_location_table <- \(loc) {
-    epiweekly_other <- loc %in% epiweekly_other_locations
+  get_location_table <- \(model_run_dir) {
+    loc <- fs::path_file(model_run_dir)
+    use_epiweekly_other <- loc %in% epiweekly_other_locations
+    which_forecast <- ifelse(use_epiweekly_other,
+      "explicitly epiweekly",
+      "aggregated daily"
+    )
+    glue::glue(
+      "Using {which_forecast} non-target ED visit forecast ",
+      "for location {loc}"
+    )
+
     draws_file <- ifelse(
-      epiweekly_other,
+      use_epiweekly_other,
       "epiweekly_with_epiweekly_other_samples",
       "epiweekly_samples"
     )
     return(to_epiweekly_quantiles(
-      loc,
+      model_run_dir,
       report_date = report_date,
       max_lookback_days = 15,
       draws_file_name = draws_file,
@@ -138,15 +149,23 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
     ))
   }
 
-  hubverse_table <- purrr::map(
-    locations_to_process,
+  quant_table <- purrr::map(
+    model_run_dirs_to_process,
     get_location_table
   ) |>
-    dplyr::bind_rows() |>
+    dplyr::bind_rows()
+
+  loc_sources <- quant_table |>
+    dplyr::distinct(.data$location, .data$source_samples)
+
+  hubverse_table <- quant_table |>
     forecasttools::get_hubverse_table(
       report_epiweek_end,
       target_name =
         glue::glue("wk inc {disease_abbr} prop ed visits")
+    ) |>
+    dplyr::inner_join(loc_sources,
+      by = "location"
     ) |>
     dplyr::arrange(
       .data$target,
@@ -155,12 +174,6 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
       .data$reference_date,
       .data$horizon,
       .data$output_type_id
-    ) |>
-    dplyr::mutate(other_ed_visit_forecast = ifelse(
-      .data$location %in% !!epiweekly_other_locations,
-      "direct_epiweekly_fit",
-      "aggregated_daily_fit"
-    ))
-
+    )
   return(hubverse_table)
 }
