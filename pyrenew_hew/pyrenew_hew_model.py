@@ -237,17 +237,15 @@ class LatentInfectionProcess(RandomVariable):
             gen_int=generation_interval_pmf,
         )
 
-        latent_infections_subpop = jnp.atleast_2d(
-            jnp.concat(
-                [
-                    i0,
-                    inf_with_feedback_proc_sample.post_initialization_infections,
-                ]
-            )
+        latent_infections_subpop = jnp.concat(
+            [
+                i0,
+                inf_with_feedback_proc_sample.post_initialization_infections,
+            ]
         )
 
         if self.n_subpops == 1:
-            latent_infections = jnp.squeeze(latent_infections_subpop)
+            latent_infections = latent_infections_subpop
         else:
             latent_infections = jnp.sum(
                 self.pop_fraction * latent_infections_subpop, axis=1
@@ -586,7 +584,6 @@ class WastewaterObservationProcess(RandomVariable):
 
     def sample(
         self,
-        latent_infections: ArrayLike,
         latent_infections_subpop: ArrayLike,
         data_observed: ArrayLike,
         n_datapoints: int,
@@ -598,6 +595,8 @@ class WastewaterObservationProcess(RandomVariable):
         ww_log_lod: ArrayLike,
         lab_site_to_subpop_map: ArrayLike,
         n_ww_lab_sites: int,
+        shedding_offset: float,
+        pop_fraction: ArrayLike,
     ):
         t_peak = self.t_peak_rv()
         dur_shed = self.duration_shed_after_peak_rv()
@@ -608,7 +607,7 @@ class WastewaterObservationProcess(RandomVariable):
 
         model_net_inf_ind_shedding = jax.vmap(
             batch_colvolve_fn, in_axes=1, out_axes=1
-        )(latent_infections_subpop)[-n_datapoints:, :]
+        )(jnp.atleast_2d(latent_infections_subpop))[-n_datapoints:, :]
         numpyro.deterministic(
             "model_net_inf_ind_shedding", model_net_inf_ind_shedding
         )
@@ -616,7 +615,7 @@ class WastewaterObservationProcess(RandomVariable):
         log10_genome_per_inf_ind = self.log10_genome_per_inf_ind_rv()
         expected_obs_viral_genomes = (
             jnp.log(10) * log10_genome_per_inf_ind
-            + jnp.log(model_net_inf_ind_shedding + 1e-8)
+            + jnp.log(model_net_inf_ind_shedding + shedding_offset)
             - jnp.log(self.ww_ml_produced_per_day)
         )
         numpyro.deterministic(
@@ -653,7 +652,7 @@ class WastewaterObservationProcess(RandomVariable):
             + mode_ww_site[ww_sampled_lab_sites]
         )
 
-        numpyro.sample(
+        DistributionalVariable(
             "log_conc_obs",
             dist.Normal(
                 loc=expected_obs_log_v_site[ww_uncensored],
@@ -665,6 +664,7 @@ class WastewaterObservationProcess(RandomVariable):
                 else None
             ),
         )
+
         if ww_censored.shape[0] != 0:
             log_cdf_values = dist.Normal(
                 loc=expected_obs_log_v_site[ww_censored],
@@ -673,7 +673,7 @@ class WastewaterObservationProcess(RandomVariable):
             numpyro.factor("log_prob_censored", log_cdf_values.sum())
 
         # Predict site and population level wastewater concentrations
-        site_log_ww_conc = numpyro.sample(
+        site_log_ww_conc = DistributionalVariable(
             "site_log_ww_conc",
             dist.Normal(
                 loc=expected_obs_viral_genomes[:, lab_site_to_subpop_map]
@@ -682,16 +682,13 @@ class WastewaterObservationProcess(RandomVariable):
             ),
         )
 
-        population_net_inf_ind_shedding = jnp.convolve(
-            latent_infections, viral_kinetics, mode="valid"
-        )[-n_datapoints:]
-        numpyro.deterministic(
-            "population_net_inf_ind_shedding", population_net_inf_ind_shedding
+        population_net_inf_ind_shedding = jax.scipy.special.logsumexp(
+            pop_fraction * model_net_inf_ind_shedding, axis=1
         )
 
         population_log_ww_conc = (
             jnp.log(10) * log10_genome_per_inf_ind
-            + jnp.log(population_net_inf_ind_shedding + 1e-8)
+            + jnp.log(population_net_inf_ind_shedding + shedding_offset)
             - jnp.log(self.ww_ml_produced_per_day)
         )
         numpyro.deterministic("population_log_ww_conc", population_log_ww_conc)
@@ -776,6 +773,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 ww_log_lod=None,  # placeholder
                 lab_site_to_subpop_map=None,  # placeholder
                 n_ww_lab_sites=None,  # placeholder
+                shedding_offset=1e-8,
             )
 
         return {
