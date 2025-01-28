@@ -730,23 +730,26 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 iedr=iedr,
             )
         if sample_wastewater:
-            observed_wastewater, *_ = self.wastewater_obs_process_rv(
-                latent_infections=latent_infections,
-                latent_infections_subpop=latent_infections_subpop,
-                data_observed=data.data_observed_disease_wastewater,
-                n_datapoints=data.n_wastewater_datapoints,
-                ww_uncensored=None,  # placeholder
-                ww_censored=None,  # placeholder
-                ww_sampled_lab_sites=None,  # placeholder
-                ww_sampled_subpops=None,  # placeholder
-                ww_sampled_times=None,  # placeholder
-                ww_log_lod=None,  # placeholder
-                lab_site_to_subpop_map=None,  # placeholder
-                n_ww_lab_sites=None,  # placeholder
+            (site_level_observed_wastewater, population_level_observed_wastewater) = (
+                self.wastewater_obs_process_rv(
+                    latent_infections=latent_infections,
+                    latent_infections_subpop=latent_infections_subpop,
+                    data_observed=data.data_observed_disease_wastewater,
+                    n_datapoints=data.n_wastewater_datapoints,
+                    ww_uncensored=None,  # placeholder
+                    ww_censored=None,  # placeholder
+                    ww_sampled_lab_sites=None,  # placeholder
+                    ww_sampled_subpops=None,  # placeholder
+                    ww_sampled_times=None,  # placeholder
+                    ww_log_lod=None,  # placeholder
+                    lab_site_to_subpop_map=None,  # placeholder
+                    n_ww_lab_sites=None,  # placeholder
+                )
             )
 
         return {
             "ed_visits": observed_ed_visits,
             "hospital_admissions": observed_admissions,
-            "sitelevel_wastewater_conc": observed_wastewater,
+            "site_level_wastewater_conc": site_level_observed_wastewater,
+            "population_level_wastewater_conc": population_level_observed_wastewater,
         }

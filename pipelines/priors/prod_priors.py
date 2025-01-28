@@ -20,9 +20,7 @@ log_r_mu_intercept_rv = DistributionalVariable(
     "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
 )
 
-eta_sd_rv = DistributionalVariable(
-    "eta_sd", dist.TruncatedNormal(0.15, 0.05, low=0)
-)
+eta_sd_rv = DistributionalVariable("eta_sd", dist.TruncatedNormal(0.15, 0.05, low=0))
 
 autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(2, 40))
 
@@ -96,8 +94,8 @@ hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
 
 t_peak_rv = DistributionalVariable("t_peak", dist.TruncatedNormal(5, 1, low=0))
 
-dur_shed_after_peak_rv = DistributionalVariable(
-    "dur_shed_after_peak", dist.TruncatedNormal(12, 3, low=0)
+duration_shed_after_peak_rv = DistributionalVariable(
+    "durtion_shed_after_peak", dist.TruncatedNormal(12, 3, low=0)
 )
 
 log10_genome_per_inf_ind_rv = DistributionalVariable(

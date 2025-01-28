@@ -111,7 +111,7 @@ def build_model_from_dir(
 
     my_wastewater_obs_model = WastewaterObservationProcess(
         t_peak_rv=priors["t_peak_rv"],
-        dur_shed_after_peak_rv=priors["dur_shed_after_peak_rv"],
+        duration_shed_after_peak_rv=priors["duration_shed_after_peak_rv"],
         log10_genome_per_inf_ind_rv=priors["log10_genome_per_inf_ind_rv"],
         mode_sigma_ww_site_rv=priors["mode_sigma_ww_site_rv"],
         sd_log_sigma_ww_site_rv=priors["sd_log_sigma_ww_site_rv"],
