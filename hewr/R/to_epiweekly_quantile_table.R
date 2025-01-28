@@ -126,17 +126,15 @@ to_epiweekly_quantile_table <- function(model_batch_dir,
   get_location_table <- \(model_run_dir) {
     loc <- fs::path_file(model_run_dir)
     use_epiweekly_other <- loc %in% epiweekly_other_locations
-    if (use_epiweekly_other) {
-      message(glue::glue(
-        "Using epiweekly non-target ED visit forecast ",
-        "for location {loc}"
-      ))
-    } else {
-      message(glue::glue(
-        "Using daily non-target ED visit ",
-        "forecast for location {loc}."
-      ))
-    }
+    which_forecast <- ifelse(use_epiweekly_other,
+      "explicitly epiweekly",
+      "aggregated daily"
+    )
+    glue::glue(
+      "Using {which_forecast} non-target ED visit forecast ",
+      "for location {loc}"
+    )
+
     draws_file <- ifelse(
       use_epiweekly_other,
       "epiweekly_with_epiweekly_other_samples",
