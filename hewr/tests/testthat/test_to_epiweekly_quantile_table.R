@@ -181,7 +181,7 @@ test_that("to_epiweekly_quantile_table handles multiple locations", {
       "output_type",
       "output_type_id",
       "value",
-      "other_ed_visit_forecast"
+      "source_samples"
     )
   )
   expect_setequal(
