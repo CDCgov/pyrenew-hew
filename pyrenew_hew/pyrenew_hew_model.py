@@ -476,7 +476,7 @@ class WastewaterObservationProcess(RandomVariable):
     def __init__(
         self,
         t_peak_rv: RandomVariable,
-        dur_shed_after_peak_rv: RandomVariable,
+        duration_shed_after_peak_rv: RandomVariable,
         log10_genome_per_inf_ind_rv: RandomVariable,
         mode_sigma_ww_site_rv: RandomVariable,
         sd_log_sigma_ww_site_rv: RandomVariable,
@@ -485,7 +485,7 @@ class WastewaterObservationProcess(RandomVariable):
         ww_ml_produced_per_day: float,
     ) -> None:
         self.t_peak_rv = t_peak_rv
-        self.dur_shed_after_peak_rv = dur_shed_after_peak_rv
+        self.duration_shed_after_peak_rv = duration_shed_after_peak_rv
         self.log10_genome_per_inf_ind_rv = log10_genome_per_inf_ind_rv
         self.mode_sigma_ww_site_rv = mode_sigma_ww_site_rv
         self.sd_log_sigma_ww_site_rv = sd_log_sigma_ww_site_rv
@@ -495,6 +495,95 @@ class WastewaterObservationProcess(RandomVariable):
 
     def validate(self):
         pass
+
+    @staticmethod
+    def normed_shedding_cdf(
+        time: ArrayLike, t_p: float, t_d: float, log_base: float
+    ) -> ArrayLike:
+        """
+        calculates fraction of total fecal RNA shedding that has occurred
+        by a given time post infection.
+
+
+        Parameters
+        ----------
+        time: ArrayLike
+            Time points to calculate the CDF of viral shedding.
+        t_p : float
+            Time (in days) from infection to peak shedding.
+        t_d: float
+            Time (in days) from peak shedding to the end of shedding.
+        log_base: float
+            Log base used for the shedding kinetics function.
+
+
+        Returns
+        -------
+        ArrayLike
+            Normalized CDF values of viral shedding at each time point.
+        """
+        norm_const = (t_p + t_d) * ((log_base - 1) / jnp.log(log_base) - 1)
+
+        def ad_pre(x):
+            return (
+                t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p)
+                - x
+            )
+
+        def ad_post(x):
+            return (
+                -t_d
+                / jnp.log(log_base)
+                * jnp.exp(jnp.log(log_base) * (1 - ((x - t_p) / t_d)))
+                - x
+            )
+
+        return (
+            jnp.where(
+                time < t_p + t_d,
+                jnp.where(
+                    time < t_p,
+                    ad_pre(time) - ad_pre(0),
+                    ad_pre(t_p) - ad_pre(0) + ad_post(time) - ad_post(t_p),
+                ),
+                norm_const,
+            )
+            / norm_const
+        )
+
+    def get_viral_trajectory(
+        self,
+        tpeak: float,
+        duration_shed_after_peak: float,
+    ) -> ArrayLike:
+        """
+        Computes the probability mass function (PMF) of
+        daily viral shedding based on a normalized CDF.
+
+        Parameters
+        ----------
+        tpeak: float
+            Time (in days) from infection to peak viral load in shedding.
+        duration_shed_after_peak: float
+            Duration (in days) of detectable viral shedding after the peak.
+
+        Returns
+        -------
+        ArrayLike
+            Normalized daily viral shedding PMF
+        """
+        daily_shedding_pmf = self.normed_shedding_cdf(
+            jnp.arange(1, self.max_shed_interval),
+            tpeak,
+            duration_shed_after_peak,
+            10,
+        ) - self.normed_shedding_cdf(
+            jnp.arange(0, self.max_shed_interval - 1),
+            tpeak,
+            duration_shed_after_peak,
+            10,
+        )
+        return daily_shedding_pmf
 
     def sample(
         self,
@@ -512,10 +601,8 @@ class WastewaterObservationProcess(RandomVariable):
         n_ww_lab_sites: int,
     ):
         t_peak = self.t_peak_rv()
-        dur_shed = self.dur_shed_after_peak_rv()
-        viral_kinetics = get_viral_trajectory(
-            t_peak, dur_shed, self.max_shed_interval
-        )
+        dur_shed = self.duration_shed_after_peak_rv()
+        viral_kinetics = self.get_viral_trajectory(t_peak, dur_shed)
 
         def batch_colvolve_fn(m):
             return jnp.convolve(m, viral_kinetics, mode="valid")

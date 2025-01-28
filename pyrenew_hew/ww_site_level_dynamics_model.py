@@ -4,6 +4,7 @@ import numpyro
 import numpyro.distributions as dist
 import numpyro.distributions.transforms as transforms
 import pyrenew.transformation as transformation
+from jax.typing import ArrayLike
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
@@ -17,8 +18,6 @@ from pyrenew.metaclass import Model
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
-
-from pyrenew_hew.utils import get_viral_trajectory
 
 
 class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
@@ -558,3 +557,86 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
             observed_hospital_admissions,
             site_ww_pred_log if self.include_ww else None,
         )
+
+
+def normed_shedding_cdf(
+    time: ArrayLike, t_p: float, t_d: float, log_base: float
+) -> ArrayLike:
+    """
+    calculates fraction of total fecal RNA shedding that has occurred
+    by a given time post infection.
+
+
+    Parameters
+    ----------
+    time: ArrayLike
+        Time points to calculate the CDF of viral shedding.
+    t_p : float
+        Time (in days) from infection to peak shedding.
+    t_d: float
+        Time (in days) from peak shedding to the end of shedding.
+    log_base: float
+        Log base used for the shedding kinetics function.
+
+
+    Returns
+    -------
+    ArrayLike
+        Normalized CDF values of viral shedding at each time point.
+    """
+    norm_const = (t_p + t_d) * ((log_base - 1) / jnp.log(log_base) - 1)
+
+    def ad_pre(x):
+        return (
+            t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p) - x
+        )
+
+    def ad_post(x):
+        return (
+            -t_d
+            / jnp.log(log_base)
+            * jnp.exp(jnp.log(log_base) * (1 - ((x - t_p) / t_d)))
+            - x
+        )
+
+    return (
+        jnp.where(
+            time < t_p + t_d,
+            jnp.where(
+                time < t_p,
+                ad_pre(time) - ad_pre(0),
+                ad_pre(t_p) - ad_pre(0) + ad_post(time) - ad_post(t_p),
+            ),
+            norm_const,
+        )
+        / norm_const
+    )
+
+
+def get_viral_trajectory(
+    tpeak: float, duration_shedding_after_peak: float, max_days: int
+):
+    """
+    Computes the probability mass function (PMF) of
+    daily viral shedding based on a normalized CDF.
+
+    Parameters
+    ----------
+    tpeak: float
+        Time (in days) from infection to peak viral load in shedding.
+    duration_shedding_after_peak: float
+        Duration (in days) of detectable viral shedding after the peak.
+    max_days: int
+        Maximum number of days to calculate the shedding trajectory.
+
+    Returns
+    -------
+    ArrayLike
+        Normalized daily viral shedding PMF
+    """
+    daily_shedding_pmf = normed_shedding_cdf(
+        jnp.arange(1, max_days), tpeak, duration_shedding_after_peak, 10
+    ) - normed_shedding_cdf(
+        jnp.arange(0, max_days - 1), tpeak, duration_shedding_after_peak, 10
+    )
+    return daily_shedding_pmf
