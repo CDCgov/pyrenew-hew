@@ -16,7 +16,6 @@ from pyrenew.deterministic import DeterministicVariable, DeterministicPMF
 
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew_hew.ww_site_level_dynamics_model import ww_site_level_dynamics_model
-from pyrenew_hew.utils import convert_to_logmean_log_sd
 import pyrenew_hew.plotting as plotting
 
 numpyro.set_host_device_count(4)
@@ -28,6 +27,14 @@ We will use the data used in the `wwinference` [vignette](https://github.com/CDC
 # | label: Import stan-data
 with open("data/fit/stan_data.json","r") as file:
     stan_data = json.load(file)
+
+# define functions called later
+def convert_to_logmean_log_sd(mean, sd):
+    logmean = jnp.log(
+        jnp.power(mean, 2) / jnp.sqrt(jnp.power(sd, 2) + jnp.power(mean, 2))
+    )
+    logsd = jnp.sqrt(jnp.log(1 + (jnp.power(sd, 2) / jnp.power(mean, 2))))
+    return logmean, logsd
 
 ```
 

@@ -93,3 +93,30 @@ ed_neg_bin_concentration_rv = DistributionalVariable(
 hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
     "hosp_admit_neg_bin_concentration", dist.LogNormal(4, 2)
 )
+
+t_peak_rv = DistributionalVariable("t_peak", dist.TruncatedNormal(5, 1, low=0))
+
+duration_shed_after_peak_rv = DistributionalVariable(
+    "durtion_shed_after_peak", dist.TruncatedNormal(12, 3, low=0)
+)
+
+log10_genome_per_inf_ind_rv = DistributionalVariable(
+    "log10_genome_per_inf_ind", dist.Normal(12, 2)
+)
+
+mode_sigma_ww_site_rv = DistributionalVariable(
+    "mode_sigma_ww_site",
+    dist.TruncatedNormal(1, 1, low=0),
+)
+
+sd_log_sigma_ww_site_rv = DistributionalVariable(
+    "sd_log_sigma_ww_site", dist.TruncatedNormal(0, 0.693, low=0)
+)
+
+mode_sd_ww_site_rv = DistributionalVariable(
+    "mode_sd_ww_site", dist.TruncatedNormal(0, 0.25, low=0)
+)
+
+# model constants related to wastewater obs process
+ww_ml_produced_per_day = 227000
+max_shed_interval = 26
