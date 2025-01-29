@@ -686,7 +686,10 @@ class WastewaterObservationProcess(RandomVariable):
         population_latent_viral_genome_conc = jax.scipy.special.logsumexp(
             expected_obs_viral_genomes, axis=1, b=pop_fraction
         )
-        numpyro.deterministic("population_latent_viral_genome_conc", population_latent_viral_genome_conc)
+        numpyro.deterministic(
+            "population_latent_viral_genome_conc",
+            population_latent_viral_genome_conc,
+        )
 
         return site_log_ww_conc, population_latent_viral_genome_conc
 
