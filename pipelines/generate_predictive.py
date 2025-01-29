@@ -35,7 +35,7 @@ def generate_and_save_predictions(
     )
     logger.info(
         "First data date in fitting data: ",
-        f"{my_data.first_data_date_overall}",
+        f"{my_data.first_data_date_overall:%Y-%m-%d}",
     )
     forecast_data = my_data.to_forecast_data(n_forecast_points)
     logger.info(
@@ -44,7 +44,7 @@ def generate_and_save_predictions(
     )
     logger.info(
         "First data date in synthetic forecast data: ",
-        f"{forecast_data.first_data_date_overall}",
+        f"{forecast_data.first_data_date_overall:%Y-%m-%d}",
     )
 
     posterior_predictive = my_model.posterior_predictive(
