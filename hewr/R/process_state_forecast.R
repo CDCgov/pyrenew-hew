@@ -284,13 +284,10 @@ process_state_forecast <- function(model_run_dir,
           ".chain", ".iteration", ".draw", "geo_value", "disease",
           ".variable"
         ),
-        strict = TRUE
+        strict = TRUE,
+        with_epiweek_end_date = TRUE,
+        epiweek_end_date_name = "date"
       ) |>
-      dplyr::mutate(date = forecasttools::epiweek_to_date(
-        .data$epiweek,
-        .data$epiyear,
-        day_of_week = 7
-      )) |>
       dplyr::select(tidyselect::all_of(required_columns))
 
     epiweekly_samples <-
@@ -334,13 +331,10 @@ process_state_forecast <- function(model_run_dir,
           value_col = ".value",
           weekly_value_name = ".value",
           id_cols = c(".draw", "geo_value", "disease", ".variable"),
-          strict = TRUE
+          strict = TRUE,
+          with_epiweek_end_date = TRUE,
+          epiweek_end_date_name = "date"
         ) |>
-        dplyr::mutate(date = forecasttools::epiweek_to_date(
-          .data$epiweek,
-          .data$epiyear,
-          day_of_week = 7
-        )) |>
         dplyr::select(tidyselect::any_of(required_columns))
 
       ## ts model, epiweekly denominator
