@@ -732,7 +732,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         observed_ed_visits = None
         observed_admissions = None
         site_level_observed_wastewater = None
-        population_level_observed_wastewater = None
+        population_level_latent_wastewater = None
 
         iedr = None
 
@@ -757,7 +757,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         if sample_wastewater:
             (
                 site_level_observed_wastewater,
-                population_level_observed_wastewater,
+                population_level_latent_wastewater,
             ) = self.wastewater_obs_process_rv(
                 latent_infections=latent_infections,
                 latent_infections_subpop=latent_infections_subpop,
@@ -778,5 +778,5 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             "ed_visits": observed_ed_visits,
             "hospital_admissions": observed_admissions,
             "site_level_wastewater_conc": site_level_observed_wastewater,
-            "population_level_wastewater_conc": population_level_observed_wastewater,
+            "population_level_latent_wastewater_conc": population_level_latent_wastewater,
         }
