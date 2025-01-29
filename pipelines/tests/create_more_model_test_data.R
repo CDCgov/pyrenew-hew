@@ -1,17 +1,17 @@
 library(tidyverse)
 library(fs)
 library(glue)
-source("hewr/R/process_state_forecast.R")
-source("pipelines/plot_and_save_state_forecast.R")
-source("pipelines/score_forecast.R")
+try(source("hewr/R/process_state_forecast.R"))
+try(source("pipelines/plot_and_save_state_forecast.R"))
+try(source("pipelines/score_forecast.R"))
 
 model_batch_dirs <- c(
   path(
-    "/Users/damon/Documents/GitHub/pyrenew-hew/pipelines/tests/private_data",
+    "pipelines/tests/private_data",
     "covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20"
   ),
   path(
-    "/Users/damon/Documents/GitHub/pyrenew-hew/pipelines/tests/private_data",
+    "pipelines/tests/private_data",
     "influenza_r_2024-12-21_f_2024-10-22_t_2024-12-20"
   )
 )
@@ -86,6 +86,8 @@ walk(model_batch_dirs, \(model_batch_dir) {
         "pipelines/convert_inferencedata_to_parquet.R",
         model_run_dir, "--model-name", "pyrenew_h"
       ))
+
+
       ## Process state forecasts
       process_state_forecast(model_run_dir,
         "pyrenew_he",

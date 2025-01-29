@@ -59,4 +59,7 @@ else
     echo "TEST-MODE: Batch postprocess succeeded."
 fi
 
+echo "TEST-MODE: Extending tests for H and HE models..."
+Rscript pipelines/tests/create_more_model_test_data.R
+
 echo "TEST-MODE: All finished successfully."
