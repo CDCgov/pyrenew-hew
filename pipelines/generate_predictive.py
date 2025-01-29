@@ -33,7 +33,7 @@ def generate_and_save_predictions(
         data=forecast_data,
         sample_ed_visits=True,
         sample_hospital_admissions=True,
-        sample_wastewater=True,
+        sample_wastewater=False,
     )
 
     idata = az.from_numpyro(

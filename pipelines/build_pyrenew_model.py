@@ -109,8 +109,16 @@ def build_model_from_dir(
         ihr_rv=priors["ihr_rv"],
     )
 
-    # placeholder
-    my_wastewater_obs_model = WastewaterObservationProcess()
+    my_wastewater_obs_model = WastewaterObservationProcess(
+        t_peak_rv=priors["t_peak_rv"],
+        duration_shed_after_peak_rv=priors["duration_shed_after_peak_rv"],
+        log10_genome_per_inf_ind_rv=priors["log10_genome_per_inf_ind_rv"],
+        mode_sigma_ww_site_rv=priors["mode_sigma_ww_site_rv"],
+        sd_log_sigma_ww_site_rv=priors["sd_log_sigma_ww_site_rv"],
+        mode_sd_ww_site_rv=priors["mode_sd_ww_site_rv"],
+        max_shed_interval=priors["max_shed_interval"],
+        ww_ml_produced_per_day=priors["ww_ml_produced_per_day"],
+    )
 
     my_model = PyrenewHEWModel(
         population_size=population_size,
