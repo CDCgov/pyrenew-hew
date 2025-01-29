@@ -25,7 +25,7 @@ from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 def _hubverse_table_filename(
     report_date: str | datetime.date, disease: str
 ) -> None:
-    return f"{report_date}-" f"{disease.lower()}-" "hubverse-table.tsv"
+    return f"{report_date}-{disease.lower()}-hubverse-table.tsv"
 
 
 def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
@@ -50,7 +50,7 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            "create_hubverse_table: " f"{result.stdout}\n" f"{result.stderr}"
+            f"create_hubverse_table: {result.stdout}\n{result.stderr}"
         )
     return None
 
@@ -60,7 +60,7 @@ def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
     f_info = parse_model_batch_dir_name(model_batch_dir_path.name)
     disease = f_info["disease"]
     report_date = f_info["report_date"]
-    output_file_name = "Disease_category_pointintervals.pdf"
+    output_file_name = "disease_category_pointintervals.pdf"
 
     hubverse_table_path = Path(
         model_batch_dir_path, _hubverse_table_filename(report_date, disease)
@@ -75,13 +75,12 @@ def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
             "Rscript",
             "pipelines/plot_category_pointintervals.R",
             f"{hubverse_table_path}",
-            f"{disease}",
             f"{output_path}",
         ],
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError("create_pointinterval_plot: " f"{result.stderr}")
+        raise RuntimeError(f"create_pointinterval_plot: {result.stderr}")
     return None
 
 

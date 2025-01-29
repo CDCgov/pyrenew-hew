@@ -2,7 +2,11 @@ library(forecasttools)
 library(ggplot2)
 library(dplyr)
 library(argparser)
-
+library(fs)
+library(hewr)
+library(tidyr)
+library(purrr)
+library(glue)
 
 to_categorized_iqr <- function(hub_table,
                                disease) {
@@ -70,36 +74,37 @@ plot_category_pointintervals <- function(data, horizon) {
 
 
 main <- function(hubverse_table_path,
-                 disease,
                  output_path,
                  ...) {
-  checkmate::check_names(disease,
-    subset.of = c("COVID-19", "Influenza")
-  )
+  disease <- parse_model_batch_dir_path(path_dir(hubverse_table_path))$disease
 
   dat <- readr::read_tsv(hubverse_table_path) |>
     to_categorized_iqr(disease)
 
-  plots <- list(
-    plot_1wk = dat |>
-      plot_category_pointintervals(horizon = 0) +
-      labs(
-        x = "% ED visits",
-        y = "Location"
-      ) +
-      ggtitle(glue::glue("{disease}, 1 week ahead")),
-    plot_2wk = dat |>
-      plot_category_pointintervals(horizon = 1) +
-      labs(
-        x = "% ED visits",
-        y = "Location"
-      ) +
-      ggtitle(glue::glue("{disease}, 2 weeks ahead"))
-  )
-
+  figure_tbl <-
+    dat |>
+    distinct(model) |>
+    expand_grid(horizon = c(0, 1)) |>
+    mutate(figure = map2(
+      model, horizon,
+      \(target_model, horizon) {
+        plot_category_pointintervals(
+          dat |>
+            filter(model == target_model),
+          horizon = horizon
+        ) +
+          labs(
+            x = "% ED visits",
+            y = "Location"
+          ) +
+          ggtitle(glue::glue("{disease}, {target_model}"),
+            subtitle = glue("{horizon} week ahead")
+          )
+      }
+    ))
 
   plots_to_pdf(
-    plots,
+    figure_tbl$figure,
     output_path
   )
 }
@@ -109,13 +114,6 @@ p <- arg_parser("Create a pointinterval plot of forecasts") |>
   add_argument(
     "hubverse_table_path",
     help = "Path to a hubverse format forecast table."
-  ) |>
-  add_argument(
-    "disease",
-    help = paste0(
-      "Name of the disease to plot. ",
-      "One of 'COVID-19', 'Influenza'"
-    )
   ) |>
   add_argument(
     "output_path",
