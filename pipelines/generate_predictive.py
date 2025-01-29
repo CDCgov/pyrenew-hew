@@ -27,7 +27,11 @@ def generate_and_save_predictions(
         my_model.mcmc = pickle.load(file)
 
     my_model.mcmc.sampler = fresh_sampler
+    print(my_data.n_days_post_init)
+    print(data.first_data_date_overall)
     forecast_data = my_data.to_forecast_data(n_forecast_points)
+    print(forecast_data.n_ed_visits_datapoints)
+    print(forecast_data.first_data_date_overall)
 
     posterior_predictive = my_model.posterior_predictive(
         data=forecast_data,
