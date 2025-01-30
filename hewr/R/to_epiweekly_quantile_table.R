@@ -43,35 +43,35 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
     scorable_datasets <-
       tibble::tibble(file_path = c(samples_paths, quantiles_paths)) |>
       dplyr::mutate(
-        forecast_name = file_path |>
+        forecast_name = .data$file_path |>
           fs::path_file() |>
           fs::path_ext_remove() |>
           stringr::str_remove("_([^_]*)$"),
-        forecast_type = file_path |>
+        forecast_type = .data$file_path |>
           fs::path_file() |>
           fs::path_ext_remove() |>
           stringr::str_extract("(?<=_)([^_]*)$"),
-        resolution = file_path |>
+        resolution = .data$file_path |>
           fs::path_file() |>
           fs::path_ext_remove() |>
           stringr::str_extract("^.+?(?=_)"),
-        model_name = file_path |>
+        model_name = .data$file_path |>
           fs::path_dir() |>
           fs::path_file()
       ) |>
-      tidyr::unite("model", model_name, forecast_name, sep = "_") |>
-      dplyr::mutate(forecast_data = purrr::map(file_path, \(x) {
+      tidyr::unite("model", .data$model_name, .data$forecast_name, sep = "_") |>
+      dplyr::mutate(forecast_data = purrr::map(.data$file_path, \(x) {
         arrow::read_parquet(x) |>
-          dplyr::filter(date > last_training_date) |>
-          dplyr::rename(location = geo_value) |>
+          dplyr::filter(.data$date > last_training_date) |>
+          dplyr::rename(location = .data$geo_value) |>
           dplyr::mutate(
-            epiweek = lubridate::epiweek(date),
-            epiyear = lubridate::epiyear(date)
+            epiweek = lubridate::epiweek(.data$date),
+            epiyear = lubridate::epiyear(.data$date)
           )
       })) |>
       dplyr::mutate(forecast_data = dplyr::case_when(
         forecast_type == "samples" ~
-          purrr::map(forecast_data, \(x) {
+          purrr::map(.data$forecast_data, \(x) {
             forecasttools::trajectories_to_quantiles(x,
               timepoint_cols = "date",
               value_col = ".value",
@@ -82,26 +82,26 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
             )
           }),
         forecast_type == "quantiles" ~ purrr::map(
-          forecast_data,
+          .data$forecast_data,
           \(x) dplyr::rename(x, "quantile_value" = .value)
         )
       )) |>
-      dplyr::select(-file_path)
+      dplyr::select(-.data$file_path)
 
     loc_epiweekly_hubverse_table <-
       scorable_datasets |>
-      dplyr::filter(resolution == "epiweekly") |>
-      dplyr::mutate(hubverse_data = purrr::map(forecast_data, \(x) {
+      dplyr::filter(.data$resolution == "epiweekly") |>
+      dplyr::mutate(hubverse_data = purrr::map(.data$forecast_data, \(x) {
         x |>
-          dplyr::filter(.variable == "prop_disease_ed_visits") |>
+          dplyr::filter(.data$.variable == "prop_disease_ed_visits") |>
           forecasttools::get_hubverse_table(
             report_epiweek_end,
             target_name =
               glue::glue("wk inc {disease_abbr} prop ed visits")
           )
       })) |>
-      dplyr::select(-forecast_data) |>
-      tidyr::unnest(hubverse_data)
+      dplyr::select(-.data$forecast_data) |>
+      tidyr::unnest(.data$hubverse_data)
 
     return(loc_epiweekly_hubverse_table)
   }

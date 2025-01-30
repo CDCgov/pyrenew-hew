@@ -3,8 +3,6 @@
 #'
 #' @param train_dat Training data, as a [`tibble`][tibble::tibble()].
 #' @param eval_dat Evaluation data, as a [`tibble`][tibble::tibble()].
-#' @param disease_name Name of the target disease.
-#' One of `"COVID-19"` or `"Influenza"`.
 #' @return The combined data, as a [`tibble`][tibble::tibble()].
 #' @export
 combine_training_and_eval_data <- function(train_dat,

@@ -26,8 +26,6 @@ in \code{combined_dat} and \code{forecast_ci}}
 
 \item{y_transform}{a character passed as the transform argument to
 \code{\link[ggplot2:scale_continuous]{ggplot2::scale_y_continuous()}}.}
-
-\item{disease_name}{\code{"COVID-19"} or \code{"Influenza"}}
 }
 \value{
 a ggplot object

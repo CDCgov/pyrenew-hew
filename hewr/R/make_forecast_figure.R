@@ -6,7 +6,6 @@
 #' [process_state_forecast()]
 #' @param forecast_ci `forecast_ci` from the result of
 #' [process_state_forecast()]
-#' @param disease_name `"COVID-19"` or `"Influenza"`
 #' @param data_vintage_date date that the data was collected
 #' @param y_transform a character passed as the transform argument to
 #' [ggplot2::scale_y_continuous()].

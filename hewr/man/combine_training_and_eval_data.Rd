@@ -11,9 +11,6 @@ combine_training_and_eval_data(train_dat, eval_dat)
 \item{train_dat}{Training data, as a \code{\link[tibble:tibble]{tibble}}.}
 
 \item{eval_dat}{Evaluation data, as a \code{\link[tibble:tibble]{tibble}}.}
-
-\item{disease_name}{Name of the target disease.
-One of \code{"COVID-19"} or \code{"Influenza"}.}
 }
 \value{
 The combined data, as a \code{\link[tibble:tibble]{tibble}}.
