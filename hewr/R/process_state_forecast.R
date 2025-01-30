@@ -58,7 +58,7 @@ read_and_combine_data <- function(model_run_dir,
 
   combined_dat <- combine_training_and_eval_data(train_dat, eval_dat)
 
-  combined_dat
+  return(combined_dat)
 }
 
 #' Combine a forecast in tidy draws based format
