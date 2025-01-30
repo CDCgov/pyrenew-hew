@@ -101,7 +101,7 @@ def process_model_batch_dir(
 
     logger = logging.getLogger(__name__)
     logger.info("Collating plots...")
-    cp.process_dir(model_batch_dir_path, target_filenames=plots_to_collate)
+    cp.merge_and_save_pdfs(model_batch_dir_path)
     logger.info("Creating hubverse table...")
     create_hubverse_table(model_batch_dir_path)
     logger.info("Creating pointinterval plot...")
