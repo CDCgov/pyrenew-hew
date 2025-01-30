@@ -29,30 +29,30 @@ make_forecast_figure <- function(target_variable,
   y_axis_prefix <- ifelse(stringr::str_starts(target_variable, "prop"),
     "Proportion of ", ""
   )
-  y_axis_core <- case_when(
+  y_axis_core <- dplyr::case_when(
     str_detect(target_variable, "ed_visits") ~ "Emergency Department Visits",
     str_detect(target_variable, "hospital") ~ "Hospital Admissions",
     TRUE ~ ""
   )
-  y_axis_label <- str_c(y_axis_prefix, y_axis_core)
+  y_axis_label <- stringr::str_c(y_axis_prefix, y_axis_core)
   y_axis_labels <- ifelse(stringr::str_starts(target_variable, "prop"),
     scales::label_percent(), scales::label_comma()
   )
 
-  title_prefix <- ifelse(str_starts(target_variable, "observed"),
+  title_prefix <- ifelse(stringr::str_starts(target_variable, "observed"),
     disease_name_pretty, "Other"
   )
   title <- glue::glue("{title_prefix} {y_axis_core} in {state_abb}")
 
   last_training_date <- combined_dat |>
-    dplyr::filter(data_type == "train") |>
+    dplyr::filter(.data$data_type == "train") |>
     dplyr::pull(date) |>
     max()
 
-  ggplot2::ggplot(mapping = ggplot2::aes(date, .value)) +
+  ggplot2::ggplot(mapping = ggplot2::aes(.data$date, .data$.value)) +
     ggdist::geom_lineribbon(
-      data = forecast_ci |> dplyr::filter(.variable == target_variable),
-      mapping = ggplot2::aes(ymin = .lower, ymax = .upper),
+      data = forecast_ci |> dplyr::filter(.data$.variable == target_variable),
+      mapping = ggplot2::aes(ymin = .data$.lower, ymax = .data$.upper),
       color = "#08519c",
       key_glyph = ggplot2::draw_key_rect,
       step = "mid"
@@ -62,14 +62,14 @@ make_forecast_figure <- function(target_variable,
       labels = ~ scales::label_percent()(as.numeric(.))
     ) +
     ggplot2::geom_point(
-      mapping = ggplot2::aes(color = data_type), size = 1.5,
+      mapping = ggplot2::aes(color = .data$data_type), size = 1.5,
       data = combined_dat |>
         dplyr::filter(
-          .variable == target_variable,
-          date <= max(forecast_ci$date)
+          .data$.variable == target_variable,
+          .data$date <= max(forecast_ci$date)
         ) |>
-        dplyr::mutate(data_type = forcats::fct_rev(data_type)) |>
-        dplyr::arrange(dplyr::desc(data_type))
+        dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
+        dplyr::arrange(dplyr::desc(.data$data_type))
     ) +
     ggplot2::scale_color_manual(
       name = "Data Type",

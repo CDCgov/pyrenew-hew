@@ -12,8 +12,8 @@ combine_training_and_eval_data <- function(train_dat,
   combined_dat <-
     dplyr::bind_rows(train_dat, eval_dat) |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
-    dplyr::mutate(prop_disease_ed_visits = observed_ed_visits /
-      (observed_ed_visits + other_ed_visits)) |>
+    dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
+      (.data$observed_ed_visits + .data$other_ed_visits)) |>
     tidyr::pivot_longer(
       cols = -c("date", "geo_value", "disease", "data_type"),
       names_to = ".variable", values_to = ".value"
@@ -22,7 +22,6 @@ combine_training_and_eval_data <- function(train_dat,
 
   return(combined_dat)
 }
-
 
 #' Read in and combine training and evaluation
 #' data from a model run directory.
@@ -109,21 +108,31 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
     transformed_obs,
     tidy_forecast
   ) |>
-    dplyr::select(.draw, everything())
+    dplyr::select(".draw", tidyselect::everything())
 }
 
 join_and_calc_prop <- function(model_1, model_2) {
-  inner_join(
-    pivot_wider(model_1, names_from = ".variable", values_from = ".value"),
-    pivot_wider(model_2, names_from = ".variable", values_from = ".value"),
-    by = join_by(.draw, date, geo_value, disease)
+  dplyr::inner_join(
+    tidyr::pivot_wider(model_1,
+      names_from = ".variable",
+      values_from = ".value"
+    ),
+    tidyr::pivot_wider(model_2,
+      names_from = ".variable",
+      values_from = ".value"
+    ),
+    by = dplyr::join_by(".draw", "date", "geo_value", "disease")
   ) |>
-    mutate(prop_disease_ed_visits = observed_ed_visits /
-      (observed_ed_visits + other_ed_visits)) |>
-    pivot_longer(-c(starts_with("."), date, geo_value, disease),
+    dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
+      (.data$observed_ed_visits + .data$other_ed_visits)) |>
+    tidyr::pivot_longer(
+      -c(
+        tidyselect::starts_with("."),
+        "date", "geo_value", "disease"
+      ),
       names_to = ".variable", values_to = ".value"
     ) |>
-    drop_na()
+    tidyr::drop_na()
 }
 
 #' Convert group time index to date
@@ -257,13 +266,13 @@ process_state_forecast <- function(model_run_dir,
     tidybayes::gather_draws(!!!posterior_predictive_variables) |>
     dplyr::ungroup() |>
     dplyr::mutate(date = group_time_index_to_date(
-      group_time_index = group_time_index,
-      variable = .variable,
+      group_time_index = .data$group_time_index,
+      variable = .data$.variable,
       first_nssp_date = first_nssp_date,
       first_nhsn_date = first_nhsn_date,
       nhsn_step_size = nhsn_step_size
     )) |>
-    dplyr::select(-group_time_index) |>
+    dplyr::select(-"group_time_index") |>
     dplyr::mutate(
       geo_value = model_info$location,
       disease = model_info$disease
@@ -276,7 +285,7 @@ process_state_forecast <- function(model_run_dir,
   if (pyrenew_model_components["e"]) {
     epiweekly_obs_ed_samples <-
       daily_samples |>
-      dplyr::filter(.variable == "observed_ed_visits") |>
+      dplyr::filter(.data$.variable == "observed_ed_visits") |>
       forecasttools::daily_to_epiweekly(
         value_col = ".value",
         weekly_value_name = ".value",
@@ -292,7 +301,7 @@ process_state_forecast <- function(model_run_dir,
 
     epiweekly_samples <-
       daily_samples |>
-      dplyr::filter(.variable != "observed_ed_visits") |>
+      dplyr::filter(.data$.variable != "observed_ed_visits") |>
       dplyr::bind_rows(epiweekly_obs_ed_samples) |>
       dplyr::select(tidyselect::all_of(required_columns))
 
@@ -315,10 +324,10 @@ process_state_forecast <- function(model_run_dir,
           ext = "parquet"
         )
       ) |>
-        dplyr::filter(.variable == "other_ed_visits") |>
+        dplyr::filter(.data$.variable == "other_ed_visits") |>
         to_tidy_draws_timeseries(
           observed = daily_training_dat |>
-            dplyr::filter(.variable == "other_ed_visits") |>
+            dplyr::filter(.data$.variable == "other_ed_visits") |>
             dplyr::select(-"data_type"),
           epiweekly = FALSE
         ) |>
@@ -344,10 +353,10 @@ process_state_forecast <- function(model_run_dir,
           ext = "parquet"
         )
       ) |>
-        dplyr::filter(.variable == "other_ed_visits") |>
+        dplyr::filter(.data$.variable == "other_ed_visits") |>
         to_tidy_draws_timeseries(
           observed = epiweekly_training_dat |>
-            dplyr::filter(.variable == "other_ed_visits") |>
+            dplyr::filter(.data$.variable == "other_ed_visits") |>
             dplyr::select(-"data_type"),
           epiweekly = TRUE
         ) |>
