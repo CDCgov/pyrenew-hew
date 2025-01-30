@@ -84,7 +84,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument(
-    "modelbatchdir",
+    "model_batch_dir",
     type=Path,
     help=(
         "Base directory containing subdirectories that represent "
@@ -96,5 +96,5 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    model_batch_dir = args.modelbatchdir
+    model_batch_dir = args.model_batch_dir
     merge_and_save_pdfs(model_batch_dir)
