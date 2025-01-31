@@ -144,3 +144,46 @@ parse_pyrenew_model_name <- function(pyrenew_model_name) {
   model_components <- c("h", "e", "w")
   model_components %in% pyrenew_model_tail |> purrr::set_names(model_components)
 }
+
+
+#' Parse variable name.
+#'
+#' Convert a variable name into a descriptive label for display in plots.
+#'
+#' @param variable_name Character. Name of the variable to parse.
+#' @return A list containing:
+#'   - `proportion`: Logical. Indicates if the variable represents a proportion.
+#'   - `core_name`: Character. A simplified name for the variable.
+#'   - `full_name`: Character. A formatted name for the variable.
+#'   - `y_axis_labels`: Function. A suitable label function for axis formatting.
+#' @export
+#'
+#' @examples
+#' parse_variable_name("prop_hospital_admissions")
+parse_variable_name <- function(variable_name) {
+  proportion <- stringr::str_starts(variable_name, "prop")
+
+  core_name <- dplyr::case_when(
+    str_detect(variable_name, "ed_visits") ~ "Emergency Department Visits",
+    str_detect(variable_name, "hospital") ~ "Hospital Admissions",
+    TRUE ~ ""
+  )
+
+  full_name <- dplyr::if_else(proportion,
+    glue::glue("Proportion of {core_name}"),
+    core_name
+  )
+
+  y_axis_labels <- if (proportion) {
+    scales::label_percent()
+  } else {
+    scales::label_comma()
+  }
+
+  list(
+    proportion = proportion,
+    core_name = core_name,
+    full_name = full_name,
+    y_axis_labels = y_axis_labels
+  )
+}

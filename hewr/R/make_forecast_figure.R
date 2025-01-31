@@ -24,24 +24,16 @@ make_forecast_figure <- function(target_variable,
   )[disease_name]
 
   state_abb <- unique(combined_dat$geo_value)[1]
+  parsed_variable_name <- parse_variable_name(target_variable)
 
-  y_axis_prefix <- ifelse(stringr::str_starts(target_variable, "prop"),
-    "Proportion of ", ""
-  )
-  y_axis_core <- dplyr::case_when(
-    str_detect(target_variable, "ed_visits") ~ "Emergency Department Visits",
-    str_detect(target_variable, "hospital") ~ "Hospital Admissions",
-    TRUE ~ ""
-  )
-  y_axis_label <- stringr::str_c(y_axis_prefix, y_axis_core)
-  y_axis_labels <- ifelse(stringr::str_starts(target_variable, "prop"),
-    scales::label_percent(), scales::label_comma()
-  )
+  y_axis_label <- parsed_variable_name[["full_name"]]
+  y_axis_labels <- parsed_variable_name[["y_axis_labels"]]
+  core_name <- parsed_variable_name[["core_name"]]
 
   title_prefix <- ifelse(stringr::str_starts(target_variable, "observed"),
     disease_name_pretty, "Other"
   )
-  title <- glue::glue("{title_prefix} {y_axis_core} in {state_abb}")
+  title <- glue::glue("{title_prefix} {core_name} in {state_abb}")
 
   last_training_date <- combined_dat |>
     dplyr::filter(.data$data_type == "train") |>
