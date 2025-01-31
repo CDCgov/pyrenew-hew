@@ -1,6 +1,6 @@
-import polars as pl
 import datetime
 
+import polars as pl
 from prep_data import get_state_pop_df
 
 
@@ -46,11 +46,15 @@ def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
             [
                 pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
                 .then(pl.col("pcr_target_avg_conc") / 1000)
-                .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
+                .when(
+                    pl.col("pcr_target_units") == "log10 copies/l wastewater"
+                )
                 .then((10 ** pl.col("pcr_target_avg_conc")) / 1000),
                 pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
                 .then(pl.col("lod_sewage") / 1000)
-                .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
+                .when(
+                    pl.col("pcr_target_units") == "log10 copies/l wastewater"
+                )
                 .then((10 ** pl.col("lod_sewage")) / 1000),
             ]
         )
@@ -88,7 +92,9 @@ def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
     )
     nwss_subset_clean = (
         nwss_subset.group_by(["wwtp_name", "lab_id", "sample_collect_date"])
-        .agg([pl.col("pcr_target_avg_conc").mean().alias("pcr_target_avg_conc")])
+        .agg(
+            [pl.col("pcr_target_avg_conc").mean().alias("pcr_target_avg_conc")]
+        )
         .join(
             nwss_subset,
             on=["wwtp_name", "lab_id", "sample_collect_date"],
@@ -168,7 +174,9 @@ def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
     return ww_data
 
 
-def validate_ww_conc_data(ww_data: pl.DataFrame, conc_col_name: str, lod_col_name: str):
+def validate_ww_conc_data(
+    ww_data: pl.DataFrame, conc_col_name: str, lod_col_name: str
+):
     """
     Validate wastewater concentration data.
     """
@@ -185,7 +193,9 @@ def validate_ww_conc_data(ww_data: pl.DataFrame, conc_col_name: str, lod_col_nam
         )
 
     if not isinstance(ww_conc, pl.Series):
-        raise TypeError("Wastewater concentration is expected to be a 1D Series.")
+        raise TypeError(
+            "Wastewater concentration is expected to be a 1D Series."
+        )
 
     if ww_conc.dtype not in [
         pl.Int8,
@@ -195,7 +205,9 @@ def validate_ww_conc_data(ww_data: pl.DataFrame, conc_col_name: str, lod_col_nam
         pl.Float32,
         pl.Float64,
     ]:
-        raise TypeError("Expected numeric values for wastewater concentration.")
+        raise TypeError(
+            "Expected numeric values for wastewater concentration."
+        )
 
     if ww_data["date", "site", "lab"].is_duplicated().any():
         raise ValueError(
@@ -204,10 +216,14 @@ def validate_ww_conc_data(ww_data: pl.DataFrame, conc_col_name: str, lod_col_nam
 
     ww_lod = ww_data[lod_col_name]
     if ww_lod.is_null().any():
-        raise ValueError("There are missing values in the limit of detection data.")
+        raise ValueError(
+            "There are missing values in the limit of detection data."
+        )
 
     if not isinstance(ww_lod, pl.Series):
-        raise TypeError("Limit of detection data is expected to be a 1D Series.")
+        raise TypeError(
+            "Limit of detection data is expected to be a 1D Series."
+        )
 
     ww_obs_dates = ww_data["date"]
     if ww_obs_dates.is_null().any():
@@ -220,27 +236,37 @@ def validate_ww_conc_data(ww_data: pl.DataFrame, conc_col_name: str, lod_col_nam
     if site_labels.is_null().any():
         raise TypeError("Site labels are missing.")
 
-    if site_labels.dtype not in [pl.Int32, pl.Int64] and site_labels.dtype != pl.Utf8:
+    if (
+        site_labels.dtype not in [pl.Int32, pl.Int64]
+        and site_labels.dtype != pl.Utf8
+    ):
         raise TypeError("Site labels not of integer/string type.")
 
     lab_labels = ww_data["lab"]
     if lab_labels.is_null().any():
         raise TypeError("Lab labels are missing.")
 
-    if lab_labels.dtype not in [pl.Int32, pl.Int64] and lab_labels.dtype != pl.Utf8:
+    if (
+        lab_labels.dtype not in [pl.Int32, pl.Int64]
+        and lab_labels.dtype != pl.Utf8
+    ):
         raise TypeError("Lab labels are not of integer/string type.")
 
     site_pops = ww_data["site_pop"]
     if site_pops.is_null().any():
         raise ValueError("Site populations are missing.")
     if site_pops.dtype not in [pl.Int32, pl.Int64] or (site_pops < 0).any():
-        raise ValueError("Site populations are not integers, or have negative values.")
+        raise ValueError(
+            "Site populations are not integers, or have negative values."
+        )
 
     records_per_site_per_pop = (
         ww_data[["site", "site_pop"]].unique().group_by("site").len()
     )
     if (records_per_site_per_pop["len"] != 1).any():
-        raise ValueError("The data contains sites with varying population sizes.")
+        raise ValueError(
+            "The data contains sites with varying population sizes."
+        )
 
     return None
 
@@ -272,7 +298,12 @@ def preprocess_ww_data(
     ww_data_add_cols = (
         ww_data_ordered.join(lab_site_df, on=["lab", "site"], how="left")
         .join(site_df, on="site", how="left")
-        .rename({lod_col_name: "log_lod", conc_col_name: "log_genome_copies_per_ml"})
+        .rename(
+            {
+                lod_col_name: "log_lod",
+                conc_col_name: "log_genome_copies_per_ml",
+            }
+        )
         .with_columns(
             [
                 (
@@ -307,8 +338,12 @@ def flag_ww_outliers(
     )
     ww_stats = (
         ww_data.join(n_dps, on="lab_site_index", how="left")
-        .filter(pl.col("below_lod") == 0, pl.col("n_data_points") > threshold_n_dps)
-        .sort(by="date", descending=True)  # kept for consistency with R but seee notes
+        .filter(
+            pl.col("below_lod") == 0, pl.col("n_data_points") > threshold_n_dps
+        )
+        .sort(
+            by="date", descending=True
+        )  # kept for consistency with R but seee notes
         .rename({"log_genome_copies_per_ml": "log_conc"})
         .with_columns(
             pl.col("date", "log_conc")
@@ -318,13 +353,18 @@ def flag_ww_outliers(
         )
         .with_columns(
             [
-                (pl.col("log_conc") - pl.col("prev_log_conc")).alias("diff_log_conc"),
+                (pl.col("log_conc") - pl.col("prev_log_conc")).alias(
+                    "diff_log_conc"
+                ),
                 (
-                    pl.col("date").cast(pl.Int64) - pl.col("prev_date").cast(pl.Int64)
+                    pl.col("date").cast(pl.Int64)
+                    - pl.col("prev_date").cast(pl.Int64)
                 ).alias("diff_time"),
             ]
         )
-        .with_columns((pl.col("diff_log_conc") / pl.col("diff_time")).alias("rho"))
+        .with_columns(
+            (pl.col("diff_log_conc") / pl.col("diff_time")).alias("rho")
+        )
         .select(["date", "lab_site_index", "rho"])
     )
     ww_rho = ww_data.join(ww_stats, on=["lab_site_index", "date"], how="left")
@@ -347,9 +387,9 @@ def flag_ww_outliers(
                     (pl.col(conc_col_name) - pl.col("mean_" + conc_col_name))
                     / pl.col("std_" + conc_col_name)
                 ).alias("z_score_conc"),
-                ((pl.col("rho") - pl.col("mean_rho")) / pl.col("std_rho")).alias(
-                    "z_score_rho"
-                ),
+                (
+                    (pl.col("rho") - pl.col("mean_rho")) / pl.col("std_rho")
+                ).alias("z_score_rho"),
             ]
         )
         .sort(by="date", descending=False)
@@ -368,7 +408,10 @@ def flag_ww_outliers(
                 pl.when(
                     (abs(pl.col("z_score_rho")) >= rho_threshold)
                     & (abs(pl.col("z_score_rho_t_plus_1")) >= rho_threshold)
-                    & (pl.col("z_score_rho") * pl.col("z_score_rho_t_plus_1") < 0)
+                    & (
+                        pl.col("z_score_rho") * pl.col("z_score_rho_t_plus_1")
+                        < 0
+                    )
                 )
                 .then(1)
                 .otherwise(0)
@@ -387,7 +430,9 @@ def flag_ww_outliers(
         )
     )
 
-    ww_w_outliers_flagged = ww_z_scored.select(*ww_data.columns, "flag_as_ww_outlier")
+    ww_w_outliers_flagged = ww_z_scored.select(
+        *ww_data.columns, "flag_as_ww_outlier"
+    )
 
     return ww_w_outliers_flagged
 
@@ -398,7 +443,9 @@ def get_site_subpop_spine(input_ww_data, total_pop):
         # Check if auxiliary subpopulation needs to be added
         add_auxiliary_subpop = (
             total_pop
-            > input_ww_data.select(pl.col("site_pop", "site", "lab", "lab_site_index"))
+            > input_ww_data.select(
+                pl.col("site_pop", "site", "lab", "lab_site_index")
+            )
             .unique()
             .sum()
             .to_numpy()
@@ -501,7 +548,9 @@ def get_date_time_spine(
             )
         }
     )
-    date_time_spine = date_time_spine.with_columns(pl.arange(0, pl.len()).alias("t"))
+    date_time_spine = date_time_spine.with_columns(
+        pl.arange(0, pl.len()).alias("t")
+    )
     return date_time_spine
 
 
@@ -522,7 +571,8 @@ def get_nwss_data(
     ww_data = (
         clean_and_filter_nwss_data(nwss_data)  # include in vintaged data
         .filter(
-            (pl.col("location").is_in([state_abb])) & (pl.col("date") >= start_date)
+            (pl.col("location").is_in([state_abb]))
+            & (pl.col("date") >= start_date)
         )
         .with_columns(
             pl.col(["site_pop"])
@@ -558,7 +608,12 @@ def get_nwss_data(
         ww_data_w_lab_site_index.join(
             date_time_spine, on="date", how="left", coalesce=True
         )
-        .join(site_subpop_spine, on=["site_index", "site"], how="left", coalesce=True)
+        .join(
+            site_subpop_spine,
+            on=["site_index", "site"],
+            how="left",
+            coalesce=True,
+        )
         .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
     )
 
