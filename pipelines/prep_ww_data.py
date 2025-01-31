@@ -9,7 +9,7 @@ def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
     Parameters
     ----------
     nwss_data:
-        The vintaged nwss data
+        vintaged nwss data
     log_offset:  float
         a small numeric value to prevent numerical instability in
     converting from natural scale to log scale
@@ -178,7 +178,7 @@ def validate_ww_conc_data(
     ww_data: pl.DataFrame, conc_col_name: str, lod_col_name: str
 ):
     """
-    Validate wastewater concentration data.
+    Checks nwss data for missing values and data types.
     """
     if ww_data.is_empty():
         raise ValueError("Input DataFrame 'ww_data' is empty.")
@@ -269,59 +269,6 @@ def validate_ww_conc_data(
         )
 
     return None
-
-
-def preprocess_ww_data(
-    ww_data, conc_col_name="log_genome_copies_per_ml", lod_col_name="log_lod"
-):
-    assert (
-        conc_col_name in ww_data.columns
-    ), f"Column '{conc_col_name}' is missing in the input data."
-    assert (
-        lod_col_name in ww_data.columns
-    ), f"Column '{lod_col_name}' is missing in the input data."
-
-    validate_ww_conc_data(
-        ww_data, conc_col_name=conc_col_name, lod_col_name=lod_col_name
-    )
-    ww_data_ordered = ww_data.sort(by="site_pop", descending=True)
-    lab_site_df = (
-        ww_data_ordered.select(["lab", "site"])
-        .unique()
-        .with_columns(pl.arange(0, pl.len()).alias("lab_site_index"))
-    )
-    site_df = (
-        ww_data_ordered.select(["site"])
-        .unique()
-        .with_columns(pl.arange(0, pl.len()).alias("site_index"))
-    )
-    ww_data_add_cols = (
-        ww_data_ordered.join(lab_site_df, on=["lab", "site"], how="left")
-        .join(site_df, on="site", how="left")
-        .rename(
-            {
-                lod_col_name: "log_lod",
-                conc_col_name: "log_genome_copies_per_ml",
-            }
-        )
-        .with_columns(
-            [
-                (
-                    "Site: "
-                    + pl.col("site").cast(pl.Utf8)
-                    + ", Lab: "
-                    + pl.col("lab").cast(pl.Utf8)
-                ).alias("lab_site_name"),
-                (pl.col("log_genome_copies_per_ml") <= pl.col("log_lod"))
-                .cast(pl.Int8)
-                .alias("below_lod"),
-            ]
-        )
-    )
-    ww_preprocessed = flag_ww_outliers(
-        ww_data_add_cols, conc_col_name="log_genome_copies_per_ml"
-    )
-    return ww_preprocessed
 
 
 def flag_ww_outliers(
@@ -437,6 +384,64 @@ def flag_ww_outliers(
     return ww_w_outliers_flagged
 
 
+def preprocess_ww_data(
+    ww_data, conc_col_name="log_genome_copies_per_ml", lod_col_name="log_lod"
+):
+    """
+    Creates lab-site-index and flag for wastewater
+    concentration data being below the level of detection.
+
+    """
+    assert (
+        conc_col_name in ww_data.columns
+    ), f"Column '{conc_col_name}' is missing in the input data."
+    assert (
+        lod_col_name in ww_data.columns
+    ), f"Column '{lod_col_name}' is missing in the input data."
+
+    validate_ww_conc_data(
+        ww_data, conc_col_name=conc_col_name, lod_col_name=lod_col_name
+    )
+    ww_data_ordered = ww_data.sort(by="site_pop", descending=True)
+    lab_site_df = (
+        ww_data_ordered.select(["lab", "site"])
+        .unique()
+        .with_columns(pl.arange(0, pl.len()).alias("lab_site_index"))
+    )
+    site_df = (
+        ww_data_ordered.select(["site"])
+        .unique()
+        .with_columns(pl.arange(0, pl.len()).alias("site_index"))
+    )
+    ww_data_add_cols = (
+        ww_data_ordered.join(lab_site_df, on=["lab", "site"], how="left")
+        .join(site_df, on="site", how="left")
+        .rename(
+            {
+                lod_col_name: "log_lod",
+                conc_col_name: "log_genome_copies_per_ml",
+            }
+        )
+        .with_columns(
+            [
+                (
+                    "Site: "
+                    + pl.col("site").cast(pl.Utf8)
+                    + ", Lab: "
+                    + pl.col("lab").cast(pl.Utf8)
+                ).alias("lab_site_name"),
+                (pl.col("log_genome_copies_per_ml") <= pl.col("log_lod"))
+                .cast(pl.Int8)
+                .alias("below_lod"),
+            ]
+        )
+    )
+    ww_preprocessed = flag_ww_outliers(
+        ww_data_add_cols, conc_col_name="log_genome_copies_per_ml"
+    )
+    return ww_preprocessed
+
+
 def get_site_subpop_spine(input_ww_data, total_pop):
     ww_data_present = input_ww_data is not None
     if ww_data_present:
@@ -472,6 +477,7 @@ def get_site_subpop_spine(input_ww_data, total_pop):
             )
         else:
             aux_subpop = pl.DataFrame()
+
         site_subpop_spine = (
             pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
             .with_columns(
@@ -558,7 +564,7 @@ def get_nwss_data(
     ww_data_path,
     start_date: datetime.date,
     end_date: datetime.date,
-    state_abb: str,  # skip if state_abb="US"?
+    state_abb: str,
 ) -> pl.DataFrame:
     schema_overrides = {
         "county_names": pl.Utf8,
@@ -569,7 +575,7 @@ def get_nwss_data(
         schema_overrides=schema_overrides,
     )
     ww_data = (
-        clean_and_filter_nwss_data(nwss_data)  # include in vintaged data
+        clean_and_filter_nwss_data(nwss_data)
         .filter(
             (pl.col("location").is_in([state_abb]))
             & (pl.col("date") >= start_date)
