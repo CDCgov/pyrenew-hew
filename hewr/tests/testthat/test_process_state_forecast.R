@@ -1,115 +1,93 @@
 example_train_dat <-
-  tibble::tibble(
-    disease = c(
-      "COVID-19", "Influenza",
-      "Total", "Not A Value"
-    ),
-    data_type = c(
-      "train", "train",
-      "train", "Not a type"
-    ),
-    date = as.Date(c(
-      "2024-01-01",
-      "2024-01-01",
-      "2024-01-01",
-      "2025-05-05"
-    )),
-    ed_visits = c(5, 6, 50, NA)
-  )
-example_eval_dat <-
-  tibble::tibble(
-    disease = c(
-      "Total",
-      "Influenza",
-      "COVID-19"
-    ),
-    data_type = c(
-      "eval",
-      "eval",
-      "eval"
-    ),
-    date = as.Date(c(
-      "2024-01-05",
-      "2024-01-05",
-      "2024-01-05"
-    )),
-    ed_visits = c(10, 8, 60)
-  )
+  tidyr::expand_grid(
+    date = seq.Date(as.Date("2024-10-22"), as.Date("2024-10-24"), by = "day"),
+    geo_value = "CA",
+    disease = "COVID-19",
+    data_type = "train",
+    .variable = c(
+      "observed_ed_visits", "other_ed_visits",
+      "observed_hospital_admissions"
+    )
+  ) |>
+  dplyr::mutate(.value = rpois(dplyr::n(), 100))
 
+example_eval_dat <- tidyr::expand_grid(
+  date = seq.Date(as.Date("2024-10-22"), as.Date("2024-10-26"), by = "day"),
+  geo_value = "CA",
+  disease = "COVID-19",
+  data_type = "eval",
+  .variable = c(
+    "observed_ed_visits", "other_ed_visits",
+    "observed_hospital_admissions"
+  )
+) |>
+  dplyr::mutate(.value = rpois(dplyr::n(), 100))
 
 test_that("combine_training_and_eval_data works as expected", {
-  check_disease <- function(disease_name) {
-    result <- combine_training_and_eval_data(
-      example_train_dat,
-      example_eval_dat,
-      disease_name
-    )
+  result <- combine_training_and_eval_data(
+    example_train_dat,
+    example_eval_dat
+  )
 
-    checkmate::assert_names(names(result),
-      permutation.of = c(
-        "date",
-        "data_type",
-        "disease",
-        ".value"
-      )
+  checkmate::assert_names(names(result),
+    permutation.of = c(
+      "date", "geo_value", "disease", "data_type",
+      ".variable", ".value"
     )
-    checkmate::expect_names(
-      result$disease,
-      permutation.of = c(
-        "Disease",
-        "Other",
-        "prop_disease_ed_visits"
-      )
-    )
-    checkmate::expect_names(
-      result$data_type,
-      permutation.of = c("eval", "train")
-    )
+  )
 
-    expect_equal(nrow(result), 6) # 2 dates x 3 diseases
-  }
+  checkmate::expect_names(
+    result$.variable,
+    subset.of = c(
+      "observed_ed_visits", "other_ed_visits",
+      "observed_hospital_admissions", "prop_disease_ed_visits"
+    )
+  )
 
-  check_disease("COVID-19")
-  check_disease("Influenza")
+  checkmate::expect_names(
+    result$data_type,
+    permutation.of = c("eval", "train")
+  )
+
+  expect_equal(nrow(result), 32)
 })
 
 
 test_that("to_tidy_draws_timeseries() works as expected", {
   forecast <- tibble::tibble(
-    date = c(
-      "2024-02-02",
-      "2024-02-03",
-      "2024-02-02",
-      "2024-02-03"
-    ),
-    Test = c(5, 6, 10, 11),
-    .draw = c(1, 1, 2, 2)
+    date = as.Date(c("2024-12-21", "2024-12-22")),
+    .draw = c(1L, 1L),
+    geo_value = c("CA", "CA"),
+    disease = c("COVID-19", "COVID-19"),
+    .variable = c("other_ed_visits", "other_ed_visits"),
+    .value = c(20641.1242073179819, 25812.84128089781),
   )
+
   obs <- tibble::tibble(
-    date = c(
-      "2024-02-01",
-      "2024-02-02"
-    ),
-    .value = c(4, 8),
-    disease = c("Test", "Test")
+    date = as.Date(c("2024-12-17", "2024-12-18", "2024-12-19", "2024-12-20")),
+    geo_value = rep("CA", 4L),
+    disease = rep("COVID-19", 4L),
+    .variable = rep("other_ed_visits", 4L),
+    .value = c(11037, 12898, 15172, 17716),
   )
   result <- to_tidy_draws_timeseries(
     forecast,
-    obs,
-    "Test"
+    obs
   )
 
   expected <- tibble::tibble(
-    date = c(
-      "2024-02-01",
-      "2024-02-01",
-      "2024-02-02",
-      "2024-02-03",
-      "2024-02-02",
-      "2024-02-03"
+    .draw = rep(1L, 6L),
+    date = as.Date(c(
+      "2024-12-17", "2024-12-18", "2024-12-19", "2024-12-20",
+      "2024-12-21", "2024-12-22"
+    )),
+    geo_value = rep("CA", 6L),
+    disease = rep("COVID-19", 6L),
+    .variable = rep("other_ed_visits", 6L),
+    .value = c(
+      11037, 12898, 15172, 17716, 20641.1242073179819,
+      25812.84128089781
     ),
-    Test = c(4, 4, 5, 6, 10, 11),
-    .draw = c(1, 2, 1, 1, 2, 2)
   )
 
   expect_equal(result, expected)
