@@ -1,41 +1,7 @@
 import polars as pl
 import datetime
 
-
-def get_nwss_data(
-    ww_data_path,
-    start_date: datetime.date,
-    state_abb: str,
-) -> pl.DataFrame:
-    schema_overrides = {
-        "county_names": pl.Utf8,
-        "major_lab_method": pl.Utf8,
-    }
-    nwss_data = pl.read_csv(
-        ww_data_path,
-        schema_overrides=schema_overrides,
-    )
-    ww_data = (
-        clean_and_filter_nwss_data(nwss_data)  # could have this as a vintaged data
-        .filter(
-            (pl.col("location").is_in([state_abb])) & (pl.col("date") >= start_date)
-        )
-        .with_columns(
-            pl.col(["site_pop"])
-            .mean()
-            .over(["lab", "site", "date", "location"])
-            .cast(pl.Int64)
-        )
-        .with_columns(
-            pl.col(["log_genome_copies_per_ml", "log_lod"])
-            .mean()
-            .over(["lab", "site", "date", "location"])
-        )
-    )
-
-    ww_data_w_lab_site_index = preprocess_ww_data(ww_data)
-
-    return ww_data_w_lab_site_index
+from prep_data import get_state_pop_df
 
 
 def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
@@ -424,3 +390,176 @@ def flag_ww_outliers(
     ww_w_outliers_flagged = ww_z_scored.select(*ww_data.columns, "flag_as_ww_outlier")
 
     return ww_w_outliers_flagged
+
+
+def get_site_subpop_spine(input_ww_data, total_pop):
+    ww_data_present = input_ww_data is not None
+    if ww_data_present:
+        # Check if auxiliary subpopulation needs to be added
+        add_auxiliary_subpop = (
+            total_pop
+            > input_ww_data.select(pl.col("site_pop", "site", "lab", "lab_site_index"))
+            .unique()
+            .sum()
+            .to_numpy()
+            .flatten()[0]
+        )
+        site_indices = (
+            input_ww_data.select(["site_index", "site", "site_pop"])
+            .unique()
+            .sort("site_index")
+        )
+        if add_auxiliary_subpop:
+            aux_subpop = pl.DataFrame(
+                {
+                    "site_index": [None],
+                    "site": [None],
+                    "site_pop": [
+                        total_pop
+                        - site_indices.select(pl.col("site_pop"))
+                        .sum()
+                        .to_numpy()
+                        .flatten()[0]
+                    ],
+                }
+            )
+        else:
+            aux_subpop = pl.DataFrame()
+        site_subpop_spine = (
+            pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
+            .with_columns(
+                [
+                    pl.col("site_index").cum_count().alias("subpop_index"),
+                    pl.when(pl.col("site").is_not_null())
+                    .then(
+                        pl.col("site").map_elements(
+                            lambda x: f"Site: {x}", return_dtype=str
+                        )
+                    )
+                    .otherwise(pl.lit("remainder of population"))
+                    .alias("subpop_name"),
+                ]
+            )
+            .rename({"site_pop": "subpop_pop"})
+        )
+    else:
+        site_subpop_spine = pl.DataFrame(
+            {
+                "site_index": [None],
+                "site": [None],
+                "subpop_pop": [total_pop],
+                "subpop_index": [1],
+                "subpop_name": ["total population"],
+            }
+        )
+    return site_subpop_spine
+
+
+def get_lab_site_site_spine(input_ww_data):
+    ww_data_present = input_ww_data is not None
+    if ww_data_present:
+        lab_site_site_spine = (
+            input_ww_data.select(
+                [
+                    "lab_site_index",
+                    "site_index",
+                    "site",
+                    "lab",
+                    "site_pop",
+                    "lab_site_name",
+                ]
+            )
+            .unique()
+            .sort("lab_site_index")
+        )
+    else:
+        lab_site_site_spine = pl.DataFrame()
+    return lab_site_site_spine
+
+
+def get_lab_site_subpop_spine(lab_site_site_spine, site_subpop_spine):
+    ww_data_present = len(lab_site_site_spine) > 0
+    if ww_data_present:
+        lab_site_subpop_spine = lab_site_site_spine.join(
+            site_subpop_spine,
+            on=["site_index", "site"],  # Columns to join on
+            how="left",
+        )
+    else:
+        lab_site_subpop_spine = pl.DataFrame({"subpop_index": pl.Int64})
+    return lab_site_subpop_spine
+
+
+def get_date_time_spine(
+    start_date: datetime.date,
+    end_date: datetime.date,
+):
+    date_time_spine = pl.DataFrame(
+        {
+            "date": pl.date_range(
+                start=start_date, end=end_date, interval="1d", eager=True
+            )
+        }
+    )
+    date_time_spine = date_time_spine.with_columns(pl.arange(0, pl.len()).alias("t"))
+    return date_time_spine
+
+
+def get_nwss_data(
+    ww_data_path,
+    start_date: datetime.date,
+    end_date: datetime.date,
+    state_abb: str,  # skip if state_abb="US"?
+) -> pl.DataFrame:
+    schema_overrides = {
+        "county_names": pl.Utf8,
+        "major_lab_method": pl.Utf8,
+    }
+    nwss_data = pl.read_csv(
+        ww_data_path,
+        schema_overrides=schema_overrides,
+    )
+    ww_data = (
+        clean_and_filter_nwss_data(nwss_data)  # include in vintaged data
+        .filter(
+            (pl.col("location").is_in([state_abb])) & (pl.col("date") >= start_date)
+        )
+        .with_columns(
+            pl.col(["site_pop"])
+            .mean()
+            .over(["lab", "site", "date", "location"])
+            .cast(pl.Int64)
+        )
+        .with_columns(
+            pl.col(["log_genome_copies_per_ml", "log_lod"])
+            .mean()
+            .over(["lab", "site", "date", "location"])
+        )
+    )
+
+    state_pop = (
+        get_state_pop_df()
+        .filter(pl.col("abb") == state_abb)
+        .get_column("population")
+        .to_list()[0]
+    )
+
+    ww_data_w_lab_site_index = preprocess_ww_data(ww_data)
+    site_subpop_spine = get_site_subpop_spine(
+        ww_data_w_lab_site_index, total_pop=state_pop
+    )
+    lab_site_site_spine = get_lab_site_site_spine(ww_data_w_lab_site_index)
+    lab_site_subpop_spine = get_lab_site_subpop_spine(
+        lab_site_site_spine, site_subpop_spine
+    )
+    date_time_spine = get_date_time_spine(start_date, end_date)
+
+    ww_data_to_fit = (
+        ww_data_w_lab_site_index.join(
+            date_time_spine, on="date", how="left", coalesce=True
+        )
+        .join(site_subpop_spine, on=["site_index", "site"], how="left", coalesce=True)
+        .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
+    )
+
+    return ww_data_to_fit
