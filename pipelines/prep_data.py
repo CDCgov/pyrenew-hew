@@ -448,7 +448,6 @@ def process_and_save_state(
         "nhsn_training_dates": nhsn_training_dates,
         "nhsn_first_date_index": nhsn_first_date_index,
         "nhsn_step_size": nhsn_step_size,
-        "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
         "data_observed_disease_wastewater": data_observed_disease_wastewater,
     }
