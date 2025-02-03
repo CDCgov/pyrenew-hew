@@ -68,9 +68,7 @@ def get_nhsn(
     if result.returncode != 0:
         raise RuntimeError(f"pull_and_save_nhsn: {result.stderr}")
     raw_dat = pl.read_parquet(temp_file)
-    dat = raw_dat.with_columns(
-        weekendingdate=pl.col("weekendingdate").cast(pl.Date)
-    )
+    dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
     return dat
 
 
@@ -86,9 +84,7 @@ def combine_nssp_and_nhsn(
     )
 
     nhsn_data_long = (
-        nhsn_data.rename(
-            {"weekendingdate": "date", "jurisdiction": "geo_value"}
-        )
+        nhsn_data.rename({"weekendingdate": "date", "jurisdiction": "geo_value"})
         .unpivot(
             on="hospital_admissions",
             index=cs.exclude("hospital_admissions"),
@@ -172,9 +168,7 @@ def process_state_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect(streaming=True)
@@ -222,9 +216,7 @@ def aggregate_facility_level_nssp_to_state(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
             geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -320,9 +312,7 @@ def process_and_save_state(
 
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one "
-            "of facility-level and state-level"
-            "NSSP data"
+            "Must provide at least one " "of facility-level and state-level" "NSSP data"
         )
 
     state_pop_df = get_state_pop_df()
@@ -382,17 +372,13 @@ def process_and_save_state(
         state_abb=state_abb,
     ).with_columns(pl.lit("train").alias("data_type"))
 
-    nssp_training_dates = (
-        nssp_training_data.get_column("date").unique().to_list()
-    )
+    nssp_training_dates = nssp_training_data.get_column("date").unique().to_list()
     nhsn_training_dates = (
         nhsn_training_data.get_column("weekendingdate").unique().to_list()
     )
 
     nhsn_first_date_index = next(
-        i
-        for i, x in enumerate(nssp_training_dates)
-        if x == min(nhsn_training_dates)
+        i for i, x in enumerate(nssp_training_dates) if x == min(nhsn_training_dates)
     )
     nhsn_step_size = 7
 
@@ -439,9 +425,9 @@ def process_and_save_state(
         "ind_rel_to_sampled_times"
     ].to_numpy()
     assert len(ww_data_to_fit) == len(ww_censored) + len(ww_uncensored)
-    ww_sampled_times = ww_data_to_fit["t"].to_numpy()
-    ww_sampled_subpops = ww_data_to_fit["subpop_index"].to_numpy()
-    ww_sampled_lab_sites = ww_data_to_fit["lab_site_index"].to_numpy()
+    ww_observed_times = ww_data_to_fit["t"].to_numpy()
+    ww_observed_subpops = ww_data_to_fit["subpop_index"].to_numpy()
+    ww_observed_lab_sites = ww_data_to_fit["lab_site_index"].to_numpy()
     n_ww_lab_sites = len(ww_data_to_fit["lab_site_index"].unique())
     lab_site_subpop_spine = (
         ww_data_to_fit[
@@ -459,7 +445,7 @@ def process_and_save_state(
         .sort(by="lab_site_index")
     )
     lab_site_to_subpop_map = lab_site_subpop_spine["subpop_index"].to_numpy()
-
+    first_ww_date = ww_data_to_fit["date"].unique().min()
     data_for_model_fit = {
         "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
@@ -471,18 +457,18 @@ def process_and_save_state(
         "nhsn_training_dates": nhsn_training_dates,
         "nhsn_first_date_index": nhsn_first_date_index,
         "nhsn_step_size": nhsn_step_size,
-        "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
         "data_observed_disease_wastewater": data_observed_disease_wastewater,
         "ww_censored": ww_censored,
         "ww_uncensored": ww_uncensored,
-        "ww_sampled_lab_sites": ww_sampled_lab_sites,
-        "ww_sampled_subpops": ww_sampled_subpops,
-        "ww_sampled_times": ww_sampled_times,
+        "ww_observed_lab_sites": ww_observed_lab_sites,
+        "ww_observed_subpops": ww_observed_subpops,
+        "ww_observed_times": ww_observed_times,
         "ww_log_lod": ww_log_lod,
         "lab_site_to_subpop_map": lab_site_to_subpop_map,
         "n_ww_lab_sites": n_ww_lab_sites,
         "pop_fraction": pop_fraction,
+        "first_wastewater_date": first_ww_date,
     }
     data_dir = Path(model_run_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
