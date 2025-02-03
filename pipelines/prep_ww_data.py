@@ -1,7 +1,6 @@
 import datetime
 
 import polars as pl
-from pipelines.prep_data import get_state_pop_df
 
 
 def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
@@ -486,6 +485,7 @@ def get_nwss_data(
     start_date: datetime.date,
     end_date: datetime.date,
     state_abb: str,
+    state_pop: int,
 ) -> pl.DataFrame:
     schema_overrides = {
         "county_names": pl.Utf8,
@@ -494,7 +494,7 @@ def get_nwss_data(
     nwss_data = pl.read_csv(
         ww_data_path,
         schema_overrides=schema_overrides,
-    )
+    )  # placeholder: TBD: If using a direct API call to decipher or ABS vintage
     ww_data = (
         clean_and_filter_nwss_data(nwss_data)
         .filter(
@@ -513,26 +513,23 @@ def get_nwss_data(
         )
     )
 
-    state_pop = (
-        get_state_pop_df()
-        .filter(pl.col("abb") == state_abb)
-        .get_column("population")
-        .to_list()[0]
-    )
-
     ww_data_w_lab_site_index = preprocess_ww_data(ww_data)
     site_subpop_spine = get_site_subpop_spine(
         ww_data_w_lab_site_index, total_pop=state_pop
     )
     date_time_spine = get_date_time_spine(start_date, end_date)
 
-    ww_data_to_fit = ww_data_w_lab_site_index.join(
-        date_time_spine, on="date", how="left", coalesce=True
-    ).join(
-        site_subpop_spine,
-        on=["site_index", "site"],
-        how="left",
-        coalesce=True,
+    ww_data_to_fit = (
+        ww_data_w_lab_site_index.join(
+            date_time_spine, on="date", how="left", coalesce=True
+        )
+        .join(
+            site_subpop_spine,
+            on=["site_index", "site"],
+            how="left",
+            coalesce=True,
+        )
+        .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
     )
 
     return ww_data_to_fit
