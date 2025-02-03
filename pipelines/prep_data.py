@@ -8,10 +8,9 @@ from logging import Logger
 from pathlib import Path
 
 import forecasttools
+import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
-import jax.numpy as jnp
-
 from prep_ww_data import get_nwss_data
 
 _disease_map = {
@@ -69,7 +68,9 @@ def get_nhsn(
     if result.returncode != 0:
         raise RuntimeError(f"pull_and_save_nhsn: {result.stderr}")
     raw_dat = pl.read_parquet(temp_file)
-    dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
+    dat = raw_dat.with_columns(
+        weekendingdate=pl.col("weekendingdate").cast(pl.Date)
+    )
     return dat
 
 
@@ -85,7 +86,9 @@ def combine_nssp_and_nhsn(
     )
 
     nhsn_data_long = (
-        nhsn_data.rename({"weekendingdate": "date", "jurisdiction": "geo_value"})
+        nhsn_data.rename(
+            {"weekendingdate": "date", "jurisdiction": "geo_value"}
+        )
         .unpivot(
             on="hospital_admissions",
             index=cs.exclude("hospital_admissions"),
@@ -169,7 +172,9 @@ def process_state_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect(streaming=True)
@@ -217,7 +222,9 @@ def aggregate_facility_level_nssp_to_state(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
             geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -313,7 +320,9 @@ def process_and_save_state(
 
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one " "of facility-level and state-level" "NSSP data"
+            "Must provide at least one "
+            "of facility-level and state-level"
+            "NSSP data"
         )
 
     state_pop_df = get_state_pop_df()
@@ -373,13 +382,17 @@ def process_and_save_state(
         state_abb=state_abb,
     ).with_columns(pl.lit("train").alias("data_type"))
 
-    nssp_training_dates = nssp_training_data.get_column("date").unique().to_list()
+    nssp_training_dates = (
+        nssp_training_data.get_column("date").unique().to_list()
+    )
     nhsn_training_dates = (
         nhsn_training_data.get_column("weekendingdate").unique().to_list()
     )
 
     nhsn_first_date_index = next(
-        i for i, x in enumerate(nssp_training_dates) if x == min(nhsn_training_dates)
+        i
+        for i, x in enumerate(nssp_training_dates)
+        if x == min(nhsn_training_dates)
     )
     nhsn_step_size = 7
 
