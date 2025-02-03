@@ -248,15 +248,15 @@ def verify_no_date_gaps(df: pl.DataFrame):
 
 def get_state_pop_df():
     census_dat = pl.read_csv(
-        "https://www2.census.gov/geo/docs/reference/cenpop2020/CenPop2020_Mean_ST.txt"
-    )
+        "https://raw.githubusercontent.com/k5cents/usa/master/data-raw/facts.csv"
+    ).rename({"name": "long_name"})
 
     state_pop_df = forecasttools.location_table.join(
-        census_dat, left_on="long_name", right_on="STNAME"
+        census_dat, on="long_name", how="right"
     ).select(
         pl.col("short_name").alias("abb"),
         pl.col("long_name").alias("name"),
-        pl.col("POPULATION").alias("population"),
+        pl.col("population"),
     )
 
     return state_pop_df
