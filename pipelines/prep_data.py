@@ -9,10 +9,9 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
+import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
-import jax.numpy as jnp
-
 from prep_ww_data import get_nwss_data
 
 _disease_map = {
