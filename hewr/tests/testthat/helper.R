@@ -1,30 +1,19 @@
-create_tidy_forecast_data <- function(directory,
-                                      filename,
-                                      date_cols,
-                                      disease_cols,
-                                      n_draw,
-                                      with_epiweek = FALSE) {
+create_model_results <- function(file,
+                                 date_options,
+                                 geo_value_options,
+                                 disease_options,
+                                 variable_options,
+                                 n_draw) {
   data <- tidyr::expand_grid(
-    date = date_cols,
-    disease = disease_cols,
-    .draw = 1:n_draw
+    .draw = 1:n_draw,
+    date = date_options,
+    geo_value = geo_value_options,
+    disease = disease_options,
+    .variable = variable_options
   ) |>
-    dplyr::mutate(.value = sample(1:100, dplyr::n(), replace = TRUE))
-  if (length(disease_cols) == 1) {
-    data <- data |>
-      dplyr::rename(!!disease_cols := ".value") |>
-      dplyr::select(-disease)
-  }
+    dplyr::mutate(.value = as.double(rpois(dplyr::n(), lambda = 100)))
 
-  if (with_epiweek) {
-    data <- data |>
-      dplyr::mutate(
-        epiweek = lubridate::epiweek(.data$date),
-        epiyear = lubridate::epiyear(.data$date)
-      )
-  }
-
-  arrow::write_parquet(data, fs::path(directory, filename))
+  arrow::write_parquet(data, file)
 }
 
 create_observation_data <- function(

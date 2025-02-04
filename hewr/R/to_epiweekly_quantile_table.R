@@ -1,3 +1,13 @@
+process_posterior_for_table <- function(file, last_training_date) {
+  arrow::read_parquet(file) |>
+    dplyr::filter(.data$date > last_training_date) |>
+    dplyr::rename(location = "geo_value") |>
+    dplyr::mutate(
+      epiweek = lubridate::epiweek(.data$date),
+      epiyear = lubridate::epiyear(.data$date)
+    )
+}
+
 #' Create an epiweekly hubverse-format forecast quantile table
 #' from a model batch directory containing forecasts
 #' for multiple locations as daily MCMC draws.
@@ -30,7 +40,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
     report_epiyear,
     day_of_week = 7
   )
-  get_location_table <- function(model_run_dir) {
+  get_location_table <- function(model_run_dir, last_training_date) {
     samples_paths <- fs::dir_ls(model_run_dir,
       recurse = TRUE,
       glob = "*_samples.parquet"
@@ -40,8 +50,28 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
       glob = "*_quantiles.parquet"
     )
 
+    samples_forecast_data <- samples_paths |>
+      purrr::map(\(x) process_posterior_for_table(x, last_training_date)) |>
+      purrr::map(\(x) {
+        forecasttools::trajectories_to_quantiles(x,
+          timepoint_cols = "date",
+          value_col = ".value",
+          id_cols = c(
+            "location", "disease", ".variable", "epiweek",
+            "epiyear"
+          )
+        )
+      })
+
+    quantiles_forecast_data <- quantiles_paths |>
+      purrr::map(\(x) process_posterior_for_table(x, last_training_date)) |>
+      purrr::map(\(x) dplyr::rename(x, "quantile_value" = .value))
+
     scorable_datasets <-
-      tibble::tibble(file_path = c(samples_paths, quantiles_paths)) |>
+      tibble::tibble(
+        file_path = c(samples_paths, quantiles_paths),
+        forecast_data = c(samples_forecast_data, quantiles_forecast_data)
+      ) |>
       dplyr::mutate(
         forecast_name = .data$file_path |>
           fs::path_file() |>
@@ -59,34 +89,8 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
           fs::path_dir() |>
           fs::path_file()
       ) |>
-      tidyr::unite("model", .data$model_name, .data$forecast_name, sep = "_") |>
-      dplyr::mutate(forecast_data = purrr::map(.data$file_path, \(x) {
-        arrow::read_parquet(x) |>
-          dplyr::filter(.data$date > last_training_date) |>
-          dplyr::rename(location = .data$geo_value) |>
-          dplyr::mutate(
-            epiweek = lubridate::epiweek(.data$date),
-            epiyear = lubridate::epiyear(.data$date)
-          )
-      })) |>
-      dplyr::mutate(forecast_data = dplyr::case_when(
-        forecast_type == "samples" ~
-          purrr::map(.data$forecast_data, \(x) {
-            forecasttools::trajectories_to_quantiles(x,
-              timepoint_cols = "date",
-              value_col = ".value",
-              id_cols = c(
-                "location", "disease", ".variable", "epiweek",
-                "epiyear"
-              )
-            )
-          }),
-        forecast_type == "quantiles" ~ purrr::map(
-          .data$forecast_data,
-          \(x) dplyr::rename(x, "quantile_value" = .value)
-        )
-      )) |>
-      dplyr::select(-.data$file_path)
+      tidyr::unite("model", "model_name", "forecast_name", sep = "_") |>
+      dplyr::select(-"file_path")
 
     loc_epiweekly_hubverse_table <-
       scorable_datasets |>
@@ -100,15 +104,15 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
               glue::glue("wk inc {disease_abbr} prop ed visits")
           )
       })) |>
-      dplyr::select(-.data$forecast_data) |>
-      tidyr::unnest(.data$hubverse_data)
+      dplyr::select(-"forecast_data") |>
+      tidyr::unnest("hubverse_data")
 
     return(loc_epiweekly_hubverse_table)
   }
 
   hubverse_table <- purrr::map(
     fs::dir_ls(model_runs_path),
-    get_location_table
+    \(x) get_location_table(x, last_training_date)
   ) |>
     dplyr::bind_rows()
 

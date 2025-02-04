@@ -14,66 +14,47 @@ test_that(paste0(
     loc_dir <- fs::path(temp_batch_dir, "model_runs", loc, "pyrenew_e")
     fs::dir_create(loc_dir)
 
-    disease_cols <- c("Other", "Disease")
+    date_options <- as.Date(c("2024-12-13", "2024-12-14", "2024-12-15"))
+    disease_options <- "COVID-19"
+    variable_options <- c("observed_ed_visits", "other_ed_visits")
+    n_draw <- 4
+
     if (loc != "loc3") {
-      disease_cols <- c(disease_cols, "prop_disease_ed_visits")
+      variable_options <- c(variable_options, "prop_disease_ed_visits")
     }
-    create_tidy_forecast_data(
-      directory = loc_dir,
-      filename = "epiweekly_with_epiweekly_other_samples.parquet",
-      date_cols = seq(
-        lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
-        by = "week"
+
+    create_model_results(
+      file = fs::path(loc_dir,
+        "epiweekly_samples",
+        ext = "parquet"
       ),
-      disease_cols = disease_cols,
-      n_draw = 25,
-      with_epiweek = TRUE
+      variable_options = variable_options,
+      disease_options = disease_options,
+      geo_value_options = loc,
+      date_options = date_options,
+      n_draw = n_draw
     )
 
-    create_tidy_forecast_data(
-      directory = loc_dir,
-      filename = "epiweekly_samples.parquet",
-      date_cols = seq(
-        lubridate::ymd("2024-12-08"), lubridate::ymd("2024-12-14"),
-        by = "week"
+    create_model_results(
+      file = fs::path(loc_dir,
+        "epiweekly_with_epiweekly_other_samples",
+        ext = "parquet"
       ),
-      disease_cols = disease_cols,
-      n_draw = 20,
-      with_epiweek = TRUE
+      variable_options = variable_options,
+      disease_options = disease_options,
+      geo_value_options = loc,
+      date_options = date_options,
+      n_draw = n_draw
     )
   })
 
   ## should succeed despite loc3 not having valid draws with strict = FALSE
   result_w_both_locations <-
-    to_epiweekly_quantile_table(temp_batch_dir,
-      epiweekly_other_locations = "loc1"
-    ) |>
+    to_epiweekly_quantile_table(temp_batch_dir) |>
     suppressMessages()
 
-  ## should error if strict = TRUE because loc3 does not have
-  ## valid draws.
-  expect_error(
-    to_epiweekly_quantile_table(temp_batch_dir, strict = TRUE) |>
-      suppressMessages(),
-    "did not find valid draws"
-  )
 
-  ## should succeed with strict = TRUE if loc3 is excluded
-  alt_result_w_both_locations <- (
-    to_epiweekly_quantile_table(temp_batch_dir,
-      strict = TRUE,
-      exclude = "loc3"
-  )) |>
-    suppressMessages()
 
-  ## results should be equivalent for loc2,
-  ## but not for loc1
-  expect_equal(
-    result_w_both_locations |>
-      dplyr::filter(location == "loc2"),
-    alt_result_w_both_locations |>
-      dplyr::filter(location == "loc2")
-  )
 
   ## check that one used epiweekly
   ## other for loc1 while other used
@@ -81,26 +62,23 @@ test_that(paste0(
   loc1_a <- result_w_both_locations |>
     dplyr::filter(location == "loc1") |>
     dplyr::pull(.data$value)
-  loc1_b <- alt_result_w_both_locations |>
-    dplyr::filter(location == "loc1") |>
-    dplyr::pull(.data$value)
+
 
   ## length checks ensure that the
   ## number of allowed equalities _could_
   ## be reached if the vectors were mostly
   ## or entirely identical
   expect_gt(length(loc1_a), 10)
-  expect_gt(length(loc1_b), 10)
-  expect_lt(
-    sum(loc1_a == loc1_b),
-    5
-  )
+
 
   expect_s3_class(result_w_both_locations, "tbl_df")
   expect_gt(nrow(result_w_both_locations), 0)
   checkmate::expect_names(
     colnames(result_w_both_locations),
     identical.to = c(
+      "model",
+      "forecast_type",
+      "resolution",
       "reference_date",
       "target",
       "horizon",
@@ -108,33 +86,13 @@ test_that(paste0(
       "location",
       "output_type",
       "output_type_id",
-      "value",
-      "source_samples"
+      "value"
     )
   )
   expect_setequal(
     result_w_both_locations$location,
     c("loc1", "loc2")
   )
-  expect_setequal(
-    alt_result_w_both_locations$location,
-    c("loc1", "loc2")
-  )
-
-  expect_setequal(
-    result_w_both_locations$source_samples,
-    c(
-      "epiweekly_samples",
-      "epiweekly_with_epiweekly_other_samples"
-    )
-  )
-
-  expect_setequal(
-    alt_result_w_both_locations$source_samples,
-    "epiweekly_samples"
-  )
-
 
   expect_false("loc3" %in% result_w_both_locations$location)
-  expect_false("loc3" %in% alt_result_w_both_locations$location)
 })
