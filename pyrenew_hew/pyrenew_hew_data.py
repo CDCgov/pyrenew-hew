@@ -161,13 +161,13 @@ class PyrenewHEWData:
 
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
-        n_weeks = n_days // 7 + 1
+        n_weeks = n_days // 7
         return PyrenewHEWData(
             n_ed_visits_datapoints=n_days,
             n_hospital_admissions_datapoints=n_weeks,
             n_wastewater_datapoints=n_days,
             first_ed_visits_date=self.first_data_date_overall,
-            first_hospital_admissions_date=self.first_data_date_overall,
+            first_hospital_admissions_date=(self.first_data_date_overall),
             first_wastewater_date=self.first_data_date_overall,
             right_truncation_offset=None,
             # by default, want forecasts of complete reports

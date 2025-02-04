@@ -1,5 +1,4 @@
 import argparse
-import logging
 import pickle
 from pathlib import Path
 
@@ -12,10 +11,8 @@ from build_pyrenew_model import (
 def generate_and_save_predictions(
     model_run_dir: str | Path, model_name: str, n_forecast_points: int
 ) -> None:
-    logger = logging.getLogger(__name__)
     model_run_dir = Path(model_run_dir)
     model_dir = Path(model_run_dir, model_name)
-
     if not model_dir.exists():
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
     (my_model, my_data) = build_model_from_dir(model_run_dir)
@@ -30,26 +27,7 @@ def generate_and_save_predictions(
         my_model.mcmc = pickle.load(file)
 
     my_model.mcmc.sampler = fresh_sampler
-    logger.info(
-        "Days post init in fitting data: " f"{my_data.n_days_post_init}"
-    )
-    logger.info(
-        "First data date in fitting data: "
-        f"{my_data.first_data_date_overall.date()}"
-    )
     forecast_data = my_data.to_forecast_data(n_forecast_points)
-    logger.info(
-        "Days post init in synthetic forecast data: "
-        f"{forecast_data.n_days_post_init}"
-    )
-    logger.info(
-        "First data date in synthetic forecast data: "
-        f"{forecast_data.first_data_date_overall.date()}",
-    )
-    logger.info(
-        "Last data date in synthetic forecast data: "
-        f"{forecast_data.last_data_date_overall.date()}"
-    )
 
     posterior_predictive = my_model.posterior_predictive(
         data=forecast_data,
