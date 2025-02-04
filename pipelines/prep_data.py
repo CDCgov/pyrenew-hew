@@ -11,7 +11,14 @@ import forecasttools
 import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
-from prep_ww_data import get_nwss_data
+
+from prep_ww_data import (
+    get_nwss_data,
+    preprocess_ww_data,
+    get_date_time_spine,
+    get_site_subpop_spine,
+)
+
 
 _disease_map = {
     "COVID-19": "COVID-19/Omicron",
@@ -398,25 +405,41 @@ def process_and_save_state(
         "hospital_admissions"
     ).to_list()
 
-    ww_data_to_fit = get_nwss_data(
-        ww_data_path=model_run_dir,  # placeholder: TBD: If using a direct API call to decipher or ABS vintage
+    ww_data = get_nwss_data(
+        ww_data_path,  # TBD: If using a direct API call to decipher or ABS vintage
         start_date=first_training_date,
-        end_date=last_training_date,
         state_abb=state_abb,
-        state_pop=state_pop,
     )
 
+    ww_data_w_lab_site_index = preprocess_ww_data(ww_data)
+    site_subpop_spine = get_site_subpop_spine(
+        ww_data_w_lab_site_index, total_pop=state_pop
+    )
+    date_time_spine = get_date_time_spine(
+        start_date=first_training_date, end_date=last_training_date
+    )
+
+    ww_data_to_fit = (
+        ww_data_w_lab_site_index.join(
+            date_time_spine, on="date", how="left", coalesce=True
+        )
+        .join(
+            site_subpop_spine,
+            on=["site_index", "site"],
+            how="left",
+            coalesce=True,
+        )
+        .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
+    )
     data_observed_disease_wastewater = ww_data_to_fit[
         "log_genome_copies_per_ml"
     ].to_numpy()
 
-    subpop_size = (
-        ww_data_to_fit["subpop_index", "subpop_pop"]
-        .unique()
+    pop_fraction = (
+        site_subpop_spine["subpop_index", "subpop_pop"]
         .sort(by="subpop_index", descending=False)["subpop_pop"]
         .to_numpy()
-    )
-    pop_fraction = jnp.array(subpop_size) / state_pop
+    ) / state_pop
     ww_log_lod = ww_data_to_fit["log_lod"].to_numpy()
     ww_censored = ww_data_to_fit.filter(pl.col("below_lod") == 1)[
         "ind_rel_to_sampled_times"

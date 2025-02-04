@@ -527,9 +527,7 @@ def get_date_time_spine(
 def get_nwss_data(
     ww_data_path,
     start_date: datetime.date,
-    end_date: datetime.date,
     state_abb: str,
-    state_pop: int,
 ) -> pl.DataFrame:
     schema_overrides = {
         "county_names": pl.Utf8,
@@ -558,23 +556,4 @@ def get_nwss_data(
         )
     )
 
-    ww_data_w_lab_site_index = preprocess_ww_data(ww_data)
-    site_subpop_spine = get_site_subpop_spine(
-        ww_data_w_lab_site_index, total_pop=state_pop
-    )
-    date_time_spine = get_date_time_spine(start_date, end_date)
-
-    ww_data_to_fit = (
-        ww_data_w_lab_site_index.join(
-            date_time_spine, on="date", how="left", coalesce=True
-        )
-        .join(
-            site_subpop_spine,
-            on=["site_index", "site"],
-            how="left",
-            coalesce=True,
-        )
-        .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
-    )
-
-    return ww_data_to_fit
+    return ww_data
