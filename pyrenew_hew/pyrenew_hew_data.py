@@ -33,14 +33,18 @@ class PyrenewHEWData:
         first_wastewater_date: datetime.datetime.date = None,
     ) -> None:
         self.n_ed_visits_datapoints_ = n_ed_visits_datapoints
-        self.n_hospital_admissions_datapoints_ = n_hospital_admissions_datapoints
+        self.n_hospital_admissions_datapoints_ = (
+            n_hospital_admissions_datapoints
+        )
         self.n_wastewater_datapoints_ = n_wastewater_datapoints
 
         self.data_observed_disease_ed_visits = data_observed_disease_ed_visits
         self.data_observed_disease_hospital_admissions = (
             data_observed_disease_hospital_admissions
         )
-        self.data_observed_disease_wastewater = data_observed_disease_wastewater
+        self.data_observed_disease_wastewater = (
+            data_observed_disease_wastewater
+        )
         self.ww_censored = ww_censored
         self.ww_uncensored = ww_uncensored
         self.ww_observed_lab_sites = ww_observed_lab_sites
@@ -127,7 +131,9 @@ class PyrenewHEWData:
 
     @property
     def n_days_post_init(self):
-        return (self.last_data_date_overall - self.first_data_date_overall).days
+        return (
+            self.last_data_date_overall - self.first_data_date_overall
+        ).days
 
     def get_end_date(
         self,
@@ -149,7 +155,9 @@ class PyrenewHEWData:
                 )
             result = None
         else:
-            result = first_date + datetime.timedelta(days=n_datapoints * timestep_days)
+            result = first_date + datetime.timedelta(
+                days=n_datapoints * timestep_days
+            )
         return result
 
     def get_n_datapoints(

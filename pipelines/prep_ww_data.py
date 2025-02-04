@@ -3,15 +3,12 @@ import datetime
 import polars as pl
 
 
-def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
+def clean_and_filter_nwss_data(nwss_data):
     """
     Parameters
     ----------
     nwss_data:
-        vintaged nwss data
-    log_offset:  float
-        a small numeric value to prevent numerical instability in
-    converting from natural scale to log scale
+        vintaged/pulled nwss data
 
     Return
     ------
@@ -145,16 +142,14 @@ def clean_and_filter_nwss_data(nwss_data, log_offset: float = 1e-20):
                 "wwtp_jurisdiction": "location",
                 "wwtp_name": "site",
                 "lab_id": "lab",
-                "pcr_target_avg_conc": "log_genome_copies_per_ml",
-                "lod_sewage": "log_lod",
             }
         )
         .with_columns(
             [
-                (pl.col("log_genome_copies_per_ml") + log_offset)
+                pl.col("pcr_target_avg_conc")
                 .log()
                 .alias("log_genome_copies_per_ml"),
-                pl.col("log_lod").log().alias("log_lod"),
+                pl.col("lod_sewage").log().alias("log_lod"),
                 pl.col("location").str.to_uppercase().alias("location"),
             ]
         )
