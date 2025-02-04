@@ -16,6 +16,7 @@ from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
+from forecasttools import location_table
 
 
 def main(
@@ -149,11 +150,7 @@ def main(
 
     loc_abbrs = location_table.get_column("short_name").to_list()
 
-    all_locations = (
-        locations.filter(~pl.col("STUSAB").is_in(excluded_locations))
-        .get_column("STUSAB")
-        .to_list()
-    ) + ["US"]
+    all_locations = [loc for loc in loc_abbrs if loc not in excluded_locations]
 
     report_dates = [
         datetime.date(2023, 10, 11) + datetime.timedelta(weeks=x)
