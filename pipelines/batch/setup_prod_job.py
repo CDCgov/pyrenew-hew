@@ -13,6 +13,7 @@ from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
+from forecasttools import location_table
 
 
 def main(
@@ -176,12 +177,7 @@ def main(
         "'"
     )
 
-    # to be replaced by forecasttools-py table
-    locations = pl.read_csv(
-        "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
-    )
-
-    loc_abbrs = locations.get_column("STUSAB").to_list() + ["US"]
+    loc_abbrs = location_table.get_column("short_name").to_list()
     if locations_include is None:
         locations_include = loc_abbrs
     if locations_exclude is None:

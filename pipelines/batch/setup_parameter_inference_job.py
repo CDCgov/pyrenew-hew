@@ -148,10 +148,7 @@ def main(
         "'"
     )
 
-    # to be replaced by forecasttools-py table
-    locations = pl.read_csv(
-        "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
-    )
+    loc_abbrs = location_table.get_column("short_name").to_list()
 
     all_locations = [
         loc
