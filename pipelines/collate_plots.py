@@ -68,15 +68,10 @@ def merge_and_save_pdfs(model_batch_dir: Path) -> None:
 
     for model, file_dict in pdf_groups.items():
         for original_file_name, pdf_list in file_dict.items():
-            if len(pdf_list) > 1:
-                output_filename = f"{model}-{original_file_name}"
-                output_path = model_batch_dir / "figures" / output_filename
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                merge_pdfs(pdf_list, output_path)
-            else:
-                print(
-                    f"Skipping {original_file_name} in {model}, only one file found."
-                )
+            output_filename = f"{model}-{original_file_name}"
+            output_path = model_batch_dir / "figures" / output_filename
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            merge_pdfs(pdf_list, output_path)
 
 
 parser = argparse.ArgumentParser(
