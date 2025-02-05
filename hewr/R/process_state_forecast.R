@@ -106,7 +106,7 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
     transformed_obs,
     tidy_forecast
   ) |>
-    dplyr::select(".draw", tidyselect::everything())
+    dplyr::select(!!sample_id_colname, tidyselect::everything())
 }
 
 join_and_calc_prop <- function(model_1, model_2) {

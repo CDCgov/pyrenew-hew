@@ -33,7 +33,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
 
   process_posterior_for_table <- function(file) {
     arrow::read_parquet(file) |>
-      dplyr::filter(.data$date > last_training_date) |>
+      dplyr::filter(.data$date > !!last_training_date) |>
       dplyr::rename(location = "geo_value") |>
       dplyr::mutate(
         epiweek = lubridate::epiweek(.data$date),
