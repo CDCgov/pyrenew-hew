@@ -77,6 +77,12 @@ class PyrenewHEWData:
         return self.first_wastewater_date_
 
     @property
+    def first_wastewater_date(self):
+        if self.data_observed_disease_wastewater is not None:
+            return self.data_observed_disease_wastewater["date"].min()
+        return self.first_wastewater_date_
+
+    @property
     def last_ed_visits_date(self):
         return self.get_end_date(
             self.first_ed_visits_date,

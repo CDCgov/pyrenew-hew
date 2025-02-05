@@ -123,6 +123,8 @@ def build_model_from_dir(
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
+    wastewater_data = pl.DataFrame(model_data["train_disease_wastewater"])
+
     my_latent_infection_model = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
         initialization_rate_rv=priors["initialization_rate_rv"],
