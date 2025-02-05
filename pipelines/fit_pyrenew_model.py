@@ -12,6 +12,9 @@ from build_pyrenew_model import (
 def fit_and_save_model(
     model_run_dir: str,
     model_name: str,
+    sample_ed_visits: bool = False,
+    sample_hospital_admissions: bool = False,
+    sample_wastewater: bool = False,
     n_warmup: int = 1000,
     n_samples: int = 1000,
     n_chains: int = 4,
@@ -26,12 +29,17 @@ def fit_and_save_model(
             "rng_key must be an integer with which "
             "to seed :func:`jax.random.key`"
         )
-    (my_model, my_data) = build_model_from_dir(model_run_dir)
+    (my_model, my_data) = build_model_from_dir(
+        model_run_dir,
+        sample_ed_visits=sample_ed_visits,
+        sample_hospital_admissions=sample_hospital_admissions,
+        sample_wastewater=sample_wastewater,
+    )
     my_model.run(
         data=my_data,
-        sample_ed_visits=True,
-        sample_hospital_admissions=True,
-        sample_wastewater=False,
+        sample_ed_visits=sample_ed_visits,
+        sample_hospital_admissions=sample_hospital_admissions,
+        sample_wastewater=sample_wastewater,
         num_warmup=n_warmup,
         num_samples=n_samples,
         rng_key=rng_key,

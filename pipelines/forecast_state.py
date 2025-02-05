@@ -337,6 +337,7 @@ def main(
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
+        sample_ed_visits=True,
     )
     logger.info("Model fitting complete")
 
