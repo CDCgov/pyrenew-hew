@@ -353,3 +353,85 @@ def get_nwss_data(
     )
 
     return ww_data
+
+
+def get_site_subpop_spine(input_ww_data, total_pop):
+    ww_data_present = input_ww_data is not None
+    if ww_data_present:
+        # Check if auxiliary subpopulation needs to be added
+        add_auxiliary_subpop = (
+            total_pop
+            > input_ww_data.select(
+                pl.col("site_pop", "site", "lab", "lab_site_index")
+            )
+            .unique()
+            .sum()
+            .to_numpy()
+            .flatten()[0]
+        )
+        site_indices = (
+            input_ww_data.select(["site_index", "site", "site_pop"])
+            .unique()
+            .sort("site_index")
+        )
+        if add_auxiliary_subpop:
+            aux_subpop = pl.DataFrame(
+                {
+                    "site_index": [None],
+                    "site": [None],
+                    "site_pop": [
+                        total_pop
+                        - site_indices.select(pl.col("site_pop"))
+                        .sum()
+                        .to_numpy()
+                        .flatten()[0]
+                    ],
+                }
+            )
+        else:
+            aux_subpop = pl.DataFrame()
+        site_subpop_spine = (
+            pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
+            .with_columns(
+                [
+                    pl.col("site_index").cum_count().alias("subpop_index"),
+                    pl.when(pl.col("site").is_not_null())
+                    .then(
+                        pl.col("site").map_elements(
+                            lambda x: f"Site: {x}", return_dtype=str
+                        )
+                    )
+                    .otherwise(pl.lit("remainder of population"))
+                    .alias("subpop_name"),
+                ]
+            )
+            .rename({"site_pop": "subpop_pop"})
+        )
+    else:
+        site_subpop_spine = pl.DataFrame(
+            {
+                "site_index": [None],
+                "site": [None],
+                "subpop_pop": [total_pop],
+                "subpop_index": [1],
+                "subpop_name": ["total population"],
+            }
+        )
+    return site_subpop_spine
+
+
+def get_date_time_spine(
+    start_date: datetime.date,
+    end_date: datetime.date,
+):
+    date_time_spine = pl.DataFrame(
+        {
+            "date": pl.date_range(
+                start=start_date, end=end_date, interval="1d", eager=True
+            )
+        }
+    )
+    date_time_spine = date_time_spine.with_columns(
+        pl.arange(0, pl.len()).alias("t")
+    )
+    return date_time_spine
