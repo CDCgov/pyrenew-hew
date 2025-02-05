@@ -1,13 +1,3 @@
-process_posterior_for_table <- function(file, last_training_date) {
-  arrow::read_parquet(file) |>
-    dplyr::filter(.data$date > last_training_date) |>
-    dplyr::rename(location = "geo_value") |>
-    dplyr::mutate(
-      epiweek = lubridate::epiweek(.data$date),
-      epiyear = lubridate::epiyear(.data$date)
-    )
-}
-
 #' Create an epiweekly hubverse-format forecast quantile table
 #' from a model batch directory containing forecasts
 #' for multiple locations as daily MCMC draws.
@@ -40,7 +30,18 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
     report_epiyear,
     day_of_week = 7
   )
-  get_location_table <- function(model_run_dir, last_training_date) {
+
+  process_posterior_for_table <- function(file) {
+    arrow::read_parquet(file) |>
+      dplyr::filter(.data$date > last_training_date) |>
+      dplyr::rename(location = "geo_value") |>
+      dplyr::mutate(
+        epiweek = lubridate::epiweek(.data$date),
+        epiyear = lubridate::epiyear(.data$date)
+      )
+  }
+
+  get_location_table <- function(model_run_dir) {
     samples_paths <- fs::dir_ls(model_run_dir,
       recurse = TRUE,
       glob = "*_samples.parquet"
@@ -51,20 +52,17 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
     )
 
     quantilized_samples_forecast <- samples_paths |>
-      purrr::map(\(x) process_posterior_for_table(x, last_training_date)) |>
+      purrr::map(process_posterior_for_table) |>
       purrr::map(\(x) {
         forecasttools::trajectories_to_quantiles(x,
           timepoint_cols = "date",
           value_col = ".value",
-          id_cols = c(
-            "location", "disease", ".variable", "epiweek",
-            "epiyear"
-          )
+          id_cols = c("location", "disease", ".variable", "epiweek", "epiyear")
         )
       })
 
     quantiles_forecast <- quantiles_paths |>
-      purrr::map(\(x) process_posterior_for_table(x, last_training_date)) |>
+      purrr::map(process_posterior_for_table) |>
       purrr::map(\(x) dplyr::rename(x, "quantile_value" = .value))
 
     scorable_datasets <-
@@ -110,9 +108,10 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
     return(loc_epiweekly_hubverse_table)
   }
 
+
+
   hubverse_table <- purrr::map(
-    fs::dir_ls(model_runs_path),
-    \(x) get_location_table(x, last_training_date)
+    fs::dir_ls(model_runs_path), get_location_table
   ) |>
     dplyr::bind_rows()
 
