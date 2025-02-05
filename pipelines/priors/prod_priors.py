@@ -37,6 +37,7 @@ inf_feedback_strength_rv = TransformedVariable(
 )
 # Could be reparameterized?
 
+# low confidence logit-Normal
 p_ed_visit_mean_rv = DistributionalVariable(
     "p_ed_visit_mean",
     dist.Normal(
@@ -44,6 +45,19 @@ p_ed_visit_mean_rv = DistributionalVariable(
         0.3,
     ),
 )  # logit scale
+
+# low confidence logit-Normal with same mode as IEDR
+ihr_rv = TransformedVariable(
+    "ihr",
+    DistributionalVariable(
+        "logit_ihr",
+        dist.Normal(
+            transformation.SigmoidTransform().inv(0.005),
+            0.3,
+        ),
+    ),
+    transforms=transformation.SigmoidTransform(),
+)
 
 
 ihr_rv = TransformedVariable(
@@ -77,6 +91,8 @@ ed_visit_wday_effect_rv = TransformedVariable(
     transformation.AffineTransform(loc=0, scale=7),
 )
 
+# low confidence with a mode at equivalence and
+# plausiblity of 2x or 1/2 the rate
 ihr_rel_iedr_rv = DistributionalVariable(
     "ihr_rel_iedr", dist.LogNormal(0, jnp.log(jnp.sqrt(2)))
 )
@@ -92,3 +108,30 @@ ed_neg_bin_concentration_rv = DistributionalVariable(
 hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
     "hosp_admit_neg_bin_concentration", dist.LogNormal(6, 1.5)
 )
+
+t_peak_rv = DistributionalVariable("t_peak", dist.TruncatedNormal(5, 1, low=0))
+
+duration_shed_after_peak_rv = DistributionalVariable(
+    "durtion_shed_after_peak", dist.TruncatedNormal(12, 3, low=0)
+)
+
+log10_genome_per_inf_ind_rv = DistributionalVariable(
+    "log10_genome_per_inf_ind", dist.Normal(12, 2)
+)
+
+mode_sigma_ww_site_rv = DistributionalVariable(
+    "mode_sigma_ww_site",
+    dist.TruncatedNormal(1, 1, low=0),
+)
+
+sd_log_sigma_ww_site_rv = DistributionalVariable(
+    "sd_log_sigma_ww_site", dist.TruncatedNormal(0, 0.693, low=0)
+)
+
+mode_sd_ww_site_rv = DistributionalVariable(
+    "mode_sd_ww_site", dist.TruncatedNormal(0, 0.25, low=0)
+)
+
+# model constants related to wastewater obs process
+ww_ml_produced_per_day = 227000
+max_shed_interval = 26

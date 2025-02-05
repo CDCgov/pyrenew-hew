@@ -6,116 +6,32 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 env:
-  REGISTRY: cfaprdbatchcr.azurecr.io
   IMAGE_NAME: pyrenew-hew
 
 jobs:
 
-  build-dependencies-image:
+  build-and-push-image:
     runs-on: cfa-cdcgov
-    name: Build dependencies image
-
-    outputs:
-      tag: ${{ steps.image-tag.outputs.tag }}
-      commit-msg: ${{ steps.commit-message.outputs.message }}
-      branch: ${{ steps.branch-name.outputs.branch }}
+    name: Build and push image
 
     steps:
-
-      #########################################################################
-      # Retrieving the commit message
-      # We need to ensure we are checking out the commit sha that triggered the
-      # workflow, not the PR's head sha. This is because the PR's head sha may
-      # be a merge commit, which will not have the commit message we need.
-      #########################################################################
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Build and push image
+        id: build-push
+        uses: CDCgov/cfa-actions/twostep-container-build@v1.2.0
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Getting the commit message
-        id: commit-message
-        run: echo "message=$(git log -1 --pretty=%s HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Checking out the latest (may be merge if PR)
-        uses: actions/checkout@v4
-
-      # From: https://stackoverflow.com/a/58035262/2097171
-      - name: Extract branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: branch-name
-
-      #########################################################################
-      # Getting the tag
-      # The tag will be used for both the docker image and the batch pool
-      #########################################################################
-      - name: Figure out tag (either latest if it is main or the branch name)
-        id: image-tag
-        run: |
-          if [ "${{ steps.branch-name.outputs.branch }}" = "main" ]; then
-            echo "tag=latest" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check cache for base image
-        uses: actions/cache@v4
-        id: cache
-        with:
-          key: docker-dependencies-${{ runner.os }}-${{ hashFiles('./Containerfile.dependencies') }}-${{ steps.image-tag.outputs.tag }}
-          lookup-only: true
-          path:
-            ./Containerfile.dependencies
-
-      - name: Login to the Container Registry
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: "cfaprdbatchcr.azurecr.io"
-          username: "cfaprdbatchcr"
-          password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
-
-      - name: Build and push
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: docker/build-push-action@v6
-        with:
-          push: true
-          no-cache: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-dependencies:${{ steps.image-tag.outputs.tag }}
-          file: ./Containerfile.dependencies
-
-  build-pipeline-image:
-
-    name: Build pipeline image
-
-    needs: build-dependencies-image
-    runs-on: cfa-cdcgov
-
-    outputs:
-      tag: ${{ needs.build-dependencies-image.outputs.tag }}
-      commit-msg: ${{ needs.build-dependencies-image.outputs.commit-msg }}
-
-    steps:
-
-      - name: Login to the Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: "cfaprdbatchcr.azurecr.io"
-          username: "cfaprdbatchcr"
-          password: ${{ secrets.CFAPRDBATCHCR_REGISTRY_PASSWORD }}
-
-      - name: Build and push model pipeline image for Azure batch
-        id: build_and_push_model_image
-        uses: docker/build-push-action@v6
-        with:
-          push: true # This can be toggled manually for tweaking.
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-dependencies-image.outputs.tag }}
-          file: ./Containerfile
-          build-args: |
-            TAG=${{ needs.build-dependencies-image.outputs.tag }}
+          container-file-1: ./Containerfile.dependencies
+          container-file-2: ./Containerfile
+          first-step-cache-key: docker-dependencies-${{ runner.os }}-${{ hashFiles('./Containerfile.dependencies') }}
+          registry: ${{ vars.CONTAINER_REGISTRY }}
+          username: ${{ vars.CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+          image: ${{ env.IMAGE_NAME }}
+          build-args-2: |
+            TAG=${{ steps.image.outputs.tag }}
             GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
-            GIT_BRANCH_NAME=${{ needs.build-dependencies-image.outputs.branch }}
+            GIT_BRANCH_NAME=${{ steps.branch.outputs.name }}

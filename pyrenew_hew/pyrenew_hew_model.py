@@ -1,16 +1,19 @@
 # numpydoc ignore=GL08
 import datetime
 
+import jax
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
-from pyrenew.arrayutils import repeat_until_n, tile_until_n
+from numpyro.infer.reparam import LocScaleReparam
+from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import (
     compute_delay_ascertained_incidence,
-    daily_to_weekly,
+    daily_to_mmwr_epiweekly,
 )
+from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
@@ -36,15 +39,15 @@ class LatentInfectionProcess(RandomVariable):
         infection_feedback_strength_rv: RandomVariable,
         infection_feedback_pmf_rv: RandomVariable,
         n_initialization_points: int,
+        pop_fraction: ArrayLike = jnp.array([1]),
+        autoreg_rt_subpop_rv: RandomVariable = None,
+        sigma_rt_rv: RandomVariable = None,
+        sigma_i_first_obs_rv: RandomVariable = None,
+        sigma_initial_exp_growth_rate_rv: RandomVariable = None,
+        offset_ref_logit_i_first_obs_rv: RandomVariable = None,
+        offset_ref_initial_exp_growth_rate_rv: RandomVariable = None,
+        offset_ref_log_rt_rv: RandomVariable = None,
     ) -> None:
-        self.infection_initialization_process = InfectionInitializationProcess(
-            "I0_initialization",
-            i0_first_obs_n_rv,
-            InitializeInfectionsExponentialGrowth(
-                n_initialization_points, initialization_rate_rv, t_pre_init=0
-            ),
-        )
-
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
             infection_feedback_pmf=infection_feedback_pmf_rv,
@@ -55,11 +58,27 @@ class LatentInfectionProcess(RandomVariable):
             differencing_order=1,
         )
 
+        self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
-        self.log_r_mu_intercept_rv = log_r_mu_intercept_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
         self.infection_feedback_pmf_rv = infection_feedback_pmf_rv
+        self.i0_first_obs_n_rv = i0_first_obs_n_rv
+        self.initialization_rate_rv = initialization_rate_rv
+        self.offset_ref_logit_i_first_obs_rv = offset_ref_logit_i_first_obs_rv
+        self.offset_ref_initial_exp_growth_rate_rv = (
+            offset_ref_initial_exp_growth_rate_rv
+        )
+        self.offset_ref_log_rt_rv = offset_ref_log_rt_rv
+        self.autoreg_rt_subpop_rv = autoreg_rt_subpop_rv
+        self.sigma_rt_rv = sigma_rt_rv
+        self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
+        self.sigma_initial_exp_growth_rate_rv = (
+            sigma_initial_exp_growth_rate_rv
+        )
+        self.n_initialization_points = n_initialization_points
+        self.pop_fraction = pop_fraction
+        self.n_subpops = len(pop_fraction)
 
     def validate(self):
         pass
@@ -74,8 +93,6 @@ class LatentInfectionProcess(RandomVariable):
             Number of days of infections to sample, not including
             the initialization period.
         """
-        i0 = self.infection_initialization_process()
-
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
         log_r_mu_intercept = self.log_r_mu_intercept_rv()
@@ -95,32 +112,150 @@ class LatentInfectionProcess(RandomVariable):
             noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
         )
 
-        rtu = repeat_until_n(
-            data=jnp.exp(log_rtu_weekly),
-            n_timepoints=n_days_post_init,
-            offset=0,
-            period_size=7,
+        i0_first_obs_n = self.i0_first_obs_n_rv()
+        initial_exp_growth_rate = self.initialization_rate_rv()
+        if self.n_subpops == 1:
+            i_first_obs_over_n_subpop = i0_first_obs_n
+            initial_exp_growth_rate_subpop = initial_exp_growth_rate
+            log_rtu_weekly_subpop = log_rtu_weekly[:, jnp.newaxis]
+        else:
+            i_first_obs_over_n_ref_subpop = transformation.SigmoidTransform()(
+                transformation.logit(i0_first_obs_n)
+                + self.offset_ref_logit_i_first_obs_rv(),
+            )
+            initial_exp_growth_rate_ref_subpop = (
+                initial_exp_growth_rate
+                + self.offset_ref_initial_exp_growth_rate_rv()
+            )
+
+            log_rtu_weekly_ref_subpop = (
+                log_rtu_weekly + self.offset_ref_log_rt_rv()
+            )
+            i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
+                "i_first_obs_over_n_non_ref_subpop",
+                DistributionalVariable(
+                    "i_first_obs_over_n_non_ref_subpop_raw",
+                    dist.Normal(
+                        transformation.logit(i0_first_obs_n),
+                        self.sigma_i_first_obs_rv(),
+                    ),
+                    reparam=LocScaleReparam(0),
+                ),
+                transforms=transformation.SigmoidTransform(),
+            )
+            initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
+                "initial_exp_growth_rate_non_ref_subpop_raw",
+                dist.Normal(
+                    initial_exp_growth_rate,
+                    self.sigma_initial_exp_growth_rate_rv(),
+                ),
+                reparam=LocScaleReparam(0),
+            )
+
+            autoreg_rt_subpop = self.autoreg_rt_subpop_rv()
+            sigma_rt = self.sigma_rt_rv()
+            rtu_subpop_ar_init_rv = DistributionalVariable(
+                "rtu_subpop_ar_init",
+                dist.Normal(
+                    0,
+                    sigma_rt / jnp.sqrt(1 - jnp.pow(autoreg_rt_subpop, 2)),
+                ),
+            )
+
+            with numpyro.plate("n_subpops", self.n_subpops - 1):
+                initial_exp_growth_rate_non_ref_subpop = (
+                    initial_exp_growth_rate_non_ref_subpop_rv()
+                )
+                i_first_obs_over_n_non_ref_subpop = (
+                    i_first_obs_over_n_non_ref_subpop_rv()
+                )
+                rtu_subpop_ar_init = rtu_subpop_ar_init_rv()
+
+            i_first_obs_over_n_subpop = jnp.hstack(
+                [
+                    i_first_obs_over_n_ref_subpop,
+                    i_first_obs_over_n_non_ref_subpop,
+                ]
+            )
+            initial_exp_growth_rate_subpop = jnp.hstack(
+                [
+                    initial_exp_growth_rate_ref_subpop,
+                    initial_exp_growth_rate_non_ref_subpop,
+                ]
+            )
+
+            rtu_subpop_ar_proc = ARProcess()
+            rtu_subpop_ar_weekly = rtu_subpop_ar_proc(
+                noise_name="rtu_ar_proc",
+                n=n_weeks_rt,
+                init_vals=rtu_subpop_ar_init[jnp.newaxis],
+                autoreg=autoreg_rt_subpop[jnp.newaxis],
+                noise_sd=sigma_rt,
+            )
+
+            log_rtu_weekly_non_ref_subpop = (
+                rtu_subpop_ar_weekly + log_rtu_weekly[:, jnp.newaxis]
+            )
+            log_rtu_weekly_subpop = jnp.concat(
+                [
+                    log_rtu_weekly_ref_subpop[:, jnp.newaxis],
+                    log_rtu_weekly_non_ref_subpop,
+                ],
+                axis=1,
+            )
+
+        rtu_subpop = jnp.squeeze(
+            jnp.repeat(
+                jnp.exp(log_rtu_weekly_subpop),
+                repeats=7,
+                axis=0,
+            )[:n_days_post_init, :]
+        )  # indexed rel to first post-init day.
+
+        i0_subpop_rv = DeterministicVariable(
+            "i0_subpop", i_first_obs_over_n_subpop
+        )
+        initial_exp_growth_rate_subpop_rv = DeterministicVariable(
+            "initial_exp_growth_rate_subpop", initial_exp_growth_rate_subpop
+        )
+        infection_initialization_process = InfectionInitializationProcess(
+            "I0_initialization",
+            i0_subpop_rv,
+            InitializeInfectionsExponentialGrowth(
+                self.n_initialization_points,
+                initial_exp_growth_rate_subpop_rv,
+                t_pre_init=0,
+            ),
         )
 
         generation_interval_pmf = self.generation_interval_pmf_rv()
+        i0 = infection_initialization_process()
 
         inf_with_feedback_proc_sample = self.inf_with_feedback_proc(
-            Rt=rtu,
+            Rt=rtu_subpop,
             I0=i0,
             gen_int=generation_interval_pmf,
         )
 
-        latent_infections = jnp.concat(
+        latent_infections_subpop = jnp.concat(
             [
                 i0,
                 inf_with_feedback_proc_sample.post_initialization_infections,
             ]
         )
-        numpyro.deterministic("rtu", rtu)
+
+        if self.n_subpops == 1:
+            latent_infections = latent_infections_subpop
+        else:
+            latent_infections = jnp.sum(
+                self.pop_fraction * latent_infections_subpop, axis=1
+            )
+
+        numpyro.deterministic("rtu_subpop", rtu_subpop)
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
-        return latent_infections
+        return latent_infections, latent_infections_subpop
 
 
 class EDVisitObservationProcess(RandomVariable):
@@ -184,7 +319,7 @@ class EDVisitObservationProcess(RandomVariable):
         iedr = jnp.repeat(
             transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
-        )[:n_datapoints]
+        )[:n_datapoints]  # indexed rel to first ed report day
         # this is only applied after the ed visits are generated, not to all
         # the latent infections. This is why we cannot apply the iedr in
         # compute_delay_ascertained_incidence
@@ -239,7 +374,7 @@ class EDVisitObservationProcess(RandomVariable):
             obs=data_observed,
         )
 
-        return sampled_ed_visits, iedr
+        return observed_ed_visits, iedr
 
 
 class HospAdmitObservationProcess(RandomVariable):
@@ -274,13 +409,35 @@ class HospAdmitObservationProcess(RandomVariable):
         """
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
-        ihr = self.ihr_rv()
-
-        latent_admissions = population_size * ihr * latent_infections
+        if self.ihr_rel_iedr_rv is not None and self.ihr_rv is not None:
+            raise ValueError(
+                "IHR must either be specified "
+                "in absolute terms by a non-None "
+                "`ihr_rv` or specified relative "
+                "to the IEDR by a non-None "
+                "`ihr_rel_iedr_rv`, but not both. "
+                "Got non-None RVs for both "
+                "quantities"
+            )
+        elif self.ihr_rel_iedr_rv is not None:
+            if iedr is None:
+                raise ValueError(
+                    "Must pass in an IEDR to " "compute IHR relative to IEDR."
+                )
+            ihr = iedr[0] * self.ihr_rel_iedr_rv()
+            numpyro.deterministic("ihr", ihr)
+        elif self.ihr_rv is not None:
+            ihr = self.ihr_rv()
+        else:
+            raise ValueError(
+                "Must provide either an ihr_rv "
+                "or an ihr_rel_iedr_rv. "
+                "Got neither (both were None)."
+            )
         latent_hospital_admissions = compute_delay_ascertained_incidence(
             p_observed_given_incident=1,
-            latent_incidence=latent_admissions,
-            delay_incidence_to_observation_pmf=inf_to_hosp_admit,
+            latent_incidence=(population_size * ihr * latent_infections),
+            delay_incidence_to_observation_pmf=(inf_to_hosp_admit),
         )
 
         longest_possible_delay = inf_to_hosp_admit.shape[0]
@@ -291,10 +448,9 @@ class HospAdmitObservationProcess(RandomVariable):
             first_latent_infection_dow + longest_possible_delay
         ) % 7
 
-        predicted_weekly_admissions = daily_to_weekly(
+        predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
             input_data_first_dow=first_latent_admission_dow,
-            week_start_dow=6,  # MMWR epiweek, starts Sunday
         )
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
@@ -302,26 +458,240 @@ class HospAdmitObservationProcess(RandomVariable):
             concentration_rv=self.hosp_admit_neg_bin_concentration_rv,
         )
 
-        sampled_admissions = hospital_admissions_obs_rv(
+        observed_hospital_admissions = hospital_admissions_obs_rv(
             mu=predicted_weekly_admissions[-n_datapoints:], obs=data_observed
         )
 
-        return sampled_admissions
+        return observed_hospital_admissions
 
 
 class WastewaterObservationProcess(RandomVariable):
     """
-    Placeholder for wastewater obs process
+    Observe and/or predict wastewater concentration
     """
 
-    def __init__(self) -> None:
-        pass
-
-    def sample(self):
-        pass
+    def __init__(
+        self,
+        t_peak_rv: RandomVariable,
+        duration_shed_after_peak_rv: RandomVariable,
+        log10_genome_per_inf_ind_rv: RandomVariable,
+        mode_sigma_ww_site_rv: RandomVariable,
+        sd_log_sigma_ww_site_rv: RandomVariable,
+        mode_sd_ww_site_rv: RandomVariable,
+        max_shed_interval: float,
+        ww_ml_produced_per_day: float,
+    ) -> None:
+        self.t_peak_rv = t_peak_rv
+        self.duration_shed_after_peak_rv = duration_shed_after_peak_rv
+        self.log10_genome_per_inf_ind_rv = log10_genome_per_inf_ind_rv
+        self.mode_sigma_ww_site_rv = mode_sigma_ww_site_rv
+        self.sd_log_sigma_ww_site_rv = sd_log_sigma_ww_site_rv
+        self.mode_sd_ww_site_rv = mode_sd_ww_site_rv
+        self.max_shed_interval = max_shed_interval
+        self.ww_ml_produced_per_day = ww_ml_produced_per_day
 
     def validate(self):
         pass
+
+    @staticmethod
+    def normed_shedding_cdf(
+        time: ArrayLike, t_p: float, t_d: float, log_base: float
+    ) -> ArrayLike:
+        """
+        calculates fraction of total fecal RNA shedding that has occurred
+        by a given time post infection.
+
+
+        Parameters
+        ----------
+        time: ArrayLike
+            Time points to calculate the CDF of viral shedding.
+        t_p : float
+            Time (in days) from infection to peak shedding.
+        t_d: float
+            Time (in days) from peak shedding to the end of shedding.
+        log_base: float
+            Log base used for the shedding kinetics function.
+
+
+        Returns
+        -------
+        ArrayLike
+            Normalized CDF values of viral shedding at each time point.
+        """
+        norm_const = (t_p + t_d) * ((log_base - 1) / jnp.log(log_base) - 1)
+
+        def ad_pre(x):
+            return (
+                t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p)
+                - x
+            )
+
+        def ad_post(x):
+            return (
+                -t_d
+                / jnp.log(log_base)
+                * jnp.exp(jnp.log(log_base) * (1 - ((x - t_p) / t_d)))
+                - x
+            )
+
+        return (
+            jnp.where(
+                time < t_p + t_d,
+                jnp.where(
+                    time < t_p,
+                    ad_pre(time) - ad_pre(0),
+                    ad_pre(t_p) - ad_pre(0) + ad_post(time) - ad_post(t_p),
+                ),
+                norm_const,
+            )
+            / norm_const
+        )
+
+    def get_viral_trajectory(
+        self,
+        tpeak: float,
+        duration_shed_after_peak: float,
+    ) -> ArrayLike:
+        """
+        Computes the probability mass function (PMF) of
+        daily viral shedding based on a normalized CDF.
+
+        Parameters
+        ----------
+        tpeak: float
+            Time (in days) from infection to peak viral load in shedding.
+        duration_shed_after_peak: float
+            Duration (in days) of detectable viral shedding after the peak.
+
+        Returns
+        -------
+        ArrayLike
+            Normalized daily viral shedding PMF
+        """
+        daily_shedding_pmf = self.normed_shedding_cdf(
+            jnp.arange(1, self.max_shed_interval),
+            tpeak,
+            duration_shed_after_peak,
+            10,
+        ) - self.normed_shedding_cdf(
+            jnp.arange(0, self.max_shed_interval - 1),
+            tpeak,
+            duration_shed_after_peak,
+            10,
+        )
+        return daily_shedding_pmf
+
+    def sample(
+        self,
+        latent_infections_subpop: ArrayLike,
+        data_observed: ArrayLike,
+        n_datapoints: int,
+        ww_uncensored: ArrayLike,
+        ww_censored: ArrayLike,
+        ww_sampled_lab_sites: ArrayLike,
+        ww_sampled_subpops: ArrayLike,
+        ww_sampled_times: ArrayLike,
+        ww_log_lod: ArrayLike,
+        lab_site_to_subpop_map: ArrayLike,
+        n_ww_lab_sites: int,
+        shedding_offset: float,
+        pop_fraction: ArrayLike,
+    ):
+        t_peak = self.t_peak_rv()
+        dur_shed = self.duration_shed_after_peak_rv()
+        viral_kinetics = self.get_viral_trajectory(t_peak, dur_shed)
+
+        def batch_colvolve_fn(m):
+            return jnp.convolve(m, viral_kinetics, mode="valid")
+
+        model_net_inf_ind_shedding = jax.vmap(
+            batch_colvolve_fn, in_axes=1, out_axes=1
+        )(jnp.atleast_2d(latent_infections_subpop))[-n_datapoints:, :]
+        numpyro.deterministic(
+            "model_net_inf_ind_shedding", model_net_inf_ind_shedding
+        )
+
+        log10_genome_per_inf_ind = self.log10_genome_per_inf_ind_rv()
+        expected_obs_viral_genomes = (
+            jnp.log(10) * log10_genome_per_inf_ind
+            + jnp.log(model_net_inf_ind_shedding + shedding_offset)
+            - jnp.log(self.ww_ml_produced_per_day)
+        )
+        numpyro.deterministic(
+            "expected_obs_viral_genomes", expected_obs_viral_genomes
+        )
+
+        mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
+        sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
+        mode_sd_ww_site = self.mode_sd_ww_site_rv()
+
+        mode_ww_site_rv = DistributionalVariable(
+            "mode_ww_site",
+            dist.Normal(0, mode_sd_ww_site),
+            reparam=LocScaleReparam(0),
+        )  # lab-site specific variation
+
+        sigma_ww_site_rv = TransformedVariable(
+            "sigma_ww_site",
+            DistributionalVariable(
+                "log_sigma_ww_site",
+                dist.Normal(jnp.log(mode_sigma_ww_site), sd_log_sigma_ww_site),
+                reparam=LocScaleReparam(0),
+            ),
+            transforms=transformation.ExpTransform(),
+        )
+
+        with numpyro.plate("n_ww_lab_sites", n_ww_lab_sites):
+            mode_ww_site = mode_ww_site_rv()
+            sigma_ww_site = sigma_ww_site_rv()
+
+        # multiply the expected observed genomes by the site-specific multiplier at that sampling time
+        expected_obs_log_v_site = (
+            expected_obs_viral_genomes[ww_sampled_times, ww_sampled_subpops]
+            + mode_ww_site[ww_sampled_lab_sites]
+        )
+
+        DistributionalVariable(
+            "log_conc_obs",
+            dist.Normal(
+                loc=expected_obs_log_v_site[ww_uncensored],
+                scale=sigma_ww_site[ww_sampled_lab_sites[ww_uncensored]],
+            ),
+        ).sample(
+            obs=(
+                data_observed[ww_uncensored]
+                if data_observed is not None
+                else None
+            ),
+        )
+
+        if ww_censored.shape[0] != 0:
+            log_cdf_values = dist.Normal(
+                loc=expected_obs_log_v_site[ww_censored],
+                scale=sigma_ww_site[ww_sampled_lab_sites[ww_censored]],
+            ).log_cdf(ww_log_lod[ww_censored])
+            numpyro.factor("log_prob_censored", log_cdf_values.sum())
+
+        # Predict site and population level wastewater concentrations
+        site_log_ww_conc = DistributionalVariable(
+            "site_log_ww_conc",
+            dist.Normal(
+                loc=expected_obs_viral_genomes[:, lab_site_to_subpop_map]
+                + mode_ww_site,
+                scale=sigma_ww_site,
+            ),
+        )()
+
+        population_latent_viral_genome_conc = jax.scipy.special.logsumexp(
+            expected_obs_viral_genomes, axis=1, b=pop_fraction
+        )
+        numpyro.deterministic(
+            "population_latent_viral_genome_conc",
+            population_latent_viral_genome_conc,
+        )
+
+        return site_log_ww_conc, population_latent_viral_genome_conc
 
 
 class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
@@ -348,25 +718,25 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_ed_visits: bool = False,
         sample_hospital_admissions: bool = False,
         sample_wastewater: bool = False,
-    ) -> ArrayLike:  # numpydoc ignore=GL08
-        latent_infections = self.latent_infection_process_rv(
-            n_days_post_init=data.n_days_post_init,
+    ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
+        n_init_days = self.latent_infection_process_rv.n_initialization_points
+        latent_infections, latent_infections_subpop = (
+            self.latent_infection_process_rv(
+                n_days_post_init=data.n_days_post_init,
+            )
         )
-        n_init_days = self.latent_infection_process_rv.infection_initialization_process.infection_init_method.n_timepoints
         first_latent_infection_dow = (
             data.first_data_date_overall - datetime.timedelta(days=n_init_days)
         ).weekday()
 
-        sampled_ed_visits, sampled_admissions, sampled_wastewater = (
-            None,
-            None,
-            None,
-        )
-
+        observed_ed_visits = None
+        observed_admissions = None
+        site_level_observed_wastewater = None
+        population_level_latent_wastewater = None
         iedr = None
 
         if sample_ed_visits:
-            sampled_ed_visits, iedr = self.ed_visit_obs_process_rv(
+            observed_ed_visits, iedr = self.ed_visit_obs_process_rv(
                 latent_infections=latent_infections,
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
@@ -375,7 +745,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             )
 
         if sample_hospital_admissions:
-            sampled_admissions = self.hosp_admit_obs_process_rv(
+            observed_admissions = self.hosp_admit_obs_process_rv(
                 latent_infections=latent_infections,
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
@@ -384,10 +754,28 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 iedr=iedr,
             )
         if sample_wastewater:
-            sampled_wastewater = self.wastewater_obs_process_rv()
+            (
+                site_level_observed_wastewater,
+                population_level_latent_wastewater,
+            ) = self.wastewater_obs_process_rv(
+                latent_infections=latent_infections,
+                latent_infections_subpop=latent_infections_subpop,
+                data_observed=data.data_observed_disease_wastewater,
+                n_datapoints=data.n_wastewater_datapoints,
+                ww_uncensored=None,  # placeholder
+                ww_censored=None,  # placeholder
+                ww_sampled_lab_sites=None,  # placeholder
+                ww_sampled_subpops=None,  # placeholder
+                ww_sampled_times=None,  # placeholder
+                ww_log_lod=None,  # placeholder
+                lab_site_to_subpop_map=None,  # placeholder
+                n_ww_lab_sites=None,  # placeholder
+                shedding_offset=1e-8,
+            )
 
         return {
-            "ed_visits": sampled_ed_visits,
-            "hospital_admissions": sampled_admissions,
-            "wasewater": sampled_wastewater,
+            "ed_visits": observed_ed_visits,
+            "hospital_admissions": observed_admissions,
+            "site_level_wastewater_conc": site_level_observed_wastewater,
+            "population_level_latent_wastewater_conc": population_level_latent_wastewater,
         }

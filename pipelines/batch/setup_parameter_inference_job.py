@@ -13,6 +13,7 @@ from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
+from forecasttools import location_table
 
 
 def main(
@@ -148,16 +149,9 @@ def main(
         "'"
     )
 
-    # to be replaced by forecasttools-py table
-    locations = pl.read_csv(
-        "https://www2.census.gov/geo/docs/reference/state.txt", separator="|"
-    )
+    loc_abbrs = location_table.get_column("short_name").to_list()
 
-    all_locations = [
-        loc
-        for loc in ["US"] + locations.get_column("STUSAB").to_list()
-        if loc not in excluded_locations
-    ]
+    all_locations = [loc for loc in loc_abbrs if loc not in excluded_locations]
 
     for disease, state in itertools.product(disease_list, all_locations):
         task = get_task_config(

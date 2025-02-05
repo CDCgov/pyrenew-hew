@@ -145,10 +145,13 @@ def process_state_level_data(
     disease_key = _disease_map.get(disease, disease)
 
     if state_abb == "US":
+        locations_to_aggregate = (
+            state_pop_df["abb"].filter(pl.col("abb") != "US").unique()
+        )
         logger.info("Aggregating state-level data to national")
         state_level_nssp_data = aggregate_to_national(
             state_level_nssp_data,
-            state_pop_df["abb"].unique(),
+            locations_to_aggregate,
             first_training_date,
             national_geo_value="US",
         )
@@ -203,9 +206,12 @@ def aggregate_facility_level_nssp_to_state(
 
     if state_abb == "US":
         logger.info("Aggregating facility-level data to national")
+        locations_to_aggregate = (
+            state_pop_df["abb"].filter(pl.col("abb") != "US").unique()
+        )
         facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
-            state_pop_df["abb"].unique(),
+            locations_to_aggregate,
             first_training_date,
             national_geo_value="US",
         )
@@ -245,19 +251,11 @@ def verify_no_date_gaps(df: pl.DataFrame):
 
 
 def get_state_pop_df():
-    census_dat = pl.read_csv(
-        "https://www2.census.gov/geo/docs/reference/cenpop2020/CenPop2020_Mean_ST.txt"
-    )
-
-    state_pop_df = forecasttools.location_table.join(
-        census_dat, left_on="long_name", right_on="STNAME"
-    ).select(
+    return forecasttools.location_table.select(
         pl.col("short_name").alias("abb"),
         pl.col("long_name").alias("name"),
-        pl.col("POPULATION").alias("population"),
+        pl.col("population"),
     )
-
-    return state_pop_df
 
 
 def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
@@ -325,14 +323,11 @@ def process_and_save_state(
 
     state_pop_df = get_state_pop_df()
 
-    if state_abb == "US":
-        state_pop = state_pop_df["population"].sum()
-    else:
-        state_pop = (
-            state_pop_df.filter(pl.col("abb") == state_abb)
-            .get_column("population")
-            .to_list()[0]
-        )
+    state_pop = (
+        state_pop_df.filter(pl.col("abb") == state_abb)
+        .get_column("population")
+        .to_list()[0]
+    )
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
