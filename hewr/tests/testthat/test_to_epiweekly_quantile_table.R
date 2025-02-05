@@ -56,6 +56,7 @@ test_that(paste0(
       "model",
       "forecast_type",
       "resolution",
+      ".variable",
       "reference_date",
       "target",
       "horizon",

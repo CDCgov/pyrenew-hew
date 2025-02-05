@@ -27,7 +27,10 @@ to_categorized_iqr <- function(hub_table,
 
 plot_category_pointintervals <- function(data, horizon) {
   plot <- data |>
-    filter(.data$horizon == !!horizon) |>
+    filter(
+      .data$horizon == !!horizon,
+      stringr::str_detect(.data$target, "prop")
+    ) |>
     arrange(point) |>
     mutate("location" = factor(.data$location,
       levels = unique(.data$location),

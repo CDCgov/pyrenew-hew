@@ -164,8 +164,9 @@ parse_variable_name <- function(variable_name) {
   proportion <- stringr::str_starts(variable_name, "prop")
 
   core_name <- dplyr::case_when(
-    str_detect(variable_name, "ed_visits") ~ "Emergency Department Visits",
-    str_detect(variable_name, "hospital") ~ "Hospital Admissions",
+    stringr::str_detect(variable_name, "ed_visits") ~
+      "Emergency Department Visits",
+    stringr::str_detect(variable_name, "hospital") ~ "Hospital Admissions",
     TRUE ~ ""
   )
 

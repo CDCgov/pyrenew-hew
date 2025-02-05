@@ -63,7 +63,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
 
     quantiles_forecast <- quantiles_paths |>
       purrr::map(process_posterior_for_table) |>
-      purrr::map(\(x) dplyr::rename(x, "quantile_value" = .value))
+      purrr::map(\(x) dplyr::rename(x, "quantile_value" = ".value"))
 
     scorable_datasets <-
       tibble::tibble(
@@ -90,18 +90,36 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
       tidyr::unite("model", "model_name", "forecast_name", sep = "_") |>
       dplyr::select(-"file_path")
 
+    process_forecast_data <- function(forecast_data) {
+      variable_target_key <- c(
+        "observed_hospital_admissions" =
+          glue::glue("wk inc {disease_abbr} hosp"),
+        "observed_ed_visits" = glue::glue("wk inc {disease_abbr} ed visits"),
+        "other_ed_visits" = "wk inc other ed visits",
+        "prop_disease_ed_visits" =
+          glue::glue("wk inc {disease_abbr} prop ed visits")
+      )
+
+      forecast_data |>
+        tidyr::nest(.by = ".variable") |>
+        dplyr::mutate(data = purrr::map2(
+          .data$.variable, .data$data,
+          \(.variable, data) {
+            forecasttools::get_hubverse_table(data,
+              report_epiweek_end,
+              target_name = variable_target_key[[.variable]]
+            )
+          }
+        )) |>
+        tidyr::unnest("data")
+    }
+
     loc_epiweekly_hubverse_table <-
       scorable_datasets |>
       dplyr::filter(.data$resolution == "epiweekly") |>
-      dplyr::mutate(hubverse_data = purrr::map(.data$forecast_data, \(x) {
-        x |>
-          dplyr::filter(.data$.variable == "prop_disease_ed_visits") |>
-          forecasttools::get_hubverse_table(
-            report_epiweek_end,
-            target_name =
-              glue::glue("wk inc {disease_abbr} prop ed visits")
-          )
-      })) |>
+      dplyr::mutate(hubverse_data = purrr::map(
+        .data$forecast_data, process_forecast_data
+      )) |>
       dplyr::select(-"forecast_data") |>
       tidyr::unnest("hubverse_data")
 
