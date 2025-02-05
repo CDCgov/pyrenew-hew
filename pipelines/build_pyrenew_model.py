@@ -19,7 +19,7 @@ from pyrenew_hew.pyrenew_hew_model import (
 def build_model_from_dir(
     model_dir: Path,
     sample_ed_visits: bool = False,
-    sample_hospital_admission: bool = False,
+    sample_hospital_admissions: bool = False,
     sample_wastewater: bool = False,
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
     data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
