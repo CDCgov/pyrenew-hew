@@ -27,7 +27,7 @@ jobs:
           container-file-1: ./Containerfile.dependencies
           container-file-2: ./Containerfile
           first-step-cache-key: docker-dependencies-${{ runner.os }}-${{ hashFiles('./Containerfile.dependencies') }}
-          registry: ${{ env.CONTAINER_REGISTRY }}
+          registry: ${{ vars.CONTAINER_REGISTRY }}
           username: ${{ vars.CONTAINER_REGISTRY_USERNAME }}
           password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
           image: ${{ env.IMAGE_NAME }}
