@@ -369,7 +369,7 @@ class EDVisitObservationProcess(RandomVariable):
             concentration_rv=self.ed_neg_bin_concentration_rv,
         )
 
-        sampled_ed_visits = ed_visit_obs_rv(
+        observed_ed_visits = ed_visit_obs_rv(
             mu=latent_ed_visits_now,
             obs=data_observed,
         )
