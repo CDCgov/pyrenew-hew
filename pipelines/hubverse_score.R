@@ -172,10 +172,10 @@ score_and_save <- function(observed_data_path,
   full_scorable_table <- all_paths |>
     purrr::pmap(read_and_prep_for_scoring) |>
     dplyr::bind_rows() |>
-    dplyr::select(
-      -"other_ed_visit_forecast",
-      -"source_samples"
-    )
+    dplyr::select(-dplyr::any_of(c(
+      "other_ed_visit_forecast",
+      "source_samples"
+    )))
 
 
   message("Finished reading in forecasts and preparing for scoring.")
