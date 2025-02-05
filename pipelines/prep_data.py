@@ -146,7 +146,7 @@ def process_state_level_data(
 
     if state_abb == "US":
         locations_to_aggregate = (
-            state_pop_df["abb"].filter(pl.col("abb") != "US").unique()
+            state_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
         logger.info("Aggregating state-level data to national")
         state_level_nssp_data = aggregate_to_national(
@@ -207,7 +207,7 @@ def aggregate_facility_level_nssp_to_state(
     if state_abb == "US":
         logger.info("Aggregating facility-level data to national")
         locations_to_aggregate = (
-            state_pop_df["abb"].filter(pl.col("abb") != "US").unique()
+            state_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
         facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
