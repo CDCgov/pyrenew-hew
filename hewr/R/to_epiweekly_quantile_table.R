@@ -50,7 +50,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
       glob = "*_quantiles.parquet"
     )
 
-    samples_forecast_data <- samples_paths |>
+    quantilized_samples_forecast <- samples_paths |>
       purrr::map(\(x) process_posterior_for_table(x, last_training_date)) |>
       purrr::map(\(x) {
         forecasttools::trajectories_to_quantiles(x,
@@ -63,14 +63,14 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
         )
       })
 
-    quantiles_forecast_data <- quantiles_paths |>
+    quantiles_forecast <- quantiles_paths |>
       purrr::map(\(x) process_posterior_for_table(x, last_training_date)) |>
       purrr::map(\(x) dplyr::rename(x, "quantile_value" = .value))
 
     scorable_datasets <-
       tibble::tibble(
         file_path = c(samples_paths, quantiles_paths),
-        forecast_data = c(samples_forecast_data, quantiles_forecast_data)
+        forecast_data = c(quantilized_samples_forecast, quantiles_forecast)
       ) |>
       dplyr::mutate(
         forecast_name = .data$file_path |>
