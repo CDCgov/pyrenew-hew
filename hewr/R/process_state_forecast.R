@@ -1,3 +1,110 @@
+process_timeseries <- function(timeseries_model_dir,
+                               daily_samples,
+                               epiweekly_samples,
+                               daily_training_dat,
+                               epiweekly_training_dat,
+                               required_columns) {
+  # augment daily and epiweekly other ed visits forecast
+  # with "sample" format observed data
+
+  ## ts model, daily denominator
+  daily_ts_denom_samples <- arrow::read_parquet(
+    fs::path(timeseries_model_dir,
+      "daily_baseline_ts_forecast_samples",
+      ext = "parquet"
+    )
+  ) |>
+    dplyr::filter(.data$.variable == "other_ed_visits") |>
+    to_tidy_draws_timeseries(
+      observed = daily_training_dat |>
+        dplyr::filter(.data$.variable == "other_ed_visits") |>
+        dplyr::select(-"data_type"),
+      epiweekly = FALSE
+    ) |>
+    dplyr::select(tidyselect::any_of(required_columns))
+
+  ## ts model, daily denominator aggregated to epiweekly
+  agg_ewkly_ts_denom_samples <-
+    daily_ts_denom_samples |>
+    forecasttools::daily_to_epiweekly(
+      value_col = ".value",
+      weekly_value_name = ".value",
+      id_cols = c(".draw", "geo_value", "disease", ".variable"),
+      strict = TRUE,
+      with_epiweek_end_date = TRUE,
+      epiweek_end_date_name = "date"
+    ) |>
+    dplyr::select(tidyselect::any_of(required_columns))
+
+  ## ts model, epiweekly denominator
+  ewkly_ts_denom_samples <- arrow::read_parquet(
+    fs::path(timeseries_model_dir,
+      "epiweekly_baseline_ts_forecast_samples",
+      ext = "parquet"
+    )
+  ) |>
+    dplyr::filter(.data$.variable == "other_ed_visits") |>
+    to_tidy_draws_timeseries(
+      observed = epiweekly_training_dat |>
+        dplyr::filter(.data$.variable == "other_ed_visits") |>
+        dplyr::select(-"data_type"),
+      epiweekly = TRUE
+    ) |>
+    dplyr::select(tidyselect::any_of(required_columns))
+
+  # Daily Numerator, Daily Denominator
+  daily_samples_daily_n_daily_d <- join_and_calc_prop(
+    daily_samples,
+    daily_ts_denom_samples
+  )
+
+  # Epiweekly Aggregated Numerator, Epiweekly Aggregated Denominator
+  ewkly_samples_agg_n_agg_d <- join_and_calc_prop(
+    epiweekly_samples,
+    agg_ewkly_ts_denom_samples
+  )
+
+  # Epiweekly Aggregated Numerator, Epiweekly Denominator
+  ewkly_samples_agg_n_ewkly_d <- join_and_calc_prop(
+    epiweekly_samples,
+    ewkly_ts_denom_samples
+  )
+
+
+
+  list(
+    "daily_samples" = daily_samples_daily_n_daily_d,
+    "epiweekly_samples" = ewkly_samples_agg_n_agg_d,
+    "epiweekly_with_epiweekly_other_samples" = ewkly_samples_agg_n_ewkly_d
+  )
+}
+
+epiweekly_samples_from_daily <- function(daily_samples, required_columns) {
+  epiweekly_obs_ed_samples <-
+    daily_samples |>
+    dplyr::filter(.data$.variable == "observed_ed_visits") |>
+    forecasttools::daily_to_epiweekly(
+      value_col = ".value",
+      weekly_value_name = ".value",
+      id_cols = c(
+        ".chain", ".iteration", ".draw", "geo_value", "disease",
+        ".variable"
+      ),
+      strict = TRUE,
+      with_epiweek_end_date = TRUE,
+      epiweek_end_date_name = "date"
+    ) |>
+    dplyr::select(tidyselect::all_of(required_columns))
+
+  epiweekly_samples <-
+    daily_samples |>
+    dplyr::filter(.data$.variable != "observed_ed_visits") |>
+    dplyr::bind_rows(epiweekly_obs_ed_samples) |>
+    dplyr::select(tidyselect::all_of(required_columns))
+
+  return(epiweekly_samples)
+}
+
 #' Combine training and evaluation data for
 #' postprocessing.
 #'
@@ -282,30 +389,12 @@ process_state_forecast <- function(model_run_dir,
 
   samples_list <- list(daily_samples = daily_samples)
 
-  # For the E model, do epiweekly
+  # For the E model, do epiweekly and process denominator
   if (pyrenew_model_components["e"]) {
-    epiweekly_obs_ed_samples <-
-      daily_samples |>
-      dplyr::filter(.data$.variable == "observed_ed_visits") |>
-      forecasttools::daily_to_epiweekly(
-        value_col = ".value",
-        weekly_value_name = ".value",
-        id_cols = c(
-          ".chain", ".iteration", ".draw", "geo_value", "disease",
-          ".variable"
-        ),
-        strict = TRUE,
-        with_epiweek_end_date = TRUE,
-        epiweek_end_date_name = "date"
-      ) |>
-      dplyr::select(tidyselect::all_of(required_columns))
-
-    epiweekly_samples <-
-      daily_samples |>
-      dplyr::filter(.data$.variable != "observed_ed_visits") |>
-      dplyr::bind_rows(epiweekly_obs_ed_samples) |>
-      dplyr::select(tidyselect::all_of(required_columns))
-
+    epiweekly_samples <- epiweekly_samples_from_daily(
+      daily_samples,
+      required_columns
+    )
     samples_list$epiweekly_samples <- epiweekly_samples
 
     ## Process timeseries posterior
@@ -315,79 +404,19 @@ process_state_forecast <- function(model_run_dir,
         timeseries_model_name
       )
 
-      # augment daily and epiweekly other ed visits forecast
-      # with "sample" format observed data
-
-      ## ts model, daily denominator
-      daily_ts_denom_samples <- arrow::read_parquet(
-        fs::path(timeseries_model_dir,
-          "daily_baseline_ts_forecast_samples",
-          ext = "parquet"
-        )
-      ) |>
-        dplyr::filter(.data$.variable == "other_ed_visits") |>
-        to_tidy_draws_timeseries(
-          observed = daily_training_dat |>
-            dplyr::filter(.data$.variable == "other_ed_visits") |>
-            dplyr::select(-"data_type"),
-          epiweekly = FALSE
-        ) |>
-        dplyr::select(tidyselect::any_of(required_columns))
-
-      ## ts model, daily denominator aggregated to epiweekly
-      agg_ewkly_ts_denom_samples <-
-        daily_ts_denom_samples |>
-        forecasttools::daily_to_epiweekly(
-          value_col = ".value",
-          weekly_value_name = ".value",
-          id_cols = c(".draw", "geo_value", "disease", ".variable"),
-          strict = TRUE,
-          with_epiweek_end_date = TRUE,
-          epiweek_end_date_name = "date"
-        ) |>
-        dplyr::select(tidyselect::any_of(required_columns))
-
-      ## ts model, epiweekly denominator
-      ewkly_ts_denom_samples <- arrow::read_parquet(
-        fs::path(timeseries_model_dir,
-          "epiweekly_baseline_ts_forecast_samples",
-          ext = "parquet"
-        )
-      ) |>
-        dplyr::filter(.data$.variable == "other_ed_visits") |>
-        to_tidy_draws_timeseries(
-          observed = epiweekly_training_dat |>
-            dplyr::filter(.data$.variable == "other_ed_visits") |>
-            dplyr::select(-"data_type"),
-          epiweekly = TRUE
-        ) |>
-        dplyr::select(tidyselect::any_of(required_columns))
-
-      # Daily Numerator, Daily Denominator
-      daily_samples_daily_n_daily_d <- join_and_calc_prop(
+      timeseries_output <- process_timeseries(
+        timeseries_model_dir,
         daily_samples,
-        daily_ts_denom_samples
-      )
-
-      samples_list$daily_samples <- daily_samples_daily_n_daily_d
-
-      # Epiweekly Aggregated Numerator, Epiweekly Aggregated Denominator
-      ewkly_samples_agg_n_agg_d <- join_and_calc_prop(
         epiweekly_samples,
-        agg_ewkly_ts_denom_samples
+        daily_training_dat,
+        epiweekly_training_dat,
+        required_columns
       )
 
-      samples_list$epiweekly_samples <- ewkly_samples_agg_n_agg_d
-
-
-      # Epiweekly Aggregated Numerator, Epiweekly Denominator
-      ewkly_samples_agg_n_ewkly_d <- join_and_calc_prop(
-        epiweekly_samples,
-        ewkly_ts_denom_samples
-      )
-
+      samples_list$daily_samples <- timeseries_output$daily_samples
+      samples_list$epiweekly_samples <- timeseries_output$epiweekly_samples
       samples_list$epiweekly_with_epiweekly_other_samples <-
-        ewkly_samples_agg_n_ewkly_d
+        timeseries_output$epiweekly_with_epiweekly_other_samples
     }
   }
 
