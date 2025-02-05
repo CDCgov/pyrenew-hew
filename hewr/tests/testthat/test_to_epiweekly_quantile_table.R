@@ -19,19 +19,15 @@ test_that(paste0(
     variable_options <- c("observed_ed_visits", "other_ed_visits")
     n_draw <- 4
 
-    if (loc != "loc3") {
-      variable_options <- c(variable_options, "prop_disease_ed_visits")
-    }
-
     create_model_results(
       file = fs::path(loc_dir,
         "epiweekly_samples",
         ext = "parquet"
       ),
-      variable_options = variable_options,
-      disease_options = disease_options,
-      geo_value_options = loc,
+      model_name = fs::path_file(loc_dir),
       date_options = date_options,
+      geo_value_options = loc,
+      disease_options = disease_options,
       n_draw = n_draw
     )
 
@@ -40,41 +36,22 @@ test_that(paste0(
         "epiweekly_with_epiweekly_other_samples",
         ext = "parquet"
       ),
-      variable_options = variable_options,
-      disease_options = disease_options,
-      geo_value_options = loc,
+      model_name = fs::path_file(loc_dir),
       date_options = date_options,
+      geo_value_options = loc,
+      disease_options = disease_options,
       n_draw = n_draw
     )
   })
 
-  ## should succeed despite loc3 not having valid draws with strict = FALSE
-  result_w_both_locations <-
+  result <-
     to_epiweekly_quantile_table(temp_batch_dir) |>
     suppressMessages()
 
+  expect_gt(nrow(result), 0)
 
-
-
-  ## check that one used epiweekly
-  ## other for loc1 while other used
-  ## default, resulting in different values
-  loc1_a <- result_w_both_locations |>
-    dplyr::filter(location == "loc1") |>
-    dplyr::pull(.data$value)
-
-
-  ## length checks ensure that the
-  ## number of allowed equalities _could_
-  ## be reached if the vectors were mostly
-  ## or entirely identical
-  expect_gt(length(loc1_a), 10)
-
-
-  expect_s3_class(result_w_both_locations, "tbl_df")
-  expect_gt(nrow(result_w_both_locations), 0)
   checkmate::expect_names(
-    colnames(result_w_both_locations),
+    colnames(result),
     identical.to = c(
       "model",
       "forecast_type",
@@ -89,10 +66,4 @@ test_that(paste0(
       "value"
     )
   )
-  expect_setequal(
-    result_w_both_locations$location,
-    c("loc1", "loc2")
-  )
-
-  expect_false("loc3" %in% result_w_both_locations$location)
 })

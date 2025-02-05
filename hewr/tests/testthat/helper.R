@@ -1,9 +1,29 @@
 create_model_results <- function(file,
+                                 model_name,
                                  date_options,
                                  geo_value_options,
                                  disease_options,
-                                 variable_options,
                                  n_draw) {
+  model_components <- hewr::parse_pyrenew_model_name(model_name)
+
+  components_to_variables <-
+    list(
+      "h" = "observed_hospital_admissions",
+      "e" = c(
+        "observed_ed_visits",
+        "other_ed_visits",
+        "prop_disease_ed_visits"
+      ),
+      "w" = NULL
+    )
+
+
+  variable_options <-
+    components_to_variables |>
+    purrr::keep(model_components) |>
+    unname() |>
+    unlist()
+
   data <- tidyr::expand_grid(
     .draw = 1:n_draw,
     date = date_options,
@@ -48,6 +68,7 @@ create_hubverse_table <- function(
         decreasing = FALSE
       ),
       target = "wk inc covid prop ed visits",
+      # "wk inc covid hosp	"
       output_type = !!output_type,
       target_end_date = reference_date + 7 * horizon
     ) |>
