@@ -172,7 +172,11 @@ score_and_save <- function(observed_data_path,
   full_scorable_table <- all_paths |>
     purrr::pmap(read_and_prep_for_scoring) |>
     dplyr::bind_rows() |>
-    dplyr::select(-"other_ed_visit_forecast")
+    dplyr::select(
+      -"other_ed_visit_forecast",
+      -"source_samples"
+    )
+
 
   message("Finished reading in forecasts and preparing for scoring.")
   message("Scoring forecasts...")
@@ -217,12 +221,6 @@ score_and_save <- function(observed_data_path,
   )
 
   locations <- unique(full_scorable_table$location)
-
-  print(full_scorable_table |>
-    dplyr::filter(
-      is.na(.data$quantile_level),
-      .data$location == "US"
-    ))
 
   pred_actual_by_horizon <-
     purrr::map(
