@@ -90,9 +90,9 @@ score_single_run <- function(samples_scorable,
 
 read_and_score_location <- function(model_run_dir,
                                     strict = TRUE) {
-  last_training_date <- parse_model_run_dir_path(
+  first_forecast_date <- parse_model_run_dir_path(
     model_run_dir
-  )$last_training_date
+  )$last_training_date + lubridate::days(1)
 
   samples_paths <- dir_ls(model_run_dir,
     recurse = TRUE,
@@ -126,7 +126,7 @@ read_and_score_location <- function(model_run_dir,
     mutate(forecast_data = map(file_path, \(x) {
       read_parquet(x) |>
         rename(predicted = .value) |>
-        filter(date > last_training_date)
+        filter(date > !!first_forecast_date)
     })) |>
     select(-file_path)
 
@@ -149,7 +149,7 @@ read_and_score_location <- function(model_run_dir,
           )
         ) |>
           rename(observed = .value) |>
-          filter(date > last_training_date)
+          filter(date > !!first_forecast_date)
       })
     ) |>
     select(-file_path) |>
