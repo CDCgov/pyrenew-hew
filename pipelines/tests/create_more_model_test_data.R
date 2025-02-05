@@ -1,3 +1,8 @@
+# This scripts takes real pyrenew_e output from the test pipeline and augments
+# it to create fake preyrenew_h and pyrenew_he output. It then processes the
+# remaining parts of the pipeline on the fake output.
+# In the future, the pipeline script should be updated, and this script should
+# be deleted.
 library(tidyverse)
 library(fs)
 library(glue)
