@@ -4,6 +4,7 @@ import runpy
 from pathlib import Path
 
 import jax.numpy as jnp
+import polars as pl
 from pyrenew.deterministic import DeterministicVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
@@ -78,6 +79,8 @@ def build_model_from_dir(
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
+    wastewater_data = pl.DataFrame(model_data["train_disease_wastewater"])
+
     my_latent_infection_model = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
         initialization_rate_rv=priors["initialization_rate_rv"],
@@ -133,10 +136,11 @@ def build_model_from_dir(
         data_observed_disease_hospital_admissions=(
             data_observed_disease_hospital_admissions
         ),
-        data_observed_disease_wastewater=None,  # placeholder
+        wastewater_data=wastewater_data,
         right_truncation_offset=right_truncation_offset,
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,
+        population_size=population_size,
     )
 
     return (my_model, my_data)

@@ -423,16 +423,15 @@ def process_and_save_state(
         state_abb=state_abb,
     )
 
-    ww_data_w_lab_site_index = preprocess_ww_data(ww_data)
+    preprocessed_ww_data = preprocess_ww_data(ww_data)
     site_subpop_spine = get_site_subpop_spine(
-        ww_data_w_lab_site_index, total_pop=state_pop
+        preprocessed_ww_data, total_pop=state_pop
     )
     date_time_spine = get_date_time_spine(
         start_date=first_training_date, end_date=last_training_date
     )
-
     ww_data_to_fit = (
-        ww_data_w_lab_site_index.join(
+        preprocessed_ww_data.join(
             date_time_spine, on="date", how="left", coalesce=True
         )
         .join(
@@ -443,44 +442,7 @@ def process_and_save_state(
         )
         .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
     )
-    data_observed_disease_wastewater = ww_data_to_fit[
-        "log_genome_copies_per_ml"
-    ].to_numpy()
 
-    pop_fraction = (
-        site_subpop_spine["subpop_index", "subpop_pop"]
-        .sort(by="subpop_index", descending=False)["subpop_pop"]
-        .to_numpy()
-    ) / state_pop
-    ww_log_lod = ww_data_to_fit["log_lod"].to_numpy()
-    ww_censored = ww_data_to_fit.filter(pl.col("below_lod") == 1)[
-        "ind_rel_to_sampled_times"
-    ].to_numpy()
-    ww_uncensored = ww_data_to_fit.filter(pl.col("below_lod") == 0)[
-        "ind_rel_to_sampled_times"
-    ].to_numpy()
-    assert len(ww_data_to_fit) == len(ww_censored) + len(ww_uncensored)
-    ww_observed_times = ww_data_to_fit["t"].to_numpy()
-    ww_observed_subpops = ww_data_to_fit["subpop_index"].to_numpy()
-    ww_observed_lab_sites = ww_data_to_fit["lab_site_index"].to_numpy()
-    n_ww_lab_sites = len(ww_data_to_fit["lab_site_index"].unique())
-    lab_site_subpop_spine = (
-        ww_data_to_fit[
-            "lab_site_index",
-            "site_index",
-            "site",
-            "lab",
-            "site_pop",
-            "lab_site_name",
-            "subpop_pop",
-            "subpop_index",
-            "subpop_name",
-        ]
-        .unique()
-        .sort(by="lab_site_index")
-    )
-    lab_site_to_subpop_map = lab_site_subpop_spine["subpop_index"].to_numpy()
-    first_ww_date = ww_data_to_fit["date"].unique().min()
     data_for_model_fit = {
         "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
@@ -493,18 +455,22 @@ def process_and_save_state(
         "nhsn_first_date_index": nhsn_first_date_index,
         "nhsn_step_size": nhsn_step_size,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": data_observed_disease_wastewater,
-        "ww_censored": ww_censored,
-        "ww_uncensored": ww_uncensored,
-        "ww_observed_lab_sites": ww_observed_lab_sites,
-        "ww_observed_subpops": ww_observed_subpops,
-        "ww_observed_times": ww_observed_times,
-        "ww_log_lod": ww_log_lod,
-        "lab_site_to_subpop_map": lab_site_to_subpop_map,
-        "n_ww_lab_sites": n_ww_lab_sites,
-        "pop_fraction": pop_fraction,
-        "first_wastewater_date": first_ww_date,
+        "train_disease_wastewater": ww_data_to_fit.select(
+            [
+                "date",
+                "lab_site_index",
+                "lab_site_name",
+                "log_genome_copies_per_ml",
+                "log_lod",
+                "below_lod",
+                "subpop_pop",
+                "subpop_index",
+                "t",
+                "ind_rel_to_sampled_times",
+            ]
+        ),
     }
+
     data_dir = Path(model_run_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
 

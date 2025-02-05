@@ -1,6 +1,8 @@
 import datetime
 from typing import Self
 
+import jax.numpy as jnp
+import polars as pl
 from jax.typing import ArrayLike
 
 
@@ -17,20 +19,13 @@ class PyrenewHEWData:
         n_wastewater_datapoints: int = None,
         data_observed_disease_ed_visits: ArrayLike = None,
         data_observed_disease_hospital_admissions: ArrayLike = None,
-        data_observed_disease_wastewater: ArrayLike = None,
-        ww_censored: ArrayLike = None,
-        ww_uncensored: ArrayLike = None,
-        ww_observed_lab_sites: ArrayLike = None,
-        ww_observed_subpops: ArrayLike = None,
-        ww_observed_times: ArrayLike = None,
-        ww_log_lod: ArrayLike = None,
-        lab_site_to_subpop_map: ArrayLike = None,
-        n_ww_lab_sites: ArrayLike = None,
-        pop_fraction: ArrayLike = None,
         right_truncation_offset: int = None,
         first_ed_visits_date: datetime.datetime.date = None,
         first_hospital_admissions_date: datetime.datetime.date = None,
         first_wastewater_date: datetime.datetime.date = None,
+        wastewater_data: pl.DataFrame = None,
+        population_size: int = None,
+        shedding_offset: float = 1e-8,
     ) -> None:
         self.n_ed_visits_datapoints_ = n_ed_visits_datapoints
         self.n_hospital_admissions_datapoints_ = (
@@ -42,23 +37,22 @@ class PyrenewHEWData:
         self.data_observed_disease_hospital_admissions = (
             data_observed_disease_hospital_admissions
         )
-        self.data_observed_disease_wastewater = (
-            data_observed_disease_wastewater
-        )
-        self.ww_censored = ww_censored
-        self.ww_uncensored = ww_uncensored
-        self.ww_observed_lab_sites = ww_observed_lab_sites
-        self.ww_observed_subpops = ww_observed_subpops
-        self.ww_observed_times = ww_observed_times
-        self.ww_log_lod = ww_log_lod
-        self.lab_site_to_subpop_map = lab_site_to_subpop_map
-        self.n_ww_lab_sites = n_ww_lab_sites
-        self.pop_fraction = pop_fraction
+        self.wastewater_data = wastewater_data
         self.right_truncation_offset = right_truncation_offset
-
         self.first_ed_visits_date = first_ed_visits_date
         self.first_hospital_admissions_date = first_hospital_admissions_date
         self.first_wastewater_date = first_wastewater_date
+        self.population_size = population_size
+        self.shedding_offset = shedding_offset
+        if wastewater_data is not None:
+            self.data_observed_disease_wastewater = wastewater_data[
+                "log_genome_copies_per_ml"
+            ].to_numpy()
+            self.first_wastewater_date = datetime.datetime.strptime(
+                wastewater_data["date"].min(), "%Y-%m-%d"
+            )
+        else:
+            self.data_observed_disease_wastewater = None
 
     @property
     def n_ed_visits_datapoints(self):
@@ -76,9 +70,9 @@ class PyrenewHEWData:
 
     @property
     def n_wastewater_datapoints(self):
-        return self.get_n_datapoints(
+        return self.get_n_wastewater_datapoints(
             n_datapoints=self.n_wastewater_datapoints_,
-            data_array=self.data_observed_disease_wastewater,
+            date_array=self.wastewater_data["t"].to_numpy(),
         )
 
     @property
@@ -135,6 +129,85 @@ class PyrenewHEWData:
             self.last_data_date_overall - self.first_data_date_overall
         ).days
 
+    @property
+    def pop_fraction(self):
+        if self.wastewater_data is None:
+            return jnp.array([1])
+        pop_covered_by_ww_surv = (
+            self.wastewater_data["subpop_index", "subpop_pop"]
+            .unique()
+            .sort(by="subpop_index", descending=False)["subpop_pop"]
+            .to_numpy()
+        )
+        subpop_sizes = jnp.concat(
+            [
+                jnp.array(
+                    [self.population_size - jnp.sum(pop_covered_by_ww_surv)]
+                ),
+                pop_covered_by_ww_surv,
+            ]
+        )
+        return subpop_sizes / self.population_size
+
+    @property
+    def ww_censored(self):
+        if self.wastewater_data is None:
+            return None
+        return self.wastewater_data.filter(pl.col("below_lod") == 1)[
+            "ind_rel_to_sampled_times"
+        ].to_numpy()
+
+    @property
+    def ww_uncensored(self):
+        if self.wastewater_data is None:
+            return None
+        return self.wastewater_data.filter(pl.col("below_lod") == 0)[
+            "ind_rel_to_sampled_times"
+        ].to_numpy()
+
+    @property
+    def ww_observed_times(self):
+        if self.wastewater_data is None:
+            return None
+        return self.wastewater_data["t"].to_numpy()
+
+    @property
+    def ww_observed_subpops(self):
+        if self.wastewater_data is None:
+            return None
+        return self.wastewater_data["subpop_index"].to_numpy()
+
+    @property
+    def ww_observed_lab_sites(self):
+        if self.wastewater_data is None:
+            return None
+        return self.wastewater_data["lab_site_index"].to_numpy()
+
+    @property
+    def ww_log_lod(self):
+        if self.wastewater_data is None:
+            return None
+        return self.wastewater_data["log_lod"].to_numpy()
+
+    @property
+    def n_ww_lab_sites(self):
+        if self.wastewater_data is None:
+            return None
+        return self.wastewater_data["lab_site_index"].n_unique()
+
+    @property
+    def lab_site_to_subpop_map(self):
+        if self.wastewater_data is None:
+            return None
+        return (
+            self.wastewater_data[
+                "lab_site_index",
+                "subpop_index",
+            ]
+            .unique()
+            .sort(by="lab_site_index")
+        )["subpop_index"].to_numpy()
+
     def get_end_date(
         self,
         first_date: datetime.datetime.date,
@@ -176,6 +249,26 @@ class PyrenewHEWData:
         else:
             return n_datapoints
 
+    # need a different function here since wastewater data
+    # array differs from ed visits nad hosp admissions data arrays,
+    # multiple entries possible for a single date
+    def get_n_wastewater_datapoints(
+        self, n_datapoints: int = None, date_array: ArrayLike = None
+    ) -> int:
+        if n_datapoints is None and date_array is None:
+            return 0
+        elif date_array is not None and n_datapoints is not None:
+            raise ValueError(
+                "Must provide at most one out of a "
+                "number of datapoints to simulate and "
+                "an array of observed wastewater "
+                "concentration data."
+            )
+        elif date_array is not None:
+            return date_array.max()
+        else:
+            return n_datapoints
+
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
@@ -186,6 +279,15 @@ class PyrenewHEWData:
             first_ed_visits_date=self.first_data_date_overall,
             first_hospital_admissions_date=(self.first_data_date_overall),
             first_wastewater_date=self.first_data_date_overall,
-            right_truncation_offset=None,
-            # by default, want forecasts of complete reports
+            data_observed_disease_wastewater=self.data_observed_disease_wastewater,
+            ww_uncensored=self.ww_uncensored,
+            ww_censored=self.ww_censored,
+            ww_observed_lab_sites=self.ww_observed_lab_sites,
+            ww_observed_subpops=self.ww_observed_subpops,
+            ww_observed_times=self.ww_observed_times,
+            ww_log_lod=self.ww_log_lod,
+            lab_site_to_subpop_map=self.lab_site_to_subpop_map,
+            n_ww_lab_sites=self.n_ww_lab_sites,
+            pop_fraction=self.pop_fraction,
+            right_truncation_offset=None,  # by default, want forecasts of complete reports
         )

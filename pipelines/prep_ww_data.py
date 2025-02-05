@@ -265,119 +265,6 @@ def validate_ww_conc_data(
     return None
 
 
-def flag_ww_outliers(
-    ww_data,
-    conc_col_name="log_genome_copies_per_ml",
-    rho_threshold: float = 2,
-    log_conc_threshold: float = 3,
-    threshold_n_dps: int = 1,
-):
-    n_dps = (
-        ww_data.filter(pl.col("below_lod") == 0)
-        .group_by("lab_site_index")
-        .agg(pl.len().alias("n_data_points"))
-    )
-    ww_stats = (
-        ww_data.join(n_dps, on="lab_site_index", how="left")
-        .filter(
-            pl.col("below_lod") == 0, pl.col("n_data_points") > threshold_n_dps
-        )
-        .sort(
-            by="date", descending=True
-        )  # kept for consistency with R but seee notes
-        .rename({"log_genome_copies_per_ml": "log_conc"})
-        .with_columns(
-            pl.col("date", "log_conc")
-            .shift()
-            .over("lab_site_index")
-            .name.prefix("prev_")
-        )
-        .with_columns(
-            [
-                (pl.col("log_conc") - pl.col("prev_log_conc")).alias(
-                    "diff_log_conc"
-                ),
-                (
-                    pl.col("date").cast(pl.Int64)
-                    - pl.col("prev_date").cast(pl.Int64)
-                ).alias("diff_time"),
-            ]
-        )
-        .with_columns(
-            (pl.col("diff_log_conc") / pl.col("diff_time")).alias("rho")
-        )
-        .select(["date", "lab_site_index", "rho"])
-    )
-    ww_rho = ww_data.join(ww_stats, on=["lab_site_index", "date"], how="left")
-    ww_rho_stats = ww_rho.with_columns(
-        [
-            pl.col("rho", conc_col_name)
-            .mean()
-            .over("lab_site_index")
-            .name.prefix("mean_"),
-            pl.col("rho", conc_col_name)
-            .std()
-            .over("lab_site_index")
-            .name.prefix("std_"),
-        ]
-    )
-    ww_z_scored = (
-        ww_rho_stats.with_columns(
-            [
-                (
-                    (pl.col(conc_col_name) - pl.col("mean_" + conc_col_name))
-                    / pl.col("std_" + conc_col_name)
-                ).alias("z_score_conc"),
-                (
-                    (pl.col("rho") - pl.col("mean_rho")) / pl.col("std_rho")
-                ).alias("z_score_rho"),
-            ]
-        )
-        .sort(by="date", descending=False)
-        .with_columns(
-            pl.col("z_score_rho")
-            .shift(-1)
-            .over("lab_site_index")
-            .name.suffix("_t_plus_1")
-        )
-        .with_columns(
-            [
-                pl.when(abs(pl.col("z_score_conc")) >= log_conc_threshold)
-                .then(1)
-                .otherwise(0)
-                .alias("flagged_for_removal_conc"),
-                pl.when(
-                    (abs(pl.col("z_score_rho")) >= rho_threshold)
-                    & (abs(pl.col("z_score_rho_t_plus_1")) >= rho_threshold)
-                    & (
-                        pl.col("z_score_rho") * pl.col("z_score_rho_t_plus_1")
-                        < 0
-                    )
-                )
-                .then(1)
-                .otherwise(0)
-                .alias("flagged_for_removal_rho"),
-            ]
-        )
-        .with_columns(
-            [
-                pl.when(pl.col("flagged_for_removal_rho") == 1)
-                .then(1)
-                .when(pl.col("flagged_for_removal_conc") == 1)
-                .then(1)
-                .otherwise(0)
-                .alias("flag_as_ww_outlier")
-            ]
-        )
-    )
-
-    ww_w_outliers_flagged = ww_z_scored.select(
-        *ww_data.columns, "flag_as_ww_outlier"
-    )
-
-    return ww_w_outliers_flagged
-
-
 def preprocess_ww_data(
     ww_data, conc_col_name="log_genome_copies_per_ml", lod_col_name="log_lod"
 ):
@@ -407,7 +294,7 @@ def preprocess_ww_data(
         .unique()
         .with_columns(pl.arange(0, pl.len()).alias("site_index"))
     )
-    ww_data_add_cols = (
+    ww_preprocessed = (
         ww_data_ordered.join(lab_site_df, on=["lab", "site"], how="left")
         .join(site_df, on="site", how="left")
         .rename(
@@ -430,93 +317,7 @@ def preprocess_ww_data(
             ]
         )
     )
-    ww_preprocessed = flag_ww_outliers(
-        ww_data_add_cols, conc_col_name="log_genome_copies_per_ml"
-    )
     return ww_preprocessed
-
-
-def get_site_subpop_spine(input_ww_data, total_pop):
-    ww_data_present = input_ww_data is not None
-    if ww_data_present:
-        # Check if auxiliary subpopulation needs to be added
-        add_auxiliary_subpop = (
-            total_pop
-            > input_ww_data.select(
-                pl.col("site_pop", "site", "lab", "lab_site_index")
-            )
-            .unique()
-            .sum()
-            .to_numpy()
-            .flatten()[0]
-        )
-        site_indices = (
-            input_ww_data.select(["site_index", "site", "site_pop"])
-            .unique()
-            .sort("site_index")
-        )
-        if add_auxiliary_subpop:
-            aux_subpop = pl.DataFrame(
-                {
-                    "site_index": [None],
-                    "site": [None],
-                    "site_pop": [
-                        total_pop
-                        - site_indices.select(pl.col("site_pop"))
-                        .sum()
-                        .to_numpy()
-                        .flatten()[0]
-                    ],
-                }
-            )
-        else:
-            aux_subpop = pl.DataFrame()
-
-        site_subpop_spine = (
-            pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
-            .with_columns(
-                [
-                    pl.col("site_index").cum_count().alias("subpop_index"),
-                    pl.when(pl.col("site").is_not_null())
-                    .then(
-                        pl.col("site").map_elements(
-                            lambda x: f"Site: {x}", return_dtype=str
-                        )
-                    )
-                    .otherwise(pl.lit("remainder of population"))
-                    .alias("subpop_name"),
-                ]
-            )
-            .rename({"site_pop": "subpop_pop"})
-        )
-    else:
-        site_subpop_spine = pl.DataFrame(
-            {
-                "site_index": [None],
-                "site": [None],
-                "subpop_pop": [total_pop],
-                "subpop_index": [1],
-                "subpop_name": ["total population"],
-            }
-        )
-    return site_subpop_spine
-
-
-def get_date_time_spine(
-    start_date: datetime.date,
-    end_date: datetime.date,
-):
-    date_time_spine = pl.DataFrame(
-        {
-            "date": pl.date_range(
-                start=start_date, end=end_date, interval="1d", eager=True
-            )
-        }
-    )
-    date_time_spine = date_time_spine.with_columns(
-        pl.arange(0, pl.len()).alias("t")
-    )
-    return date_time_spine
 
 
 def get_nwss_data(
