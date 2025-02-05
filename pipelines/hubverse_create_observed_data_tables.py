@@ -44,7 +44,7 @@ def save_observed_data_tables(
                     first_training_date=datetime.date(2023, 1, 1),
                     state_pop_df=state_pop,
                 ),
-                ["US"] + [x for x in state_pop["abb"]],
+                state_pop.get_column("abb").to_list(),
             )
         ).filter(pl.col("disease") == disease)
         for disease in ["COVID-19", "Influenza", "RSV", "Total"]
