@@ -248,6 +248,9 @@ process_state_forecast <- function(model_run_dir,
       )
     )
 
+  # posterior predictive variables are expected to be of the form
+  # "observed_zzzzz[n]". This creates tidybayes::gather_draws()
+  # compatible expression for each variable.
   posterior_predictive_variables <-
     pyrenew_posterior_predictive |>
     colnames() |>
