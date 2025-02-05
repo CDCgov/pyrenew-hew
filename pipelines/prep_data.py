@@ -245,13 +245,11 @@ def verify_no_date_gaps(df: pl.DataFrame):
 
 
 def get_state_pop_df():
-    forecasttools.location_table.select(
+    return forecasttools.location_table.select(
         pl.col("short_name").alias("abb"),
         pl.col("long_name").alias("name"),
         pl.col("population"),
     )
-
-    return state_pop_df
 
 
 def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
