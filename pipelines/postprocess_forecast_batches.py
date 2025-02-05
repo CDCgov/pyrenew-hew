@@ -87,18 +87,6 @@ def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
 def process_model_batch_dir(
     model_batch_dir_path: Path, plot_ext: str = "pdf"
 ) -> None:
-    plot_types = ["Disease", "Other", "prop_disease_ed_visits"]
-    plot_timescales = ["daily", "epiweekly", "epiweekly_other"]
-    plot_yscales = ["", "log_"]
-
-    plots_to_collate = [
-        f"{p_type}_forecast_plot_{p_yscale}{p_timescale}.{plot_ext}"
-        for p_type, p_yscale, p_timescale in itertools.product(
-            plot_types, plot_yscales, plot_timescales
-        )
-        if not (p_type == "Disease" and p_timescale == "epiweekly_other")
-    ]
-
     logger = logging.getLogger(__name__)
     logger.info("Collating plots...")
     cp.merge_and_save_pdfs(model_batch_dir_path)
