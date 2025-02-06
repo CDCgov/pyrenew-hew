@@ -201,7 +201,10 @@ def main(
     exclude_last_n_days: int = 0,
     score: bool = False,
     eval_data_path: Path = None,
-):
+    sample_ed_visits: bool = False,
+    sample_hospital_admissions: bool = False,
+    sample_wastewater: bool = False,
+) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -337,7 +340,9 @@ def main(
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
-        sample_ed_visits=True,
+        sample_ed_visits=sample_ed_visits,
+        sample_hospital_admissions=sample_hospital_admissions,
+        sample_wastewater=sample_wastewater,
     )
     logger.info("Model fitting complete")
 
@@ -348,7 +353,9 @@ def main(
         model_run_dir,
         "pyrenew_e",
         n_days_past_last_training,
-        predict_ed_visits=True,
+        predict_ed_visits=sample_ed_visits,
+        predict_hospital_admissions=sample_hospital_admissions,
+        predict_wastewater=sample_wastewater,
     )
 
     logger.info(
@@ -528,6 +535,26 @@ if __name__ == "__main__":
         type=Path,
         help=("Path to a parquet file containing compehensive truth data."),
     )
+
+    parser.add_argument(
+        "--sample-ed-visits",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, fit to ED visit data.",
+    )
+    parser.add_argument(
+        "--sample-hospital-admissions",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help=("If provided, fit to hospital admissions data."),
+    )
+    parser.add_argument(
+        "--sample-wastewater",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, fit to wastewater data.",
+    )
+
     args = parser.parse_args()
     numpyro.set_host_device_count(args.n_chains)
     main(**vars(args))

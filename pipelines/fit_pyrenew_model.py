@@ -75,6 +75,26 @@ if __name__ == "__main__":
         required=True,
         help="Name of the model to use for generating predictions.",
     )
+
+    parser.add_argument(
+        "--sample-ed-visits",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, fit to ED visit data.",
+    )
+    parser.add_argument(
+        "--sample-hospital-admissions",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help=("If provided, fit to hospital admissions data."),
+    )
+    parser.add_argument(
+        "--sample-wastewater",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, fit to wastewater data.",
+    )
+
     parser.add_argument(
         "--n-warmup",
         type=int,

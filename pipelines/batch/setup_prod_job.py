@@ -21,6 +21,9 @@ def main(
     pool_id: str,
     diseases: str | list[str],
     output_subdir: str | Path = "./",
+    sample_ed_visits: bool = False,
+    sample_hospital_admissions: bool = False,
+    sample_wastewater: bool = False,
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     n_training_days: int = 90,
@@ -252,6 +255,27 @@ parser.add_argument(
     help="Version of the container to use for the job.",
     default="latest",
 )
+
+
+parser.add_argument(
+    "--sample-ed-visits",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help="If provided, fit to and predict ED visit data.",
+)
+parser.add_argument(
+    "--sample-hospital-admissions",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help=("If provided, fit to and predict hospital admissions data."),
+)
+parser.add_argument(
+    "--sample-wastewater",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help="If provided, fit to and predict wastewater data.",
+)
+
 
 parser.add_argument(
     "--n-training-days",
