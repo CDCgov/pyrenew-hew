@@ -102,6 +102,7 @@ def test_to_forecast_data(
         == data.first_data_date_overall
     )
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
+    assert forecast_data.data_observed_disease_wastewater is None
 
 
 def test_wastewater_data_properties():
@@ -157,5 +158,4 @@ def test_wastewater_data_properties():
     forecast_data = data.to_forecast_data(10)
 
     assert forecast_data.data_observed_disease_wastewater is not None
-
     assert jnp.array_equal(forecast_data.ww_uncensored, data.ww_uncensored)
