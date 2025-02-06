@@ -35,6 +35,9 @@ jobs:
         run: poetry install --with test
 
       - name: run tests
+        env:
+          NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
+          NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
         run: |
           poetry run pytest \
             --mpl --mpl-default-tolerance=10 \
