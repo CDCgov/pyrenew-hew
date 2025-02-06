@@ -166,6 +166,7 @@ class PyrenewHEWData:
             return self.wastewater_data.filter(pl.col("below_lod") == 1)[
                 "ind_rel_to_observed_times"
             ].to_numpy()
+        return None
 
     @property
     def ww_uncensored(self):

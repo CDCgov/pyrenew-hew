@@ -1,7 +1,11 @@
 import datetime
 
+import jax.numpy as jnp
+import numpy as np
+import polars as pl
 import pytest
 
+from pipelines.prep_ww_data import get_date_time_spine
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
@@ -98,4 +102,60 @@ def test_to_forecast_data(
         == data.first_data_date_overall
     )
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
-    assert forecast_data.ww_censored is None
+
+
+def test_wastewater_data_properties():
+    first_training_date = datetime.date(2023, 1, 1)
+    last_training_date = datetime.date(2023, 7, 23)
+    dates = pl.date_range(
+        first_training_date,
+        last_training_date,
+        interval="1w",
+        closed="both",
+        eager=True,
+    )
+
+    ww_raw = pl.DataFrame(
+        {
+            "date": dates.extend(dates),
+            "lab_site_index": [1] * 30 + [2] * 30,
+            "subpop_index": [1] * 30 + [2] * 30,
+            "log_genome_copies_per_ml": np.log(
+                np.abs(np.random.normal(loc=500, scale=50, size=60))
+            ),
+            "log_lod": np.log([20] * 30 + [15] * 30),
+            "subpop_pop": [200_000] * 30 + [400_000] * 30,
+        }
+    )
+
+    date_time_spine = get_date_time_spine(
+        start_date=first_training_date, end_date=last_training_date
+    )
+
+    ww_data = ww_raw.join(
+        date_time_spine, on="date", how="left", coalesce=True
+    ).with_columns(
+        pl.arange(0, pl.len()).alias("ind_rel_to_observed_times"),
+        (pl.col("log_genome_copies_per_ml") <= pl.col("log_lod"))
+        .cast(pl.Int8)
+        .alias("below_lod"),
+    )
+
+    first_ed_visits_date = datetime.date(2023, 1, 1)
+    first_hospital_admissions_date = datetime.date(2023, 1, 1)
+    first_wastewater_date = datetime.date(2023, 1, 1)
+    n_forecast_points = 10
+
+    data = PyrenewHEWData(
+        first_ed_visits_date=first_ed_visits_date,
+        first_hospital_admissions_date=first_hospital_admissions_date,
+        first_wastewater_date=first_wastewater_date,
+        wastewater_data=ww_data,
+        population_size=1e6,
+    )
+
+    forecast_data = data.to_forecast_data(10)
+
+    assert forecast_data.data_observed_disease_wastewater is not None
+
+    assert jnp.array_equal(forecast_data.ww_uncensored, data.ww_uncensored)
