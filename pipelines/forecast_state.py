@@ -345,7 +345,10 @@ def main(
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
     generate_and_save_predictions(
-        model_run_dir, "pyrenew_e", n_days_past_last_training
+        model_run_dir,
+        "pyrenew_e",
+        n_days_past_last_training,
+        predict_ed_visits=True,
     )
 
     logger.info(
