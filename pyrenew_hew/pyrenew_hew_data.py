@@ -20,9 +20,9 @@ class PyrenewHEWData:
         data_observed_disease_ed_visits: ArrayLike = None,
         data_observed_disease_hospital_admissions: ArrayLike = None,
         right_truncation_offset: int = None,
-        first_ed_visits_date: datetime.datetime.date = None,
-        first_hospital_admissions_date: datetime.datetime.date = None,
-        first_wastewater_date: datetime.datetime.date = None,
+        first_ed_visits_date: datetime.date = None,
+        first_hospital_admissions_date: datetime.date = None,
+        first_wastewater_date: datetime.date = None,
         wastewater_data: pl.DataFrame = None,
         population_size: int = None,
         shedding_offset: float = 1e-8,
@@ -68,16 +68,14 @@ class PyrenewHEWData:
             date_array=(
                 None
                 if self.wastewater_data is None
-                else self.wastewater_data["t"].to_numpy()
+                else self.wastewater_data["t"].to_list()
             ),
         )
 
     @property
     def first_wastewater_date(self):
         if self.wastewater_data is not None:
-            return datetime.datetime.strptime(
-                self.wastewater_data["date"].min(), "%Y-%m-%d"
-            )
+            return self.wastewater_data["date"].min()
         return self.first_wastewater_date_
 
     @property
@@ -166,14 +164,14 @@ class PyrenewHEWData:
     def ww_censored(self):
         if self.wastewater_data is not None:
             return self.wastewater_data.filter(pl.col("below_lod") == 1)[
-                "ind_rel_to_sampled_times"
+                "ind_rel_to_observed_times"
             ].to_numpy()
 
     @property
     def ww_uncensored(self):
         if self.wastewater_data is not None:
             return self.wastewater_data.filter(pl.col("below_lod") == 0)[
-                "ind_rel_to_sampled_times"
+                "ind_rel_to_observed_times"
             ].to_numpy()
 
     @property
@@ -212,10 +210,10 @@ class PyrenewHEWData:
 
     def get_end_date(
         self,
-        first_date: datetime.datetime.date,
+        first_date: datetime.date,
         n_datapoints: int,
         timestep_days: int = 1,
-    ) -> datetime.datetime.date:
+    ) -> datetime.date:
         """
         Get end date from a first date and a number of datapoints,
         with handling of None values and non-daily timeseries
@@ -267,7 +265,7 @@ class PyrenewHEWData:
                 "concentration data."
             )
         elif date_array is not None:
-            return date_array.max()
+            return max(date_array)
         else:
             return n_datapoints
 

@@ -589,9 +589,9 @@ class WastewaterObservationProcess(RandomVariable):
         n_datapoints: int,
         ww_uncensored: ArrayLike,
         ww_censored: ArrayLike,
-        ww_sampled_lab_sites: ArrayLike,
-        ww_sampled_subpops: ArrayLike,
-        ww_sampled_times: ArrayLike,
+        ww_observed_lab_sites: ArrayLike,
+        ww_observed_subpops: ArrayLike,
+        ww_observed_times: ArrayLike,
         ww_log_lod: ArrayLike,
         lab_site_to_subpop_map: ArrayLike,
         n_ww_lab_sites: int,
@@ -648,15 +648,15 @@ class WastewaterObservationProcess(RandomVariable):
 
         # multiply the expected observed genomes by the site-specific multiplier at that sampling time
         expected_obs_log_v_site = (
-            expected_obs_viral_genomes[ww_sampled_times, ww_sampled_subpops]
-            + mode_ww_site[ww_sampled_lab_sites]
+            expected_obs_viral_genomes[ww_observed_times, ww_observed_subpops]
+            + mode_ww_site[ww_observed_lab_sites]
         )
 
         DistributionalVariable(
             "log_conc_obs",
             dist.Normal(
                 loc=expected_obs_log_v_site[ww_uncensored],
-                scale=sigma_ww_site[ww_sampled_lab_sites[ww_uncensored]],
+                scale=sigma_ww_site[ww_observed_lab_sites[ww_uncensored]],
             ),
         ).sample(
             obs=(
@@ -669,7 +669,7 @@ class WastewaterObservationProcess(RandomVariable):
         if ww_censored.shape[0] != 0:
             log_cdf_values = dist.Normal(
                 loc=expected_obs_log_v_site[ww_censored],
-                scale=sigma_ww_site[ww_sampled_lab_sites[ww_censored]],
+                scale=sigma_ww_site[ww_observed_lab_sites[ww_censored]],
             ).log_cdf(ww_log_lod[ww_censored])
             numpyro.factor("log_prob_censored", log_cdf_values.sum())
 
@@ -765,9 +765,9 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 n_datapoints=data.n_wastewater_datapoints,
                 ww_uncensored=None,  # placeholder
                 ww_censored=None,  # placeholder
-                ww_sampled_lab_sites=None,  # placeholder
-                ww_sampled_subpops=None,  # placeholder
-                ww_sampled_times=None,  # placeholder
+                ww_observed_lab_sites=None,  # placeholder
+                ww_observed_subpops=None,  # placeholder
+                ww_observed_times=None,  # placeholder
                 ww_log_lod=None,  # placeholder
                 lab_site_to_subpop_map=None,  # placeholder
                 n_ww_lab_sites=None,  # placeholder

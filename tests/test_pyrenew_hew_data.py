@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime
 
 import pytest
 
@@ -22,9 +22,9 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
             0,
             0,
             5,
-            datetime(2023, 1, 1),
-            datetime(2022, 2, 5),
-            datetime(2025, 12, 5),
+            datetime.date(2023, 1, 1),
+            datetime.date(2022, 2, 5),
+            datetime.date(2025, 12, 5),
             10,
         ],
         [
@@ -32,9 +32,9 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
             325,
             2,
             5,
-            datetime(2025, 1, 1),
-            datetime(2023, 5, 25),
-            datetime(2022, 4, 5),
+            datetime.date(2025, 1, 1),
+            datetime.date(2023, 5, 25),
+            datetime.date(2022, 4, 5),
             10,
         ],
         [
@@ -42,9 +42,9 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
             0,
             2,
             3,
-            datetime(2025, 1, 1),
-            datetime(2025, 2, 5),
-            datetime(2024, 12, 5),
+            datetime.date(2025, 1, 1),
+            datetime.date(2025, 2, 5),
+            datetime.date(2024, 12, 5),
             30,
         ],
         [
@@ -52,9 +52,9 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
             0,
             23,
             3,
-            datetime(2025, 1, 1),
-            datetime(2025, 2, 5),
-            datetime(2024, 12, 5),
+            datetime.date(2025, 1, 1),
+            datetime.date(2025, 2, 5),
+            datetime.date(2024, 12, 5),
             30,
         ],
     ],
@@ -98,3 +98,4 @@ def test_to_forecast_data(
         == data.first_data_date_overall
     )
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
+    assert forecast_data.ww_censored is None

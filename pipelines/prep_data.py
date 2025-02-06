@@ -440,7 +440,9 @@ def process_and_save_state(
             how="left",
             coalesce=True,
         )
-        .with_columns(pl.arange(0, pl.len()).alias("ind_rel_to_sampled_times"))
+        .with_columns(
+            pl.arange(0, pl.len()).alias("ind_rel_to_observed_times")
+        )
     )
 
     data_for_model_fit = {
@@ -459,14 +461,13 @@ def process_and_save_state(
             [
                 "date",
                 "lab_site_index",
-                "lab_site_name",
                 "log_genome_copies_per_ml",
                 "log_lod",
                 "below_lod",
                 "subpop_pop",
                 "subpop_index",
                 "t",
-                "ind_rel_to_sampled_times",
+                "ind_rel_to_observed_times",
             ]
         ),
     }
