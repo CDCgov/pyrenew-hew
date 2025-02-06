@@ -160,10 +160,10 @@ def main(
 
     sample_ed_visits_flag = "--sample-ed-visits " if sample_ed_visits else ""
     sample_hospital_admissions_flag = (
-        "--sample-ed-visits " if sample_hospital_admissions else ""
+        "--sample-hospital-admissions " if sample_hospital_admissions else ""
     )
     sample_wastewater_flag = (
-        "--sample-ed-visits " if sample_hospital_admissions else ""
+        "--sample-wastewater " if sample_wastewater else ""
     )
 
     base_call = (
@@ -183,10 +183,10 @@ def main(
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
-        "--eval-data-path "
         f"{sample_ed_visits_flag}"
         f"{sample_hospital_admissions_flag}"
         f"{sample_wastewater_flag}"
+        "--eval-data-path "
         "nssp-etl/latest_comprehensive.parquet"
         "'"
     )
