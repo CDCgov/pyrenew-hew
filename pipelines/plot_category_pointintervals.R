@@ -81,35 +81,42 @@ main <- function(hubverse_table_path,
                  ...) {
   disease <- parse_model_batch_dir_path(path_dir(hubverse_table_path))$disease
 
-  dat <- readr::read_tsv(hubverse_table_path) |>
-    to_categorized_iqr(disease)
+  dat <- readr::read_tsv(hubverse_table_path)
 
-  figure_tbl <-
-    dat |>
-    distinct(model) |>
-    expand_grid(horizon = c(0, 1)) |>
-    mutate(figure = map2(
-      model, horizon,
-      \(target_model, horizon) {
-        plot_category_pointintervals(
-          dat |>
-            filter(model == target_model),
-          horizon = horizon
-        ) +
-          labs(
-            x = "% ED visits",
-            y = "Location"
+  if (!(".variable" %in% colnames(dat)) ||
+    !("prop_disease_ed_visits" %in% dat[[".variable"]])) {
+    warning("Input hubverse table must contain a .variable column with
+         prop_disease_ed_visits")
+  } else {
+    dat <- to_categorized_iqr(dat, disease)
+
+    figure_tbl <-
+      dat |>
+      distinct(model) |>
+      expand_grid(horizon = c(0, 1)) |>
+      mutate(figure = map2(
+        model, horizon,
+        \(target_model, horizon) {
+          plot_category_pointintervals(
+            dat |>
+              filter(model == target_model),
+            horizon = horizon
           ) +
-          ggtitle(glue::glue("{disease}, {target_model}"),
-            subtitle = glue("{horizon} week ahead")
-          )
-      }
-    ))
+            labs(
+              x = "% ED visits",
+              y = "Location"
+            ) +
+            ggtitle(glue::glue("{disease}, {target_model}"),
+              subtitle = glue("{horizon} week ahead")
+            )
+        }
+      ))
 
-  plots_to_pdf(
-    figure_tbl$figure,
-    output_path
-  )
+    plots_to_pdf(
+      figure_tbl$figure,
+      output_path
+    )
+  }
 }
 
 
