@@ -158,14 +158,22 @@ def main(
         ],
     )
 
+    sample_ed_visits_flag = "--sample-ed-visits " if sample_ed_visits else ""
+    sample_hospital_admissions_flag = (
+        "--sample-ed-visits " if sample_hospital_admissions else ""
+    )
+    sample_wastewater_flag = (
+        "--sample-ed-visits " if sample_hospital_admissions else ""
+    )
+
     base_call = (
         "/bin/bash -c '"
         "python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
-        "--n-training-days {n_training_days} "
-        "--n-warmup {n_warmup} "
-        "--n-samples {n_samples} "
+        f"--n-training-days {n_training_days} "
+        f"--n-warmup {n_warmup} "
+        f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
@@ -173,9 +181,12 @@ def main(
         "--output-dir {output_dir} "
         "--priors-path pipelines/priors/prod_priors.py "
         "--report-date {report_date} "
-        "--exclude-last-n-days {exclude_last_n_days} "
+        f"--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
         "--eval-data-path "
+        f"{sample_ed_visits_flag}"
+        f"{sample_hospital_admissions_flag}"
+        f"{sample_wastewater_flag}"
         "nssp-etl/latest_comprehensive.parquet"
         "'"
     )
@@ -199,10 +210,6 @@ def main(
                 state=state,
                 disease=disease,
                 report_date="latest",
-                n_warmup=n_warmup,
-                n_samples=n_samples,
-                n_training_days=n_training_days,
-                exclude_last_n_days=exclude_last_n_days,
                 output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
