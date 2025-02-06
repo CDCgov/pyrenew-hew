@@ -38,7 +38,6 @@ def generate_and_save_predictions(
 
     my_model.mcmc.sampler = fresh_sampler
     forecast_data = my_data.to_forecast_data(n_forecast_points)
-    print(forecast_data)
 
     posterior_predictive = my_model.posterior_predictive(
         data=forecast_data,
