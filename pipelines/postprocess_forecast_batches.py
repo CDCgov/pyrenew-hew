@@ -25,7 +25,7 @@ from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 def _hubverse_table_filename(
     report_date: str | datetime.date, disease: str
 ) -> None:
-    return f"{report_date}-{disease.lower()}-hubverse-table.tsv"
+    return f"{report_date}-{disease.lower()}-hubverse-table.parquet"
 
 
 def create_hubverse_table(model_batch_dir_path: str | Path) -> None:

@@ -11,7 +11,7 @@
 main <- function(model_batch_dir,
                  output_path) {
   hewr::to_epiweekly_quantile_table(model_batch_dir) |>
-    readr::write_tsv(output_path)
+    arrow::write_parquet(output_path)
 }
 
 

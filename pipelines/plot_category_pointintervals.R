@@ -81,7 +81,7 @@ main <- function(hubverse_table_path,
                  ...) {
   disease <- parse_model_batch_dir_path(path_dir(hubverse_table_path))$disease
 
-  dat <- readr::read_tsv(hubverse_table_path)
+  dat <- arrow::read_parquet(hubverse_table_path)
 
   if (!(".variable" %in% colnames(dat)) ||
     !("prop_disease_ed_visits" %in% dat[[".variable"]])) {

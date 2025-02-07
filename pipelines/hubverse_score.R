@@ -46,7 +46,7 @@ score_and_save <- function(observed_data_path,
     "..."
   )
 
-  observed_data <- readr::read_tsv(
+  observed_data <- arrow::read_parquet()(
     observed_data_path,
     show_col_types = FALSE
   )
