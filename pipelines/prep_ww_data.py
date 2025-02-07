@@ -169,7 +169,13 @@ def clean_and_filter_nwss_data(nwss_data):
 
 
 def validate_ww_conc_data(
-    ww_data: pl.DataFrame, conc_col_name: str, lod_col_name: str
+    ww_data: pl.DataFrame,
+    conc_col_name: str = "log_genome_copies_per_ml",
+    lod_col_name: str = "log_lod",
+    date_col_name: str = "date",
+    wwtp_col_name: str = "site",
+    wwtp_pop_name: str = "site_pop",
+    lab_col_name: str = "lab",
 ):
     """
     Checks nwss data for missing values and data types.
@@ -214,14 +220,14 @@ def validate_ww_conc_data(
             "Limit of detection data is expected to be a 1D Series."
         )
 
-    ww_obs_dates = ww_data["date"]
+    ww_obs_dates = ww_data[date_col_name]
     if ww_obs_dates.is_null().any():
         raise ValueError("Date column has missing values.")
 
     if ww_obs_dates.dtype != pl.Date:
         raise TypeError("Date column has to be of Date type.")
 
-    site_labels = ww_data["site"]
+    site_labels = ww_data[wwtp_col_name]
     if site_labels.is_null().any():
         raise TypeError("Site labels column has missing values.")
 
@@ -231,7 +237,7 @@ def validate_ww_conc_data(
     ):
         raise TypeError("Site labels not of integer/string type.")
 
-    lab_labels = ww_data["lab"]
+    lab_labels = ww_data[lab_col_name]
     if lab_labels.is_null().any():
         raise TypeError("Lab labels are missing.")
 
@@ -241,7 +247,7 @@ def validate_ww_conc_data(
     ):
         raise TypeError("Lab labels are not of integer/string type.")
 
-    site_pops = ww_data["site_pop"]
+    site_pops = ww_data[wwtp_pop_name]
     if site_pops.is_null().any():
         raise ValueError("Site populations are missing.")
     if site_pops.dtype not in [pl.Int32, pl.Int64] or (site_pops < 0).any():
@@ -250,9 +256,9 @@ def validate_ww_conc_data(
         )
 
     if (
-        not ww_data.group_by("site")
+        not ww_data.group_by(wwtp_col_name)
         .n_unique()
-        .get_column("site_pop")
+        .get_column(wwtp_pop_name)
         .eq(1)
         .all()
     ):
@@ -264,11 +270,17 @@ def validate_ww_conc_data(
 
 
 def preprocess_ww_data(
-    ww_data, conc_col_name="log_genome_copies_per_ml", lod_col_name="log_lod"
+    ww_data,
+    conc_col_name: str = "log_genome_copies_per_ml",
+    lod_col_name: str = "log_lod",
+    date_col_name: str = "date",
+    wwtp_col_name: str = "site",
+    wwtp_pop_name: str = "site_pop",
+    lab_col_name: str = "lab",
 ):
     """
-    Creates lab-site-index and flag for wastewater
-    concentration data being below the level of detection.
+    Creates indices for wastewater-treatment plant names and
+    flag concentration data below the level of detection.
 
     """
     assert (
@@ -279,22 +291,27 @@ def preprocess_ww_data(
     ), f"Column '{lod_col_name}' is missing in the input data."
 
     validate_ww_conc_data(
-        ww_data, conc_col_name=conc_col_name, lod_col_name=lod_col_name
+        ww_data,
+        conc_col_name=conc_col_name,
+        lod_col_name=lod_col_name,
+        date_col_name=date_col_name,
     )
-    ww_data_ordered = ww_data.sort(by="site_pop", descending=True)
+    ww_data_ordered = ww_data.sort(by=wwtp_pop_name, descending=True)
     lab_site_df = (
-        ww_data_ordered.select(["lab", "site"])
+        ww_data_ordered.select([lab_col_name, wwtp_col_name])
         .unique()
         .with_columns(pl.arange(0, pl.len()).alias("lab_site_index"))
     )
     site_df = (
-        ww_data_ordered.select(["site"])
+        ww_data_ordered.select([wwtp_col_name])
         .unique()
         .with_columns(pl.arange(0, pl.len()).alias("site_index"))
     )
     ww_preprocessed = (
-        ww_data_ordered.join(lab_site_df, on=["lab", "site"], how="left")
-        .join(site_df, on="site", how="left")
+        ww_data_ordered.join(
+            lab_site_df, on=[lab_col_name, wwtp_col_name], how="left"
+        )
+        .join(site_df, on=wwtp_col_name, how="left")
         .rename(
             {
                 lod_col_name: "log_lod",
@@ -305,9 +322,9 @@ def preprocess_ww_data(
             [
                 (
                     "Site: "
-                    + pl.col("site").cast(pl.Utf8)
+                    + pl.col(wwtp_col_name).cast(pl.Utf8)
                     + ", Lab: "
-                    + pl.col("lab").cast(pl.Utf8)
+                    + pl.col(lab_col_name).cast(pl.Utf8)
                 ).alias("lab_site_name"),
                 (pl.col("log_genome_copies_per_ml") <= pl.col("log_lod"))
                 .cast(pl.Int8)
