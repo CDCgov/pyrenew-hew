@@ -11,7 +11,7 @@ jobs:
   delete-container:
     if: github.event.ref_type == 'branch'
     runs-on: cfa-cdcgov
-    name: Delete tag 
+    name: Delete tag
 
     steps:
       - name : Checkout code
