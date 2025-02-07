@@ -39,20 +39,20 @@ def clean_and_filter_nwss_data(nwss_data):
             ]
         )
         .with_columns(
-            [
-                pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
+           pcr_target_avg_conc=pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
                 .then(pl.col("pcr_target_avg_conc") / 1000)
                 .when(
                     pl.col("pcr_target_units") == "log10 copies/l wastewater"
                 )
-                .then((10 ** pl.col("pcr_target_avg_conc")) / 1000),
-                pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
+                .then((10 ** pl.col("pcr_target_avg_conc")) / 1000)
+                .otherwise(None),
+            lod_sewage=pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
                 .then(pl.col("lod_sewage") / 1000)
                 .when(
                     pl.col("pcr_target_units") == "log10 copies/l wastewater"
                 )
-                .then((10 ** pl.col("lod_sewage")) / 1000),
-            ]
+                .then((10 ** pl.col("lod_sewage")) / 1000)
+                .otherwise(None)
         )
         .filter(
             (
@@ -228,7 +228,7 @@ def validate_ww_conc_data(
 
     site_labels = ww_data["site"]
     if site_labels.is_null().any():
-        raise TypeError("Site labels are missing.")
+        raise TypeError("Site labels column has missing values.")
 
     if (
         site_labels.dtype not in [pl.Int32, pl.Int64]
@@ -254,13 +254,8 @@ def validate_ww_conc_data(
             "Site populations are not integers, or have negative values."
         )
 
-    records_per_site_per_pop = (
-        ww_data[["site", "site_pop"]].unique().group_by("site").len()
-    )
-    if (records_per_site_per_pop["len"] != 1).any():
-        raise ValueError(
-            "The data contains sites with varying population sizes."
-        )
+    if not ww_data.group_by("site").n_unique().get_column("site_pop").eq(1).all():
+        raise ValueError("The data contains sites with varying population sizes.")
 
     return None
 
