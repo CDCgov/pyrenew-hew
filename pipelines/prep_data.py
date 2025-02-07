@@ -49,10 +49,12 @@ def get_nhsn(
         "-e",
         f"""
         forecasttools::pull_nhsn(
+            api_key_id = {py_scalar_to_r_scalar(os.getenv("NHSN_API_KEY_ID"))},
+            api_key_secret = {py_scalar_to_r_scalar(os.getenv("NHSN_API_KEY_SECRET"))},
             start_date = {py_scalar_to_r_scalar(start_date)},
             end_date = {py_scalar_to_r_scalar(end_date)},
             columns = {py_scalar_to_r_scalar(columns)},
-            jurisdictions = {py_scalar_to_r_scalar(state_abb)},
+            jurisdictions = {py_scalar_to_r_scalar(state_abb)}
         ) |>
         dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
         dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
