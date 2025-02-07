@@ -79,30 +79,56 @@ def combine_nssp_and_nhsn(
     nhsn_data: pl.DataFrame,
     disease: str,
 ):
-    nssp_data_long = nssp_data.unpivot(
-        on="ed_visits",
-        index=cs.exclude("ed_visits"),
-        variable_name="value_type",
-    )
+    count_type_dict = {
+        disease: "observed_ed_visits",
+        "Total": "other_ed_visits",
+    }
 
-    nhsn_data_long = (
-        nhsn_data.rename(
-            {"weekendingdate": "date", "jurisdiction": "geo_value"}
-        )
+    nssp_data_long = (
+        nssp_data.rename({"disease": "count_type"})
         .unpivot(
-            on="hospital_admissions",
-            index=cs.exclude("hospital_admissions"),
-            variable_name="value_type",
+            on="ed_visits",
+            index=cs.exclude(["ed_visits"]),
+            variable_name="drop_me",
+            value_name=".value",
         )
         .with_columns(
-            pl.lit(disease).alias("disease"),
+            pl.col("count_type").replace(count_type_dict).alias(".variable")
         )
+        .select(cs.exclude(["count_type", "drop_me"]))
     )
 
-    combined_dat = pl.concat(
-        [nssp_data_long, nhsn_data_long],
-        how="diagonal_relaxed",
-    ).sort(["date", "geo_value", "value_type"])
+    nhsn_data_long = nhsn_data.rename(
+        {
+            "weekendingdate": "date",
+            "jurisdiction": "geo_value",
+            "hospital_admissions": "observed_hospital_admissions",
+        }
+    ).unpivot(
+        on="observed_hospital_admissions",
+        index=cs.exclude("observed_hospital_admissions"),
+        variable_name=".variable",
+        value_name=".value",
+    )
+
+    combined_dat = (
+        pl.concat(
+            [nssp_data_long, nhsn_data_long],
+            how="diagonal_relaxed",
+        )
+        .with_columns(pl.lit(disease).alias("disease"))
+        .sort(["date", "geo_value", ".variable"])
+        .select(
+            [
+                "date",
+                "geo_value",
+                "disease",
+                "data_type",
+                ".variable",
+                ".value",
+            ]
+        )
+    )
 
     return combined_dat
 
@@ -438,8 +464,6 @@ def process_and_save_state(
     if logger is not None:
         logger.info(f"Saving {state_abb} to {data_dir}")
 
-    # post processing not yet updated for combined nhsn and nssp data
-    nssp_training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
     combined_training_dat.write_csv(
         Path(data_dir, "combined_training_data.tsv"), separator="\t"
     )

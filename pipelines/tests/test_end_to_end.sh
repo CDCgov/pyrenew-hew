@@ -46,6 +46,9 @@ done
 
 echo "TEST-MODE: pipeline runs complete for all location/disease pairs."
 
+echo "TEST-MODE: Extending tests for H and HE models..."
+Rscript pipelines/tests/create_more_model_test_data.R
+
 echo "TEST-MODE: Running batch postprocess..."
 
 python pipelines/postprocess_forecast_batches.py \
@@ -58,5 +61,6 @@ if [ $? -ne 0 ]; then
 else
     echo "TEST-MODE: Batch postprocess succeeded."
 fi
+
 
 echo "TEST-MODE: All finished successfully."

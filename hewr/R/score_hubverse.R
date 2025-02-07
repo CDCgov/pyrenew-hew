@@ -72,7 +72,7 @@ score_hubverse <- function(forecast,
         "target_end_date"
       )
     ) |>
-    dplyr::mutate(output_type_id = output_type_id |>
+    dplyr::mutate(output_type_id = .data$output_type_id |>
       as.numeric() |>
       round(digits = !!quantile_tol)) |>
     scoringutils::as_forecast_quantile(
