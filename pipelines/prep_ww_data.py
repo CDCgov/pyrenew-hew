@@ -39,20 +39,20 @@ def clean_and_filter_nwss_data(nwss_data):
             ]
         )
         .with_columns(
-           pcr_target_avg_conc=pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
-                .then(pl.col("pcr_target_avg_conc") / 1000)
-                .when(
-                    pl.col("pcr_target_units") == "log10 copies/l wastewater"
-                )
-                .then((10 ** pl.col("pcr_target_avg_conc")) / 1000)
-                .otherwise(None),
-            lod_sewage=pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
-                .then(pl.col("lod_sewage") / 1000)
-                .when(
-                    pl.col("pcr_target_units") == "log10 copies/l wastewater"
-                )
-                .then((10 ** pl.col("lod_sewage")) / 1000)
-                .otherwise(None)
+            pcr_target_avg_conc=pl.when(
+                pl.col("pcr_target_units") == "copies/l wastewater"
+            )
+            .then(pl.col("pcr_target_avg_conc") / 1000)
+            .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
+            .then((10 ** pl.col("pcr_target_avg_conc")) / 1000)
+            .otherwise(None),
+            lod_sewage=pl.when(
+                pl.col("pcr_target_units") == "copies/l wastewater"
+            )
+            .then(pl.col("lod_sewage") / 1000)
+            .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
+            .then((10 ** pl.col("lod_sewage")) / 1000)
+            .otherwise(None),
         )
         .filter(
             (
@@ -254,8 +254,16 @@ def validate_ww_conc_data(
             "Site populations are not integers, or have negative values."
         )
 
-    if not ww_data.group_by("site").n_unique().get_column("site_pop").eq(1).all():
-        raise ValueError("The data contains sites with varying population sizes.")
+    if (
+        not ww_data.group_by("site")
+        .n_unique()
+        .get_column("site_pop")
+        .eq(1)
+        .all()
+    ):
+        raise ValueError(
+            "The data contains sites with varying population sizes."
+        )
 
     return None
 
