@@ -351,6 +351,5 @@ class PyrenewHEWData:
             first_hospital_admissions_date=(self.first_data_date_overall),
             first_wastewater_date=self.first_data_date_overall,
             pop_fraction=self.pop_fraction,
-            wastewater_data=self.wastewater_data,
             right_truncation_offset=None,  # by default, want forecasts of complete reports
         )
