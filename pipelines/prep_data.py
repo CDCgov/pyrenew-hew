@@ -12,9 +12,7 @@ import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 from prep_ww_data import (
-    get_date_time_spine,
     get_nwss_data,
-    get_site_subpop_spine,
     preprocess_ww_data,
 )
 
@@ -424,26 +422,6 @@ def process_and_save_state(
     )
 
     preprocessed_ww_data = preprocess_ww_data(ww_data)
-    site_subpop_spine = get_site_subpop_spine(
-        preprocessed_ww_data, total_pop=state_pop
-    )
-    date_time_spine = get_date_time_spine(
-        start_date=first_training_date, end_date=last_training_date
-    )
-    ww_data_to_fit = (
-        preprocessed_ww_data.join(
-            date_time_spine, on="date", how="left", coalesce=True
-        )
-        .join(
-            site_subpop_spine,
-            on=["site_index", "site"],
-            how="left",
-            coalesce=True,
-        )
-        .with_columns(
-            pl.arange(0, pl.len()).alias("ind_rel_to_observed_times")
-        )
-    )
 
     data_for_model_fit = {
         "inf_to_ed_pmf": delay_pmf,
@@ -456,18 +434,19 @@ def process_and_save_state(
         "nhsn_training_dates": nhsn_training_dates,
         "nhsn_first_date_index": nhsn_first_date_index,
         "nhsn_step_size": nhsn_step_size,
+        "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "train_disease_wastewater": ww_data_to_fit.select(
+        "data_observed_disease_wastewater": preprocessed_ww_data.select(
             [
                 "date",
+                "site",
+                "lab",
+                "site_pop",
+                "site_index",
                 "lab_site_index",
                 "log_genome_copies_per_ml",
                 "log_lod",
                 "below_lod",
-                "subpop_pop",
-                "subpop_index",
-                "t",
-                "ind_rel_to_observed_times",
             ]
         ),
     }

@@ -741,7 +741,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 latent_infections=latent_infections,
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
-                n_datapoints=data.n_ed_visits_datapoints,
+                n_datapoints=data.n_ed_visits_data_days,
                 right_truncation_offset=data.right_truncation_offset,
             )
 
@@ -750,7 +750,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 latent_infections=latent_infections,
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
-                n_datapoints=data.n_hospital_admissions_datapoints,
+                n_datapoints=data.n_hospital_admissions_data_days,
                 data_observed=(data.data_observed_disease_hospital_admissions),
                 iedr=iedr,
             )
@@ -761,16 +761,16 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             ) = self.wastewater_obs_process_rv(
                 latent_infections=latent_infections,
                 latent_infections_subpop=latent_infections_subpop,
-                data_observed=data.data_observed_disease_wastewater,
-                n_datapoints=data.n_wastewater_datapoints,
-                ww_uncensored=None,  # placeholder
-                ww_censored=None,  # placeholder
-                ww_observed_lab_sites=None,  # placeholder
-                ww_observed_subpops=None,  # placeholder
-                ww_observed_times=None,  # placeholder
-                ww_log_lod=None,  # placeholder
-                lab_site_to_subpop_map=None,  # placeholder
-                n_ww_lab_sites=None,  # placeholder
+                data_observed=data.data_observed_disease_wastewater_conc,
+                n_datapoints=data.n_wastewater_data_days,
+                ww_uncensored=data.ww_uncensored,
+                ww_censored=data.ww_censored,
+                ww_observed_lab_sites=data.ww_observed_lab_sites,
+                ww_observed_subpops=data.ww_observed_subpops,
+                ww_observed_times=data.ww_observed_times,
+                ww_log_lod=data.ww_log_lod,
+                lab_site_to_subpop_map=data.lab_site_to_subpop_map,
+                n_ww_lab_sites=data.n_ww_lab_sites,
                 shedding_offset=1e-8,
             )
 
