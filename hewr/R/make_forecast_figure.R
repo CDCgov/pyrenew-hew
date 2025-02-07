@@ -30,8 +30,10 @@ make_forecast_figure <- function(target_variable,
   y_axis_labels <- parsed_variable_name[["y_axis_labels"]]
   core_name <- parsed_variable_name[["core_name"]]
 
-  title_prefix <- ifelse(stringr::str_starts(target_variable, "observed"),
-    disease_name_pretty, "Other"
+  title_prefix <- ifelse(
+    stringr::str_starts(target_variable, "other"),
+    "Other",
+    disease_name_pretty
   )
   title <- glue::glue("{title_prefix} {core_name} in {state_abb}")
 
