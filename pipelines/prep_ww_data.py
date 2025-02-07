@@ -76,38 +76,38 @@ def clean_and_filter_nwss_data(nwss_data):
         .item()
     )
     nwss_subset = nwss_subset_raw.with_columns(
+        lod_sewage=pl.when(pl.col("lod_sewage").is_null())
+        .then(conservative_lod)
+        .otherwise(pl.col("lod_sewage")),
+        sample_collect_date=pl.col("sample_collect_date").str.to_date(
+            format="%Y-%m-%d"
+        ),
+    ).select(
         [
-            pl.when(pl.col("lod_sewage").is_null())
-            .then(conservative_lod)
-            .otherwise(pl.col("lod_sewage"))
-            .alias("lod_sewage"),
-            pl.col("sample_collect_date")
-            .str.to_date(format="%Y-%m-%d")
-            .alias("sample_collect_date"),
+            "sample_collect_date",
+            "wwtp_name",
+            "lab_id",
+            "pcr_target_avg_conc",
+            "wwtp_jurisdiction",
+            "lod_sewage",
+            "population_served",
         ]
     )
-    nwss_subset_clean = (
-        nwss_subset.group_by(["wwtp_name", "lab_id", "sample_collect_date"])
-        .agg(
-            [pl.col("pcr_target_avg_conc").mean().alias("pcr_target_avg_conc")]
-        )
-        .join(
-            nwss_subset,
-            on=["wwtp_name", "lab_id", "sample_collect_date"],
-            how="left",
-        )
-        .select(
-            [
-                "sample_collect_date",
-                "wwtp_name",
-                "lab_id",
-                "pcr_target_avg_conc",
-                "wwtp_jurisdiction",
-                "lod_sewage",
-                "population_served",
-            ]
-        )
+
+    # Remove if any exact duplicates of pcr_target_avg_conc
+    # values present for each combination of wwtp_name, lab_id,
+    # and sample_collect_date
+    nwss_subset_clean = nwss_subset.unique(
+        subset=[
+            "sample_collect_date",
+            "wwtp_name",
+            "lab_id",
+            "pcr_target_avg_conc",
+        ]
     )
+
+    # replaces time-varying population if present in the NWSS dataset.
+    # Model does not allow time varying population
     nwss_subset_clean_pop = (
         nwss_subset_clean.group_by("wwtp_name")
         .agg(
@@ -201,11 +201,6 @@ def validate_ww_conc_data(
     ]:
         raise TypeError(
             "Expected numeric values for wastewater concentration."
-        )
-
-    if ww_data["date", "site", "lab"].is_duplicated().any():
-        raise ValueError(
-            "Duplicate observations found for the same site, lab, and date."
         )
 
     ww_lod = ww_data[lod_col_name]
