@@ -329,9 +329,8 @@ def process_and_save_state(
 
     state_pop_df = get_state_pop_df()
 
-    state_pop = (
-        state_pop_df.filter(pl.col("abb") == state_abb)
-        .item(0, "population")
+    state_pop = state_pop_df.filter(pl.col("abb") == state_abb).item(
+        0, "population"
     )
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
