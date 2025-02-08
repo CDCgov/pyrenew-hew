@@ -15,7 +15,7 @@ def clean_and_filter_nwss_data(nwss_data):
     A site-lab level dataset, filtered to only the columns we use
     for model fitting
     """
-    nwss_subset_raw = (
+    nwss_subset = (
         nwss_data.filter(
             pl.col("sample_location") == "wwtp",
             pl.col("sample_matrix") != "primary sludge",
@@ -23,6 +23,7 @@ def clean_and_filter_nwss_data(nwss_data):
             pl.col("pcr_target") == "sars-cov-2",
             pl.col("lab_id").is_not_null(),
             pl.col("wwtp_name").is_not_null(),
+            pl.col("lod_sewage").is_not_null(),
         )
         .select(
             [
@@ -33,7 +34,6 @@ def clean_and_filter_nwss_data(nwss_data):
                 "wwtp_jurisdiction",
                 "population_served",
                 "pcr_target_units",
-                "pcr_target_below_lod",
                 "lod_sewage",
                 "quality_flag",
             ]
@@ -53,6 +53,9 @@ def clean_and_filter_nwss_data(nwss_data):
             .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
             .then((10 ** pl.col("lod_sewage")) / 1000)
             .otherwise(None),
+            sample_collect_date=pl.col("sample_collect_date").str.to_date(
+                format="%Y-%m-%d"
+            ),
         )
         .filter(
             (
@@ -68,31 +71,7 @@ def clean_and_filter_nwss_data(nwss_data):
             )
             | (pl.col("quality_flag").is_null())
         )
-    )
-    conservative_lod = (
-        nwss_subset_raw.select(pl.col("lod_sewage").drop_nulls())
-        .quantile(0.95)
-        .to_numpy()
-        .item()
-    )
-    nwss_subset = nwss_subset_raw.with_columns(
-        lod_sewage=pl.when(pl.col("lod_sewage").is_null())
-        .then(conservative_lod)
-        .otherwise(pl.col("lod_sewage")),
-        sample_collect_date=pl.col("sample_collect_date").str.to_date(
-            format="%Y-%m-%d"
-        ),
-    ).select(
-        [
-            "sample_collect_date",
-            "wwtp_name",
-            "lab_id",
-            "pcr_target_avg_conc",
-            "wwtp_jurisdiction",
-            "lod_sewage",
-            "population_served",
-        ]
-    )
+    ).drop(["quality_flag", "pcr_target_units"])
 
     # Remove if any exact duplicates of pcr_target_avg_conc
     # values present for each combination of wwtp_name, lab_id,
