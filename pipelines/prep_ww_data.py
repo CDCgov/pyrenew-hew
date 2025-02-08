@@ -52,6 +52,9 @@ def clean_nwss_data(nwss_data):
             .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
             .then((10 ** pl.col("lod_sewage")) / 1000)
             .otherwise(None),
+            sample_collect_date=pl.col("sample_collect_date").str.to_date(
+                format="%Y-%m-%d"
+            ),
         )
         .filter(
             (
