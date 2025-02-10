@@ -6,32 +6,13 @@
 from a model batch directory containing forecasts
 for multiple locations as daily MCMC draws.}
 \usage{
-to_epiweekly_quantile_table(
-  model_batch_dir,
-  exclude = NULL,
-  strict = FALSE,
-  epiweekly_other_locations = c()
-)
+to_epiweekly_quantile_table(model_batch_dir)
 }
 \arguments{
 \item{model_batch_dir}{Model batch directory containing
 the individual location forecast directories
 ("model run directories") to process. Name should be in the format
 \verb{\{disease\}_r_\{reference_date\}_f_\{first_data_date\}_t_\{last_data_date\}}.}
-
-\item{exclude}{Locations to exclude, if any, as a list of strings.
-Default \code{NULL} (exclude nothing).}
-
-\item{strict}{Boolean. If \code{TRUE}, raise an error if no
-valid draws are available to aggregate for any given location.
-Otherwise return \code{NULL} for that location but continue with other.
-locations. Passed as the \code{strict} argument to \code{\link[=to_epiweekly_quantiles]{to_epiweekly_quantiles()}}.
-Default \code{FALSE}.}
-
-\item{epiweekly_other_locations}{Use an expressly epiweekly forecast
-for non-target ED visits instead of a daily forecast aggregated
-to epiweekly for the specified locations. Default \code{c()} (Use a
-an aggregated daily other forecast for all.}
 }
 \value{
 The complete hubverse-format \code{\link[tibble:tibble]{tibble}}.

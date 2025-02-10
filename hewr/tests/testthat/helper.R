@@ -1,30 +1,39 @@
-create_tidy_forecast_data <- function(directory,
-                                      filename,
-                                      date_cols,
-                                      disease_cols,
-                                      n_draw,
-                                      with_epiweek = FALSE) {
+create_model_results <- function(file,
+                                 model_name,
+                                 date_options,
+                                 geo_value_options,
+                                 disease_options,
+                                 n_draw) {
+  model_components <- hewr::parse_pyrenew_model_name(model_name)
+
+  components_to_variables <-
+    list(
+      "h" = "observed_hospital_admissions",
+      "e" = c(
+        "observed_ed_visits",
+        "other_ed_visits",
+        "prop_disease_ed_visits"
+      ),
+      "w" = NULL
+    )
+
+
+  variable_options <-
+    components_to_variables |>
+    purrr::keep(model_components) |>
+    unname() |>
+    unlist()
+
   data <- tidyr::expand_grid(
-    date = date_cols,
-    disease = disease_cols,
-    .draw = 1:n_draw
+    .draw = 1:n_draw,
+    date = date_options,
+    geo_value = geo_value_options,
+    disease = disease_options,
+    .variable = variable_options
   ) |>
-    dplyr::mutate(.value = sample(1:100, dplyr::n(), replace = TRUE))
-  if (length(disease_cols) == 1) {
-    data <- data |>
-      dplyr::rename(!!disease_cols := ".value") |>
-      dplyr::select(-disease)
-  }
+    dplyr::mutate(.value = as.double(rpois(dplyr::n(), lambda = 100)))
 
-  if (with_epiweek) {
-    data <- data |>
-      dplyr::mutate(
-        epiweek = lubridate::epiweek(.data$date),
-        epiyear = lubridate::epiyear(.data$date)
-      )
-  }
-
-  arrow::write_parquet(data, fs::path(directory, filename))
+  arrow::write_parquet(data, file)
 }
 
 create_observation_data <- function(
@@ -59,6 +68,7 @@ create_hubverse_table <- function(
         decreasing = FALSE
       ),
       target = "wk inc covid prop ed visits",
+      # "wk inc covid hosp	"
       output_type = !!output_type,
       target_end_date = reference_date + 7 * horizon
     ) |>
