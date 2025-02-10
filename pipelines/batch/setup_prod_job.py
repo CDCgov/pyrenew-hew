@@ -5,6 +5,7 @@ of pyrenew-hew on Azure Batch.
 
 import argparse
 import itertools
+import re
 from pathlib import Path
 
 import polars as pl
