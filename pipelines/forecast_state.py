@@ -357,7 +357,7 @@ def main(
         "pyrenew_e",
         n_days_past_last_training,
         predict_ed_visits=forecast_ed_visits,
-        predict_hospital_admissions=sample_forecast_admissions,
+        predict_hospital_admissions=forecast_hospital_admissions,
         predict_wastewater=forecast_wastewater,
     )
 
