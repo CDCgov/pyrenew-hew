@@ -201,9 +201,12 @@ def main(
     exclude_last_n_days: int = 0,
     score: bool = False,
     eval_data_path: Path = None,
-    sample_ed_visits: bool = False,
-    sample_hospital_admissions: bool = False,
-    sample_wastewater: bool = False,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
+    forecast_ed_visits: bool = False,
+    forecast_hospital_admissions: bool = False,
+    forecast_wastewater: bool = False,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -340,9 +343,9 @@ def main(
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
-        sample_ed_visits=sample_ed_visits,
-        sample_hospital_admissions=sample_hospital_admissions,
-        sample_wastewater=sample_wastewater,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
     )
     logger.info("Model fitting complete")
 
@@ -353,9 +356,9 @@ def main(
         model_run_dir,
         "pyrenew_e",
         n_days_past_last_training,
-        predict_ed_visits=sample_ed_visits,
-        predict_hospital_admissions=sample_hospital_admissions,
-        predict_wastewater=sample_wastewater,
+        predict_ed_visits=forecast_ed_visits,
+        predict_hospital_admissions=sample_forecast_admissions,
+        predict_wastewater=forecast_wastewater,
     )
 
     logger.info(
@@ -537,22 +540,41 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--sample-ed-visits",
+        "--fit-ed-visits",
         type=bool,
         action=argparse.BooleanOptionalAction,
         help="If provided, fit to ED visit data.",
     )
     parser.add_argument(
-        "--sample-hospital-admissions",
+        "--fit-hospital-admissions",
         type=bool,
         action=argparse.BooleanOptionalAction,
         help=("If provided, fit to hospital admissions data."),
     )
     parser.add_argument(
-        "--sample-wastewater",
+        "--fit-wastewater",
         type=bool,
         action=argparse.BooleanOptionalAction,
         help="If provided, fit to wastewater data.",
+    )
+
+    parser.add_argument(
+        "--forecast-ed-visits",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, forecast ED visits.",
+    )
+    parser.add_argument(
+        "--forecast-hospital-admissions",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help=("If provided, forecast hospital admissions."),
+    )
+    parser.add_argument(
+        "--forecast-wastewater",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, forecast wastewater concentrations.",
     )
 
     args = parser.parse_args()
