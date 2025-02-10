@@ -110,7 +110,14 @@ def clean_and_filter_nwss_data(nwss_data):
                 "population_served",
             ]
         )
-        .unique(["wwtp_name", "lab_id", "sample_collect_date"])
+        .unique(
+            [
+                "wwtp_name",
+                "lab_id",
+                "sample_collect_date",
+                "pcr_target_avg_conc",
+            ]
+        )
     )
 
     ww_data = (
@@ -309,23 +316,9 @@ def get_nwss_data(
         ww_data_path,
         schema_overrides=schema_overrides,
     )  # placeholder: TBD: If using a direct API call to decipher or ABS vintage
-    ww_data = (
-        clean_and_filter_nwss_data(nwss_data)
-        .filter(
-            (pl.col("location").is_in([state_abb]))
-            & (pl.col("date") >= start_date)
-        )
-        .with_columns(
-            pl.col(["site_pop"])
-            .mean()
-            .over(["lab", "site", "date", "location"])
-            .cast(pl.Int64)
-        )
-        .with_columns(
-            pl.col(["log_genome_copies_per_ml", "log_lod"])
-            .mean()
-            .over(["lab", "site", "date", "location"])
-        )
+    ww_data = clean_and_filter_nwss_data(nwss_data).filter(
+        (pl.col("location").is_in([state_abb]))
+        & (pl.col("date") >= start_date)
     )
 
     return ww_data
