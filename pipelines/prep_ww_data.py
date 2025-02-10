@@ -147,6 +147,24 @@ def clean_and_filter_nwss_data(nwss_data):
     return ww_data
 
 
+def check_missing_values(df: pl.DataFrame, columns: list[str]):
+    """Raises an error if missing values in a given column(s)."""
+    missing_cols = [col for col in columns if df[col].is_null().any()]
+    if missing_cols:
+        raise ValueError(f"Missing values in column(s): {missing_cols}")
+
+
+def check_column_type(
+    df: pl.DataFrame, col_name: str, expected_types: list[type]
+):
+    """Raises an error if a column's dtype is not in the expected types."""
+    if df[col_name].dtype not in expected_types:
+        raise TypeError(
+            f"{col_name} expected to be one of the following type "
+            "{expected_types}, provided type is {df[col_name].dtype}"
+        )
+
+
 def validate_ww_conc_data(
     ww_data: pl.DataFrame,
     conc_col_name: str = "log_genome_copies_per_ml",
@@ -162,77 +180,41 @@ def validate_ww_conc_data(
     if ww_data.is_empty():
         raise ValueError("Input DataFrame 'ww_data' is empty.")
 
-    ww_conc = ww_data[conc_col_name]
-    if ww_conc.is_null().any():
-        raise ValueError(
-            f"{conc_col_name} has missing values. "
-            "Observations below the limit of detection "
-            "must indicate a numeric value less than "
-            "the limit of detection."
-        )
+    check_missing_values(
+        ww_data,
+        [
+            conc_col_name,
+            lod_col_name,
+            date_col_name,
+            wwtp_col_name,
+            wwtp_pop_name,
+            lab_col_name,
+        ],
+    )
 
-    if not isinstance(ww_conc, pl.Series):
-        raise TypeError(
-            "Wastewater concentration is expected to be a 1D Series."
-        )
+    check_column_type(
+        ww_data,
+        conc_col_name,
+        [
+            pl.Float32,
+            pl.Float64,
+        ],
+    )
+    check_column_type(
+        ww_data,
+        lod_col_name,
+        [
+            pl.Float32,
+            pl.Float64,
+        ],
+    )
+    check_column_type(ww_data, date_col_name, [pl.Date])
+    check_column_type(ww_data, wwtp_col_name, [pl.Int32, pl.Int64, pl.Utf8])
+    check_column_type(ww_data, lab_col_name, [pl.Int32, pl.Int64, pl.Utf8])
+    check_column_type(ww_data, wwtp_pop_name, [pl.Int32, pl.Int64])
 
-    if ww_conc.dtype not in [
-        pl.Int8,
-        pl.Int16,
-        pl.Int32,
-        pl.Int64,
-        pl.Float32,
-        pl.Float64,
-    ]:
-        raise TypeError(
-            "Expected numeric values for wastewater concentration."
-        )
-
-    ww_lod = ww_data[lod_col_name]
-    if ww_lod.is_null().any():
-        raise ValueError(
-            "There are missing values in the limit of detection data."
-        )
-
-    if not isinstance(ww_lod, pl.Series):
-        raise TypeError(
-            "Limit of detection data is expected to be a 1D Series."
-        )
-
-    ww_obs_dates = ww_data[date_col_name]
-    if ww_obs_dates.is_null().any():
-        raise ValueError("Date column has missing values.")
-
-    if ww_obs_dates.dtype != pl.Date:
-        raise TypeError("Date column has to be of Date type.")
-
-    site_labels = ww_data[wwtp_col_name]
-    if site_labels.is_null().any():
-        raise TypeError("Site labels column has missing values.")
-
-    if (
-        site_labels.dtype not in [pl.Int32, pl.Int64]
-        and site_labels.dtype != pl.Utf8
-    ):
-        raise TypeError("Site labels not of integer/string type.")
-
-    lab_labels = ww_data[lab_col_name]
-    if lab_labels.is_null().any():
-        raise TypeError("Lab labels are missing.")
-
-    if (
-        lab_labels.dtype not in [pl.Int32, pl.Int64]
-        and lab_labels.dtype != pl.Utf8
-    ):
-        raise TypeError("Lab labels are not of integer/string type.")
-
-    site_pops = ww_data[wwtp_pop_name]
-    if site_pops.is_null().any():
-        raise ValueError("Site populations are missing.")
-    if site_pops.dtype not in [pl.Int32, pl.Int64] or (site_pops < 0).any():
-        raise ValueError(
-            "Site populations are not integers, or have negative values."
-        )
+    if (ww_data[wwtp_pop_name] < 0).any():
+        raise ValueError("Site populations have negative values.")
 
     if (
         not ww_data.group_by(wwtp_col_name)
