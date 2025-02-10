@@ -287,24 +287,42 @@ parser.add_argument(
 
 
 parser.add_argument(
-    "--sample-ed-visits",
+    "--fit-ed-visits",
     type=bool,
     action=argparse.BooleanOptionalAction,
-    help="If provided, fit to and predict ED visit data.",
+    help="If provided, fit to ED visit data.",
 )
 parser.add_argument(
-    "--sample-hospital-admissions",
+    "--fit-hospital-admissions",
     type=bool,
     action=argparse.BooleanOptionalAction,
-    help=("If provided, fit to and predict hospital admissions data."),
+    help=("If provided, fit to hospital admissions data."),
 )
 parser.add_argument(
-    "--sample-wastewater",
+    "--fit-wastewater",
     type=bool,
     action=argparse.BooleanOptionalAction,
-    help="If provided, fit to and predict wastewater data.",
+    help="If provided, fit to wastewater data.",
 )
 
+parser.add_argument(
+    "--forecast-ed-visits",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help="If provided, forecast ED visits.",
+)
+parser.add_argument(
+    "--forecast-hospital-admissions",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help=("If provided, forecast hospital admissions."),
+)
+parser.add_argument(
+    "--forecast-wastewater",
+    type=bool,
+    action=argparse.BooleanOptionalAction,
+    help="If provided, forecast wastewater concentrations.",
+)
 
 parser.add_argument(
     "--n-training-days",
