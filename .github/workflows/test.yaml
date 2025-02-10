@@ -39,7 +39,7 @@ jobs:
           NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
           NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
         run: |
-          poetry run pytest \
+          poetry run pytest tests \
             --mpl --mpl-default-tolerance=10 \
             --cov=pyrenew_hew --cov-report=term --cov-report=xml:pyrenew_hew-coverage.xml .
 
@@ -79,7 +79,7 @@ jobs:
 
       - name: run tests
         run: |
-          poetry run pytest \
+          poetry run pytest pipelines \
             --mpl --mpl-default-tolerance=10 \
             --cov=pipelines --cov-report=term --cov-report=xml:pipelines-coverage.xml .
 
