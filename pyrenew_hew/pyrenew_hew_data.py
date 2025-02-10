@@ -144,8 +144,8 @@ class PyrenewHEWData:
                 )
                 .unique()
                 .sum()
-                .to_numpy()
-                .flatten()[0]
+                .get_column("site_pop")
+                .item()
             )
             site_indices = (
                 self.data_observed_disease_wastewater.select(
@@ -163,8 +163,8 @@ class PyrenewHEWData:
                             self.population_size
                             - site_indices.select(pl.col("site_pop"))
                             .sum()
-                            .to_numpy()
-                            .flatten()[0]
+                            .get_column("site_pop")
+                            .item()
                         ],
                     }
                 )
@@ -173,17 +173,12 @@ class PyrenewHEWData:
             site_subpop_spine = (
                 pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
                 .with_columns(
-                    [
-                        pl.col("site_index").cum_count().alias("subpop_index"),
-                        pl.when(pl.col("site").is_not_null())
-                        .then(
-                            pl.col("site").map_elements(
-                                lambda x: f"Site: {x}", return_dtype=str
-                            )
-                        )
-                        .otherwise(pl.lit("remainder of population"))
-                        .alias("subpop_name"),
-                    ]
+                    subpop_index=pl.col("site_index")
+                    .cum_count()
+                    .alias("subpop_index"),
+                    subpop_name=pl.format(
+                        "Site: {}", pl.col("site")
+                    ).fill_null("remainder of population"),
                 )
                 .rename({"site_pop": "subpop_pop"})
             )
@@ -212,9 +207,7 @@ class PyrenewHEWData:
                     )
                 }
             )
-            return date_time_spine.with_columns(
-                pl.arange(0, pl.len()).alias("t")
-            )
+            return date_time_spine.with_row_index("t")
 
     @property
     def wastewater_data_extended(self):
@@ -229,17 +222,13 @@ class PyrenewHEWData:
                     how="left",
                     coalesce=True,
                 )
-                .with_columns(
-                    pl.arange(0, pl.len()).alias("ind_rel_to_observed_times")
-                )
+                .with_row_index("ind_rel_to_observed_times")
             )
 
     @property
     def pop_fraction(self):
         if self.data_observed_disease_wastewater is not None:
-            subpop_sizes = self.site_subpop_spine.sort(
-                by="subpop_index", descending=False
-            )["subpop_pop"].to_numpy()
+            subpop_sizes = self.site_subpop_spine["subpop_pop"].to_numpy()
             return subpop_sizes / self.population_size
         return self.pop_fraction_
 
