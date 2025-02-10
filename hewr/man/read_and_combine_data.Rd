@@ -5,14 +5,11 @@
 \title{Read in and combine training and evaluation
 data from a model run directory.}
 \usage{
-read_and_combine_data(model_run_dir, disease_name, epiweekly = FALSE)
+read_and_combine_data(model_run_dir, epiweekly = FALSE)
 }
 \arguments{
 \item{model_run_dir}{model run directoryh in which to look
 for data.}
-
-\item{disease_name}{name of the disease for which to get
-combined training and evaluation data.}
 
 \item{epiweekly}{Get epiweekly data instead of daily data?
 Boolean, default \code{FALSE}.}
