@@ -46,7 +46,7 @@ def save_eval_data(
 
     nhsn_data = get_nhsn(
         start_date=first_training_date,
-        end_date=last_training_date,
+        end_date=None,
         disease=disease,
         state_abb=state,
     ).with_columns(data_type=pl.lit("eval"))
@@ -57,9 +57,6 @@ def save_eval_data(
         disease=disease,
     )
 
-    nssp_data.write_csv(
-        Path(output_data_dir, output_file_name), separator="\t"
-    )
     combined_eval_dat.write_csv(
         Path(output_data_dir, "combined_" + output_file_name), separator="\t"
     )

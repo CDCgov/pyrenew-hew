@@ -1,6 +1,6 @@
 script_packages <- c(
   "argparser", "cowplot", "dplyr", "fs", "glue", "hewr", "purrr",
-  "tidyr"
+  "tidyr", "stringr", "lubridate"
 )
 
 ## load in packages without messages
@@ -13,32 +13,41 @@ purrr::walk(script_packages, \(pkg) {
 
 save_forecast_figures <- function(model_run_dir,
                                   pyrenew_model_name,
-                                  timeseries_model_name) {
+                                  timeseries_model_name = NULL) {
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
+  pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
   processed_forecast <- process_state_forecast(
     model_run_dir,
     pyrenew_model_name,
-    timeseries_model_name
+    timeseries_model_name,
+    save = TRUE
   )
-  diseases <- unique(
-    processed_forecast$daily_combined_training_eval_data$disease
+  processed_forecast$daily_data <- read_and_combine_data(model_run_dir,
+    epiweekly = FALSE
   )
+
+
+  variables <- unique(processed_forecast$daily_samples[[".variable"]])
 
   y_transforms <- c("identity" = "", "log10" = "_log")
 
-  timescales <- c(
-    "daily",
-    "epiweekly",
-    "epiweekly_with_epiweekly_other"
-  )
-
+  timescales <- "daily"
+  if (pyrenew_model_components[["e"]]) {
+    timescales <- c(timescales, "epiweekly", "epiweekly_with_epiweekly_other")
+    processed_forecast$epiweekly_data <- read_and_combine_data(model_run_dir,
+      epiweekly = TRUE
+    )
+  }
+  # This isn't quite right. Gives misleading file names to h figures
+  # They are labelled "daily" but are actually epiweekly
+  # No prefix at all would also be fine
   figure_save_tbl <-
     expand_grid(
-      target_disease = diseases,
+      target_variable = variables,
       y_transform = names(y_transforms),
       timescale = timescales
     ) |>
-    filter(!(.data$target_disease == "Disease" &
+    filter(!(.data$target_variable == "observed_ed_visits" &
       .data$timescale == "epiweekly_with_epiweekly_other")) |>
     mutate(
       transform_name = y_transforms[y_transform],
@@ -50,32 +59,32 @@ save_forecast_figures <- function(model_run_dir,
     mutate(
       figure_path = path(
         model_run_dir,
+        pyrenew_model_name,
         glue(
-          "{target_disease}_",
+          "{target_variable}_",
           "forecast_plot{transform_name}_",
           "{timescale}"
         ),
         ext = "pdf"
       ),
-      dat_to_use = glue("{dat_timescale}_combined_training_eval_data"),
+      dat_to_use = glue("{dat_timescale}_data"),
       ci_to_use = glue("{timescale}_ci")
     ) |>
     mutate(figure = pmap(
       list(
-        target_disease,
+        target_variable,
         y_transform,
         dat_to_use,
         ci_to_use
       ),
-      \(target_disease,
+      \(target_variable,
         y_transform,
         dat_to_use,
         ci_to_use) {
         make_forecast_figure(
-          target_disease = target_disease,
+          target_variable = target_variable,
           combined_dat = processed_forecast[[dat_to_use]],
           forecast_ci = processed_forecast[[ci_to_use]],
-          disease_name = parsed_model_run_dir$disease,
           data_vintage_date = parsed_model_run_dir$report_date,
           y_transform = y_transform
         )

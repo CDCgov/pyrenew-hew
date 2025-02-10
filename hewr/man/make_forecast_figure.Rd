@@ -5,16 +5,15 @@
 \title{Make Forecast Figure}
 \usage{
 make_forecast_figure(
-  target_disease,
+  target_variable,
   combined_dat,
   forecast_ci,
-  disease_name = c("COVID-19", "Influenza"),
   data_vintage_date,
   y_transform = "identity"
 )
 }
 \arguments{
-\item{target_disease}{a disease matching the disease columns
+\item{target_variable}{a variable matching the .variable columns
 in \code{combined_dat} and \code{forecast_ci}}
 
 \item{combined_dat}{\code{combined_dat} from the result of
@@ -22,8 +21,6 @@ in \code{combined_dat} and \code{forecast_ci}}
 
 \item{forecast_ci}{\code{forecast_ci} from the result of
 \code{\link[=process_state_forecast]{process_state_forecast()}}}
-
-\item{disease_name}{\code{"COVID-19"} or \code{"Influenza"}}
 
 \item{data_vintage_date}{date that the data was collected}
 

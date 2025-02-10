@@ -54,10 +54,12 @@ def get_nhsn(
         "-e",
         f"""
         forecasttools::pull_nhsn(
+            api_key_id = {py_scalar_to_r_scalar(os.getenv("NHSN_API_KEY_ID"))},
+            api_key_secret = {py_scalar_to_r_scalar(os.getenv("NHSN_API_KEY_SECRET"))},
             start_date = {py_scalar_to_r_scalar(start_date)},
             end_date = {py_scalar_to_r_scalar(end_date)},
             columns = {py_scalar_to_r_scalar(columns)},
-            jurisdictions = {py_scalar_to_r_scalar(state_abb)},
+            jurisdictions = {py_scalar_to_r_scalar(state_abb)}
         ) |>
         dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
         dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
@@ -82,30 +84,56 @@ def combine_nssp_and_nhsn(
     nhsn_data: pl.DataFrame,
     disease: str,
 ):
-    nssp_data_long = nssp_data.unpivot(
-        on="ed_visits",
-        index=cs.exclude("ed_visits"),
-        variable_name="value_type",
-    )
+    count_type_dict = {
+        disease: "observed_ed_visits",
+        "Total": "other_ed_visits",
+    }
 
-    nhsn_data_long = (
-        nhsn_data.rename(
-            {"weekendingdate": "date", "jurisdiction": "geo_value"}
-        )
+    nssp_data_long = (
+        nssp_data.rename({"disease": "count_type"})
         .unpivot(
-            on="hospital_admissions",
-            index=cs.exclude("hospital_admissions"),
-            variable_name="value_type",
+            on="ed_visits",
+            index=cs.exclude(["ed_visits"]),
+            variable_name="drop_me",
+            value_name=".value",
         )
         .with_columns(
-            pl.lit(disease).alias("disease"),
+            pl.col("count_type").replace(count_type_dict).alias(".variable")
         )
+        .select(cs.exclude(["count_type", "drop_me"]))
     )
 
-    combined_dat = pl.concat(
-        [nssp_data_long, nhsn_data_long],
-        how="diagonal_relaxed",
-    ).sort(["date", "geo_value", "value_type"])
+    nhsn_data_long = nhsn_data.rename(
+        {
+            "weekendingdate": "date",
+            "jurisdiction": "geo_value",
+            "hospital_admissions": "observed_hospital_admissions",
+        }
+    ).unpivot(
+        on="observed_hospital_admissions",
+        index=cs.exclude("observed_hospital_admissions"),
+        variable_name=".variable",
+        value_name=".value",
+    )
+
+    combined_dat = (
+        pl.concat(
+            [nssp_data_long, nhsn_data_long],
+            how="diagonal_relaxed",
+        )
+        .with_columns(pl.lit(disease).alias("disease"))
+        .sort(["date", "geo_value", ".variable"])
+        .select(
+            [
+                "date",
+                "geo_value",
+                "disease",
+                "data_type",
+                ".variable",
+                ".value",
+            ]
+        )
+    )
 
     return combined_dat
 
@@ -150,10 +178,15 @@ def process_state_level_data(
     disease_key = _disease_map.get(disease, disease)
 
     if state_abb == "US":
+        locations_to_aggregate = (
+            state_pop_df.filter(pl.col("abb") != "US")
+            .get_column("abb")
+            .unique()
+        )
         logger.info("Aggregating state-level data to national")
         state_level_nssp_data = aggregate_to_national(
             state_level_nssp_data,
-            state_pop_df["abb"].unique(),
+            locations_to_aggregate,
             first_training_date,
             national_geo_value="US",
         )
@@ -208,9 +241,14 @@ def aggregate_facility_level_nssp_to_state(
 
     if state_abb == "US":
         logger.info("Aggregating facility-level data to national")
+        locations_to_aggregate = (
+            state_pop_df.filter(pl.col("abb") != "US")
+            .get_column("abb")
+            .unique()
+        )
         facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
-            state_pop_df["abb"].unique(),
+            locations_to_aggregate,
             first_training_date,
             national_geo_value="US",
         )
@@ -250,19 +288,11 @@ def verify_no_date_gaps(df: pl.DataFrame):
 
 
 def get_state_pop_df():
-    census_dat = pl.read_csv(
-        "https://raw.githubusercontent.com/k5cents/usa/master/data-raw/facts.csv"
-    ).rename({"name": "long_name"})
-
-    state_pop_df = forecasttools.location_table.join(
-        census_dat, on="long_name", how="right"
-    ).select(
+    return forecasttools.location_table.select(
         pl.col("short_name").alias("abb"),
         pl.col("long_name").alias("name"),
         pl.col("population"),
     )
-
-    return state_pop_df
 
 
 def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
@@ -330,14 +360,9 @@ def process_and_save_state(
 
     state_pop_df = get_state_pop_df()
 
-    if state_abb == "US":
-        state_pop = state_pop_df["population"].sum()
-    else:
-        state_pop = (
-            state_pop_df.filter(pl.col("abb") == state_abb)
-            .get_column("population")
-            .to_list()[0]
-        )
+    state_pop = state_pop_df.filter(pl.col("abb") == state_abb).item(
+        0, "population"
+    )
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
@@ -466,8 +491,6 @@ def process_and_save_state(
     if logger is not None:
         logger.info(f"Saving {state_abb} to {data_dir}")
 
-    # post processing not yet updated for combined nhsn and nssp data
-    nssp_training_data.write_csv(Path(data_dir, "data.tsv"), separator="\t")
     combined_training_dat.write_csv(
         Path(data_dir, "combined_training_data.tsv"), separator="\t"
     )
