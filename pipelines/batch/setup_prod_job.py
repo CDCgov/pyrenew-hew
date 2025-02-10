@@ -21,9 +21,12 @@ def main(
     pool_id: str,
     diseases: str | list[str],
     output_subdir: str | Path = "./",
-    sample_ed_visits: bool = False,
-    sample_hospital_admissions: bool = False,
-    sample_wastewater: bool = False,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
+    forecast_ed_visits: bool = False,
+    forecast_hospital_admissions: bool = False,
+    forecast_wastewater: bool = False,
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     n_training_days: int = 90,
@@ -56,6 +59,18 @@ def main(
      output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
+
+    fit_ed_visits
+
+    fit_hospital_admissions
+
+    fit_wastewater
+
+    forecast_ed_visits
+
+    forecast_hospital_admissions
+
+    forecast_wastewater
 
     container_image_name:
         Name of the container to use for the job.
@@ -158,12 +173,21 @@ def main(
         ],
     )
 
-    sample_ed_visits_flag = "--sample-ed-visits " if sample_ed_visits else ""
-    sample_hospital_admissions_flag = (
-        "--sample-hospital-admissions " if sample_hospital_admissions else ""
-    )
-    sample_wastewater_flag = (
-        "--sample-wastewater " if sample_wastewater else ""
+    needed_hew_flags = [
+        "fit_ed_visits",
+        "fit_hospital_admissions",
+        "fit_wastewater",
+        "forecast_ed_visits",
+        "forecast_hospital_admissions",
+        "forecast_wastewater",
+    ]
+
+    def as_flag(flag_name, bool_val):
+        prefix = "" if bool_val else "no-"
+        return f"--{prefix}{re.sub("_", "-", flag_name)}"
+
+    hew_flags = " ".join(
+        [as_flag(k, v) for k, v in locals().items() if k in needed_hew_flags]
     )
 
     base_call = (
@@ -183,9 +207,7 @@ def main(
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
-        f"{sample_ed_visits_flag}"
-        f"{sample_hospital_admissions_flag}"
-        f"{sample_wastewater_flag}"
+        f"{hew_flags}"
         "--eval-data-path "
         "nssp-etl/latest_comprehensive.parquet"
         "'"
