@@ -62,18 +62,24 @@ def main(
         in which to save results.
 
     fit_ed_visits
+        Fit to ED visits data? Default ``False``.
 
     fit_hospital_admissions
+        Fit to hospital admissions data? Default ``False``.
 
     fit_wastewater
+        Fit to wastewater data? Default ``False``.
 
     forecast_ed_visits
+        Forecast ED visits? Default ``False``.
 
     forecast_hospital_admissions
+        Forecast hospital admissions? Default ``False``.
 
     forecast_wastewater
+        Forecast wastewater concentrations? Default ``False``.
 
-    container_image_name:
+    container_image_name
         Name of the container to use for the job.
         This container should exist within the Azure
         Container Registry account associated to
@@ -242,137 +248,141 @@ def main(
     return None
 
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument("job_id", type=str, help="Name for the Azure batch job")
-parser.add_argument(
-    "pool_id",
-    type=str,
-    help=("Name of the Azure batch pool on which to run the job"),
-)
-parser.add_argument(
-    "--diseases",
-    type=str,
-    default="COVID-19 Influenza",
-    help=(
-        "Name(s) of disease(s) to run as part of the job, "
-        "as a whitespace-separated string. Supported "
-        "values are 'COVID-19' and 'Influenza'. "
-        "Default 'COVID-19 Influenza' (i.e. run for both)."
-    ),
-)
-
-parser.add_argument(
-    "--output-subdir",
-    type=str,
-    help=(
-        "Subdirectory of the output blob storage container "
-        "in which to save results."
-    ),
-    default="./",
-)
-
-parser.add_argument(
-    "--container-image-name",
-    type=str,
-    help="Name of the container to use for the job.",
-    default="pyrenew-hew",
-)
-
-parser.add_argument(
-    "--container-image-version",
-    type=str,
-    help="Version of the container to use for the job.",
-    default="latest",
-)
-
-
-parser.add_argument(
-    "--fit-ed-visits",
-    type=bool,
-    action=argparse.BooleanOptionalAction,
-    help="If provided, fit to ED visit data.",
-)
-parser.add_argument(
-    "--fit-hospital-admissions",
-    type=bool,
-    action=argparse.BooleanOptionalAction,
-    help=("If provided, fit to hospital admissions data."),
-)
-parser.add_argument(
-    "--fit-wastewater",
-    type=bool,
-    action=argparse.BooleanOptionalAction,
-    help="If provided, fit to wastewater data.",
-)
-
-parser.add_argument(
-    "--forecast-ed-visits",
-    type=bool,
-    action=argparse.BooleanOptionalAction,
-    help="If provided, forecast ED visits.",
-)
-parser.add_argument(
-    "--forecast-hospital-admissions",
-    type=bool,
-    action=argparse.BooleanOptionalAction,
-    help=("If provided, forecast hospital admissions."),
-)
-parser.add_argument(
-    "--forecast-wastewater",
-    type=bool,
-    action=argparse.BooleanOptionalAction,
-    help="If provided, forecast wastewater concentrations.",
-)
-
-parser.add_argument(
-    "--n-training-days",
-    type=int,
-    help=(
-        "Number of 'training days' of observed data "
-        "to use for model fitting."
-    ),
-    default=90,
-)
-
-parser.add_argument(
-    "--exclude-last-n-days",
-    type=int,
-    help=(
-        "Number of days to drop from the end of the timeseries "
-        "of observed data when constructing the training data."
-    ),
-    default=1,
-)
-
-parser.add_argument(
-    "--locations-include",
-    type=str,
-    help=(
-        "Two-letter USPS location abbreviations to "
-        "include in the job, as a whitespace-separated "
-        "string. If not set, include all ",
-        "available locations except any explicitly excluded "
-        "via --locations-exclude.",
-    ),
-    default=None,
-)
-
-parser.add_argument(
-    "--locations-exclude",
-    type=str,
-    help=(
-        "Two-letter USPS location abbreviations to "
-        "exclude from the job, as a whitespace-separated "
-        "string. Defaults to a set of locations for which "
-        "we typically do not have available NSSP ED visit "
-        "data: 'AS GU MO MP PR UM VI WY'."
-    ),
-    default="AS GU MO MP PR UM VI WY",
-)
-
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "job_id", type=str, help="Name for the Azure batch job"
+    )
+    parser.add_argument(
+        "pool_id",
+        type=str,
+        help=("Name of the Azure batch pool on which to run the job"),
+    )
+    parser.add_argument(
+        "--diseases",
+        type=str,
+        default="COVID-19 Influenza",
+        help=(
+            "Name(s) of disease(s) to run as part of the job, "
+            "as a whitespace-separated string. Supported "
+            "values are 'COVID-19' and 'Influenza'. "
+            "Default 'COVID-19 Influenza' (i.e. run for both)."
+        ),
+    )
+
+    parser.add_argument(
+        "--output-subdir",
+        type=str,
+        help=(
+            "Subdirectory of the output blob storage container "
+            "in which to save results."
+        ),
+        default="./",
+    )
+
+    parser.add_argument(
+        "--container-image-name",
+        type=str,
+        help="Name of the container to use for the job.",
+        default="pyrenew-hew",
+    )
+
+    parser.add_argument(
+        "--container-image-version",
+        type=str,
+        help="Version of the container to use for the job.",
+        default="latest",
+    )
+
+    parser.add_argument(
+        "--fit-ed-visits",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, fit to ED visit data.",
+    )
+
+    parser.add_argument(
+        "--fit-hospital-admissions",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help=("If provided, fit to hospital admissions data."),
+    )
+
+    parser.add_argument(
+        "--fit-wastewater",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, fit to wastewater data.",
+    )
+
+    parser.add_argument(
+        "--forecast-ed-visits",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, forecast ED visits.",
+    )
+
+    parser.add_argument(
+        "--forecast-hospital-admissions",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help=("If provided, forecast hospital admissions."),
+    )
+
+    parser.add_argument(
+        "--forecast-wastewater",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, forecast wastewater concentrations.",
+    )
+
+    parser.add_argument(
+        "--n-training-days",
+        type=int,
+        help=(
+            "Number of 'training days' of observed data "
+            "to use for model fitting."
+        ),
+        default=90,
+    )
+
+    parser.add_argument(
+        "--exclude-last-n-days",
+        type=int,
+        help=(
+            "Number of days to drop from the end of the timeseries "
+            "of observed data when constructing the training data."
+        ),
+        default=1,
+    )
+
+    parser.add_argument(
+        "--locations-include",
+        type=str,
+        help=(
+            "Two-letter USPS location abbreviations to "
+            "include in the job, as a whitespace-separated "
+            "string. If not set, include all ",
+            "available locations except any explicitly excluded "
+            "via --locations-exclude.",
+        ),
+        default=None,
+    )
+
+    parser.add_argument(
+        "--locations-exclude",
+        type=str,
+        help=(
+            "Two-letter USPS location abbreviations to "
+            "exclude from the job, as a whitespace-separated "
+            "string. Defaults to a set of locations for which "
+            "we typically do not have available NSSP ED visit "
+            "data: 'AS GU MO MP PR UM VI WY'."
+        ),
+        default="AS GU MO MP PR UM VI WY",
+    )
+
     args = parser.parse_args()
     args.diseases = args.diseases.split()
     if args.locations_include is not None:
