@@ -9,7 +9,7 @@ def hew_letters_from_flags(
     fit_wastewater: bool = False,
 ) -> str:
     """
-        Get the {H, E, W} letters defining
+        Get the {h, e, w} letters defining
         a model from a set of flags indicating which
         of the datastreams, if any, were used in fitting.
         If none of them were, return the string "null"
@@ -31,9 +31,9 @@ def hew_letters_from_flags(
             The relevant HEW letters, or 'null',
     a"""
     result = (
-        f"{'H' if fit_hospital_admissions else ''}"
-        f"{'E' if fit_ed_visits else ''}"
-        f"{'W' if fit_wastewater else ''}"
+        f"{'h' if fit_hospital_admissions else ''}"
+        f"{'e' if fit_ed_visits else ''}"
+        f"{'w' if fit_wastewater else ''}"
     )
     if result == "":
         result = "null"
