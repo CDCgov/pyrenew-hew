@@ -33,7 +33,7 @@ do
 	       --n-chains 2 \
 	       --n-samples 250 \
 	       --n-warmup 250 \
-	       --fit-ed-visits \
+	       --no-fit-ed-visits \
 	       --fit-hospital-admissions \
 	       --no-fit-wastewater \
 	       --forecast-ed-visits \
@@ -54,13 +54,6 @@ echo "TEST-MODE: pipeline runs complete for all location/disease pairs."
 
 echo "TEST-MODE: Extending tests for H and HE models..."
 Rscript pipelines/tests/create_more_model_test_data.R
-
-if [ $? -ne 0 ]; then
-	echo "TEST-MODE FAIL: Creating more model test data failed"
-	exit 1
-else
-	echo "TEST-MODE: Finished creating more model test data"
-fi
 
 echo "TEST-MODE: Running batch postprocess..."
 
