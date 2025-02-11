@@ -5,9 +5,8 @@ ARG PYRENEW_VERSION="v0.1.2"
 RUN apt-get update
 RUN apt-get install -y r-base
 RUN apt-get install -y cmake
-RUN echo $PYRENW_VERSION
 RUN pip install --root-user-action=ignore -U pip
-RUN pip install --root-user-action=ignore 'git+https://github.com/cdcgov/pyrenew.git@'$PYRENEW_VERSION
+RUN pip install --root-user-action=ignore git+https://github.com/cdcgov/pyrenew.git@$PYRENEW_VERSION
 RUN pip install --root-user-action=ignore quarto-cli
 
 CMD ["bash"]
