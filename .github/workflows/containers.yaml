@@ -20,6 +20,15 @@ jobs:
     name: Build and push image
 
     steps:
+      - name: Login to Azure
+        id: azure_login_2
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ vars.CONTAINER_REGISTRY }}
+        
       - name: Build and push image
         id: build-push
         uses: CDCgov/cfa-actions/twostep-container-build@v1.2.0
@@ -27,9 +36,6 @@ jobs:
           container-file-1: ./Containerfile.dependencies
           container-file-2: ./Containerfile
           first-step-cache-key: docker-dependencies-${{ runner.os }}-${{ hashFiles('./Containerfile.dependencies') }}
-          registry: ${{ vars.CONTAINER_REGISTRY }}
-          username: ${{ vars.CONTAINER_REGISTRY_USERNAME }}
-          password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
           image: ${{ env.IMAGE_NAME }}
           build-args-2: |
             TAG=${{ steps.image.outputs.tag }}
