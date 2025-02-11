@@ -143,8 +143,8 @@ class PyrenewHEWData:
                     pl.col("site_pop", "site", "lab", "lab_site_index")
                 )
                 .unique()
-                .sum()
                 .get_column("site_pop")
+                .sum()
                 .item()
             )
             site_indices = (
@@ -162,8 +162,8 @@ class PyrenewHEWData:
                         "site_pop": [
                             self.population_size
                             - site_indices.select(pl.col("site_pop"))
-                            .sum()
                             .get_column("site_pop")
+                            .sum()
                             .item()
                         ],
                     }

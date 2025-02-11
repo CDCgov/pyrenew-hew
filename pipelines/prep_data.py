@@ -461,19 +461,7 @@ def process_and_save_state(
         "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": preprocessed_ww_data.select(
-            [
-                "date",
-                "site",
-                "lab",
-                "site_pop",
-                "site_index",
-                "lab_site_index",
-                "log_genome_copies_per_ml",
-                "log_lod",
-                "below_lod",
-            ]
-        ),
+        "data_observed_disease_wastewater": preprocessed_ww_data,
     }
 
     data_dir = Path(model_run_dir, "data")

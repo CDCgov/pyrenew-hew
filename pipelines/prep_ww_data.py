@@ -137,6 +137,8 @@ def clean_and_filter_nwss_data(nwss_data):
                 .alias("log_genome_copies_per_ml"),
                 pl.col("lod_sewage").log().alias("log_lod"),
                 pl.col("location").str.to_uppercase().alias("location"),
+                pl.col("site").cast(pl.String).alias("site"),
+                pl.col("lab").cast(pl.String).alias("lab"),
             ]
         )
         .select(
@@ -159,17 +161,6 @@ def check_missing_values(df: pl.DataFrame, columns: list[str]):
     missing_cols = [col for col in columns if df[col].has_nulls()]
     if missing_cols:
         raise ValueError(f"Missing values in column(s): {missing_cols}")
-
-
-def check_column_type(
-    df: pl.DataFrame, col_name: str, expected_types: list[type]
-):
-    """Raises an error if a column's dtype is not in the expected types."""
-    if df[col_name].dtype not in expected_types:
-        raise TypeError(
-            f"{col_name} expected to be one of the following type "
-            "{expected_types}, provided type is {df[col_name].dtype}"
-        )
 
 
 def validate_ww_conc_data(
@@ -199,26 +190,12 @@ def validate_ww_conc_data(
         ],
     )
 
-    check_column_type(
-        ww_data,
-        conc_col_name,
-        [
-            pl.Float32,
-            pl.Float64,
-        ],
-    )
-    check_column_type(
-        ww_data,
-        lod_col_name,
-        [
-            pl.Float32,
-            pl.Float64,
-        ],
-    )
-    check_column_type(ww_data, date_col_name, [pl.Date])
-    check_column_type(ww_data, wwtp_col_name, [pl.Int32, pl.Int64, pl.Utf8])
-    check_column_type(ww_data, lab_col_name, [pl.Int32, pl.Int64, pl.Utf8])
-    check_column_type(ww_data, wwtp_pop_name, [pl.Int32, pl.Int64])
+    assert ww_data[conc_col_name].dtype.is_float()
+    assert ww_data[lod_col_name].dtype.is_float()
+    assert ww_data[date_col_name].dtype == pl.Date
+    assert ww_data[wwtp_pop_name].dtype.is_integer()
+    assert ww_data[wwtp_col_name].dtype == pl.String()
+    assert ww_data[lab_col_name].dtype == pl.String()
 
     if (ww_data[wwtp_pop_name] < 0).any():
         raise ValueError("Site populations have negative values.")
@@ -268,12 +245,12 @@ def preprocess_ww_data(
     lab_site_df = (
         ww_data_ordered.select([lab_col_name, wwtp_col_name])
         .unique()
-        .with_columns(pl.arange(0, pl.len()).alias("lab_site_index"))
+        .with_row_index("lab_site_index")
     )
     site_df = (
         ww_data_ordered.select([wwtp_col_name])
         .unique()
-        .with_columns(pl.arange(0, pl.len()).alias("site_index"))
+        .with_row_index("site_index")
     )
     ww_preprocessed = (
         ww_data_ordered.join(
@@ -287,16 +264,27 @@ def preprocess_ww_data(
             }
         )
         .with_columns(
+            lab_site_name=(
+                "Site: "
+                + pl.col(wwtp_col_name)
+                + ", Lab: "
+                + pl.col(lab_col_name)
+            ),
+            below_lod=(
+                pl.col("log_genome_copies_per_ml") <= pl.col("log_lod")
+            ).cast(pl.Int8),
+        )
+        .select(
             [
-                (
-                    "Site: "
-                    + pl.col(wwtp_col_name).cast(pl.Utf8)
-                    + ", Lab: "
-                    + pl.col(lab_col_name).cast(pl.Utf8)
-                ).alias("lab_site_name"),
-                (pl.col("log_genome_copies_per_ml") <= pl.col("log_lod"))
-                .cast(pl.Int8)
-                .alias("below_lod"),
+                "date",
+                "site",
+                "lab",
+                "site_pop",
+                "site_index",
+                "lab_site_index",
+                "log_genome_copies_per_ml",
+                "log_lod",
+                "below_lod",
             ]
         )
     )
@@ -317,8 +305,7 @@ def get_nwss_data(
         schema_overrides=schema_overrides,
     )  # placeholder: TBD: If using a direct API call to decipher or ABS vintage
     ww_data = clean_and_filter_nwss_data(nwss_data).filter(
-        (pl.col("location").is_in([state_abb]))
-        & (pl.col("date") >= start_date)
+        (pl.col("location") == state_abb) & (pl.col("date") >= start_date)
     )
 
     return ww_data
