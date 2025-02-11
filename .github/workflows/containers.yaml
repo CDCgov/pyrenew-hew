@@ -27,7 +27,7 @@ jobs:
           creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
 
       - name: Login to ACR
-        run: az acr login --name ${{ vars.CONTAINER_REGISTRY }}
+        run: az acr login --name ${{ vars.CONTAINER_REGISTRY_NAME }}
         
       - name: Build and push image
         id: build-push
