@@ -3,7 +3,9 @@
 # remaining parts of the pipeline on the fake output.
 # In the future, the pipeline script should be updated, and this script should
 # be deleted.
-library(tidyverse)
+library(purrr)
+library(readr)
+library(dplyr)
 library(fs)
 library(glue)
 try(source("hewr/R/process_state_forecast.R"))
