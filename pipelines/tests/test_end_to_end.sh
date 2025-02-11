@@ -33,8 +33,8 @@ do
 	       --n-chains 2 \
 	       --n-samples 250 \
 	       --n-warmup 250 \
-	       --no-fit-ed-visits \
-	       --fit-hospital-admissions \
+	       --fit-ed-visits \
+	       --no-fit-hospital-admissions \
 	       --no-fit-wastewater \
 	       --forecast-ed-visits \
 	       --forecast-hospital-admissions \
