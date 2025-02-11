@@ -84,25 +84,14 @@ bind_tables <- function(list_of_table_pairs) {
 save_scores <- function(score_table,
                         score_file_save_path = NULL) {
   if (!is.null(score_file_save_path)) {
-    message(glue::glue(paste0(
+    message(glue::glue(
       "Saving score table to ",
       "{score_file_save_path}..."
-    )))
+    ))
     readr::write_rds(score_table, score_file_save_path)
   }
 }
 
-read_score_file_if_exists <- function(dir,
-                                      score_file_name,
-                                      score_file_ext) {
-  score_fp <- fs::path(dir, score_file_name, ext = score_file_ext)
-
-  return(if (fs::file_exists(score_fp)) {
-    readr::read_rds(score_fp)
-  } else {
-    NULL
-  })
-}
 
 collate_scores_for_date <- function(model_run_dir,
                                     score_file_name = "score_table",
@@ -139,20 +128,6 @@ collate_scores_for_date <- function(model_run_dir,
 
   message(glue::glue("Done processing scores for {model_run_dir}."))
   return(date_score_table)
-}
-
-collate_from_dirs <- function(dirs,
-                              score_file_name,
-                              score_file_ext,
-                              score_file_save_path = NULL) {
-  collated <- purrr::map(dirs, \(dir) {
-    read_score_file_if_exists(dir, score_file_name, score_file_ext)
-  }) |>
-    bind_tables()
-
-  save_scores(collated, score_file_save_path)
-
-  return(collated)
 }
 
 
