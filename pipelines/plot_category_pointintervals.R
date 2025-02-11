@@ -79,7 +79,12 @@ plot_category_pointintervals <- function(data, horizon) {
 main <- function(hubverse_table_path,
                  output_path,
                  ...) {
-  disease <- parse_model_batch_dir_path(path_dir(hubverse_table_path))$disease
+  parsed_model_batch_dir <- hubverse_table_path |>
+    path_dir() |>
+    parse_model_batch_dir_path()
+
+  disease <- parsed_model_batch_dir$disease
+  report_date <- parsed_model_batch_dir$report_date
 
   dat <- arrow::read_parquet(hubverse_table_path)
 
@@ -92,11 +97,11 @@ main <- function(hubverse_table_path,
 
     figure_tbl <-
       dat |>
-      distinct(model) |>
-      expand_grid(horizon = c(0, 1)) |>
-      mutate(figure = map2(
-        model, horizon,
-        \(target_model, horizon) {
+      distinct(model, horizon, target_end_date) |>
+      filter(horizon %in% c(0, 1)) |>
+      mutate(figure = pmap(
+        list(model, horizon, target_end_date),
+        \(target_model, horizon, target_end_date) {
           plot_category_pointintervals(
             dat |>
               filter(model == target_model),
@@ -107,7 +112,10 @@ main <- function(hubverse_table_path,
               y = "Location"
             ) +
             ggtitle(glue::glue("{disease}, {target_model}"),
-              subtitle = glue("{horizon} week ahead")
+              subtitle = glue(
+                "Report Date: {report_date}, ",
+                "Target: {horizon} week ahead ({target_end_date})"
+              )
             )
         }
       ))
