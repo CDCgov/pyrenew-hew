@@ -62,7 +62,6 @@ else
 	echo "TEST-MODE: Finished creating more model test data"
 fi
 
-
 echo "TEST-MODE: Running batch postprocess..."
 
 python pipelines/postprocess_forecast_batches.py \
