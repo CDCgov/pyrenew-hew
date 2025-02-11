@@ -46,20 +46,6 @@ summarised_scoring_table <- function(quantile_scores,
     filter(scale == !!scale) |>
     with_horizons()
 
-  if (!is.null(by)) {
-    has_baseline <- filtered_scores |>
-      group_by(across(all_of(by))) |>
-      summarise(
-        has_baseline = (
-          !!baseline %in% .data$model && n_distinct(.data$model) > 1),
-        .groups = "drop"
-      ) |>
-      filter(has_baseline) |>
-      select(-has_baseline)
-
-    filtered_scores <- filtered_scores |>
-      inner_join(has_baseline, by = by)
-  }
 
   summarised_rel <- filtered_scores |>
     get_pairwise_comparisons(

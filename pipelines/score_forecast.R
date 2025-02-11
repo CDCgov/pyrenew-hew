@@ -31,8 +31,8 @@ purrr::walk(script_packages, \(pkg) {
 #' `scoringutils::transform_forecasts` such as the identity transformation e.g.
 #' `fun = identity` with `label = "identity"`.
 #'
-#' If more than one model is present in the data in the column
-#' `model_col`, the function will add relative skill metrics to the output.
+#' If more than one model is present in the data, in the column `model_col` the
+#' function will add relative skill metrics to the output.
 #'
 #' @param samples_scorable A data frame to be scored using
 #' `scoringutils::as_forecast_sample`
@@ -187,6 +187,7 @@ read_and_score_location <- function(model_run_dir,
     samples_scorable = samples_scorable,
     offset = 1
   )
+
 
   write_rds(scored, path(model_run_dir, "scored", ext = "rds"))
 }
