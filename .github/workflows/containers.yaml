@@ -28,7 +28,7 @@ jobs:
 
       - name: Login to ACR
         run: az acr login --name ${{ vars.CONTAINER_REGISTRY_NAME }}
-        
+
       - name: Build and push image
         id: build-push
         uses: CDCgov/cfa-actions/twostep-container-build@v1.2.0
