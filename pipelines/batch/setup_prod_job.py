@@ -8,7 +8,6 @@ import itertools
 import re
 from pathlib import Path
 
-import polars as pl
 from azure.batch import models
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
@@ -214,7 +213,7 @@ def main(
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
-        f"{hew_flags}"
+        f"{hew_flags} "
         "--eval-data-path "
         "nssp-etl/latest_comprehensive.parquet"
         "'"
