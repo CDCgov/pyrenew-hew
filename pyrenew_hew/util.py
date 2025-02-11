@@ -35,7 +35,7 @@ def hew_letters_from_flags(
         f"{'e' if fit_ed_visits else ''}"
         f"{'w' if fit_wastewater else ''}"
     )
-    if result == "":
+    if result:
         result = "null"
     return result
 
