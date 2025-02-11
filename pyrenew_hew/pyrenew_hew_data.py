@@ -338,8 +338,8 @@ class PyrenewHEWData:
             raise ValueError(
                 "Must provide at most one out of a "
                 "number of datapoints to simulate and "
-                "an array of observed wastewater "
-                "concentration data."
+                "an array of dates wastewater data is "
+                "observed."
             )
         elif date_array is not None:
             return (max(date_array) - min(date_array)).days
