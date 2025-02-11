@@ -3,7 +3,8 @@ import pickle
 from pathlib import Path
 
 import arviz as az
-from build_pyrenew_model import (
+
+from pipelines.build_pyrenew_model import (
     build_model_from_dir,
 )
 
