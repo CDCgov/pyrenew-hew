@@ -14,6 +14,8 @@ from prep_data import process_and_save_state
 from prep_eval_data import save_eval_data
 from pygit2 import Repository
 
+from pyrenew_hew.util import pyrenew_model_name_from_flags
+
 numpyro.set_host_device_count(4)
 
 from fit_pyrenew_model import fit_and_save_model  # noqa
@@ -211,6 +213,18 @@ def main(
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
+    pyrenew_model_name = pyrenew_model_name_from_flags(
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
+
+    logger.info(
+        "Starting single-location forecasting pipeline for "
+        f"model {pyrenew_model_name}, location {state}, "
+        f"and report date {report_date}"
+    )
+
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
@@ -339,7 +353,7 @@ def main(
     logger.info("Fitting model")
     fit_and_save_model(
         model_run_dir,
-        "pyrenew_e",
+        pyrenew_model_name,
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
@@ -354,7 +368,7 @@ def main(
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
     generate_and_save_predictions(
         model_run_dir,
-        "pyrenew_e",
+        pyrenew_model_name,
         n_days_past_last_training,
         predict_ed_visits=forecast_ed_visits,
         predict_hospital_admissions=forecast_hospital_admissions,
@@ -375,11 +389,13 @@ def main(
     logger.info("All forecasting complete.")
 
     logger.info("Converting inferencedata to parquet...")
-    convert_inferencedata_to_parquet(model_run_dir, "pyrenew_e")
+    convert_inferencedata_to_parquet(model_run_dir, pyrenew_model_name)
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    plot_and_save_state_forecast(model_run_dir, "pyrenew_e", "timeseries_e")
+    plot_and_save_state_forecast(
+        model_run_dir, pyrenew_model_name, "timeseries_e"
+    )
     logger.info("Postprocessing complete.")
 
     logger.info("Rendering webpage...")
@@ -391,8 +407,9 @@ def main(
         score_forecast(model_run_dir)
 
     logger.info(
-        "Single state pipeline complete "
-        f"for state {state} with "
+        "Single-location pipeline complete "
+        f"for model {pyrenew_model_name}, "
+        f"location {state}, and "
         f"report date {report_date}."
     )
     return None
