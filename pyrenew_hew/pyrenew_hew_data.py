@@ -206,8 +206,8 @@ class PyrenewHEWData:
                         eager=True,
                     )
                 }
-            )
-            return date_time_spine.with_row_index("t")
+            ).with_row_index("t")
+            return date_time_spine
 
     @property
     def wastewater_data_extended(self):

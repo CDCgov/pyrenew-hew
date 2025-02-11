@@ -156,7 +156,7 @@ def clean_and_filter_nwss_data(nwss_data):
 
 def check_missing_values(df: pl.DataFrame, columns: list[str]):
     """Raises an error if missing values in a given column(s)."""
-    missing_cols = [col for col in columns if df[col].is_null().any()]
+    missing_cols = [col for col in columns if df[col].has_nulls()]
     if missing_cols:
         raise ValueError(f"Missing values in column(s): {missing_cols}")
 
