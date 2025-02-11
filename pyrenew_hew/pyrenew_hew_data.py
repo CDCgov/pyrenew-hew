@@ -145,7 +145,6 @@ class PyrenewHEWData:
                 .unique()
                 .get_column("site_pop")
                 .sum()
-                .item()
             )
             site_indices = (
                 self.data_observed_disease_wastewater.select(
@@ -164,7 +163,6 @@ class PyrenewHEWData:
                             - site_indices.select(pl.col("site_pop"))
                             .get_column("site_pop")
                             .sum()
-                            .item()
                         ],
                     }
                 )
