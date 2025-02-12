@@ -347,6 +347,7 @@ def process_and_save_state(
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
+    ww_data_dir: Path = None,  # placeholder
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -441,7 +442,7 @@ def process_and_save_state(
     ).to_list()
 
     ww_data = get_nwss_data(
-        ww_data_path,  # TBD: If using a direct API call to decipher or ABS vintage
+        ww_data_dir,  # placeholder
         start_date=first_training_date,
         state_abb=state_abb,
     )
@@ -461,7 +462,9 @@ def process_and_save_state(
         "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": preprocessed_ww_data,
+        "data_observed_disease_wastewater": preprocessed_ww_data.to_dict(
+            as_series=False
+        ),
     }
 
     data_dir = Path(model_run_dir, "data")
