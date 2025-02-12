@@ -2,6 +2,42 @@
 Pyrenew-HEW utilities
 """
 
+from itertools import chain, combinations
+from typing import Iterable
+
+
+def powerset(iterable: Iterable) -> Iterable:
+    """
+    Subsequences of the iterable from shortest to longest,
+    considering only unique elements.
+
+    Adapted from https://docs.python.org/3/library/itertools.html#itertools-recipes
+    """
+    s = set(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
+
+
+def hew_models(with_null: bool = True) -> Iterable:
+    """
+    Return an iterable of the Pyrenew-HEW models
+    as their lowercase letters.
+
+    Parameters
+    ----------
+    with_null
+       Include the null model ("pyrenew_null"), represented as
+       the empty tuple `()`? Default ``True``.
+
+    Returns
+    -------
+    Iterable
+       An iterable yielding tuples of model letters.
+    """
+    result = powerset(("h", "e", "w"))
+    if not with_null:
+        result = filter(None, result)
+    return result
+
 
 def hew_letters_from_flags(
     fit_ed_visits: bool = False,
