@@ -9,6 +9,11 @@
 #' @param data_vintage_date date that the data was collected
 #' @param y_transform a character passed as the transform argument to
 #' [ggplot2::scale_y_continuous()].
+#' @param display_cutpoints a logical indicating whether to include cutpoints
+#' relevant to the `target_variable`.
+#' @param highlight_dates a vector of dates to highlight on the plot
+#' @param highlight_labels a vector of labels to display at the
+#' `highlight_dates`
 #'
 #' @return a ggplot object
 #' @export
@@ -16,7 +21,10 @@ make_forecast_figure <- function(target_variable,
                                  combined_dat,
                                  forecast_ci,
                                  data_vintage_date,
-                                 y_transform = "identity") {
+                                 y_transform = "identity",
+                                 display_cutpoints = TRUE,
+                                 highlight_dates = NULL,
+                                 highlight_labels = NULL) {
   disease_name <- forecast_ci[["disease"]][1]
   disease_name_pretty <- c(
     "COVID-19" = "COVID-19",
@@ -42,9 +50,104 @@ make_forecast_figure <- function(target_variable,
     dplyr::pull(date) |>
     max()
 
+  lineribbon_dat <- forecast_ci |>
+    dplyr::filter(.data$.variable == target_variable)
+
+  point_dat <- combined_dat |>
+    dplyr::filter(
+      .data$.variable == target_variable,
+      .data$date <= max(forecast_ci$date)
+    ) |>
+    dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
+    dplyr::arrange(dplyr::desc(.data$data_type))
+
+  if (display_cutpoints &&
+    target_variable == "prop_disease_ed_visits") {
+    max_y <- max(lineribbon_dat$.upper, point_dat$.value)
+
+    full_prism_cutpoints <- forecasttools::get_prism_cutpoints(
+      state_abb,
+      disease_name
+    ) |>
+      unlist() |>
+      utils::head(-1) |>
+      utils::tail(-1)
+
+
+    prism_df <-
+      full_prism_cutpoints |>
+      tibble::enframe(
+        name = "category",
+        value = "cutpoint"
+      ) |>
+      dplyr::mutate("category" = .data$category |>
+        stringr::str_remove("^prop_") |>
+        stringr::str_replace_all("_", " ") |>
+        stringr::str_to_title()) |>
+      dplyr::filter(.data$cutpoint <= max_y)
+
+    cutpoint_plot_components <- list(
+      ggplot2::geom_hline(
+        data = prism_df,
+        mapping = ggplot2::aes(
+          yintercept = .data$cutpoint,
+          color = .data$category
+        ),
+        linetype = "solid", linewidth = 1
+      ),
+      forecasttools::scale_color_prism("PRISM Category"),
+      ggnewscale::new_scale_color()
+    )
+  } else {
+    cutpoint_plot_components <- list()
+  }
+
+  if (!is.null(highlight_dates)) {
+    highlight_components <-
+      list(
+        ggplot2::geom_vline(
+          xintercept = highlight_dates,
+          linetype = "dashed"
+        ),
+        ggplot2::annotate(
+          geom = "text",
+          x = highlight_dates,
+          y = -Inf,
+          label = stringr::str_c(highlight_labels, "\n"),
+          vjust = "bottom"
+        )
+      )
+  } else {
+    highlight_components <- list()
+  }
+
+  forcast_highlight_components <-
+    list(
+      ggplot2::geom_vline(
+        xintercept = last_training_date,
+        linetype = "dashed"
+      ),
+      ggplot2::annotate(
+        geom = "text",
+        x = last_training_date,
+        y = -Inf,
+        label = "Fit Period \u2190\n",
+        hjust = "right",
+        vjust = "bottom"
+      ),
+      ggplot2::annotate(
+        geom = "text",
+        x = last_training_date,
+        y = -Inf, label = "\u2192 Forecast Period\n",
+        hjust = "left",
+        vjust = "bottom",
+      )
+    )
+
   ggplot2::ggplot(mapping = ggplot2::aes(.data$date, .data$.value)) +
+    cutpoint_plot_components +
     ggdist::geom_lineribbon(
-      data = forecast_ci |> dplyr::filter(.data$.variable == target_variable),
+      data = lineribbon_dat,
       mapping = ggplot2::aes(ymin = .data$.lower, ymax = .data$.upper),
       color = "#08519c",
       key_glyph = ggplot2::draw_key_rect,
@@ -56,35 +159,15 @@ make_forecast_figure <- function(target_variable,
     ) +
     ggplot2::geom_point(
       mapping = ggplot2::aes(color = .data$data_type), size = 1.5,
-      data = combined_dat |>
-        dplyr::filter(
-          .data$.variable == target_variable,
-          .data$date <= max(forecast_ci$date)
-        ) |>
-        dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
-        dplyr::arrange(dplyr::desc(.data$data_type))
+      data = point_dat
     ) +
     ggplot2::scale_color_manual(
       name = "Data Type",
       values = c("olivedrab1", "deeppink"),
       labels = stringr::str_to_title
     ) +
-    ggplot2::geom_vline(xintercept = last_training_date, linetype = "dashed") +
-    ggplot2::annotate(
-      geom = "text",
-      x = last_training_date,
-      y = -Inf,
-      label = "Fit Period \u2190\n",
-      hjust = "right",
-      vjust = "bottom"
-    ) +
-    ggplot2::annotate(
-      geom = "text",
-      x = last_training_date,
-      y = -Inf, label = "\u2192 Forecast Period\n",
-      hjust = "left",
-      vjust = "bottom",
-    ) +
+    forcast_highlight_components +
+    highlight_components +
     ggplot2::ggtitle(title,
       subtitle = glue::glue("as of {data_vintage_date}")
     ) +
@@ -94,5 +177,9 @@ make_forecast_figure <- function(target_variable,
     ) +
     ggplot2::scale_x_date("Date") +
     cowplot::theme_minimal_grid() +
-    ggplot2::theme(legend.position = "bottom")
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.direction = "vertical",
+      legend.justification = "center"
+    )
 }

@@ -42,7 +42,9 @@ def get_nhsn(
     }
 
     columns = disease_nhsn_key[disease]
-    state_abb = state_abb if state_abb != "US" else "USA"
+
+    state_abb_for_query = state_abb if state_abb != "US" else "USA"
+
     temp_file = Path(temp_dir, "nhsn_temp.parquet")
     api_key_id = credentials_dict.get(
         "nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID")
@@ -61,9 +63,12 @@ def get_nhsn(
             start_date = {py_scalar_to_r_scalar(start_date)},
             end_date = {py_scalar_to_r_scalar(end_date)},
             columns = {py_scalar_to_r_scalar(columns)},
-            jurisdictions = {py_scalar_to_r_scalar(state_abb)}
+            jurisdictions = {py_scalar_to_r_scalar(state_abb_for_query)}
         ) |>
         dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
+        dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
+          jurisdiction
+        )) |>
         dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
         dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
         arrow::write_parquet("{str(temp_file)}")
