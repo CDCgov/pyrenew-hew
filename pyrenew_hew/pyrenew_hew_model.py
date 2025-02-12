@@ -27,6 +27,46 @@ from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
+def delay_ascertained_first_dow(first_dow, delay_vec: ArrayLike) -> int:
+    return (first_incident + jnp.shape(delay_vec)[0]) % 7
+
+
+def weekly_to_daily(
+    weekly_ts: ArrayLike, first_day_dow: int = 0, week_start_dow: int = 0
+):
+    """
+    Convert a weekly timeseries to a daily
+    timeseries using :func:`jnp.repeat`.
+
+
+    Parameters
+    ----------
+    weekly_ts
+        Timeseries of weekly values, where
+        (discrete) time is the first dimension of
+        the array (following Pyrenew convention).
+
+    first_day_dow
+        First day of the week in the daily timeseries.
+        0-indexed. Default 0.
+
+    week_start_dow
+        Starting day of the week for ``weekly_ts``,
+        0-indexed. Default 0.
+
+    Returns
+    -------
+    ArrayLike
+        The daily timeseries.
+    """
+    first_ind = (first_day_dow - week_start_dow) % 7
+    return jnp.repeat(
+        weekly_ts,
+        repeats=7,
+        axis=0,
+    )[first_ind:]
+
+
 class LatentInfectionProcess(RandomVariable):
     def __init__(
         self,
@@ -83,7 +123,9 @@ class LatentInfectionProcess(RandomVariable):
     def validate(self):
         pass
 
-    def sample(self, n_days_post_init: int):
+    def sample(
+        self, n_days_post_init: int, first_latent_infection_dow: int
+    ) -> tuple[ArrayLike, ArrayLike]:
         """
         Sample latent infections.
 
@@ -92,6 +134,10 @@ class LatentInfectionProcess(RandomVariable):
         n_days_post_init
             Number of days of infections to sample, not including
             the initialization period.
+
+        first_latent_infection_dow
+            Which day of the week is the first latent infection
+            day? Zero-indexed.
         """
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
@@ -205,10 +251,8 @@ class LatentInfectionProcess(RandomVariable):
             )
 
         rtu_subpop = jnp.squeeze(
-            jnp.repeat(
-                jnp.exp(log_rtu_weekly_subpop),
-                repeats=7,
-                axis=0,
+            weekly_to_daily(
+                jnp.exp(log_rt_weekly_subpop), first_latent_infection_dow
             )[:n_days_post_init, :]
         )  # indexed rel to first post-init day.
 
@@ -286,6 +330,7 @@ class EDVisitObservationProcess(RandomVariable):
     def sample(
         self,
         latent_infections: ArrayLike,
+        first_latent_infection_dow: int,
         population_size: int,
         data_observed: ArrayLike,
         n_datapoints: int,
@@ -327,9 +372,6 @@ class EDVisitObservationProcess(RandomVariable):
 
         numpyro.deterministic("iedr", iedr)
 
-        ed_wday_effect_raw = self.ed_wday_effect_rv()
-        ed_wday_effect = tile_until_n(ed_wday_effect_raw, n_datapoints)
-
         inf_to_ed = self.inf_to_ed_rv()
 
         potential_latent_ed_visits = compute_delay_ascertained_incidence(
@@ -337,6 +379,15 @@ class EDVisitObservationProcess(RandomVariable):
             latent_incidence=latent_infections,
             delay_incidence_to_observation_pmf=inf_to_ed,
         )[-n_datapoints:]
+
+        first_ascertained_dow = delay_ascertained_first_dow(
+            first_latent_infection_dow, inf_to_ed
+        )
+
+        ed_wday_effect_raw = self.ed_wday_effect_rv()
+        ed_wday_effect = tile_until_n(
+            ed_wday_effect_raw, n_datapoints, offset=first_ascertained_dow
+        )
 
         latent_ed_visits_final = (
             potential_latent_ed_visits
@@ -405,7 +456,8 @@ class HospAdmitObservationProcess(RandomVariable):
         iedr: ArrayLike = None,
     ) -> ArrayLike:
         """
-        Observe and/or predict incident hospital admissions.
+        Observe and/or predict incident hospital admissions,
+        observed at the MMWR epiweekly scale.
         """
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
@@ -439,18 +491,13 @@ class HospAdmitObservationProcess(RandomVariable):
             latent_incidence=(population_size * ihr * latent_infections),
             delay_incidence_to_observation_pmf=(inf_to_hosp_admit),
         )
-
-        longest_possible_delay = inf_to_hosp_admit.shape[0]
-
-        # we should add functionality to automate this,
-        # along with tests
-        first_latent_admission_dow = (
-            first_latent_infection_dow + longest_possible_delay
-        ) % 7
+        first_ascertained_admission_dow = delay_ascertained_first_dow(
+            first_latent_infection_dow, inf_to_hosp_admit
+        )
 
         predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
-            input_data_first_dow=first_latent_admission_dow,
+            input_data_first_dow=first_ascertained_admission_dow,
         )
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
@@ -720,14 +767,16 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_wastewater: bool = False,
     ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
         n_init_days = self.latent_infection_process_rv.n_initialization_points
-        latent_infections, latent_infections_subpop = (
-            self.latent_infection_process_rv(
-                n_days_post_init=data.n_days_post_init,
-            )
-        )
         first_latent_infection_dow = (
             data.first_data_date_overall - datetime.timedelta(days=n_init_days)
         ).weekday()
+
+        latent_infections, latent_infections_subpop = (
+            self.latent_infection_process_rv(
+                n_days_post_init=data.n_days_post_init,
+                first_latent_infection_dow=first_latent_infection_dow,
+            )
+        )
 
         observed_ed_visits = None
         observed_admissions = None
@@ -739,6 +788,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         if sample_ed_visits:
             observed_ed_visits, iedr = self.ed_visit_obs_process_rv(
                 latent_infections=latent_infections,
+                first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
                 n_datapoints=data.n_ed_visits_datapoints,
