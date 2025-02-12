@@ -9,7 +9,10 @@ make_forecast_figure(
   combined_dat,
   forecast_ci,
   data_vintage_date,
-  y_transform = "identity"
+  y_transform = "identity",
+  display_cutpoints = TRUE,
+  highlight_dates = NULL,
+  highlight_labels = NULL
 )
 }
 \arguments{
@@ -26,6 +29,14 @@ in \code{combined_dat} and \code{forecast_ci}}
 
 \item{y_transform}{a character passed as the transform argument to
 \code{\link[ggplot2:scale_continuous]{ggplot2::scale_y_continuous()}}.}
+
+\item{display_cutpoints}{a logical indicating whether to include cutpoints
+relevant to the \code{target_variable}.}
+
+\item{highlight_dates}{a vector of dates to highlight on the plot}
+
+\item{highlight_labels}{a vector of labels to display at the
+\code{highlight_dates}}
 }
 \value{
 a ggplot object
