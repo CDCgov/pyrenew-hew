@@ -272,7 +272,7 @@ def preprocess_ww_data(
             ),
             below_lod=(
                 pl.col("log_genome_copies_per_ml") <= pl.col("log_lod")
-            ).cast(pl.Int8),
+            ),
         )
         .select(
             [
