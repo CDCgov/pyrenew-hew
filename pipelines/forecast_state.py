@@ -201,9 +201,25 @@ def main(
     exclude_last_n_days: int = 0,
     score: bool = False,
     eval_data_path: Path = None,
+    credentials_path: Path = None,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+
+    if credentials_path is not None:
+        cp = Path(credentials_path)
+        if not cp.suffix.lower() == ".toml":
+            raise ValueError(
+                "Credentials file must have the extension "
+                "'.toml' (not case-sensitive). Got "
+                f"{cp.suffix}"
+            )
+        logger.info(f"Reading in credentials from {cp}...")
+        with open(cp, "rb") as fp:
+            credentials_dict = tomllib.load(fp)
+    else:
+        logger.info("No credentials file given. Will proceed without one.")
+        credentials_dict = None
 
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
@@ -310,6 +326,7 @@ def main(
         param_estimates=param_estimates,
         model_run_dir=model_run_dir,
         logger=logger,
+        credentials_dict=credentials_dict,
     )
     logger.info("Getting eval data...")
     if eval_data_path is None:
@@ -322,6 +339,7 @@ def main(
         latest_comprehensive_path=eval_data_path,
         output_data_dir=Path(model_run_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
+        credentials_dict=credentials_dict,
     )
     logger.info("Done getting eval data.")
 
@@ -450,6 +468,12 @@ if __name__ == "__main__":
             "that require priors as pyrenew RandomVariable objects."
         ),
         required=True,
+    )
+
+    parser.add_argument(
+        "--credentials-path",
+        type=Path,
+        help=("Path to a TOML file containing credentials such as API keys."),
     )
 
     parser.add_argument(
