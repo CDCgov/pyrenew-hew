@@ -1,20 +1,37 @@
 library(argparser)
 library(ggplot2)
 library(ggdist)
+library(stringr)
 library(forecasttools)
 
-get_hubverse_table_paths <- function(dir,
-                                     disease) {
-  path_df <- tibble::tibble(
-    path = fs::dir_ls(
+disease_shortnames <- c(
+  "COVID-19" = "covid",
+  "Influenza" = "flu"
+)
+
+## inverse mapping for the above
+disease_longnames <- setNames(
+  names(disease_shortnames),
+  disease_shortnames
+)
+
+
+get_hubverse_table_paths <- function(dir) {
+  return(
+    fs::dir_ls(
       path = dir,
       type = "file",
-      glob = glue::glue("*-{disease}-hubverse-table.tsv")
-    ),
-    disease = disease
+      glob = glue::glue("*-hubverse-table.*")
+    )
   )
+}
 
-  return(path_df)
+
+parse_disease_from_target <- function(target) {
+  shortnames <- str_extract(target, paste(disease_shortnames,
+    collapse = "|"
+  ))
+  return(disease_longnames[shortnames])
 }
 
 
@@ -98,27 +115,17 @@ plot_pred_act_by_horizon <- function(scorable_table,
 
 
 score_and_save <- function(observed_data_path,
-                           influenza_table_dir,
-                           covid_table_dir,
+                           table_dir,
                            output_dir,
                            last_target_date = NULL,
                            horizons = c(0, 1)) {
   scoring_date <- lubridate::today()
 
-  all_paths <- dplyr::bind_rows(
-    get_hubverse_table_paths(
-      influenza_table_dir,
-      "influenza"
-    ),
-    get_hubverse_table_paths(
-      covid_table_dir,
-      "covid-19"
-    )
-  )
+  all_paths <- get_hubverse_table_paths(table_dir)
 
   message(
     "Scoring the following hubverse table files: ",
-    all_paths$path,
+    all_paths,
     "..."
   )
 
@@ -138,20 +145,16 @@ score_and_save <- function(observed_data_path,
     last_target_date <- lubridate::ymd("9999-01-01")
   }
 
-  read_and_prep_for_scoring <- function(path, disease) {
-    disease_short <- dplyr::case_when(
-      disease == "covid-19" ~ "covid",
-      TRUE ~ disease
-    )
+  read_and_prep_for_scoring <- function(path) {
+    to_score <- forecasttools::read_tabular_file(path) |>
+      dplyr::mutate(
+        disease = parse_disease_from_target(
+          .data$target
+        ),
+        disease_short = disease_shortnames[.data$disease]
+      ) |>
+      dplyr::filter(.data$target_end_date <= !!last_target_date)
 
-    to_score <- readr::read_tsv(
-      path,
-      show_col_types = FALSE
-    ) |>
-      dplyr::mutate(disease = !!disease) |>
-      dplyr::filter(
-        .data$target_end_date <= !!last_target_date
-      )
 
 
     scorable_table <- if (nrow(to_score) > 0) {
@@ -179,7 +182,7 @@ score_and_save <- function(observed_data_path,
     ) |>
     dplyr::filter(.data$horizon %in% !!horizons)
   locations <- unique(full_scorable_table$location)
-
+  diseases <- unique(full_scorable_table$disease)
 
   message("Finished reading in forecasts and preparing for scoring.")
   message("Scoring forecasts...")
@@ -301,7 +304,7 @@ score_and_save <- function(observed_data_path,
 
   pred_act_plot_targets <-
     tidyr::crossing(
-      disease = c("covid-19", "influenza"),
+      disease = diseases,
       location = locations
     )
 
