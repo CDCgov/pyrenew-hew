@@ -195,6 +195,9 @@ score_and_save <- function(observed_data_path,
       -"source_samples"
     ) |>
     dplyr::filter(.data$horizon %in% !!horizons)
+
+  print(full_scorable_table)
+
   locations <- unique(full_scorable_table$location)
   diseases <- unique(full_scorable_table$disease)
 
