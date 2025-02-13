@@ -107,6 +107,10 @@ plot_pred_act_by_horizon <- function(scorable_table,
       fill = "darkred",
       color = "black",
     ) +
+    scale_y_continuous(
+      labels = scales::label_percent(),
+      transform = "log10"
+    ) +
     facet_grid(disease ~ horizon,
       scales = "free_y"
     ) +
@@ -115,10 +119,6 @@ plot_pred_act_by_horizon <- function(scorable_table,
         glue::glue("Predictions and observations for {location}"),
       x = "Target date",
       y = "%ED visits"
-    ) +
-    scale_y_continuous(
-      labels = scales::label_percent(),
-      transform = "log10"
     ) +
     theme_forecasttools()
 
@@ -239,7 +239,7 @@ score_and_save <- function(observed_data_path,
 
   pred_actual_by_horizon <- purrr::map(
     locations,
-    \(x) plot_pred_act_by_horizon(full_scorable_table, x)
+    \(x) plot_pred_act_by_horizon(x, full_scorable_table)
   )
 
   pred_act_by_date_plot <- function(location, disease) {
@@ -322,7 +322,7 @@ score_and_save <- function(observed_data_path,
 
   pred_actual_by_date <- purrr::pmap(
     pred_act_plot_targets,
-    pred_act_by_date_plot
+    pred_act_plot_fn
   )
 
   wis_by_loc <- scoringutils::plot_wis(
