@@ -178,7 +178,7 @@ score_and_save <- function(observed_data_path,
           obs_date_column = "reference_date",
           obs_location_column = "location"
         )) |>
-        dplyr::ungroup()
+        dplyr::bind_rows()
     }
 
     return(scorable_table)
