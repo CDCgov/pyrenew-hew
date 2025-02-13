@@ -174,7 +174,7 @@ score_and_save <- function(observed_data_path,
           .x,
           observation_table = observed_data,
           obs_value_column =
-            obs_col_from_target(.y),
+            obs_col_from_target(.y$target),
           obs_date_column = "reference_date",
           obs_location_column = "location"
         )) |>
