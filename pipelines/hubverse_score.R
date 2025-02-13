@@ -41,10 +41,10 @@ plot_pred_act_by_horizon <- function(scorable_table,
   plot <- to_plot |>
     ggplot(aes(
       x = target_end_date,
-      y = q_50
     )) +
     geom_pointinterval(
       aes(
+        y = q_50,
         ymin = q_2.5,
         ymax = q_97.5
       ),
@@ -55,6 +55,7 @@ plot_pred_act_by_horizon <- function(scorable_table,
     ) +
     geom_pointinterval(
       aes(
+        y = q_50,
         ymin = q_25,
         ymax = q_75
       ),
