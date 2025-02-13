@@ -40,11 +40,8 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: hewr
-      - name: "Install extra pkgs"
-        run: |
-            pak::local_install("hewr", ask = FALSE)
-            pak::pkg_install("cmu-delphi/epipredict@main", ask = FALSE)
-            pak::pkg_install("cmu-delphi/epiprocess@main", ask = FALSE)
+      - name: "Install hewr"
+        run: pak::local_install("hewr", ask = FALSE)
         shell: Rscript {0}
       - name: "Run pipeline"
         run: poetry run bash pipelines/tests/test_end_to_end.sh pipelines/tests
