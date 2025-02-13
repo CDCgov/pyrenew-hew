@@ -52,31 +52,31 @@ plot_pred_act_by_horizon <- function(scorable_table,
                                      location) {
   to_plot <- scorable_table |>
     dplyr::filter(
-      location == !!location,
-      quantile_level %in% c(0.025, 0.25, 0.5, 0.75, 0.975, NA)
+      .data$location == !!location,
+      .data$quantile_level %in% c(0.025, 0.25, 0.5, 0.75, 0.975, NA)
     ) |>
     tidyr::pivot_wider(
       id_cols = c(
-        reference_date,
-        target_end_date,
-        horizon,
-        disease,
-        observed
+        "reference_date",
+        "target_end_date",
+        "horizon",
+        "disease",
+        "observed"
       ),
-      names_from = quantile_level,
+      names_from = "quantile_level",
       names_glue = "q_{quantile_level * 100}",
-      values_from = predicted
+      values_from = "predicted"
     )
 
   plot <- to_plot |>
     ggplot(aes(
-      x = target_end_date,
+      x = .data$target_end_date,
     )) +
     geom_pointinterval(
       aes(
-        y = q_50,
-        ymin = q_2.5,
-        ymax = q_97.5
+        y = .data$q_50,
+        ymin = .data$q_2.5,
+        ymax = .data$q_97.5
       ),
       color = "blue",
       alpha = 0.5,
@@ -85,9 +85,9 @@ plot_pred_act_by_horizon <- function(scorable_table,
     ) +
     geom_pointinterval(
       aes(
-        y = q_50,
-        ymin = q_25,
-        ymax = q_75
+        y = .data$q_50,
+        ymin = .data$q_25,
+        ymax = .data$q_75
       ),
       color = "blue",
       point_fill = "darkblue",
@@ -98,10 +98,10 @@ plot_pred_act_by_horizon <- function(scorable_table,
       point_size = 4,
       shape = 23
     ) +
-    geom_line(aes(y = observed),
+    geom_line(aes(y = .data$observed),
       size = 1
     ) +
-    geom_point(aes(y = observed),
+    geom_point(aes(y = .data$observed),
       size = 4,
       shape = 21,
       fill = "darkred",
@@ -184,7 +184,6 @@ score_and_save <- function(observed_data_path,
         dplyr::ungroup() |>
         scoringutils::as_forecast_quantile()
     }
-    print(scorable_table)
     return(scorable_table)
   }
 
