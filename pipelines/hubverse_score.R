@@ -4,6 +4,7 @@ library(ggdist)
 library(stringr)
 library(forecasttools)
 
+## these expand these mappings to support additional targets / diseases
 disease_shortnames <- c(
   "COVID-19" = "covid",
   "Influenza" = "flu"
@@ -15,6 +16,14 @@ disease_longnames <- setNames(
   disease_shortnames
 )
 
+obs_cols <- c(
+  "wk inc covid prop ed visits" = "prop_covid",
+  "wk inc flu prop ed visits" = "prop_flu"
+)
+
+obs_col_from_target <- function(target) {
+  return(obs_cols[target])
+}
 
 get_hubverse_table_paths <- function(dir) {
   return(
@@ -27,10 +36,14 @@ get_hubverse_table_paths <- function(dir) {
 }
 
 
-parse_disease_from_target <- function(target) {
-  shortnames <- str_extract(target, paste(disease_shortnames,
+disease_shortname_from_target <- function(target) {
+  return(str_extract(target, paste(disease_shortnames,
     collapse = "|"
-  ))
+  )))
+}
+
+disease_from_target <- function(target) {
+  shortnames <- disease_shortname_from_target(target)
   return(disease_longnames[shortnames])
 }
 
@@ -147,27 +160,25 @@ score_and_save <- function(observed_data_path,
 
   read_and_prep_for_scoring <- function(path) {
     to_score <- forecasttools::read_tabular_file(path) |>
-      dplyr::mutate(
-        disease = parse_disease_from_target(
-          .data$target
-        ),
-        disease_short = disease_shortnames[.data$disease]
-      ) |>
-      dplyr::filter(.data$target_end_date <= !!last_target_date)
+      dplyr::mutate(disease = disease_from_target(
+        .data$target
+      ))
+    dplyr::filter(.data$target_end_date <= !!last_target_date)
 
+    scorable_table <- NULL
 
-
-    scorable_table <- if (nrow(to_score) > 0) {
-      quantile_table_to_scorable(
-        to_score,
-        observation_table = observed_data,
-        obs_value_column =
-          glue::glue("prop_{disease_short}"),
-        obs_date_column = "reference_date",
-        obs_location_column = "location"
-      )
-    } else {
-      NULL
+    if (nrow(to_score) > 0) {
+      scorable_table <- to_score |>
+        dplyr::group_by(.data$target) |>
+        dplyr::group_map(~ quantile_table_to_scorable(
+          .x,
+          observation_table = observed_data,
+          obs_value_column =
+            obs_col_from_target(.y),
+          obs_date_column = "reference_date",
+          obs_location_column = "location"
+        )) |>
+        dplyr::ungroup()
     }
 
     return(scorable_table)
@@ -376,16 +387,9 @@ score_and_save <- function(observed_data_path,
 
   message("Saving summary tables...")
   purrr::walk2(
-    summaries,
-    names(summaries),
+    summaries, names(summaries),
     \(x, y) {
-      readr::write_tsv(
-        x,
-        make_output_path(
-          y,
-          "tsv"
-        )
-      )
+      readr::write_tsv(x, make_output_path(y, "tsv"))
     }
   )
 
