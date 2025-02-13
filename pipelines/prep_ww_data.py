@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 
 import polars as pl
 
@@ -178,16 +179,22 @@ def validate_ww_conc_data(
     if ww_data.is_empty():
         raise ValueError("Input DataFrame 'ww_data' is empty.")
 
+    required_cols = [
+        conc_col_name,
+        lod_col_name,
+        date_col_name,
+        wwtp_col_name,
+        wwtp_pop_name,
+        lab_col_name,
+    ]
+
+    assert all(
+        col in ww_data.columns for col in required_cols
+    ), "One or more required column(s) missing"
+
     check_missing_values(
         ww_data,
-        [
-            conc_col_name,
-            lod_col_name,
-            date_col_name,
-            wwtp_col_name,
-            wwtp_pop_name,
-            lab_col_name,
-        ],
+        required_cols,
     )
 
     assert ww_data[conc_col_name].dtype.is_float()
@@ -228,13 +235,6 @@ def preprocess_ww_data(
     flag concentration data below the level of detection.
 
     """
-    assert (
-        conc_col_name in ww_data.columns
-    ), f"Column '{conc_col_name}' is missing in the input data."
-    assert (
-        lod_col_name in ww_data.columns
-    ), f"Column '{lod_col_name}' is missing in the input data."
-
     validate_ww_conc_data(
         ww_data,
         conc_col_name=conc_col_name,
@@ -292,7 +292,7 @@ def preprocess_ww_data(
 
 
 def get_nwss_data(
-    ww_data_path,
+    ww_data_path: Path,
     start_date: datetime.date,
     state_abb: str,
 ) -> pl.DataFrame:

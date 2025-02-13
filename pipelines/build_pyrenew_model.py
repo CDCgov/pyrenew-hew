@@ -90,7 +90,7 @@ def build_model_from_dir(
             "lab_site_index": pl.Int64,
             "log_genomes_copies_per_ml": pl.Float64,
             "log_lod": pl.Float64,
-            "below_lod": pl.Int64,
+            "below_lod": pl.Boolean,
         },
     )
 
