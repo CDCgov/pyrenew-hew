@@ -436,10 +436,7 @@ p <- arg_parser("Score hubverse tables against observed data.") |>
 argv <- parse_args(p)
 score_and_save(
   observed_data_path = argv$observed_data_path,
-  influenza_table_dir = argv$hubverse_table_dir,
-  covid_table_dir = argv$hubverse_table_dir,
-  ## for the CLI, covid and influenza should be
-  ## in the same directory
+  table_dir = argv$hubverse_table_dir,
   output_dir = fs::path(argv$output_dir),
   last_target_date = lubridate::ymd(argv$last_target_date),
   horizons = stringr::str_split_1(argv$horizons, " ")
