@@ -81,17 +81,6 @@ bind_tables <- function(list_of_table_pairs) {
   ))
 }
 
-save_scores <- function(score_table,
-                        score_file_save_path = NULL) {
-  if (!is.null(score_file_save_path)) {
-    message(glue::glue(
-      "Saving score table to ",
-      "{score_file_save_path}..."
-    ))
-    readr::write_rds(score_table, score_file_save_path)
-  }
-}
-
 
 collate_scores_for_date <- function(model_run_dir,
                                     score_file_name = "score_table",
@@ -115,16 +104,18 @@ collate_scores_for_date <- function(model_run_dir,
     bind_tables()
 
 
-  save_path <- if (save) {
-    fs::path(model_run_dir,
+  if (save) {
+    save_path <- fs::path(model_run_dir,
       score_file_name,
       ext = score_file_ext
     )
-  } else {
-    NULL
+    message(
+      glue::glue("Saving score table to {save_path}...")
+    )
+
+    readr::write_rds(date_score_table, save_path)
   }
 
-  save_scores(date_score_table, save_path)
 
   message(glue::glue("Done processing scores for {model_run_dir}."))
   return(date_score_table)
