@@ -162,8 +162,8 @@ score_and_save <- function(observed_data_path,
     to_score <- forecasttools::read_tabular_file(path) |>
       dplyr::mutate(disease = disease_from_target(
         .data$target
-      ))
-    dplyr::filter(.data$target_end_date <= !!last_target_date)
+      )) |>
+      dplyr::filter(.data$target_end_date <= !!last_target_date)
 
     scorable_table <- NULL
 
