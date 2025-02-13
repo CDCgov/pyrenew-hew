@@ -18,7 +18,7 @@ disease_longnames <- setNames(
 
 obs_cols <- c(
   "wk inc covid prop ed visits" = "prop_covid",
-  "wk inc flu prop ed visits" = "prop_flu"
+  "wk inc flu prop ed visits" = "prop_influenza"
 )
 
 obs_col_from_target <- function(target) {
