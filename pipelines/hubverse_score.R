@@ -170,7 +170,7 @@ score_and_save <- function(observed_data_path,
     if (nrow(to_score) > 0) {
       scorable_table <- to_score |>
         dplyr::group_by(.data$target) |>
-        dplyr::group_map(~ quantile_table_to_scorable(
+        dplyr::group_modify(~ quantile_table_to_scorable(
           .x,
           observation_table = observed_data,
           obs_value_column =
@@ -178,7 +178,7 @@ score_and_save <- function(observed_data_path,
           obs_date_column = "reference_date",
           obs_location_column = "location"
         )) |>
-        dplyr::bind_rows()
+        dplyr::ungroup()
     }
 
     return(scorable_table)
