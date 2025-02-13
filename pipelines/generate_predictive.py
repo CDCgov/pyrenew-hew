@@ -9,13 +9,23 @@ from build_pyrenew_model import (
 
 
 def generate_and_save_predictions(
-    model_run_dir: str | Path, model_name: str, n_forecast_points: int
+    model_run_dir: str | Path,
+    model_name: str,
+    n_forecast_points: int,
+    predict_ed_visits: bool = False,
+    predict_hospital_admissions: bool = False,
+    predict_wastewater: bool = False,
 ) -> None:
     model_run_dir = Path(model_run_dir)
     model_dir = Path(model_run_dir, model_name)
     if not model_dir.exists():
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
-    (my_model, my_data) = build_model_from_dir(model_run_dir)
+    (my_model, my_data) = build_model_from_dir(
+        model_run_dir,
+        sample_ed_visits=predict_ed_visits,
+        sample_hospital_admissions=predict_hospital_admissions,
+        sample_wastewater=predict_wastewater,
+    )
 
     my_model._init_model(1, 1)
     fresh_sampler = my_model.mcmc.sampler
@@ -31,9 +41,9 @@ def generate_and_save_predictions(
 
     posterior_predictive = my_model.posterior_predictive(
         data=forecast_data,
-        sample_ed_visits=True,
-        sample_hospital_admissions=True,
-        sample_wastewater=False,
+        sample_ed_visits=predict_ed_visits,
+        sample_hospital_admissions=predict_hospital_admissions,
+        sample_wastewater=predict_wastewater,
     )
 
     idata = az.from_numpyro(
@@ -73,6 +83,28 @@ if __name__ == "__main__":
         default=0,
         help="Number of time points to forecast (Default: 0).",
     )
+    parser.add_argument(
+        "--predict-ed-visits",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, generate posterior predictions for ED visits.",
+    )
+    parser.add_argument(
+        "--predict-hospital-admissions",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help=(
+            "If provided, generate posterior predictions "
+            "for hospital admissions."
+        ),
+    )
+    parser.add_argument(
+        "--predict-wastewater",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="If provided, generate posterior predictions for wastewater.",
+    )
+
     args = parser.parse_args()
 
     generate_and_save_predictions(**vars(args))

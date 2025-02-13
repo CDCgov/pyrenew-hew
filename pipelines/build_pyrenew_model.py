@@ -18,6 +18,9 @@ from pyrenew_hew.pyrenew_hew_model import (
 
 def build_model_from_dir(
     model_dir: Path,
+    sample_ed_visits: bool = False,
+    sample_hospital_admissions: bool = False,
+    sample_wastewater: bool = False,
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
     data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
     prior_path = Path(model_dir) / "priors.py"
@@ -47,12 +50,20 @@ def build_model_from_dir(
         jnp.array(model_data["generation_interval_pmf"]),
     )  # check if off by 1 or reversed
 
-    data_observed_disease_ed_visits = jnp.array(
-        model_data["data_observed_disease_ed_visits"]
+    data_observed_disease_ed_visits = (
+        jnp.array(model_data["data_observed_disease_ed_visits"])
+        if sample_ed_visits
+        else None
     )
-    data_observed_disease_hospital_admissions = jnp.array(
-        model_data["data_observed_disease_hospital_admissions"]
+    data_observed_disease_hospital_admissions = (
+        jnp.array(model_data["data_observed_disease_hospital_admissions"])
+        if sample_hospital_admissions
+        else None
     )
+
+    # placeholder
+    data_observed_disease_wastewater = None if sample_wastewater else None
+
     population_size = jnp.array(model_data["state_pop"])
 
     ed_right_truncation_pmf_rv = DeterministicVariable(
@@ -133,7 +144,7 @@ def build_model_from_dir(
         data_observed_disease_hospital_admissions=(
             data_observed_disease_hospital_admissions
         ),
-        data_observed_disease_wastewater=None,  # placeholder
+        data_observed_disease_wastewater=data_observed_disease_wastewater,
         right_truncation_offset=right_truncation_offset,
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,
