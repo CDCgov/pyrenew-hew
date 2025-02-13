@@ -176,15 +176,15 @@ score_and_save <- function(observed_data_path,
     dplyr::select(
       -"other_ed_visit_forecast",
       -"source_samples"
-    )
+    ) |>
+    dplyr::filter(.data$horizon %in% !!horizons)
+  locations <- unique(full_scorable_table$location)
 
 
   message("Finished reading in forecasts and preparing for scoring.")
   message("Scoring forecasts...")
   full_scores <- hewr::score_hewr(
-    full_scorable_table |> dplyr::filter(
-      .data$horizon %in% !!horizons
-    )
+    full_scorable_table
   )
 
   message("Scoring complete.")
@@ -221,30 +221,17 @@ score_and_save <- function(observed_data_path,
     }
   )
 
-  locations <- unique(full_scorable_table$location)
 
-  pred_actual_by_horizon <-
-    purrr::map(
-      locations,
-      \(x) {
-        plot_pred_act_by_horizon(
-          full_scorable_table |>
-            dplyr::filter(
-              .data$horizon %in% !!horizons
-            ),
-          x
-        )
-      }
-    )
+  pred_actual_by_horizon <- purrr::map(
+    locations,
+    \(x) plot_pred_act_by_horizon(x, full_scorable_table)
+  )
 
-  pred_act_plot_fn <- function(location, disease) {
-    all_horizons <- unique(horizons)
-
+  pred_act_by_date_plot <- function(location, disease) {
     loc_table <- full_scorable_table |>
       dplyr::filter(
         location == !!location,
-        disease == !!disease,
-        horizon %in% !!all_horizons
+        disease == !!disease
       )
 
     obs <- loc_table |>
@@ -274,6 +261,9 @@ score_and_save <- function(observed_data_path,
         )
       )
 
+    ## use the observed value as a synthetic -1
+    ## horizon "forecast" to create a visual
+    ## comparable to Hub dashboards
     synth_minus_one <- dplyr::inner_join(needed,
       obs,
       by = c(
