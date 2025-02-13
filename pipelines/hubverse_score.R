@@ -106,7 +106,6 @@ plot_pred_act_by_horizon <- function(scorable_table,
       shape = 21,
       fill = "darkred",
       color = "black",
-      alpha = 1
     ) +
     facet_grid(disease ~ horizon,
       scales = "free_y"
@@ -196,8 +195,6 @@ score_and_save <- function(observed_data_path,
     ) |>
     dplyr::filter(.data$horizon %in% !!horizons)
 
-  print(full_scorable_table)
-
   locations <- unique(full_scorable_table$location)
   diseases <- unique(full_scorable_table$disease)
 
@@ -225,9 +222,7 @@ score_and_save <- function(observed_data_path,
   )
 
   summaries <- desired_summaries |>
-    purrr::map(\(x) {
-      scoringutils::summarise_scores(full_scores, by = x)
-    })
+    purrr::map(\(x) scoringutils::summarise_scores(full_scores, by = x))
 
 
   coverage_figs <- purrr::map(
