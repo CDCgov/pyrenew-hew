@@ -304,6 +304,51 @@ generate_fake_param_data <-
       )
   }
 
+
+#' Generate Fake NWSS Data
+#'
+#' This function generates fake wastewater data for a
+#' and saves it as a parquet file.
+
+create_test_nwss_data <- function(
+    private_data_dir = fs::path(getwd()),
+    states_to_generate = c("MT", "CA"),
+    start_reference = as.Date("2024-06-01"),
+    end_reference = as.Date("2024-12-21"),
+    site = c(1, 2, 3, 4),
+    lab = c(1, 1, 3, 3),
+    lod = c(20, 31, 20, 30),
+    site_pop = c(4e6, 2e6, 1e6, 5e5)) {
+  ww_dir <- fs::path(private_data_dir, "nwss-vintages")
+  fs::dir_create(ww_dir, recurse = TRUE)
+
+  site_info <- tibble::tibble(
+    wwtp_id = site,
+    lab_id = lab,
+    lod_sewage = lod,
+    population_served = site_pop,
+    sample_location = "wwtp",
+    sample_matrix = "primary sludge",
+    pcr_target_units = "copies/l wastewater",
+    pcr_target = "sars-cov-2",
+    quality_flag = NA
+  )
+
+  ww_data <- tidyr::expand_grid(
+    sample_collect_date = seq(start_reference, end_reference, by = "week"),
+    wwtp_jurisdiction = states_to_generate,
+    site_info
+  ) |>
+    dplyr::mutate(
+      pcr_target_avg_conc = abs(rnorm(dplyr::n(), mean = 500, sd = 50))
+    )
+
+  arrow::write_parquet(
+    ww_data, fs::path(ww_dir, paste0(end_reference, ".parquet"))
+  )
+}
+
+
 main <- function(private_data_dir,
                  target_diseases,
                  n_forecast_days) {
