@@ -22,7 +22,7 @@ obs_cols <- c(
 )
 
 obs_col_from_target <- function(target) {
-  return(obs_cols[[target]])
+  return(obs_cols[target])
 }
 
 get_hubverse_table_paths <- function(dir) {
@@ -44,7 +44,7 @@ disease_shortname_from_target <- function(target) {
 
 disease_from_target <- function(target) {
   shortnames <- disease_shortname_from_target(target)
-  return(disease_longnames[[shortnames]])
+  return(disease_longnames[shortnames])
 }
 
 
@@ -174,7 +174,7 @@ score_and_save <- function(observed_data_path,
           .x,
           observation_table = observed_data,
           obs_value_column =
-            obs_col_from_target(.y$target),
+            obs_col_from_target(.y$target[1]),
           obs_date_column = "reference_date",
           obs_location_column = "location"
         )) |>
