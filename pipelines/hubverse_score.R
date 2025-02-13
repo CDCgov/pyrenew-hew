@@ -162,7 +162,7 @@ score_and_save <- function(observed_data_path,
     to_score <- forecasttools::read_tabular_file(
       path
     ) |>
-      suppressMessage() |>
+      suppressMessages() |>
       dplyr::mutate(disease = disease_from_target(
         .data$target
       )) |>
