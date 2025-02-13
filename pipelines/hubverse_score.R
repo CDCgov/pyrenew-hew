@@ -244,7 +244,7 @@ score_and_save <- function(observed_data_path,
 
   pred_actual_by_horizon <- purrr::map(
     locations,
-    \(x) plot_pred_act_by_horizon(x, full_scorable_table)
+    \(x) plot_pred_act_by_horizon(full_scorable_table, x)
   )
 
   pred_act_by_date_plot <- function(location, disease) {
@@ -327,7 +327,7 @@ score_and_save <- function(observed_data_path,
 
   pred_actual_by_date <- purrr::pmap(
     pred_act_plot_targets,
-    pred_act_plot_fn
+    pred_act_by_date_plot
   )
 
   wis_by_loc <- scoringutils::plot_wis(
