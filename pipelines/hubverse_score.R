@@ -22,7 +22,7 @@ obs_cols <- c(
 )
 
 obs_col_from_target <- function(target) {
-  return(obs_cols[target])
+  return(unname(obs_cols[target]))
 }
 
 get_hubverse_table_paths <- function(dir) {
