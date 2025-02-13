@@ -159,7 +159,10 @@ score_and_save <- function(observed_data_path,
   }
 
   read_and_prep_for_scoring <- function(path) {
-    to_score <- forecasttools::read_tabular_file(path) |>
+    to_score <- forecasttools::read_tabular_file(
+      path
+    ) |>
+      suppressMessage() |>
       dplyr::mutate(disease = disease_from_target(
         .data$target
       )) |>
@@ -178,9 +181,10 @@ score_and_save <- function(observed_data_path,
           obs_date_column = "reference_date",
           obs_location_column = "location"
         )) |>
-        dplyr::ungroup()
+        dplyr::ungroup() |>
+        scoringutils::as_forecast_quantile()
     }
-
+    print(scorable_table)
     return(scorable_table)
   }
 
