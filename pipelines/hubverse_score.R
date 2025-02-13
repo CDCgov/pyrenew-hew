@@ -171,6 +171,7 @@ score_and_save <- function(observed_data_path,
 
     if (nrow(to_score) > 0) {
       scorable_table <- to_score |>
+        dplyr::filter(.data$output_type == "quantile") |>
         dplyr::group_by(.data$target) |>
         dplyr::group_modify(~ quantile_table_to_scorable(
           .x,
@@ -181,6 +182,17 @@ score_and_save <- function(observed_data_path,
           obs_location_column = "location"
         )) |>
         dplyr::ungroup() |>
+        dplyr::select(
+          "target",
+          "disease",
+          "location",
+          "reference_date",
+          "horizon",
+          "target_end_date",
+          "quantile_level",
+          "predicted",
+          "observed"
+        ) |>
         scoringutils::as_forecast_quantile()
     }
     return(scorable_table)
@@ -189,10 +201,6 @@ score_and_save <- function(observed_data_path,
   full_scorable_table <- all_paths |>
     purrr::map(read_and_prep_for_scoring) |>
     dplyr::bind_rows() |>
-    dplyr::select(
-      -"other_ed_visit_forecast",
-      -"source_samples"
-    ) |>
     dplyr::filter(.data$horizon %in% !!horizons)
 
   locations <- unique(full_scorable_table$location)
