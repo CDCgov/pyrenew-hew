@@ -210,6 +210,7 @@ def main(
         "--param-data-dir params "
         "--output-dir {output_dir} "
         "--priors-path pipelines/priors/prod_priors.py "
+        "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
