@@ -23,10 +23,13 @@ def get_nhsn(
     end_date: datetime.date,
     disease: str,
     state_abb: str,
-    temp_dir=None,
+    temp_dir: Path = None,
+    credentials_dict: dict = None,
 ) -> None:
     if temp_dir is None:
         temp_dir = tempfile.mkdtemp()
+    if credentials_dict is None:
+        credentials_dict = dict()
 
     def py_scalar_to_r_scalar(py_scalar):
         if py_scalar is None:
@@ -40,23 +43,32 @@ def get_nhsn(
 
     columns = disease_nhsn_key[disease]
 
-    state_abb = state_abb if state_abb != "US" else "USA"
+    state_abb_for_query = state_abb if state_abb != "US" else "USA"
 
     temp_file = Path(temp_dir, "nhsn_temp.parquet")
+    api_key_id = credentials_dict.get(
+        "nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID")
+    )
+    api_key_secret = credentials_dict.get(
+        "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
+    )
 
     r_command = [
         "Rscript",
         "-e",
         f"""
         forecasttools::pull_nhsn(
-            api_key_id = {py_scalar_to_r_scalar(os.getenv("NHSN_API_KEY_ID"))},
-            api_key_secret = {py_scalar_to_r_scalar(os.getenv("NHSN_API_KEY_SECRET"))},
+            api_key_id = {py_scalar_to_r_scalar(api_key_id)},
+            api_key_secret = {py_scalar_to_r_scalar(api_key_secret)},
             start_date = {py_scalar_to_r_scalar(start_date)},
             end_date = {py_scalar_to_r_scalar(end_date)},
             columns = {py_scalar_to_r_scalar(columns)},
-            jurisdictions = {py_scalar_to_r_scalar(state_abb)}
+            jurisdictions = {py_scalar_to_r_scalar(state_abb_for_query)}
         ) |>
         dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
+        dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
+          jurisdiction
+        )) |>
         dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
         dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
         arrow::write_parquet("{str(temp_file)}")
@@ -342,6 +354,7 @@ def process_and_save_state(
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
+    credentials_dict: dict = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -403,6 +416,7 @@ def process_and_save_state(
         end_date=last_training_date,
         disease=disease,
         state_abb=state_abb,
+        credentials_dict=credentials_dict,
     ).with_columns(pl.lit("train").alias("data_type"))
 
     nssp_training_dates = (

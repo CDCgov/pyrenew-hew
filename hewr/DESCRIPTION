@@ -21,6 +21,7 @@ Imports:
     forecasttools (>= 0.1.1),
     fs,
     ggdist,
+    ggnewscale,
     ggplot2,
     glue,
     here,

@@ -20,6 +20,7 @@ def save_eval_data(
     output_data_dir: Path | str,
     last_eval_date: datetime.date = None,
     output_file_name: str = "eval_data.tsv",
+    credentials_dict: dict = None,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ def save_eval_data(
         end_date=None,
         disease=disease,
         state_abb=state,
+        credentials_dict=credentials_dict,
     ).with_columns(data_type=pl.lit("eval"))
 
     combined_eval_dat = combine_nssp_and_nhsn(
