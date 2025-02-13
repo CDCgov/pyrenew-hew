@@ -8,9 +8,11 @@ import os
 import re
 from pathlib import Path
 
-from forecasttools import ensure_listlike
+import polars as pl
+from forecasttools import ensure_listlike, location_table
 
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
+loc_abbrs_ = location_table["short_name"].to_list()
 
 
 def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
@@ -73,7 +75,7 @@ def get_all_forecast_dirs(
     Returns
     -------
     list[str]
-        Matching directories, if any, otherwise an empty
+        Names of matching directories, if any, otherwise an empty
         list.
 
     Raises
@@ -106,4 +108,29 @@ def get_all_forecast_dirs(
         f.name
         for f in os.scandir(parent_dir)
         if f.is_dir() and f.name.startswith(valid_starts)
+    ]
+
+
+def get_all_model_run_dirs(parent_dir: Path) -> list[str]:
+    """
+    Get all the subdirectories within a parent directory
+    that are valid model run directories (by convention,
+    named with the two-letter code of a forecast location).
+
+    Parameters
+    ----------
+    parent_dir
+       Directory in which to look for model run subdirectories.
+
+    Returns
+    -------
+    list[str]
+        Names of matching directories, if any, otherwise an empty
+        list.
+    """
+
+    return [
+        f.name
+        for f in os.scandir(parent_dir)
+        if f.is_dir() and f.name in loc_abbrs_
     ]
