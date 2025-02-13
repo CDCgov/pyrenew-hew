@@ -33,6 +33,12 @@ do
 	       --n-chains 2 \
 	       --n-samples 250 \
 	       --n-warmup 250 \
+	       --fit-ed-visits \
+	       --no-fit-hospital-admissions \
+	       --no-fit-wastewater \
+	       --forecast-ed-visits \
+	       --forecast-hospital-admissions \
+	       --no-forecast-wastewater \
 	       --score \
 	       --eval-data-path "$BASE_DIR/private_data/nssp-etl"
 	if [ $? -ne 0 ]; then
