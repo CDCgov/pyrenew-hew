@@ -133,6 +133,22 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
+    for signal in signals:
+        fit = locals().get(f"fit_{signal}", False)
+        forecast = locals().get(f"forecast_{signal}", False)
+        if fit and not forecast:
+            ValueError(
+                "This pipeline does not currently support "
+                "fitting to but not forecasting a signal. "
+                f"Asked to fit but not forecast {signal}."
+            )
+    any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
+    if not any_fit:
+        raise ValueError(
+            "pyrenew_null (fitting to no signals) "
+            "is not supported by this pipeline"
+        )
+
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
     )

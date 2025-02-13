@@ -225,7 +225,24 @@ def main(
         f"model {pyrenew_model_name}, location {state}, "
         f"and report date {report_date}"
     )
-    
+    signals = ["ed_visits", "hospital_admissions", "wastewater"]
+
+    for signal in signals:
+        fit = locals().get(f"fit_{signal}", False)
+        forecast = locals().get(f"forecast_{signal}", False)
+        if fit and not forecast:
+            ValueError(
+                "This pipeline does not currently support "
+                "fitting to but not forecasting a signal. "
+                f"Asked to fit but not forecast {signal}."
+            )
+    any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
+    if not any_fit:
+        raise ValueError(
+            "pyrenew_null (fitting to no signals) "
+            "is not supported by this pipeline"
+        )
+
     if credentials_path is not None:
         cp = Path(credentials_path)
         if not cp.suffix.lower() == ".toml":
