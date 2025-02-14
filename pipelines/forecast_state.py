@@ -195,6 +195,7 @@ def main(
     state_level_nssp_data_dir: Path | str,
     nwss_data_dir: Path | str,
     param_data_dir: Path | str,
+    ww_data_dir: Path | str,
     priors_path: Path | str,
     output_dir: Path | str,
     n_training_days: int,
@@ -382,6 +383,7 @@ def main(
         last_training_date=last_training_date,
         param_estimates=param_estimates,
         model_run_dir=model_run_dir,
+        ww_data_dir=ww_data_dir,
         logger=logger,
         credentials_dict=credentials_dict,
     )
@@ -533,6 +535,13 @@ if __name__ == "__main__":
             "such as delay PMFs."
         ),
         required=True,
+    )
+
+    parser.add_argument(
+        "--ww-data-dir",
+        type=Path,
+        default=Path("private_data", "nwss_vintages"),
+        help=("Directory in which to look for NWSS wastewater data"),
     )
 
     parser.add_argument(
