@@ -23,14 +23,14 @@ def clean_and_filter_nwss_data(nwss_data):
             pl.col("pcr_target_units") != "copies/g dry sludge",
             pl.col("pcr_target") == "sars-cov-2",
             pl.col("lab_id").is_not_null(),
-            pl.col("wwtp_name").is_not_null(),
+            pl.col("wwtp_id").is_not_null(),
             pl.col("lod_sewage").is_not_null(),
         )
         .select(
             [
                 "lab_id",
                 "sample_collect_date",
-                "wwtp_name",
+                "wwtp_id",
                 "pcr_target_avg_conc",
                 "wwtp_jurisdiction",
                 "population_served",
@@ -54,9 +54,6 @@ def clean_and_filter_nwss_data(nwss_data):
             .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
             .then((10 ** pl.col("lod_sewage")) / 1000)
             .otherwise(None),
-            sample_collect_date=pl.col("sample_collect_date").str.to_date(
-                format="%Y-%m-%d"
-            ),
         )
         .filter(
             (
@@ -75,12 +72,12 @@ def clean_and_filter_nwss_data(nwss_data):
     ).drop(["quality_flag", "pcr_target_units"])
 
     # Remove if any exact duplicates of pcr_target_avg_conc
-    # values present for each combination of wwtp_name, lab_id,
+    # values present for each combination of wwtp_id, lab_id,
     # and sample_collect_date
     nwss_subset_clean = nwss_subset.unique(
         subset=[
             "sample_collect_date",
-            "wwtp_name",
+            "wwtp_id",
             "lab_id",
             "pcr_target_avg_conc",
         ]
@@ -89,7 +86,7 @@ def clean_and_filter_nwss_data(nwss_data):
     # replaces time-varying population if present in the NWSS dataset.
     # Model does not allow time varying population
     nwss_subset_clean_pop = (
-        nwss_subset_clean.group_by("wwtp_name")
+        nwss_subset_clean.group_by("wwtp_id")
         .agg(
             [
                 pl.col("population_served")
@@ -99,11 +96,11 @@ def clean_and_filter_nwss_data(nwss_data):
                 .alias("population_served")
             ]
         )
-        .join(nwss_subset_clean, on=["wwtp_name"], how="left")
+        .join(nwss_subset_clean, on=["wwtp_id"], how="left")
         .select(
             [
                 "sample_collect_date",
-                "wwtp_name",
+                "wwtp_id",
                 "lab_id",
                 "pcr_target_avg_conc",
                 "wwtp_jurisdiction",
@@ -113,7 +110,7 @@ def clean_and_filter_nwss_data(nwss_data):
         )
         .unique(
             [
-                "wwtp_name",
+                "wwtp_id",
                 "lab_id",
                 "sample_collect_date",
                 "pcr_target_avg_conc",
@@ -127,7 +124,7 @@ def clean_and_filter_nwss_data(nwss_data):
                 "sample_collect_date": "date",
                 "population_served": "site_pop",
                 "wwtp_jurisdiction": "location",
-                "wwtp_name": "site",
+                "wwtp_id": "site",
                 "lab_id": "lab",
             }
         )
