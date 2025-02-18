@@ -20,9 +20,9 @@ from pyrenew_hew.pyrenew_hew_model import (
 
 def build_model_from_dir(
     model_dir: Path,
-    sample_ed_visits: bool = False,
-    sample_hospital_admissions: bool = False,
-    sample_wastewater: bool = False,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
     data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
     prior_path = Path(model_dir) / "priors.py"
@@ -38,7 +38,7 @@ def build_model_from_dir(
         "inf_to_hosp_admit", jnp.array(model_data["inf_to_hosp_admit_pmf"])
     )  # check if off by 1 or reversed
 
-    if sample_hospital_admissions:
+    if fit_hospital_admissions:
         # offset from approx inf to admit distribution
         # when fitting admissions
         inf_to_ed_rv = OffsetDiscretizedLognormalPMF(
@@ -68,17 +68,17 @@ def build_model_from_dir(
 
     data_observed_disease_ed_visits = (
         jnp.array(model_data["data_observed_disease_ed_visits"])
-        if sample_ed_visits
+        if fit_ed_visits
         else None
     )
     data_observed_disease_hospital_admissions = (
         jnp.array(model_data["data_observed_disease_hospital_admissions"])
-        if sample_hospital_admissions
+        if fit_hospital_admissions
         else None
     )
 
     # placeholder
-    data_observed_disease_wastewater = None if sample_wastewater else None
+    data_observed_disease_wastewater = None if fit_wastewater else None
 
     population_size = jnp.array(model_data["state_pop"])
 

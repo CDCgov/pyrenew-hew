@@ -31,9 +31,9 @@ def fit_and_save_model(
         )
     (my_model, my_data) = build_model_from_dir(
         model_run_dir,
-        sample_ed_visits=fit_ed_visits,
-        sample_hospital_admissions=fit_hospital_admissions,
-        sample_wastewater=fit_wastewater,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
     )
     my_model.run(
         data=my_data,

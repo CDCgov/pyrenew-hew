@@ -405,6 +405,10 @@ def main(
         model_run_dir,
         pyrenew_model_name,
         n_days_past_last_training,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+        # these should be recoverable from the fit but aren't currently
         predict_ed_visits=forecast_ed_visits,
         predict_hospital_admissions=forecast_hospital_admissions,
         predict_wastewater=forecast_wastewater,

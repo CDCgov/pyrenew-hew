@@ -12,6 +12,9 @@ def generate_and_save_predictions(
     model_run_dir: str | Path,
     model_name: str,
     n_forecast_points: int,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
     predict_ed_visits: bool = False,
     predict_hospital_admissions: bool = False,
     predict_wastewater: bool = False,
@@ -22,9 +25,9 @@ def generate_and_save_predictions(
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
     (my_model, my_data) = build_model_from_dir(
         model_run_dir,
-        sample_ed_visits=predict_ed_visits,
-        sample_hospital_admissions=predict_hospital_admissions,
-        sample_wastewater=predict_wastewater,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
     )
 
     my_model._init_model(1, 1)
