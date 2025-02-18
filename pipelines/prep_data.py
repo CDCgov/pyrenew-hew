@@ -326,12 +326,13 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         .collect(streaming=True)
         .get_column("value")
         .item(0)
-        .to_numpy()
+        .to_list()
     )
 
     # ensure 0 first entry; we do not model the possibility
     # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
     delay_pmf[0] = 0
+    delay_pmf = np.array(delay_pmf)
     delay_pmf = delay_pmf / delay_pmf.sum()
 
     right_truncation_pmf = (
