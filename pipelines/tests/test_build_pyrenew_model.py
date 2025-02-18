@@ -16,6 +16,9 @@ def mock_data():
             "state_pop": [7, 8, 9],
             "generation_interval_pmf": [0.1, 0.2, 0.7],
             "inf_to_ed_pmf": [0.4, 0.5, 0.1],
+            "inf_to_hosp_admit_pmf": [0.0, 0.7, 0.1, 0.1, 0.1],
+            "inf_to_hosp_admit_lognormal_loc": 0.015,
+            "inf_to_hosp_admit_lognormal_scale": 0.851,
             "right_truncation_pmf": [0.7, 0.1, 0.2],
             "nssp_training_dates": ["2025-01-01"],
             "nhsn_training_dates": ["2025-01-02"],
@@ -44,6 +47,8 @@ hosp_admit_neg_bin_concentration_rv = None
 ihr_rv = None
 t_peak_rv = None
 duration_shed_after_peak_rv = None
+inf_to_ed_offset_loc_rv = None
+inf_to_ed_log_offset_scale_rv = None
 log10_genome_per_inf_ind_rv = None
 mode_sigma_ww_site_rv = None
 sd_log_sigma_ww_site_rv = None
