@@ -76,6 +76,45 @@ def hew_letters_from_flags(
     return result
 
 
+def flags_from_hew_letters(hew_letters: str) -> dict[str, bool]:
+    """
+    Get True/False flags defining whether signals
+    were fit from the {h, e, w} letters (or 'null')
+    defining the model. Inverse of
+    :func:`hew_letters_from_flags`
+
+    Parameters
+    ----------
+    hew_letters
+        The relevant HEW letters, or 'null',
+
+    Returns
+    -------
+    dict[str, bool]
+       Dictionary with boolean entries named
+       ``fit_hospital_admissions``, ``fit_ed_visits``,
+       and ``fit_wastewater``.
+    """
+    valid_letters = {"h", "e", "w"}
+    letterset = set(list(hew_letters))
+    if not (
+        hew_letters.lower() == "null" or letterset.issubset(valid_letters)
+    ):
+        raise ValueError(
+            "Input failed validation. Must either be "
+            "a string consisting only of the letters "
+            f"in {valid_letters} or the string 'null'"
+        )
+    result = dict(
+        fit_hospital_admissions="h" in hew_letters,
+        fit_ed_visits="e" in hew_letters,
+        fit_wastewater="w" in hew_letters,
+    )
+    if not result:
+        result = "null"
+    return result
+
+
 def pyrenew_model_name_from_flags(
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,

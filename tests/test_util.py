@@ -3,6 +3,7 @@ from typing import Iterable
 import pytest
 
 from pyrenew_hew.util import (
+    flags_from_hew_letters,
     hew_letters_from_flags,
     hew_models,
     powerset,
@@ -43,6 +44,12 @@ def test_hew_naming_from_flags(
             fit_ed_visits, fit_hospital_admissions, fit_wastewater
         )
         == f"pyrenew_{expected_letters}"
+    )
+
+    assert flags_from_hew_letters(expected_letters) == dict(
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
     )
 
 
