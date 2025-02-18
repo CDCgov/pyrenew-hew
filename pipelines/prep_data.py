@@ -8,6 +8,7 @@ from logging import Logger
 from pathlib import Path
 
 import forecasttools
+import numpy as np
 import polars as pl
 import polars.selectors as cs
 
