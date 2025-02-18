@@ -48,15 +48,15 @@ class OffsetDiscretizedLognormalPMF(RandomVariable):
         Default constructor.
         """
         self.name = name
-        self.reference_loc = loc
-        self.reference_scale = scale
+        self.reference_loc = reference_loc
+        self.reference_scale = reference_scale
         self.n = n
 
         if offset_loc_rv is None:
-            offset_scale_rv = DeterministicVariable("offset_loc", 0)
+            offset_loc_rv = DeterministicVariable("offset_loc", 0)
 
-        if offset_scale_rv is None:
-            offset_scale_rv = DeterministicVariable("log_offset_scale", 0)
+        if log_offset_scale_rv is None:
+            log_offset_scale_rv = DeterministicVariable("log_offset_scale", 0)
 
         self.offset_loc_rv = offset_loc_rv
         self.log_offset_scale_rv = log_offset_scale_rv
@@ -64,15 +64,18 @@ class OffsetDiscretizedLognormalPMF(RandomVariable):
     def sample(self):
         with scope(prefix=self.name, divider="_"):
             offset_loc = self.offset_loc_rv()
-            offset_scale = self.offset_scale_rv()
+            log_offset_scale = self.log_offset_scale_rv()
         lognorm = dist.LogNormal(
             loc=self.reference_loc + offset_loc,
             scale=jnp.exp(jnp.log(self.reference_scale) + log_offset_scale),
         )
-        unnormed = jnp.exp(lognorm.log_prob(jnp.arange(1, self.n + 1)))
+        unnormed = jnp.exp(lognorm.log_prob(jnp.arange(1, self.n)))
         pmf = jnp.pad(unnormed / jnp.sum(unnormed), [1, 0])
         numpyro.deterministic(self.name, pmf)
         return pmf
+
+    def validate(self):
+        pass
 
 
 class LatentInfectionProcess(RandomVariable):

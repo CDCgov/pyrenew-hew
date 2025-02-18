@@ -26,6 +26,7 @@ def build_model_from_dir(
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
     data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
     prior_path = Path(model_dir) / "priors.py"
+    priors = runpy.run_path(str(prior_path))
 
     with open(
         data_path,
@@ -42,6 +43,7 @@ def build_model_from_dir(
         "inf_to_ed",
         reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
         reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
+        n=jnp.size(model_data["inf_to_hosp_admit_pmf"]) - 1,
         offset_loc_rv=priors["inf_to_ed_offset_loc_rv"],
         log_offset_scale_rv=priors["inf_to_ed_log_offset_scale_rv"],
     )
@@ -79,7 +81,7 @@ def build_model_from_dir(
     uot = (
         max(
             len(model_data["generation_interval_pmf"]),
-            len(model_data["inf_to_ed_pmf"]),
+            len(model_data["inf_to_hosp_admit_pmf"]),
         )
         - 1
     )
@@ -90,8 +92,6 @@ def build_model_from_dir(
     first_hospital_admissions_date = datetime.datetime.strptime(
         model_data["nhsn_training_dates"][0], "%Y-%m-%d"
     )
-
-    priors = runpy.run_path(str(prior_path))
 
     right_truncation_offset = model_data["right_truncation_offset"]
 

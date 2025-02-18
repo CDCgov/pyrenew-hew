@@ -9,6 +9,7 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
+import numpy as np
 import numpyro.distributions as dist
 import polars as pl
 import polars.selectors as cs
@@ -318,7 +319,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         .collect(streaming=True)
         .get_column("value")
         .item(0)
-        .to_numpy()
+        .to_list()
     )
 
     delay_pmf = (
@@ -336,9 +337,10 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
 
     # ensure 0 first entry; we do not model the possibility
     # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
-    delay_pmf[0] = 0
+    delay_pmf[0] = 0.0
     delay_pmf = jnp.array(delay_pmf)
     delay_pmf = delay_pmf / delay_pmf.sum()
+    delay_pmf = delay_pmf.tolist()
 
     right_truncation_pmf = (
         param_estimates.filter(
@@ -351,7 +353,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         .collect(streaming=True)
         .get_column("value")
         .item(0)
-        .to_numpy()
+        .to_list()
     )
 
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
@@ -414,7 +416,7 @@ def approx_lognorm(
         raise ValueError("Discretized lognormal approximation to PMF failed")
     else:
         res = result.x
-        return (res[0], res[1])
+        return (float(res[0]), float(res[1]))
 
 
 def process_and_save_state(
@@ -450,7 +452,11 @@ def process_and_save_state(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
     )
 
-    delay_lognormal_loc, delay_lognormal_scale = approx_lognorm(delay_pmf)
+    delay_lognormal_loc, delay_lognormal_scale = approx_lognorm(
+        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+        loc_guess=0,
+        scale_guess=0.5,
+    )
 
     right_truncation_offset = (report_date - last_training_date).days
 
