@@ -5,12 +5,14 @@ from pathlib import Path
 
 import jax.numpy as jnp
 from pyrenew.deterministic import DeterministicVariable
+from pyrenew.randomvariable import DistributionalVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
     EDVisitObservationProcess,
     HospAdmitObservationProcess,
     LatentInfectionProcess,
+    OffsetDiscretizedLognormalPMF,
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
@@ -31,14 +33,18 @@ def build_model_from_dir(
     ) as file:
         model_data = json.load(file)
 
-    inf_to_ed_rv = DeterministicVariable(
-        "inf_to_ed", jnp.array(model_data["inf_to_ed_pmf"])
+    inf_to_hosp_admit_rv = DeterministicVariable(
+        "inf_to_hosp_admit", jnp.array(model_data["inf_to_hosp_admit_pmf"])
     )  # check if off by 1 or reversed
 
-    # use same as inf to ed, per NNH guidelines
-    inf_to_hosp_admit_rv = DeterministicVariable(
-        "inf_to_hosp_admit", jnp.array(model_data["inf_to_ed_pmf"])
-    )  # check if off by 1 or reversed
+    # offset from approx inf to admit
+    inf_to_ed_rv = OffsetDiscretizedLognormalPMF(
+        "inf_to_ed",
+        reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
+        reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
+        offset_loc_rv=priors["inf_to_ed_offset_loc_rv"],
+        log_offset_scale_rv=priors["inf_to_ed_log_offset_scale_rv"],
+    )
 
     generation_interval_pmf_rv = DeterministicVariable(
         "generation_interval_pmf",

@@ -312,7 +312,8 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_numpy()
     )
 
     delay_pmf = (
@@ -324,8 +325,14 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_numpy()
     )
+
+    # ensure 0 first entry; we do not model the possibility
+    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
+    delay_pmf[0] = 0
+    delay_pmf = delay_pmf / delay_pmf.sum()
 
     right_truncation_pmf = (
         param_estimates.filter(
@@ -337,7 +344,8 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_numpy()
     )
 
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
