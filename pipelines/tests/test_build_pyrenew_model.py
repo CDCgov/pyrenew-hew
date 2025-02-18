@@ -65,18 +65,18 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
 
     model_data = json.loads(mock_data)
 
-    # Test when all sample arguments are False
+    # Test when all `fit_` arguments are False
     _, data = build_model_from_dir(model_dir)
     assert data.data_observed_disease_ed_visits is None
     assert data.data_observed_disease_hospital_admissions is None
     assert data.data_observed_disease_wastewater is None
 
-    # Test when all sample arguments are True
+    # Test when all `fit_` arguments are True
     _, data = build_model_from_dir(
         model_dir,
-        sample_ed_visits=True,
-        sample_hospital_admissions=True,
-        sample_wastewater=True,
+        fit_ed_visits=True,
+        fit_hospital_admissions=True,
+        fit_wastewater=True,
     )
     assert jnp.array_equal(
         data.data_observed_disease_ed_visits,
