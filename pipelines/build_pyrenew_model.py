@@ -123,21 +123,6 @@ def build_model_from_dir(
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
-    data_observed_disease_wastewater = pl.DataFrame(
-        model_data["data_observed_disease_wastewater"],
-        schema={
-            "date": pl.Date,
-            "site": pl.String,
-            "lab": pl.String,
-            "site_pop": pl.Int64,
-            "site_index": pl.Int64,
-            "lab_site_index": pl.Int64,
-            "log_genomes_copies_per_ml": pl.Float64,
-            "log_lod": pl.Float64,
-            "below_lod": pl.Boolean,
-        },
-    )
-
     my_latent_infection_model = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
         initialization_rate_rv=priors["initialization_rate_rv"],
