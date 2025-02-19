@@ -104,7 +104,7 @@ def flags_from_hew_letters(hew_letters: str) -> dict[str, bool]:
         ``'h'``, ``'e'``, and ``'w'``.
     """
     valid_letters = {"h", "e", "w"}
-    letterset = set(list(hew_letters))
+    letterset = set(hew_letters)
     if not (
         hew_letters.lower() == "null" or letterset.issubset(valid_letters)
     ):
