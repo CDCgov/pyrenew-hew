@@ -1,7 +1,7 @@
 import json
-from pathlib import Path
 
 import jax.numpy as jnp
+import polars as pl
 import pytest
 
 from pipelines.build_pyrenew_model import build_model_from_dir
@@ -23,6 +23,22 @@ def mock_data():
             "nssp_training_dates": ["2025-01-01"],
             "nhsn_training_dates": ["2025-01-02"],
             "right_truncation_offset": 10,
+            "data_observed_disease_wastewater": {
+                "date": [
+                    "2025-01-01",
+                    "2025-01-01",
+                    "2025-01-02",
+                    "2025-01-02",
+                ],
+                "site": ["1.0", "1.0", "2.0", "2.0"],
+                "lab": ["1.0", "1.0", "1.0", "1.0"],
+                "site_pop": [4000000, 4000000, 2000000, 2000000],
+                "site_index": [1, 1, 0, 0],
+                "lab_site_index": [1, 1, 0, 0],
+                "log_genome_copies_per_ml": [0.1, 0.1, 0.5, 0.4],
+                "log_lod": [1.1, 2.0, 1.5, 2.1],
+                "below_lod": [False, False, False, False],
+            },
         }
     )
 
@@ -91,5 +107,7 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
         data.data_observed_disease_hospital_admissions,
         jnp.array(model_data["data_observed_disease_hospital_admissions"]),
     )
-    assert data.data_observed_disease_wastewater is None
-    ## Update this if wastewater data is added later
+    assert pl.DataFrame(
+        model_data["data_observed_disease_wastewater"],
+        schema_overrides={"date": pl.Date},
+    ).equals(data.data_observed_disease_wastewater)

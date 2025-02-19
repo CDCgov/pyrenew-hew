@@ -22,6 +22,7 @@ from fit_pyrenew_model import fit_and_save_model  # noqa
 from generate_predictive import (  # noqa
     generate_and_save_predictions,
 )
+from prep_ww_data import clean_nwss_data, preprocess_ww_data
 
 
 def record_git_info(model_run_dir: Path):
@@ -192,6 +193,7 @@ def main(
     state: str,
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
+    nwss_data_dir: Path | str,
     param_data_dir: Path | str,
     priors_path: Path | str,
     output_dir: Path | str,
@@ -333,6 +335,23 @@ def main(
             "No data available for the requested report date " f"{report_date}"
         )
 
+    available_nwss_reports = get_available_reports(nwss_data_dir)
+    # assming NWSS_vintage directory follows naming convention
+    # using as of date
+    # need to be modified otherwise
+
+    if report_date in available_nwss_reports:
+        nwss_data_raw = pl.scan_parquet(
+            Path(nwss_data_dir, f"{report_date}.parquet")
+        )
+        nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
+            (pl.col("location") == state)
+            & (pl.col("date") >= first_training_date)
+        )
+        state_level_nwss_data = preprocess_ww_data(nwss_data_cleaned)
+    else:
+        state_level_nwss_data = None  ## TO DO: change
+
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
@@ -357,6 +376,7 @@ def main(
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
         state_level_nssp_data=state_level_nssp_data,
+        state_level_nwss_data=state_level_nwss_data,
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
@@ -495,6 +515,13 @@ if __name__ == "__main__":
         help=(
             "Directory in which to look for state-level NSSP " "ED visit data."
         ),
+    )
+
+    parser.add_argument(
+        "--nwss-data-dir",
+        type=Path,
+        default=Path("private_data", "nwss_vintages"),
+        help=("Directory in which to look for NWSS data."),
     )
 
     parser.add_argument(
