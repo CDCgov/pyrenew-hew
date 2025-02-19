@@ -20,11 +20,9 @@ def generate_and_save_predictions(
     model_dir = Path(model_run_dir, model_name)
     if not model_dir.exists():
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
+
     (my_model, my_data) = build_model_from_dir(
-        model_run_dir,
-        sample_ed_visits=predict_ed_visits,
-        sample_hospital_admissions=predict_hospital_admissions,
-        sample_wastewater=predict_wastewater,
+        model_run_dir, **flags_from_pyrenew_model_name(model_name)
     )
 
     my_model._init_model(1, 1)
