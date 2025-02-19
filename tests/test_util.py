@@ -61,6 +61,15 @@ def test_hew_naming_from_flags(
     )
 
 
+def test_flag_from_string_errors():
+    with pytest.raises(ValueError, match="Must either be a string"):
+        flags_from_hew_letters("hewr")
+    with pytest.raises(ValueError, match="Must either be a string"):
+        flags_from_hew_letters("nulle")
+    with pytest.raises(ValueError, match="pyrenew_"):
+        flags_from_pyrenew_model_name("a_pyrenew_hew")
+
+
 @pytest.mark.parametrize(
     "test_items",
     [
