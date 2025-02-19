@@ -94,7 +94,7 @@ def build_model_from_dir(
             model_data["data_observed_disease_wastewater"],
             schema_overrides={"date": pl.Date},
         )
-        if sample_wastewater
+        if fit_wastewater
         else None
     )
 
