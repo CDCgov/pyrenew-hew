@@ -78,8 +78,9 @@ def hew_letters_from_flags(
 
 def flags_from_hew_letters(hew_letters: str) -> dict[str, bool]:
     """
-    Get True/False flags defining whether signals
-    were fit from the {h, e, w} letters (or 'null')
+    Get a set of boolean flags indicating which
+    datastreams, if any, were used in fitting
+    from the {h, e, w} letters (or 'null')
     defining the model. Inverse of
     :func:`hew_letters_from_flags`
 
@@ -94,6 +95,13 @@ def flags_from_hew_letters(hew_letters: str) -> dict[str, bool]:
        Dictionary with boolean entries named
        ``fit_hospital_admissions``, ``fit_ed_visits``,
        and ``fit_wastewater``.
+
+    Raises
+    ------
+    ValueError
+        if input does is neither ``'null'`` nor a
+        combination of the letters
+        ``'h'``, ``'e'``, and ``'w'``.
     """
     valid_letters = {"h", "e", "w"}
     letterset = set(list(hew_letters))
@@ -124,7 +132,7 @@ def pyrenew_model_name_from_flags(
     Get a "pyrenew_{h,e,w}" model name
     string from a set of flags indicating which
     of the datastreams, if any, were used in fitting.
-    If none of them were, call the model "pyrenew_null"
+    If none of them were, call the model "pyrenew_null".
 
     Parameters
     ----------
@@ -148,3 +156,36 @@ def pyrenew_model_name_from_flags(
         fit_wastewater=fit_wastewater,
     )
     return f"pyrenew_{hew_letters}"
+
+
+def flags_from_pyrenew_model_name(model_name: str) -> dict[str, bool]:
+    """
+    Get a set of boolean flags indicating which
+    datastreams, if any, were used in fitting
+    from a "pyrenew_{h,e,w}" model name.
+
+    Parameters
+    ----------
+    model_name
+        The model name.
+
+    Returns
+    -------
+    dict[str, bool]
+       Dictionary with boolean entries named
+       ``fit_hospital_admissions``, ``fit_ed_visits``,
+       and ``fit_wastewater``.
+
+    Raises
+    ------
+    ValueError
+        If the input is not a valid pyrenew_{h, e, w} model name.
+
+    """
+    if not model_name.startswith("pyrenew_"):
+        raise ValueError(
+            "Expected a model_name beginning with "
+            f"'pyrenew_'. Got {model_name}."
+        )
+    hew_letters = model_name.removeprefix("pyrenew_")
+    return flags_from_hew_letters(hew_letters)
