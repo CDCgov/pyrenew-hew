@@ -62,7 +62,7 @@ save_forecast_figures <- function(model_run_dir,
         pyrenew_model_name,
         glue(
           "{target_variable}_",
-          "forecast_plot_{timescale}",
+          "{timescale}",
           "{transform_name}"
         ),
         ext = "pdf"
