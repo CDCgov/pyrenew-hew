@@ -8,7 +8,6 @@ from logging import Logger
 from pathlib import Path
 
 import forecasttools
-import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 
