@@ -11,10 +11,6 @@ import forecasttools
 import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
-from prep_ww_data import (
-    get_nwss_data,
-    preprocess_ww_data,
-)
 
 _disease_map = {
     "COVID-19": "COVID-19/Omicron",
@@ -359,8 +355,8 @@ def process_and_save_state(
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
+    state_level_nwss_data: pl.LazyFrame = None,
     credentials_dict: dict = None,
-    ww_data_dir: Path = None,  # placeholder
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -455,13 +451,11 @@ def process_and_save_state(
         "hospital_admissions"
     ).to_list()
 
-    ww_data = get_nwss_data(
-        ww_data_dir,  # placeholder
-        start_date=first_training_date,
-        state_abb=state_abb,
+    data_observed_disease_wastewater = (
+        state_level_nwss_data.to_dict(as_series=False)
+        if state_level_nwss_data is not None
+        else None
     )
-
-    preprocessed_ww_data = preprocess_ww_data(ww_data)
 
     data_for_model_fit = {
         "inf_to_ed_pmf": delay_pmf,
@@ -476,9 +470,7 @@ def process_and_save_state(
         "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": preprocessed_ww_data.to_dict(
-            as_series=False
-        ),
+        "data_observed_disease_wastewater": data_observed_disease_wastewater,
     }
 
     data_dir = Path(model_run_dir, "data")

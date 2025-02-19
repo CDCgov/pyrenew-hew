@@ -4,7 +4,7 @@ from pathlib import Path
 import polars as pl
 
 
-def clean_and_filter_nwss_data(nwss_data):
+def clean_nwss_data(nwss_data):
     """
     Parameters
     ----------
@@ -286,23 +286,3 @@ def preprocess_ww_data(
         )
     )
     return ww_preprocessed
-
-
-def get_nwss_data(
-    ww_data_path: Path,
-    start_date: datetime.date,
-    state_abb: str,
-) -> pl.DataFrame:
-    schema_overrides = {
-        "county_names": pl.Utf8,
-        "major_lab_method": pl.Utf8,
-    }
-    nwss_data = pl.read_csv(
-        ww_data_path,
-        schema_overrides=schema_overrides,
-    )  # placeholder: TBD: If using a direct API call to decipher or ABS vintage
-    ww_data = clean_and_filter_nwss_data(nwss_data).filter(
-        (pl.col("location") == state_abb) & (pl.col("date") >= start_date)
-    )
-
-    return ww_data
