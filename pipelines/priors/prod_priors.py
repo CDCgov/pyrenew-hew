@@ -37,6 +37,13 @@ inf_feedback_strength_rv = TransformedVariable(
 )
 # Could be reparameterized?
 
+inf_to_ed_offset_loc_rv = DistributionalVariable(
+    "inf_to_ed_offset_loc", dist.Normal(0, 0.5)
+)
+inf_to_ed_log_offset_scale_rv = DistributionalVariable(
+    "inf_to_ed_log_offset_scale", dist.Normal(0, 0.5)
+)
+
 # low confidence logit-Normal
 p_ed_visit_mean_rv = DistributionalVariable(
     "p_ed_visit_mean",
