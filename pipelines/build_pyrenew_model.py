@@ -18,10 +18,37 @@ from pyrenew_hew.pyrenew_hew_model import (
 
 def build_model_from_dir(
     model_dir: Path,
-    sample_ed_visits: bool = False,
-    sample_hospital_admissions: bool = False,
-    sample_wastewater: bool = False,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
+    """
+    Build a pyrenew-family model from a model run directory
+    containing data (as a .json file) and priors (as a .py file)
+
+    Parameters
+    ----------
+    model_dir
+        The model directory, containing a priors file and a
+        data subdirectory.
+
+    fit_ed_visits
+        Fit ED visit data in the built model? Default ``False``.
+
+    fit_ed_visits
+        Fit hospital admissions data in the built model?
+        Default ``False``.
+
+    fit_wastewater
+        Fit wastewater pathogen genome concentration data
+        in the built model? Default ``False``.
+
+    Returns
+    -------
+    tuple[PyrenewHEWModel, PyrenewHEWData]
+        Instantiated model and data objects representing
+        the model and its fitting data, respectively.
+    """
     data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
     prior_path = Path(model_dir) / "priors.py"
 
@@ -52,17 +79,17 @@ def build_model_from_dir(
 
     data_observed_disease_ed_visits = (
         jnp.array(model_data["data_observed_disease_ed_visits"])
-        if sample_ed_visits
+        if fit_ed_visits
         else None
     )
     data_observed_disease_hospital_admissions = (
         jnp.array(model_data["data_observed_disease_hospital_admissions"])
-        if sample_hospital_admissions
+        if fit_hospital_admissions
         else None
     )
 
     # placeholder
-    data_observed_disease_wastewater = None if sample_wastewater else None
+    data_observed_disease_wastewater = None if fit_wastewater else None
 
     population_size = jnp.array(model_data["state_pop"])
 
