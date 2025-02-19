@@ -4,6 +4,7 @@ import runpy
 from pathlib import Path
 
 import jax.numpy as jnp
+import polars as pl
 from pyrenew.deterministic import DeterministicVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
@@ -61,8 +62,14 @@ def build_model_from_dir(
         else None
     )
 
-    # placeholder
-    data_observed_disease_wastewater = None if sample_wastewater else None
+    data_observed_disease_wastewater = (
+        pl.DataFrame(
+            model_data["data_observed_disease_wastewater"],
+            schema_overrides={"date": pl.Date},
+        )
+        if sample_wastewater
+        else None
+    )
 
     population_size = jnp.array(model_data["state_pop"])
 
@@ -148,6 +155,7 @@ def build_model_from_dir(
         right_truncation_offset=right_truncation_offset,
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,
+        population_size=population_size,
     )
 
     return (my_model, my_data)
