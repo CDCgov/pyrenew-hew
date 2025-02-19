@@ -47,7 +47,9 @@ def clean_nwss_data(nwss_data):
             .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
             .then((10 ** pl.col("pcr_target_avg_conc")) / 1000)
             .otherwise(None),
-            lod_sewage=pl.when(pl.col("pcr_target_units") == "copies/l wastewater")
+            lod_sewage=pl.when(
+                pl.col("pcr_target_units") == "copies/l wastewater"
+            )
             .then(pl.col("lod_sewage") / 1000)
             .when(pl.col("pcr_target_units") == "log10 copies/l wastewater")
             .then((10 ** pl.col("lod_sewage")) / 1000)
@@ -128,7 +130,9 @@ def clean_nwss_data(nwss_data):
         )
         .with_columns(
             [
-                pl.col("pcr_target_avg_conc").log().alias("log_genome_copies_per_ml"),
+                pl.col("pcr_target_avg_conc")
+                .log()
+                .alias("log_genome_copies_per_ml"),
                 pl.col("lod_sewage").log().alias("log_lod"),
                 pl.col("location").str.to_uppercase().alias("location"),
                 pl.col("site").cast(pl.String).alias("site"),
@@ -207,7 +211,9 @@ def validate_ww_conc_data(
         .eq(1)
         .all()
     ):
-        raise ValueError("The data contains sites with varying population sizes.")
+        raise ValueError(
+            "The data contains sites with varying population sizes."
+        )
 
     return None
 
@@ -239,10 +245,14 @@ def preprocess_ww_data(
         .with_row_index("lab_site_index")
     )
     site_df = (
-        ww_data_ordered.select([wwtp_col_name]).unique().with_row_index("site_index")
+        ww_data_ordered.select([wwtp_col_name])
+        .unique()
+        .with_row_index("site_index")
     )
     ww_preprocessed = (
-        ww_data_ordered.join(lab_site_df, on=[lab_col_name, wwtp_col_name], how="left")
+        ww_data_ordered.join(
+            lab_site_df, on=[lab_col_name, wwtp_col_name], how="left"
+        )
         .join(site_df, on=wwtp_col_name, how="left")
         .rename(
             {
@@ -252,9 +262,14 @@ def preprocess_ww_data(
         )
         .with_columns(
             lab_site_name=(
-                "Site: " + pl.col(wwtp_col_name) + ", Lab: " + pl.col(lab_col_name)
+                "Site: "
+                + pl.col(wwtp_col_name)
+                + ", Lab: "
+                + pl.col(lab_col_name)
             ),
-            below_lod=(pl.col("log_genome_copies_per_ml") <= pl.col("log_lod")),
+            below_lod=(
+                pl.col("log_genome_copies_per_ml") <= pl.col("log_lod")
+            ),
         )
         .select(
             [
