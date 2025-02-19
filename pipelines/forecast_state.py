@@ -383,7 +383,6 @@ def main(
         last_training_date=last_training_date,
         param_estimates=param_estimates,
         model_run_dir=model_run_dir,
-        ww_data_dir=ww_data_dir,
         logger=logger,
         credentials_dict=credentials_dict,
     )
