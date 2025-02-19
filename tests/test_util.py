@@ -3,6 +3,8 @@ from typing import Iterable
 import pytest
 
 from pyrenew_hew.util import (
+    flags_from_hew_letters,
+    flags_from_pyrenew_model_name,
     hew_letters_from_flags,
     hew_models,
     powerset,
@@ -31,6 +33,7 @@ from pyrenew_hew.util import (
 def test_hew_naming_from_flags(
     fit_ed_visits, fit_hospital_admissions, fit_wastewater, expected_letters
 ):
+    expected_model_name = f"pyrenew_{expected_letters}"
     assert (
         hew_letters_from_flags(
             fit_ed_visits, fit_hospital_admissions, fit_wastewater
@@ -42,8 +45,29 @@ def test_hew_naming_from_flags(
         pyrenew_model_name_from_flags(
             fit_ed_visits, fit_hospital_admissions, fit_wastewater
         )
-        == f"pyrenew_{expected_letters}"
+        == expected_model_name
     )
+
+    assert flags_from_hew_letters(expected_letters) == dict(
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
+
+    assert flags_from_pyrenew_model_name(expected_model_name) == dict(
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
+
+
+def test_flag_from_string_errors():
+    with pytest.raises(ValueError, match="Must either be a string"):
+        flags_from_hew_letters("hewr")
+    with pytest.raises(ValueError, match="Must either be a string"):
+        flags_from_hew_letters("nulle")
+    with pytest.raises(ValueError, match="pyrenew_"):
+        flags_from_pyrenew_model_name("a_pyrenew_hew")
 
 
 @pytest.mark.parametrize(

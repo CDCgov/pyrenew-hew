@@ -24,6 +24,33 @@ def build_model_from_dir(
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
+    """
+    Build a pyrenew-family model from a model run directory
+    containing data (as a .json file) and priors (as a .py file)
+
+    Parameters
+    ----------
+    model_dir
+        The model directory, containing a priors file and a
+        data subdirectory.
+
+    fit_ed_visits
+        Fit ED visit data in the built model? Default ``False``.
+
+    fit_ed_visits
+        Fit hospital admissions data in the built model?
+        Default ``False``.
+
+    fit_wastewater
+        Fit wastewater pathogen genome concentration data
+        in the built model? Default ``False``.
+
+    Returns
+    -------
+    tuple[PyrenewHEWModel, PyrenewHEWData]
+        Instantiated model and data objects representing
+        the model and its fitting data, respectively.
+    """
     data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
     prior_path = Path(model_dir) / "priors.py"
     priors = runpy.run_path(str(prior_path))

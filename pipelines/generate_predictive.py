@@ -7,14 +7,13 @@ from build_pyrenew_model import (
     build_model_from_dir,
 )
 
+from pyrenew_hew.util import flags_from_pyrenew_model_name
+
 
 def generate_and_save_predictions(
     model_run_dir: str | Path,
     model_name: str,
     n_forecast_points: int,
-    fit_ed_visits: bool = False,
-    fit_hospital_admissions: bool = False,
-    fit_wastewater: bool = False,
     predict_ed_visits: bool = False,
     predict_hospital_admissions: bool = False,
     predict_wastewater: bool = False,
@@ -23,11 +22,9 @@ def generate_and_save_predictions(
     model_dir = Path(model_run_dir, model_name)
     if not model_dir.exists():
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
+
     (my_model, my_data) = build_model_from_dir(
-        model_run_dir,
-        fit_ed_visits=fit_ed_visits,
-        fit_hospital_admissions=fit_hospital_admissions,
-        fit_wastewater=fit_wastewater,
+        model_run_dir, **flags_from_pyrenew_model_name(model_name)
     )
 
     my_model._init_model(1, 1)
