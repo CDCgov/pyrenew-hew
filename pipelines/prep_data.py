@@ -430,6 +430,7 @@ def process_and_save_state(
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     state_level_nssp_data: pl.LazyFrame = None,
+    state_level_nwss_data: pl.LazyFrame = None,
     credentials_dict: dict = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
@@ -531,6 +532,12 @@ def process_and_save_state(
         "hospital_admissions"
     ).to_list()
 
+    data_observed_disease_wastewater = (
+        state_level_nwss_data.to_dict(as_series=False)
+        if state_level_nwss_data is not None
+        else None
+    )
+
     data_for_model_fit = {
         "inf_to_hosp_admit_pmf": delay_pmf,
         "inf_to_hosp_admit_lognormal_loc": delay_lognormal_loc,
@@ -546,7 +553,9 @@ def process_and_save_state(
         "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
+        "data_observed_disease_wastewater": data_observed_disease_wastewater,
     }
+
     data_dir = Path(model_run_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
 
