@@ -45,27 +45,27 @@ def hew_letters_from_flags(
     fit_wastewater: bool = False,
 ) -> str:
     """
-        Get the {h, e, w} letters defining
-        a model from a set of flags indicating which
-        of the datastreams, if any, were used in fitting.
-        If none of them were, return the string "null"
+    Get the {h, e, w} letters defining
+    a model from a set of flags indicating which
+    of the datastreams, if any, were used in fitting.
+    If none of them were, return the string "null"
 
-        Parameters
-        ----------
-        fit_ed_visits
-            ED visit data used in fitting?
+    Parameters
+    ----------
+    fit_ed_visits
+        ED visit data used in fitting?
 
-        fit_hospital_admissions
-            Hospital admissions data used in fitting?
+    fit_hospital_admissions
+        Hospital admissions data used in fitting?
 
-        fit_wastewater
-            Wastewater data used in fitting?
+    fit_wastewater
+        Wastewater data used in fitting?
 
-        Returns
-        -------
-        str
-            The relevant HEW letters, or 'null',
-    a"""
+    Returns
+    -------
+    str
+        The relevant HEW letters, or 'null',
+    """
     result = (
         f"{'h' if fit_hospital_admissions else ''}"
         f"{'e' if fit_ed_visits else ''}"
@@ -113,14 +113,11 @@ def flags_from_hew_letters(hew_letters: str) -> dict[str, bool]:
             "a string consisting only of the letters "
             f"in {valid_letters} or the string 'null'"
         )
-    result = dict(
+    return dict(
         fit_hospital_admissions="h" in hew_letters,
         fit_ed_visits="e" in hew_letters,
         fit_wastewater="w" in hew_letters,
     )
-    if not result:
-        result = "null"
-    return result
 
 
 def pyrenew_model_name_from_flags(
