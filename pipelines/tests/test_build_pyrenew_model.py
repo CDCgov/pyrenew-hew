@@ -61,6 +61,7 @@ ed_visit_wday_effect_rv = None
 ed_neg_bin_concentration_rv = None
 hosp_admit_neg_bin_concentration_rv = None
 ihr_rv = None
+ihr_rel_iedr_rv = None
 t_peak_rv = None
 duration_shed_after_peak_rv = None
 inf_to_ed_offset_loc_rv = None
