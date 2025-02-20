@@ -104,7 +104,7 @@ def build_model_from_dir(
         "right_truncation_pmf", jnp.array(model_data["right_truncation_pmf"])
     )
 
-    uot = (
+    n_initialization_points = (
         max(
             len(model_data["generation_interval_pmf"]),
             len(model_data["inf_to_ed_pmf"]),
@@ -123,7 +123,7 @@ def build_model_from_dir(
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
-    my_data = PyrenewHEWData(
+    dat = PyrenewHEWData(
         data_observed_disease_ed_visits=data_observed_disease_ed_visits,
         data_observed_disease_hospital_admissions=(
             data_observed_disease_hospital_admissions
@@ -135,7 +135,7 @@ def build_model_from_dir(
         population_size=population_size,
     )
 
-    my_latent_infection_model = LatentInfectionProcess(
+    latent_infections_rv = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
         initialization_rate_rv=priors["initialization_rate_rv"],
         log_r_mu_intercept_rv=priors["log_r_mu_intercept_rv"],
@@ -144,10 +144,8 @@ def build_model_from_dir(
         generation_interval_pmf_rv=generation_interval_pmf_rv,
         infection_feedback_strength_rv=priors["inf_feedback_strength_rv"],
         infection_feedback_pmf_rv=infection_feedback_pmf_rv,
-        n_initialization_points=uot,
-        pop_fraction=my_data.pop_fraction
-        if fit_wastewater
-        else jnp.array([1]),
+        n_initialization_points=n_initialization_points,
+        pop_fraction=dat.pop_fraction if fit_wastewater else jnp.array([1]),
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
         sigma_rt_rv=priors["sigma_rt_rv"],
         sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
@@ -163,7 +161,7 @@ def build_model_from_dir(
         offset_ref_log_rt_rv=priors["offset_ref_log_rt_rv"],
     )
 
-    my_ed_visit_obs_model = EDVisitObservationProcess(
+    ed_visit_obs_rv = EDVisitObservationProcess(
         p_ed_mean_rv=priors["p_ed_visit_mean_rv"],
         p_ed_w_sd_rv=priors["p_ed_visit_w_sd_rv"],
         autoreg_p_ed_rv=priors["autoreg_p_ed_visit_rv"],
@@ -173,16 +171,18 @@ def build_model_from_dir(
         ed_right_truncation_pmf_rv=ed_right_truncation_pmf_rv,
     )
 
-    my_hosp_admit_obs_model = HospAdmitObservationProcess(
+    eh = fit_hospital_admissions and fit_ed_visits
+
+    hosp_admit_obs_rv = HospAdmitObservationProcess(
         inf_to_hosp_admit_rv=inf_to_hosp_admit_rv,
         hosp_admit_neg_bin_concentration_rv=(
             priors["hosp_admit_neg_bin_concentration_rv"]
         ),
-        ihr_rel_iedr_rv=None,  # since for now we only use H or E, not HE
-        ihr_rv=priors["ihr_rv"],
+        ihr_rel_iedr_rv=priors["ihr_rel_iedr_rv"] if eh else None,
+        ihr_rv=None if eh else priors["ihr_rv"],
     )
 
-    my_wastewater_obs_model = WastewaterObservationProcess(
+    wastewater_obs_rv = WastewaterObservationProcess(
         t_peak_rv=priors["t_peak_rv"],
         duration_shed_after_peak_rv=priors["duration_shed_after_peak_rv"],
         log10_genome_per_inf_ind_rv=priors["log10_genome_per_inf_ind_rv"],
@@ -193,12 +193,12 @@ def build_model_from_dir(
         ww_ml_produced_per_day=priors["ww_ml_produced_per_day"],
     )
 
-    my_model = PyrenewHEWModel(
+    mod = PyrenewHEWModel(
         population_size=population_size,
-        latent_infection_process_rv=my_latent_infection_model,
-        ed_visit_obs_process_rv=my_ed_visit_obs_model,
-        hosp_admit_obs_process_rv=my_hosp_admit_obs_model,
-        wastewater_obs_process_rv=my_wastewater_obs_model,
+        latent_infection_process_rv=latent_infections_rv,
+        ed_visit_obs_process_rv=ed_visit_obs_rv,
+        hosp_admit_obs_process_rv=hosp_admit_obs_rv,
+        wastewater_obs_process_rv=wastewater_obs_rv,
     )
 
-    return (my_model, my_data)
+    return (mod, dat)
