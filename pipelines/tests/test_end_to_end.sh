@@ -28,18 +28,18 @@ do
 	       --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
 	       --priors-path pipelines/priors/prod_priors.py \
 	       --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
-				 --ww-data-dir "$BASE_DIR/private_data/nwss_vintages" \
+				 --nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
 	       --output-dir "$BASE_DIR/private_data" \
 	       --n-training-days 60 \
 	       --n-chains 2 \
 	       --n-samples 250 \
 	       --n-warmup 250 \
 	       --fit-ed-visits \
-	       --no-fit-hospital-admissions \
-	       --no-fit-wastewater \
+	       --fit-hospital-admissions \
+	       --fit-wastewater \
 	       --forecast-ed-visits \
 	       --forecast-hospital-admissions \
-	       --no-forecast-wastewater \
+	       --forecast-wastewater \
 	       --score \
 	       --eval-data-path "$BASE_DIR/private_data/nssp-etl"
 	if [ $? -ne 0 ]; then

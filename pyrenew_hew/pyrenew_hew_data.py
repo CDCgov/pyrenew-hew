@@ -40,7 +40,9 @@ class PyrenewHEWData:
         self.first_ed_visits_date = first_ed_visits_date
         self.first_hospital_admissions_date = first_hospital_admissions_date
         self.first_wastewater_date_ = first_wastewater_date
-        self.data_observed_disease_wastewater = data_observed_disease_wastewater
+        self.data_observed_disease_wastewater = (
+            data_observed_disease_wastewater
+        )
         self.population_size = population_size
         self.shedding_offset = shedding_offset
         self.pop_fraction_ = pop_fraction
@@ -69,12 +71,6 @@ class PyrenewHEWData:
                 else self.data_observed_disease_wastewater["date"]
             ),
         )
-
-    @property
-    def first_wastewater_date(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.data_observed_disease_wastewater["date"].min()
-        return self.first_wastewater_date_
 
     @property
     def first_wastewater_date(self):
@@ -132,7 +128,9 @@ class PyrenewHEWData:
 
     @property
     def n_days_post_init(self):
-        return (self.last_data_date_overall - self.first_data_date_overall).days
+        return (
+            self.last_data_date_overall - self.first_data_date_overall
+        ).days
 
     @property
     def site_subpop_spine(self):
@@ -155,28 +153,33 @@ class PyrenewHEWData:
                 .unique()
                 .sort("site_index")
             )
-            if add_auxiliary_subpop:
-                aux_subpop = pl.DataFrame(
-                    {
-                        "site_index": [None],
-                        "site": [None],
-                        "site_pop": [
-                            self.population_size
-                            - site_indices.select(pl.col("site_pop"))
-                            .get_column("site_pop")
-                            .sum()
-                        ],
-                    }
-                )
-            else:
-                aux_subpop = pl.DataFrame()
+
+            site_pop = jnp.where(
+                add_auxiliary_subpop,
+                self.population_size
+                - site_indices.select(pl.col("site_pop"))
+                .get_column("site_pop")
+                .sum(),
+                jnp.nan,
+            )
+
+            aux_subpop = pl.DataFrame(
+                {"site_index": [None], "site": [None], "site_pop": site_pop}
+            ).with_columns(
+                pl.col("site_index").cast(pl.Int64),
+                pl.col("site").cast(pl.String),
+                pl.col("site_pop").cast(pl.Int64),
+            )
+
             site_subpop_spine = (
                 pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
                 .with_columns(
-                    subpop_index=pl.col("site_index").cum_count().alias("subpop_index"),
-                    subpop_name=pl.format("Site: {}", pl.col("site")).fill_null(
-                        "remainder of population"
-                    ),
+                    subpop_index=pl.col("site_index")
+                    .cum_count()
+                    .alias("subpop_index"),
+                    subpop_name=pl.format(
+                        "Site: {}", pl.col("site")
+                    ).fill_null("remainder of population"),
                 )
                 .rename({"site_pop": "subpop_pop"})
             )
@@ -233,22 +236,24 @@ class PyrenewHEWData:
     @property
     def data_observed_disease_wastewater_conc(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended["log_genome_copies_per_ml"].to_numpy()
+            return self.wastewater_data_extended[
+                "log_genome_copies_per_ml"
+            ].to_numpy()
 
     @property
     def ww_censored(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.filter(pl.col("below_lod") == 1)[
-                "ind_rel_to_observed_times"
-            ].to_numpy()
+            return self.wastewater_data_extended.filter(
+                pl.col("below_lod") == 1
+            )["ind_rel_to_observed_times"].to_numpy()
         return None
 
     @property
     def ww_uncensored(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.filter(pl.col("below_lod") == 0)[
-                "ind_rel_to_observed_times"
-            ].to_numpy()
+            return self.wastewater_data_extended.filter(
+                pl.col("below_lod") == 0
+            )["ind_rel_to_observed_times"].to_numpy()
 
     @property
     def ww_observed_times(self):
@@ -304,7 +309,9 @@ class PyrenewHEWData:
                 )
             result = None
         else:
-            result = first_date + datetime.timedelta(days=n_datapoints * timestep_days)
+            result = first_date + datetime.timedelta(
+                days=n_datapoints * timestep_days
+            )
         return result
 
     def get_n_data_days(

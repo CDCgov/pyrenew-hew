@@ -114,14 +114,26 @@ def build_model_from_dir(
 
     first_ed_visits_date = datetime.datetime.strptime(
         model_data["nssp_training_dates"][0], "%Y-%m-%d"
-    )
+    ).date()
     first_hospital_admissions_date = datetime.datetime.strptime(
         model_data["nhsn_training_dates"][0], "%Y-%m-%d"
-    )
+    ).date()
 
     priors = runpy.run_path(str(prior_path))
 
     right_truncation_offset = model_data["right_truncation_offset"]
+
+    my_data = PyrenewHEWData(
+        data_observed_disease_ed_visits=data_observed_disease_ed_visits,
+        data_observed_disease_hospital_admissions=(
+            data_observed_disease_hospital_admissions
+        ),
+        data_observed_disease_wastewater=data_observed_disease_wastewater,
+        right_truncation_offset=right_truncation_offset,
+        first_ed_visits_date=first_ed_visits_date,
+        first_hospital_admissions_date=first_hospital_admissions_date,
+        population_size=population_size,
+    )
 
     my_latent_infection_model = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
@@ -133,6 +145,22 @@ def build_model_from_dir(
         infection_feedback_strength_rv=priors["inf_feedback_strength_rv"],
         infection_feedback_pmf_rv=infection_feedback_pmf_rv,
         n_initialization_points=uot,
+        pop_fraction=my_data.pop_fraction
+        if fit_wastewater
+        else jnp.array([1]),
+        autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
+        sigma_rt_rv=priors["sigma_rt_rv"],
+        sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
+        sigma_initial_exp_growth_rate_rv=priors[
+            "sigma_initial_exp_growth_rate_rv"
+        ],
+        offset_ref_logit_i_first_obs_rv=priors[
+            "offset_ref_logit_i_first_obs_rv"
+        ],
+        offset_ref_initial_exp_growth_rate_rv=priors[
+            "offset_ref_initial_exp_growth_rate_rv"
+        ],
+        offset_ref_log_rt_rv=priors["offset_ref_log_rt_rv"],
     )
 
     my_ed_visit_obs_model = EDVisitObservationProcess(
@@ -171,18 +199,6 @@ def build_model_from_dir(
         ed_visit_obs_process_rv=my_ed_visit_obs_model,
         hosp_admit_obs_process_rv=my_hosp_admit_obs_model,
         wastewater_obs_process_rv=my_wastewater_obs_model,
-    )
-
-    my_data = PyrenewHEWData(
-        data_observed_disease_ed_visits=data_observed_disease_ed_visits,
-        data_observed_disease_hospital_admissions=(
-            data_observed_disease_hospital_admissions
-        ),
-        data_observed_disease_wastewater=data_observed_disease_wastewater,
-        right_truncation_offset=right_truncation_offset,
-        first_ed_visits_date=first_ed_visits_date,
-        first_hospital_admissions_date=first_hospital_admissions_date,
-        population_size=population_size,
     )
 
     return (my_model, my_data)
