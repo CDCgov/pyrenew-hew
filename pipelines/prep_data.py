@@ -8,6 +8,7 @@ from logging import Logger
 from pathlib import Path
 
 import forecasttools
+import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 
@@ -456,6 +457,24 @@ def process_and_save_state(
         else None
     )
 
+    if state_level_nwss_data is None:
+        pop_fraction = jnp.array([1])
+    else:
+        subpop_sizes = (
+            state_level_nwss_data.select(["site_index", "site", "site_pop"])
+            .unique()["site_pop"]
+            .to_numpy()
+        )
+        pop_fraction = jnp.where(
+            state_pop > subpop_sizes.sum(),
+            jnp.concatenate(
+                [jnp.array([state_pop - subpop_sizes.sum()]), subpop_sizes],
+                axis=0,
+            )
+            / state_pop,
+            subpop_sizes / state_pop,
+        )
+
     data_for_model_fit = {
         "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
@@ -470,6 +489,7 @@ def process_and_save_state(
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
         "data_observed_disease_wastewater": data_observed_disease_wastewater,
+        "pop_fraction": pop_fraction,
     }
 
     data_dir = Path(model_run_dir, "data")

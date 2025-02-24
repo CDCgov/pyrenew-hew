@@ -15,6 +15,7 @@ from pyrenew_hew.pyrenew_hew_model import (
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
+from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
 
 
 def build_model_from_dir(
@@ -92,13 +93,19 @@ def build_model_from_dir(
     data_observed_disease_wastewater = (
         pl.DataFrame(
             model_data["data_observed_disease_wastewater"],
-            schema_overrides={"date": pl.Date},
+            schema_overrides={
+                "date": pl.Date,
+                "lab_index": pl.Int64,
+                "site_index": pl.Int64,
+            },
         )
         if fit_wastewater
         else None
     )
 
     population_size = jnp.array(model_data["state_pop"])
+
+    pop_fraction = jnp.array(model_data["pop_fraction"])
 
     ed_right_truncation_pmf_rv = DeterministicVariable(
         "right_truncation_pmf", jnp.array(model_data["right_truncation_pmf"])
@@ -123,18 +130,6 @@ def build_model_from_dir(
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
-    dat = PyrenewHEWData(
-        data_observed_disease_ed_visits=data_observed_disease_ed_visits,
-        data_observed_disease_hospital_admissions=(
-            data_observed_disease_hospital_admissions
-        ),
-        data_observed_disease_wastewater=data_observed_disease_wastewater,
-        right_truncation_offset=right_truncation_offset,
-        first_ed_visits_date=first_ed_visits_date,
-        first_hospital_admissions_date=first_hospital_admissions_date,
-        population_size=population_size,
-    )
-
     latent_infections_rv = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
         initialization_rate_rv=priors["initialization_rate_rv"],
@@ -145,7 +140,7 @@ def build_model_from_dir(
         infection_feedback_strength_rv=priors["inf_feedback_strength_rv"],
         infection_feedback_pmf_rv=infection_feedback_pmf_rv,
         n_initialization_points=n_initialization_points,
-        pop_fraction=dat.pop_fraction if fit_wastewater else jnp.array([1]),
+        pop_fraction=pop_fraction,
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
         sigma_rt_rv=priors["sigma_rt_rv"],
         sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
@@ -199,6 +194,23 @@ def build_model_from_dir(
         ed_visit_obs_process_rv=ed_visit_obs_rv,
         hosp_admit_obs_process_rv=hosp_admit_obs_rv,
         wastewater_obs_process_rv=wastewater_obs_rv,
+    )
+
+    wastewater_data = PyrenewWastewaterData(
+        data_observed_disease_wastewater=data_observed_disease_wastewater,
+        population_size=population_size,
+        pop_fraction=pop_fraction,
+    )
+
+    dat = PyrenewHEWData(
+        data_observed_disease_ed_visits=data_observed_disease_ed_visits,
+        data_observed_disease_hospital_admissions=(
+            data_observed_disease_hospital_admissions
+        ),
+        right_truncation_offset=right_truncation_offset,
+        first_ed_visits_date=first_ed_visits_date,
+        first_hospital_admissions_date=first_hospital_admissions_date,
+        wastewater_data=wastewater_data,
     )
 
     return (mod, dat)
