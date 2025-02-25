@@ -117,4 +117,4 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
         data.data_observed_disease_hospital_admissions,
         jnp.array(model_data["data_observed_disease_hospital_admissions"]),
     )
-    # assert data.data_observed_disease_wastewater_conc is not None
+    assert data.data_observed_disease_wastewater_conc is not None

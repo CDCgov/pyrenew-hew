@@ -9,7 +9,6 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
-import numpy as np
 import polars as pl
 import polars.selectors as cs
 
