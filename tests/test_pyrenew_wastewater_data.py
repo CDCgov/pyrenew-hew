@@ -4,6 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 import polars as pl
 
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
 
 
@@ -29,19 +30,20 @@ def test_wastewater_data_properties():
                 np.abs(np.random.normal(loc=500, scale=50, size=60))
             ),
             "log_lod": np.log([20] * 30 + [15] * 30),
-            "site_pop": [200_000] * 30 + [400_000] * 30,
+            "site_pop": [200000] * 30 + [400000] * 30,
         }
     )
 
     ww_data = ww_raw.with_columns(
-        (pl.col("log_genome_copies_per_ml") <= pl.col("log_lod"))
-        .cast(pl.Int8)
-        .alias("below_lod")
+        below_lod=pl.col("log_genome_copies_per_ml") <= pl.col("log_lod")
     )
 
-    data = PyrenewWastewaterData(
-        data_observed_disease_wastewater=ww_data,
-        population_size=1e6,
+    data = PyrenewHEWData(
+        wastewater_data=PyrenewWastewaterData(
+            data_observed_disease_wastewater=ww_data,
+            population_size=1e6,
+            pop_fraction=[0.4, 0.2, 0.4],
+        ),
     )
 
     assert jnp.array_equal(

@@ -1,6 +1,7 @@
 import datetime
 from typing import Self
 
+import jax.numpy as jnp
 from jax.typing import ArrayLike
 
 from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
@@ -24,6 +25,12 @@ class PyrenewHEWData:
         first_hospital_admissions_date: datetime.date = None,
         first_wastewater_date: datetime.date = None,
         wastewater_data: PyrenewWastewaterData = None,
+        n_ww_lab_sites: int = None,
+        ww_censored: ArrayLike = None,
+        ww_uncensored: ArrayLike = None,
+        ww_observed_subpops: ArrayLike = None,
+        ww_observed_times: ArrayLike = None,
+        ww_observed_lab_sites: ArrayLike = None,
     ) -> None:
         self.n_ed_visits_data_days_ = n_ed_visits_data_days
         self.n_hospital_admissions_data_days_ = n_hospital_admissions_data_days
@@ -42,7 +49,9 @@ class PyrenewHEWData:
             else wastewater_data.date_observed_disease_wastewater
         )
         self.pop_fraction = (
-            None if wastewater_data is None else wastewater_data.pop_fraction
+            jnp.array([1])
+            if wastewater_data is None
+            else jnp.array(wastewater_data.pop_fraction)
         )
         self.data_observed_disease_wastewater_conc = (
             None
@@ -50,32 +59,65 @@ class PyrenewHEWData:
             else wastewater_data.data_observed_disease_wastewater_conc
         )
         self.ww_censored = (
-            None if wastewater_data is None else wastewater_data.ww_censored
+            ww_censored
+            if ww_censored is not None
+            else (
+                None
+                if wastewater_data is None
+                else wastewater_data.ww_censored
+            )
         )
         self.ww_uncensored = (
-            None if wastewater_data is None else wastewater_data.ww_uncensored
+            ww_uncensored
+            if ww_uncensored is not None
+            else (
+                None
+                if wastewater_data is None
+                else wastewater_data.ww_uncensored
+            )
         )
         self.ww_observed_times = (
-            None
-            if wastewater_data is None
-            else wastewater_data.ww_observed_times
+            ww_observed_times
+            if ww_observed_times is not None
+            else (
+                None
+                if wastewater_data is None
+                else wastewater_data.ww_observed_times
+            )
         )
         self.ww_observed_subpops = (
-            None
-            if wastewater_data is None
-            else wastewater_data.ww_observed_subpops
+            ww_observed_subpops
+            if ww_observed_subpops is not None
+            else (
+                None
+                if wastewater_data is None
+                else wastewater_data.ww_observed_subpops
+            )
         )
+
         self.ww_observed_lab_sites = (
-            None
-            if wastewater_data is None
-            else wastewater_data.ww_observed_lab_sites
+            ww_observed_lab_sites
+            if ww_observed_lab_sites is not None
+            else (
+                None
+                if wastewater_data is None
+                else wastewater_data.ww_observed_lab_sites
+            )
         )
+
         self.ww_log_lod = (
             None if wastewater_data is None else wastewater_data.ww_log_lod
         )
         self.n_ww_lab_sites = (
-            None if wastewater_data is None else wastewater_data.n_ww_lab_sites
+            n_ww_lab_sites
+            if n_ww_lab_sites is not None
+            else (
+                None
+                if wastewater_data is None
+                else wastewater_data.n_ww_lab_sites
+            )
         )
+
         self.lab_site_to_subpop_map = (
             None
             if wastewater_data is None
@@ -232,4 +274,10 @@ class PyrenewHEWData:
             first_hospital_admissions_date=(self.first_data_date_overall),
             first_wastewater_date=self.first_data_date_overall,
             right_truncation_offset=None,  # by default, want forecasts of complete reports
+            n_ww_lab_sites=self.n_ww_lab_sites,
+            ww_uncensored=self.ww_uncensored,
+            ww_censored=self.ww_censored,
+            ww_observed_lab_sites=self.ww_observed_lab_sites,
+            ww_observed_subpops=self.ww_observed_subpops,
+            ww_observed_times=self.ww_observed_times,
         )

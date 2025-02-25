@@ -9,6 +9,7 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
+import numpy as np
 import polars as pl
 import polars.selectors as cs
 
@@ -465,15 +466,12 @@ def process_and_save_state(
             .unique()["site_pop"]
             .to_numpy()
         )
-        pop_fraction = jnp.where(
-            state_pop > subpop_sizes.sum(),
-            jnp.concatenate(
-                [jnp.array([state_pop - subpop_sizes.sum()]), subpop_sizes],
-                axis=0,
-            )
-            / state_pop,
-            subpop_sizes / state_pop,
-        )
+        if state_pop > sum(subpop_sizes):
+            pop_fraction = (
+                [state_pop - sum(subpop_sizes)] + subpop_sizes
+            ) / state_pop
+        else:
+            pop_fraction = subpop_sizes / state_pop
 
     data_for_model_fit = {
         "inf_to_ed_pmf": delay_pmf,
@@ -489,7 +487,7 @@ def process_and_save_state(
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
         "data_observed_disease_wastewater": data_observed_disease_wastewater,
-        "pop_fraction": pop_fraction,
+        "pop_fraction": pop_fraction.tolist(),
     }
 
     data_dir = Path(model_run_dir, "data")

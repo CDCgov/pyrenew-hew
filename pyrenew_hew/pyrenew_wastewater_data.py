@@ -50,12 +50,10 @@ class PyrenewWastewaterData:
                     {
                         "site_index": [None],
                         "site": [None],
-                        "site_pop": [
+                        "site_pop": (
                             self.population_size
-                            - site_indices.select(pl.col("site_pop"))
-                            .get_column("site_pop")
-                            .sum()
-                        ],
+                            - site_indices.get_column("site_pop").sum()
+                        ).tolist(),
                     }
                 )
             else:
@@ -118,49 +116,61 @@ class PyrenewWastewaterData:
     @property
     def date_observed_disease_wastewater(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.data_observed_disease_wastewater["date"].to_numpy()
+            return self.data_observed_disease_wastewater.get_column(
+                "date"
+            ).unique()
 
     @property
     def data_observed_disease_wastewater_conc(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended[
+            return self.wastewater_data_extended.get_column(
                 "log_genome_copies_per_ml"
-            ].to_numpy()
+            ).to_numpy()
 
     @property
     def ww_censored(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.filter(
-                pl.col("below_lod") == 1
-            )["ind_rel_to_observed_times"].to_numpy()
+            return (
+                self.wastewater_data_extended.filter(pl.col("below_lod") == 1)
+                .get_column("ind_rel_to_observed_times")
+                .to_numpy()
+            )
         return None
 
     @property
     def ww_uncensored(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.filter(
-                pl.col("below_lod") == 0
-            )["ind_rel_to_observed_times"].to_numpy()
+            return (
+                self.wastewater_data_extended.filter(pl.col("below_lod") == 0)
+                .get_column("ind_rel_to_observed_times")
+                .to_numpy()
+            )
 
     @property
     def ww_observed_times(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended["t"].to_numpy()
+            return self.wastewater_data_extended.get_column("t").to_numpy()
 
     @property
     def ww_observed_subpops(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended["subpop_index"].to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "subpop_index"
+            ).to_numpy()
 
     @property
     def ww_observed_lab_sites(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended["lab_site_index"].to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "lab_site_index"
+            ).to_numpy()
 
     @property
     def ww_log_lod(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended["log_lod"].to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "log_lod"
+            ).to_numpy()
 
     @property
     def n_ww_lab_sites(self):
@@ -171,7 +181,13 @@ class PyrenewWastewaterData:
     def lab_site_to_subpop_map(self):
         if self.data_observed_disease_wastewater is not None:
             return (
-                self.wastewater_data_extended["lab_site_index", "subpop_index"]
-                .unique()
-                .sort(by="lab_site_index")
-            )["subpop_index"].to_numpy()
+                (
+                    self.wastewater_data_extended[
+                        "lab_site_index", "subpop_index"
+                    ]
+                    .unique()
+                    .sort(by="lab_site_index")
+                )
+                .get_column("subpop_index")
+                .to_numpy()
+            )
