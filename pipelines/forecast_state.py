@@ -453,9 +453,10 @@ def main(
     )
     logger.info("Postprocessing complete.")
 
-    logger.info("Rendering webpage...")
-    render_diagnostic_report(model_run_dir)
-    logger.info("Rendering complete.")
+    if pyrenew_model_name == "pyrenew_e":
+        logger.info("Rendering webpage...")
+        render_diagnostic_report(model_run_dir)
+        logger.info("Rendering complete.")
 
     if score:
         logger.info("Scoring forecast...")
