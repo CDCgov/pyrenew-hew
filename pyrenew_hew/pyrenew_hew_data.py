@@ -31,6 +31,7 @@ class PyrenewHEWData:
         ww_observed_subpops: ArrayLike = None,
         ww_observed_times: ArrayLike = None,
         ww_observed_lab_sites: ArrayLike = None,
+        lab_site_to_subpop_map: ArrayLike = None,
     ) -> None:
         self.n_ed_visits_data_days_ = n_ed_visits_data_days
         self.n_hospital_admissions_data_days_ = n_hospital_admissions_data_days
@@ -119,9 +120,13 @@ class PyrenewHEWData:
         )
 
         self.lab_site_to_subpop_map = (
-            None
-            if wastewater_data is None
-            else wastewater_data.lab_site_to_subpop_map
+            lab_site_to_subpop_map
+            if lab_site_to_subpop_map is not None
+            else (
+                None
+                if wastewater_data is None
+                else wastewater_data.lab_site_to_subpop_map
+            )
         )
 
     @property
@@ -280,4 +285,5 @@ class PyrenewHEWData:
             ww_observed_lab_sites=self.ww_observed_lab_sites,
             ww_observed_subpops=self.ww_observed_subpops,
             ww_observed_times=self.ww_observed_times,
+            lab_site_to_subpop_map=self.lab_site_to_subpop_map,
         )

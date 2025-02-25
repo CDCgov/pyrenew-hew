@@ -463,13 +463,17 @@ def process_and_save_state(
     else:
         subpop_sizes = (
             state_level_nwss_data.select(["site_index", "site", "site_pop"])
-            .unique()["site_pop"]
+            .unique()
+            .get_column("site_pop")
             .to_numpy()
         )
         if state_pop > sum(subpop_sizes):
             pop_fraction = (
-                [state_pop - sum(subpop_sizes)] + subpop_sizes
-            ) / state_pop
+                jnp.concatenate(
+                    (jnp.array([state_pop - sum(subpop_sizes)]), subpop_sizes)
+                )
+                / state_pop
+            )
         else:
             pop_fraction = subpop_sizes / state_pop
 

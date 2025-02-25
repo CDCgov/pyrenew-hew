@@ -335,22 +335,28 @@ def main(
             "No data available for the requested report date " f"{report_date}"
         )
 
-    available_nwss_reports = get_available_reports(nwss_data_dir)
-    # assming NWSS_vintage directory follows naming convention
-    # using as of date
-    # need to be modified otherwise
-
-    if report_date in available_nwss_reports:
-        nwss_data_raw = pl.scan_parquet(
-            Path(nwss_data_dir, f"{report_date}.parquet")
-        )
-        nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
-            (pl.col("location") == state)
-            & (pl.col("date") >= first_training_date)
-        )
-        state_level_nwss_data = preprocess_ww_data(nwss_data_cleaned.collect())
+    if fit_wastewater:
+        available_nwss_reports = get_available_reports(nwss_data_dir)
+        # assming NWSS_vintage directory follows naming convention
+        # using as of date
+        if report_date in available_nwss_reports:
+            nwss_data_raw = pl.scan_parquet(
+                Path(nwss_data_dir, f"{report_date}.parquet")
+            )
+            nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
+                (pl.col("location") == state)
+                & (pl.col("date") >= first_training_date)
+            )
+            state_level_nwss_data = preprocess_ww_data(
+                nwss_data_cleaned.collect()
+            )
+        else:
+            raise ValueError(
+                "NWSS data not available for the requested report date "
+                f"{report_date}"
+            )
     else:
-        state_level_nwss_data = None  ## TO DO: change
+        state_level_nwss_data = None
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
