@@ -15,10 +15,6 @@ try(source("pipelines/score_forecast.R"))
 model_batch_dirs <- c(
   path(
     "pipelines/tests/private_data",
-    "covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20"
-  ),
-  path(
-    "pipelines/tests/private_data",
     "influenza_r_2024-12-21_f_2024-10-22_t_2024-12-20"
   )
 )
