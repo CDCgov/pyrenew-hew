@@ -392,7 +392,7 @@ main <- function(private_data_dir,
     target_diseases = short_target_diseases
   )
   generate_fake_nwss_data(
-    private_data_dir,
+    private_data_dir
   )
 }
 
