@@ -48,6 +48,35 @@ do
 	fi
 done
 
+echo "TEST-MODE: Running forecasting pipeline for COVID-19 in US"
+python pipelines/forecast_state.py \
+				--disease COVID-19 \
+				--state US \
+				--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
+				--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
+				--priors-path pipelines/priors/prod_priors.py \
+				--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
+				--nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
+				--output-dir "$BASE_DIR/private_data" \
+				--n-training-days 60 \
+				--n-chains 2 \
+				--n-samples 250 \
+				--n-warmup 250 \
+				--fit-ed-visits \
+				--fit-hospital-admissions \
+				--no-fit-wastewater \
+				--forecast-ed-visits \
+				--forecast-hospital-admissions \
+				--no-forecast-wastewater \
+				--score \
+				--eval-data-path "$BASE_DIR/private_data/nssp-etl"
+if [ $? -ne 0 ]; then
+		echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
+		exit 1
+else
+		echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for COVID-19 in location US."
+fi
+
 echo "TEST-MODE: Running forecasting pipeline for Influenza in multiple states"
 for state in CA MT US
 do
