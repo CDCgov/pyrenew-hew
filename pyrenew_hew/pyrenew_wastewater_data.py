@@ -43,8 +43,9 @@ class PyrenewWastewaterData:
                 .sum()
             )
 
-            total_pop_no_ww = self.population_size - total_pop_ww
-
+            total_pop_no_ww = (
+                int(jnp.atleast_1d(self.population_size)[0]) - total_pop_ww
+            )
             add_auxiliary_subpop = total_pop_no_ww > 0
 
             if add_auxiliary_subpop:
