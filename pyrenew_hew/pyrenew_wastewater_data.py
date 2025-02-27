@@ -43,7 +43,7 @@ class PyrenewWastewaterData:
                 .sum()
             )
 
-            total_pop_no_ww = self.population_size - total_pop_ww > 0
+            total_pop_no_ww = self.population_size - total_pop_ww
 
             add_auxiliary_subpop = total_pop_no_ww > 0
 
