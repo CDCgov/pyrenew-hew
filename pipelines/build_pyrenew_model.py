@@ -125,7 +125,6 @@ def build_model_from_dir(
 
     latent_infections_rv = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
-        initialization_rate_rv=priors["initialization_rate_rv"],
         log_r_mu_intercept_rv=priors["log_r_mu_intercept_rv"],
         autoreg_rt_rv=priors["autoreg_rt_rv"],
         eta_sd_rv=priors["eta_sd_rv"],  # sd of random walk for ar process,
