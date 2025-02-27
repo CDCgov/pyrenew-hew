@@ -8,6 +8,7 @@ from pyrenew.latent import (
     InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
+from pyrenew.math import r_approx_from_R
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable
 
@@ -26,6 +27,14 @@ def test_LatentInfectionProcess():
     autoreg_rt_rv = DeterministicVariable("autoreg_rt", 0.4)
     generation_interval_pmf_rv = DeterministicVariable(
         "generation_interval_pmf", jnp.array([0.25, 0.25, 0.25, 0.25])
+    )
+    initialization_rate_rv = DeterministicVariable(
+        "initialization_rate",
+        r_approx_from_R(
+            jnp.exp(log_r_mu_intercept_rv()),
+            generation_interval_pmf_rv(),
+            n_newton_steps=4,
+        ),
     )
     infection_feedback_pmf_rv = DeterministicVariable(
         "infection_feedback_pmf", jnp.array([0.25, 0.25, 0.25, 0.25])
