@@ -27,15 +27,6 @@ class PyrenewWastewaterData:
     def site_subpop_spine(self):
         ww_data_present = self.data_observed_disease_wastewater is not None
         if ww_data_present:
-            add_auxiliary_subpop = (
-                self.population_size
-                > self.data_observed_disease_wastewater.select(
-                    pl.col("site_pop", "site", "lab", "lab_site_index")
-                )
-                .unique()
-                .get_column("site_pop")
-                .sum()
-            )
             site_indices = (
                 self.data_observed_disease_wastewater.select(
                     ["site_index", "site", "site_pop"]
@@ -43,15 +34,25 @@ class PyrenewWastewaterData:
                 .unique()
                 .sort("site_index")
             )
+
+            total_pop_ww = (
+                self.data_observed_disease_wastewater.unique(
+                    ["site_pop", "site"]
+                )
+                .get_column("site_pop")
+                .sum()
+            )
+
+            total_pop_no_ww = self.population_size - total_pop_ww > 0
+
+            add_auxiliary_subpop = total_pop_no_ww > 0
+
             if add_auxiliary_subpop:
                 aux_subpop = pl.DataFrame(
                     {
                         "site_index": [None],
                         "site": [None],
-                        "site_pop": (
-                            self.population_size
-                            - site_indices.get_column("site_pop").sum()
-                        ).tolist(),
+                        "site_pop": [total_pop_no_ww],
                     }
                 )
             else:
