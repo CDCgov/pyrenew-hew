@@ -18,7 +18,9 @@ class PyrenewWastewaterData:
         data_observed_disease_wastewater: pl.DataFrame = None,
         population_size: int = None,
     ) -> None:
-        self.data_observed_disease_wastewater = data_observed_disease_wastewater
+        self.data_observed_disease_wastewater = (
+            data_observed_disease_wastewater
+        )
         self.population_size = population_size
 
     @property
@@ -34,7 +36,9 @@ class PyrenewWastewaterData:
             )
 
             total_pop_ww = (
-                self.data_observed_disease_wastewater.unique(["site_pop", "site"])
+                self.data_observed_disease_wastewater.unique(
+                    ["site_pop", "site"]
+                )
                 .get_column("site_pop")
                 .sum()
             )
@@ -55,10 +59,12 @@ class PyrenewWastewaterData:
             site_subpop_spine = (
                 pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
                 .with_columns(
-                    subpop_index=pl.col("site_index").cum_count().alias("subpop_index"),
-                    subpop_name=pl.format("Site: {}", pl.col("site")).fill_null(
-                        "remainder of population"
-                    ),
+                    subpop_index=pl.col("site_index")
+                    .cum_count()
+                    .alias("subpop_index"),
+                    subpop_name=pl.format(
+                        "Site: {}", pl.col("site")
+                    ).fill_null("remainder of population"),
                 )
                 .rename({"site_pop": "subpop_pop"})
             )
@@ -108,7 +114,9 @@ class PyrenewWastewaterData:
     @property
     def date_observed_disease_wastewater(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.data_observed_disease_wastewater.get_column("date").unique()
+            return self.data_observed_disease_wastewater.get_column(
+                "date"
+            ).unique()
 
     @property
     def data_observed_disease_wastewater_conc(self):
@@ -144,17 +152,23 @@ class PyrenewWastewaterData:
     @property
     def ww_observed_subpops(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column("subpop_index").to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "subpop_index"
+            ).to_numpy()
 
     @property
     def ww_observed_lab_sites(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column("lab_site_index").to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "lab_site_index"
+            ).to_numpy()
 
     @property
     def ww_log_lod(self):
         if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column("log_lod").to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "log_lod"
+            ).to_numpy()
 
     @property
     def n_ww_lab_sites(self):
@@ -166,7 +180,9 @@ class PyrenewWastewaterData:
         if self.data_observed_disease_wastewater is not None:
             return (
                 (
-                    self.wastewater_data_extended["lab_site_index", "subpop_index"]
+                    self.wastewater_data_extended[
+                        "lab_site_index", "subpop_index"
+                    ]
                     .unique()
                     .sort(by="lab_site_index")
                 )
