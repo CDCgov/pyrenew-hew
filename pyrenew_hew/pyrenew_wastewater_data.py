@@ -51,7 +51,7 @@ class PyrenewWastewaterData:
                         "site_pop": (
                             self.population_size
                             - site_indices.get_column("site_pop").sum()
-                        ).tolist(),
+                        ),
                     }
                 )
             else:
