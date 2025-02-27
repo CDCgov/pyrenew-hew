@@ -73,6 +73,7 @@ def test_to_forecast_data(
     """
     Test the to_forecast_data method
     """
+    ww_dat = PyrenewWastewaterData()
 
     data = PyrenewHEWData(
         n_ed_visits_data_days=n_ed_visits_data_days,
@@ -80,6 +81,7 @@ def test_to_forecast_data(
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,
         right_truncation_offset=right_truncation_offset,
+        **ww_dat.to_pyrenew_hew_data_args(),
     )
 
     assert data.right_truncation_offset == right_truncation_offset

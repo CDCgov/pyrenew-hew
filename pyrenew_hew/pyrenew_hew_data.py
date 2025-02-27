@@ -24,7 +24,6 @@ class PyrenewHEWData:
         first_ed_visits_date: datetime.date = None,
         first_hospital_admissions_date: datetime.date = None,
         first_wastewater_date: datetime.date = None,
-        wastewater_data: PyrenewWastewaterData = None,
         n_ww_lab_sites: int = None,
         ww_censored: ArrayLike = None,
         ww_uncensored: ArrayLike = None,
@@ -32,6 +31,10 @@ class PyrenewHEWData:
         ww_observed_times: ArrayLike = None,
         ww_observed_lab_sites: ArrayLike = None,
         lab_site_to_subpop_map: ArrayLike = None,
+        ww_log_lod: ArrayLike = None,
+        date_observed_disease_wastewater: ArrayLike = None,
+        data_observed_disease_wastewater_conc: ArrayLike = None,
+        pop_fraction: ArrayLike = jnp.array([1]),
     ) -> None:
         self.n_ed_visits_data_days_ = n_ed_visits_data_days
         self.n_hospital_admissions_data_days_ = n_hospital_admissions_data_days
@@ -45,89 +48,20 @@ class PyrenewHEWData:
         self.first_hospital_admissions_date = first_hospital_admissions_date
         self.first_wastewater_date_ = first_wastewater_date
         self.date_observed_disease_wastewater = (
-            None
-            if wastewater_data is None
-            else wastewater_data.date_observed_disease_wastewater
+            date_observed_disease_wastewater
         )
-        self.pop_fraction = (
-            jnp.array([1])
-            if wastewater_data is None
-            else jnp.array(wastewater_data.pop_fraction)
-        )
+        self.pop_fraction = pop_fraction
         self.data_observed_disease_wastewater_conc = (
-            None
-            if wastewater_data is None
-            else wastewater_data.data_observed_disease_wastewater_conc
+            data_observed_disease_wastewater_conc
         )
-        self.ww_censored = (
-            ww_censored
-            if ww_censored is not None
-            else (
-                None
-                if wastewater_data is None
-                else wastewater_data.ww_censored
-            )
-        )
-        self.ww_uncensored = (
-            ww_uncensored
-            if ww_uncensored is not None
-            else (
-                None
-                if wastewater_data is None
-                else wastewater_data.ww_uncensored
-            )
-        )
-        self.ww_observed_times = (
-            ww_observed_times
-            if ww_observed_times is not None
-            else (
-                None
-                if wastewater_data is None
-                else wastewater_data.ww_observed_times
-            )
-        )
-        self.ww_observed_subpops = (
-            ww_observed_subpops
-            if ww_observed_subpops is not None
-            else (
-                None
-                if wastewater_data is None
-                else wastewater_data.ww_observed_subpops
-            )
-        )
-
-        self.ww_observed_lab_sites = (
-            ww_observed_lab_sites
-            if ww_observed_lab_sites is not None
-            else (
-                None
-                if wastewater_data is None
-                else wastewater_data.ww_observed_lab_sites
-            )
-        )
-
-        self.ww_log_lod = (
-            None if wastewater_data is None else wastewater_data.ww_log_lod
-        )
-        self.n_ww_lab_sites = (
-            n_ww_lab_sites
-            if n_ww_lab_sites is not None
-            else (
-                None
-                if wastewater_data is None
-                else wastewater_data.n_ww_lab_sites
-            )
-        )
-
-        self.lab_site_to_subpop_map = (
-            lab_site_to_subpop_map
-            if lab_site_to_subpop_map is not None
-            else (
-                None
-                if wastewater_data is None
-                else wastewater_data.lab_site_to_subpop_map
-            )
-        )
+        self.ww_censored = ww_censored
+        self.ww_uncensored = ww_uncensored
+        self.ww_observed_times = ww_observed_times
+        self.ww_observed_subpops = ww_observed_subpops
+        self.ww_observed_lab_sites = ww_observed_lab_sites
+        self.ww_log_lod = ww_log_lod
+        self.n_ww_lab_sites = n_ww_lab_sites
+        self.lab_site_to_subpop_map = lab_site_to_subpop_map
 
     @property
     def n_ed_visits_data_days(self):
@@ -286,4 +220,5 @@ class PyrenewHEWData:
             ww_observed_subpops=self.ww_observed_subpops,
             ww_observed_times=self.ww_observed_times,
             lab_site_to_subpop_map=self.lab_site_to_subpop_map,
+            data_observed_disease_wastewater_conc=None,
         )

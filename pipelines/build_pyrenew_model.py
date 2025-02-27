@@ -199,7 +199,6 @@ def build_model_from_dir(
     wastewater_data = PyrenewWastewaterData(
         data_observed_disease_wastewater=data_observed_disease_wastewater,
         population_size=population_size,
-        pop_fraction=pop_fraction,
     )
 
     dat = PyrenewHEWData(
@@ -210,7 +209,8 @@ def build_model_from_dir(
         right_truncation_offset=right_truncation_offset,
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,
-        wastewater_data=wastewater_data,
+        pop_fraction=pop_fraction,
+        **wastewater_data.to_pyrenew_hew_data_args(),
     )
 
     return (mod, dat)

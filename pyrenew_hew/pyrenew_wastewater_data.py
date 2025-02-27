@@ -17,13 +17,11 @@ class PyrenewWastewaterData:
         self,
         data_observed_disease_wastewater: pl.DataFrame = None,
         population_size: int = None,
-        pop_fraction: ArrayLike = jnp.array([1]),
     ) -> None:
         self.data_observed_disease_wastewater = (
             data_observed_disease_wastewater
         )
         self.population_size = population_size
-        self.pop_fraction = pop_fraction
 
     @property
     def site_subpop_spine(self):
@@ -191,3 +189,14 @@ class PyrenewWastewaterData:
                 .get_column("subpop_index")
                 .to_numpy()
             )
+
+    def to_pyrenew_hew_data_args(self):
+        return {
+            attr: value
+            for attr, value in (
+                (attr, getattr(self, attr))
+                for attr, prop in self.__class__.__dict__.items()
+                if isinstance(prop, property)
+            )
+            if isinstance(value, ArrayLike)
+        }
