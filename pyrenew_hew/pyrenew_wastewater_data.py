@@ -192,11 +192,16 @@ class PyrenewWastewaterData:
 
     def to_pyrenew_hew_data_args(self):
         return {
-            attr: value
-            for attr, value in (
-                (attr, getattr(self, attr))
-                for attr, prop in self.__class__.__dict__.items()
-                if isinstance(prop, property)
-            )
-            if isinstance(value, ArrayLike)
+            attr: getattr(self, attr)
+            for attr in [
+                "n_ww_lab_sites",
+                "ww_censored",
+                "ww_uncensored",
+                "ww_log_lod",
+                "ww_observed_lab_sites",
+                "ww_observed_subpops",
+                "ww_observed_times",
+                "data_observed_disease_wastewater_conc",
+                "lab_site_to_subpop_map",
+            ]
         }
