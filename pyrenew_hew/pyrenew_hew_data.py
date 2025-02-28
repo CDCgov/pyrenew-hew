@@ -34,7 +34,7 @@ class PyrenewHEWData:
         ww_log_lod: ArrayLike = None,
         date_observed_disease_wastewater: ArrayLike = None,
         data_observed_disease_wastewater_conc: ArrayLike = None,
-        pop_fraction: ArrayLike = jnp.array([1]),
+        pop_fraction: ArrayLike = None,
     ) -> None:
         self.n_ed_visits_data_days_ = n_ed_visits_data_days
         self.n_hospital_admissions_data_days_ = n_hospital_admissions_data_days
@@ -220,5 +220,7 @@ class PyrenewHEWData:
             ww_observed_subpops=self.ww_observed_subpops,
             ww_observed_times=self.ww_observed_times,
             lab_site_to_subpop_map=self.lab_site_to_subpop_map,
+            ww_log_lod=self.ww_log_lod,
+            pop_fraction=self.pop_fraction,
             data_observed_disease_wastewater_conc=None,
         )

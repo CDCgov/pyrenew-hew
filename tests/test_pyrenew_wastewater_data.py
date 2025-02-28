@@ -60,6 +60,21 @@ def test_pyrenew_wastewater_data():
     assert forecast_data.data_observed_disease_wastewater_conc is None
     assert data.data_observed_disease_wastewater_conc is not None
 
+    assert np.array_equal(data.ww_censored, forecast_data.ww_censored)
+    assert np.array_equal(data.ww_uncensored, forecast_data.ww_uncensored)
+    assert np.array_equal(data.ww_log_lod, forecast_data.ww_log_lod)
+    assert np.array_equal(
+        data.ww_observed_lab_sites, forecast_data.ww_observed_lab_sites
+    )
+    assert np.array_equal(
+        data.ww_observed_subpops, forecast_data.ww_observed_subpops
+    )
+    assert np.array_equal(
+        data.ww_observed_times, forecast_data.ww_observed_times
+    )
+    assert np.array_equal(data.n_ww_lab_sites, forecast_data.n_ww_lab_sites)
+    assert np.array_equal(data.pop_fraction, forecast_data.pop_fraction)
+
     assert np.array_equal(
         data.data_observed_disease_wastewater_conc,
         ww_data["log_genome_copies_per_ml"],
