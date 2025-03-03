@@ -122,6 +122,7 @@ class LatentInfectionProcess(RandomVariable):
             i_first_obs_over_n_ref_subpop = transformation.SigmoidTransform()(
                 transformation.SigmoidTransform().inv(i0_first_obs_n)
                 + self.offset_ref_logit_i_first_obs_rv(),
+            )
             initial_exp_growth_rate_ref_subpop = (
                 initial_exp_growth_rate
                 + self.offset_ref_initial_exp_growth_rate_rv()
