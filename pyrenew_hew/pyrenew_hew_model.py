@@ -120,7 +120,7 @@ class LatentInfectionProcess(RandomVariable):
             log_rtu_weekly_subpop = log_rtu_weekly[:, jnp.newaxis]
         else:
             i_first_obs_over_n_ref_subpop = transformation.SigmoidTransform()(
-                transformation.logit(i0_first_obs_n)
+                transformation.SigmoidTransform().inv(i0_first_obs_n)
                 + self.offset_ref_logit_i_first_obs_rv(),
             )
             initial_exp_growth_rate_ref_subpop = (
@@ -136,7 +136,7 @@ class LatentInfectionProcess(RandomVariable):
                 DistributionalVariable(
                     "i_first_obs_over_n_non_ref_subpop_raw",
                     dist.Normal(
-                        transformation.logit(i0_first_obs_n),
+                        transformation.SigmoidTransform().inv(i0_first_obs_n),
                         self.sigma_i_first_obs_rv(),
                     ),
                     reparam=LocScaleReparam(0),
@@ -759,7 +759,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 site_level_observed_wastewater,
                 population_level_latent_wastewater,
             ) = self.wastewater_obs_process_rv(
-                latent_infections=latent_infections,
                 latent_infections_subpop=latent_infections_subpop,
                 data_observed=data.data_observed_disease_wastewater_conc,
                 n_datapoints=data.n_wastewater_data_days,
@@ -772,6 +771,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 lab_site_to_subpop_map=data.lab_site_to_subpop_map,
                 n_ww_lab_sites=data.n_ww_lab_sites,
                 shedding_offset=1e-8,
+                pop_fraction=data.pop_fraction,
             )
 
         return {

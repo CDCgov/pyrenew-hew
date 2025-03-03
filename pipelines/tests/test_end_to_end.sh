@@ -16,13 +16,72 @@ if [ $? -ne 0 ]; then
 else
     echo "TEST-MODE: Finished generating test data"
 fi
-echo "TEST-MODE: Running forecasting pipeline for two diseases in multiple locations"
+echo "TEST-MODE: Running forecasting pipeline for COVID-19 in multiple states"
+for state in CA MT
+do
+	python pipelines/forecast_state.py \
+	       --disease COVID-19 \
+	       --state $state \
+	       --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
+	       --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
+	       --priors-path pipelines/priors/prod_priors.py \
+	       --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
+				 --nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
+	       --output-dir "$BASE_DIR/private_data" \
+	       --n-training-days 60 \
+	       --n-chains 2 \
+	       --n-samples 250 \
+	       --n-warmup 250 \
+	       --fit-ed-visits \
+	       --fit-hospital-admissions \
+	       --fit-wastewater \
+	       --forecast-ed-visits \
+	       --forecast-hospital-admissions \
+	       --forecast-wastewater \
+	       --score \
+	       --eval-data-path "$BASE_DIR/private_data/nssp-etl"
+	if [ $? -ne 0 ]; then
+	    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
+	    exit 1
+	else
+	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for COVID-19 in location" $state"."
+	fi
+done
+
+echo "TEST-MODE: Running forecasting pipeline for COVID-19 in US"
+python pipelines/forecast_state.py \
+				--disease COVID-19 \
+				--state US \
+				--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
+				--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
+				--priors-path pipelines/priors/prod_priors.py \
+				--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
+				--nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
+				--output-dir "$BASE_DIR/private_data" \
+				--n-training-days 60 \
+				--n-chains 2 \
+				--n-samples 250 \
+				--n-warmup 250 \
+				--fit-ed-visits \
+				--fit-hospital-admissions \
+				--no-fit-wastewater \
+				--forecast-ed-visits \
+				--forecast-hospital-admissions \
+				--no-forecast-wastewater \
+				--score \
+				--eval-data-path "$BASE_DIR/private_data/nssp-etl"
+if [ $? -ne 0 ]; then
+		echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
+		exit 1
+else
+		echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for COVID-19 in location US."
+fi
+
+echo "TEST-MODE: Running forecasting pipeline for Influenza in multiple states"
 for state in CA MT US
 do
-    for disease in COVID-19 Influenza
-    do
 	python pipelines/forecast_state.py \
-	       --disease $disease \
+	       --disease Influenza \
 	       --state $state \
 	       --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
 	       --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
@@ -45,9 +104,8 @@ do
 	    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
 	    exit 1
 	else
-	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for disease" $disease "in location" $state"."
+	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for Influenza in location" $state"."
 	fi
-    done
 done
 
 echo "TEST-MODE: pipeline runs complete for all location/disease pairs."

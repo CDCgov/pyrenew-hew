@@ -13,7 +13,7 @@ def mock_data():
         {
             "data_observed_disease_ed_visits": [1, 2, 3],
             "data_observed_disease_hospital_admissions": [4, 5, 6],
-            "state_pop": [7, 8, 9],
+            "state_pop": [10000],
             "generation_interval_pmf": [0.1, 0.2, 0.7],
             "inf_to_ed_pmf": [0.4, 0.5, 0.1],
             "inf_to_hosp_admit_pmf": [0.0, 0.7, 0.1, 0.1, 0.1],
@@ -32,13 +32,14 @@ def mock_data():
                 ],
                 "site": ["1.0", "1.0", "2.0", "2.0"],
                 "lab": ["1.0", "1.0", "1.0", "1.0"],
-                "site_pop": [4000000, 4000000, 2000000, 2000000],
+                "site_pop": [4000, 4000, 2000, 2000],
                 "site_index": [1, 1, 0, 0],
                 "lab_site_index": [1, 1, 0, 0],
                 "log_genome_copies_per_ml": [0.1, 0.1, 0.5, 0.4],
                 "log_lod": [1.1, 2.0, 1.5, 2.1],
                 "below_lod": [False, False, False, False],
             },
+            "pop_fraction": [0.4, 0.4, 0.2],
         }
     )
 
@@ -72,6 +73,14 @@ sd_log_sigma_ww_site_rv = None
 mode_sd_ww_site_rv = None
 max_shed_interval = None
 ww_ml_produced_per_day = None
+pop_fraction=None
+autoreg_rt_subpop_rv=None
+sigma_rt_rv=None
+sigma_i_first_obs_rv=None
+sigma_initial_exp_growth_rate_rv=None
+offset_ref_logit_i_first_obs_rv=None
+offset_ref_initial_exp_growth_rate_rv=None
+offset_ref_log_rt_rv=None
 """
 
 
@@ -91,7 +100,7 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
     _, data = build_model_from_dir(model_dir)
     assert data.data_observed_disease_ed_visits is None
     assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater is None
+    assert data.data_observed_disease_wastewater_conc is None
 
     # Test when all `fit_` arguments are True
     _, data = build_model_from_dir(
@@ -108,7 +117,4 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
         data.data_observed_disease_hospital_admissions,
         jnp.array(model_data["data_observed_disease_hospital_admissions"]),
     )
-    assert pl.DataFrame(
-        model_data["data_observed_disease_wastewater"],
-        schema_overrides={"date": pl.Date},
-    ).equals(data.data_observed_disease_wastewater)
+    assert data.data_observed_disease_wastewater_conc is not None

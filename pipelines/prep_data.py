@@ -457,6 +457,25 @@ def process_and_save_state(
         else None
     )
 
+    if state_level_nwss_data is None:
+        pop_fraction = jnp.array([1])
+    else:
+        subpop_sizes = (
+            state_level_nwss_data.select(["site_index", "site", "site_pop"])
+            .unique()
+            .get_column("site_pop")
+            .to_numpy()
+        )
+        if state_pop > sum(subpop_sizes):
+            pop_fraction = (
+                jnp.concatenate(
+                    (jnp.array([state_pop - sum(subpop_sizes)]), subpop_sizes)
+                )
+                / state_pop
+            )
+        else:
+            pop_fraction = subpop_sizes / state_pop
+
     data_for_model_fit = {
         "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
@@ -471,6 +490,7 @@ def process_and_save_state(
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
         "data_observed_disease_wastewater": data_observed_disease_wastewater,
+        "pop_fraction": pop_fraction.tolist(),
     }
 
     data_dir = Path(model_run_dir, "data")
