@@ -9,10 +9,9 @@ import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.arrayutils import tile_until_n
-from pyrenew.convolve import (
-    compute_delay_ascertained_incidence,
-    daily_to_mmwr_epiweekly,
-)
+from pyrenew.convolve import compute_delay_ascertained_incidence
+from pyrenew.time import daily_to_mmwr_epiweekly
+
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
