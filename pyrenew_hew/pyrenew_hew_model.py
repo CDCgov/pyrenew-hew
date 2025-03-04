@@ -1,5 +1,6 @@
 # numpydoc ignore=GL08
 import datetime
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -16,6 +17,7 @@ from pyrenew.latent import (
     InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
+from pyrenew.math import r_approx_from_R
 from pyrenew.metaclass import Model, RandomVariable
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
@@ -29,7 +31,6 @@ class LatentInfectionProcess(RandomVariable):
     def __init__(
         self,
         i0_first_obs_n_rv: RandomVariable,
-        initialization_rate_rv: RandomVariable,
         log_r_mu_intercept_rv: RandomVariable,
         autoreg_rt_rv: RandomVariable,  # ar coeff for AR(1) on R'(t)
         eta_sd_rv: RandomVariable,  # sd of random walk for AR(1) on R'(t)
@@ -41,10 +42,9 @@ class LatentInfectionProcess(RandomVariable):
         autoreg_rt_subpop_rv: RandomVariable = None,
         sigma_rt_rv: RandomVariable = None,
         sigma_i_first_obs_rv: RandomVariable = None,
-        sigma_initial_exp_growth_rate_rv: RandomVariable = None,
         offset_ref_logit_i_first_obs_rv: RandomVariable = None,
-        offset_ref_initial_exp_growth_rate_rv: RandomVariable = None,
         offset_ref_log_rt_rv: RandomVariable = None,
+        n_newton_steps: int = 4,
     ) -> None:
         self.inf_with_feedback_proc = InfectionsWithFeedback(
             infection_feedback_strength=infection_feedback_strength_rv,
@@ -62,21 +62,15 @@ class LatentInfectionProcess(RandomVariable):
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
         self.infection_feedback_pmf_rv = infection_feedback_pmf_rv
         self.i0_first_obs_n_rv = i0_first_obs_n_rv
-        self.initialization_rate_rv = initialization_rate_rv
         self.offset_ref_logit_i_first_obs_rv = offset_ref_logit_i_first_obs_rv
-        self.offset_ref_initial_exp_growth_rate_rv = (
-            offset_ref_initial_exp_growth_rate_rv
-        )
         self.offset_ref_log_rt_rv = offset_ref_log_rt_rv
         self.autoreg_rt_subpop_rv = autoreg_rt_subpop_rv
         self.sigma_rt_rv = sigma_rt_rv
         self.sigma_i_first_obs_rv = sigma_i_first_obs_rv
-        self.sigma_initial_exp_growth_rate_rv = (
-            sigma_initial_exp_growth_rate_rv
-        )
         self.n_initialization_points = n_initialization_points
         self.pop_fraction = pop_fraction
         self.n_subpops = len(pop_fraction)
+        self.n_newton_steps = n_newton_steps
 
     def validate(self):
         pass
@@ -109,23 +103,17 @@ class LatentInfectionProcess(RandomVariable):
             fundamental_process_init_vals=jnp.array(rt_init_rate_of_change),
             noise_name="rtu_weekly_diff_first_diff_ar_process_noise",
         )
+        generation_interval_pmf = self.generation_interval_pmf_rv()
 
         i0_first_obs_n = self.i0_first_obs_n_rv()
-        initial_exp_growth_rate = self.initialization_rate_rv()
         if self.n_subpops == 1:
             i_first_obs_over_n_subpop = i0_first_obs_n
-            initial_exp_growth_rate_subpop = initial_exp_growth_rate
             log_rtu_weekly_subpop = log_rtu_weekly[:, jnp.newaxis]
         else:
             i_first_obs_over_n_ref_subpop = transformation.SigmoidTransform()(
                 transformation.SigmoidTransform().inv(i0_first_obs_n)
                 + self.offset_ref_logit_i_first_obs_rv(),
             )
-            initial_exp_growth_rate_ref_subpop = (
-                initial_exp_growth_rate
-                + self.offset_ref_initial_exp_growth_rate_rv()
-            )
-
             log_rtu_weekly_ref_subpop = (
                 log_rtu_weekly + self.offset_ref_log_rt_rv()
             )
@@ -141,14 +129,6 @@ class LatentInfectionProcess(RandomVariable):
                 ),
                 transforms=transformation.SigmoidTransform(),
             )
-            initial_exp_growth_rate_non_ref_subpop_rv = DistributionalVariable(
-                "initial_exp_growth_rate_non_ref_subpop_raw",
-                dist.Normal(
-                    initial_exp_growth_rate,
-                    self.sigma_initial_exp_growth_rate_rv(),
-                ),
-                reparam=LocScaleReparam(0),
-            )
 
             autoreg_rt_subpop = self.autoreg_rt_subpop_rv()
             sigma_rt = self.sigma_rt_rv()
@@ -161,9 +141,6 @@ class LatentInfectionProcess(RandomVariable):
             )
 
             with numpyro.plate("n_subpops", self.n_subpops - 1):
-                initial_exp_growth_rate_non_ref_subpop = (
-                    initial_exp_growth_rate_non_ref_subpop_rv()
-                )
                 i_first_obs_over_n_non_ref_subpop = (
                     i_first_obs_over_n_non_ref_subpop_rv()
                 )
@@ -173,12 +150,6 @@ class LatentInfectionProcess(RandomVariable):
                 [
                     i_first_obs_over_n_ref_subpop,
                     i_first_obs_over_n_non_ref_subpop,
-                ]
-            )
-            initial_exp_growth_rate_subpop = jnp.hstack(
-                [
-                    initial_exp_growth_rate_ref_subpop,
-                    initial_exp_growth_rate_non_ref_subpop,
                 ]
             )
 
@@ -201,6 +172,20 @@ class LatentInfectionProcess(RandomVariable):
                 ],
                 axis=1,
             )
+            pass
+
+        ## this can be replaced once r_approx_from_R is vectorized
+        r_approx = jax.vmap(
+            partial(
+                r_approx_from_R,
+                g=generation_interval_pmf,
+                n_newton_steps=self.n_newton_steps,
+            )
+        )
+
+        initial_exp_growth_rate_subpop = r_approx(
+            jnp.exp(log_rtu_weekly_subpop[0])
+        )
 
         rtu_subpop = jnp.squeeze(
             jnp.repeat(
@@ -226,7 +211,6 @@ class LatentInfectionProcess(RandomVariable):
             ),
         )
 
-        generation_interval_pmf = self.generation_interval_pmf_rv()
         i0 = infection_initialization_process()
 
         inf_with_feedback_proc_sample = self.inf_with_feedback_proc(

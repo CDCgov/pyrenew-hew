@@ -8,6 +8,7 @@ from pyrenew.latent import (
     InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
+from pyrenew.math import r_approx_from_R
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable
 
@@ -21,12 +22,19 @@ def test_LatentInfectionProcess():
     without the hierarchical component are equivalent.
     """
     i0_first_obs_n_rv = DeterministicVariable("i0_first_obs_n_rv", 1e-6)
-    initialization_rate_rv = DeterministicVariable("rate", 0.001)
     log_r_mu_intercept_rv = DeterministicVariable("log_r_mu_intercept", 0.08)
     eta_sd_rv = DeterministicVariable("eta_sd", 0)
     autoreg_rt_rv = DeterministicVariable("autoreg_rt", 0.4)
     generation_interval_pmf_rv = DeterministicVariable(
         "generation_interval_pmf", jnp.array([0.25, 0.25, 0.25, 0.25])
+    )
+    initialization_rate_rv = DeterministicVariable(
+        "initialization_rate",
+        r_approx_from_R(
+            jnp.exp(log_r_mu_intercept_rv()),
+            generation_interval_pmf_rv(),
+            n_newton_steps=4,
+        ),
     )
     infection_feedback_pmf_rv = DeterministicVariable(
         "infection_feedback_pmf", jnp.array([0.25, 0.25, 0.25, 0.25])
@@ -37,7 +45,6 @@ def test_LatentInfectionProcess():
 
     my_latent_infection_model = LatentInfectionProcess(
         i0_first_obs_n_rv=i0_first_obs_n_rv,
-        initialization_rate_rv=initialization_rate_rv,
         log_r_mu_intercept_rv=log_r_mu_intercept_rv,
         autoreg_rt_rv=autoreg_rt_rv,
         eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
