@@ -8,10 +8,11 @@ import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
+from numpyro.handlers import scope
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
-from pyrenew.deterministic import DeterministicVariable
+from pyrenew.deterministic import DeterministicPMF, DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
@@ -25,6 +26,59 @@ from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew.time import daily_to_mmwr_epiweekly
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+
+
+class OffsetDiscretizedLognormalPMF(RandomVariable):
+    """
+    Discrete PMF modeled by offseting the location or
+    scale of a lognormal distribution from central
+    values, then discretizing and normalizing.
+    """
+
+    def __init__(
+        self,
+        name,
+        reference_loc: ArrayLike,
+        reference_scale: ArrayLike,
+        n: int,
+        offset_loc_rv: RandomVariable = None,
+        log_offset_scale_rv: RandomVariable = None,
+    ):
+        """
+        Default constructor.
+        """
+        self.name = name
+        self.reference_loc = reference_loc
+        self.reference_scale = reference_scale
+        self.n = n
+
+        if offset_loc_rv is None:
+            offset_loc_rv = DeterministicVariable("offset_loc", 0)
+
+        if log_offset_scale_rv is None:
+            log_offset_scale_rv = DeterministicVariable("log_offset_scale", 0)
+
+        self.offset_loc_rv = offset_loc_rv
+        self.log_offset_scale_rv = log_offset_scale_rv
+
+    def sample(self):
+        with scope(prefix=self.name, divider="_"):
+            offset_loc = self.offset_loc_rv()
+            log_offset_scale = self.log_offset_scale_rv()
+        lognorm = dist.LogNormal(
+            loc=self.reference_loc + offset_loc,
+            scale=jnp.exp(jnp.log(self.reference_scale) + log_offset_scale),
+        )
+        unnormed = jnp.exp(lognorm.log_prob(jnp.arange(1, self.n)))
+        pmf = jnp.pad(unnormed / jnp.sum(unnormed), [1, 0])
+        numpyro.deterministic(self.name, pmf)
+        return pmf
+
+    def validate(self):
+        pass
+
+    def size(self):
+        return self.n
 
 
 class LatentInfectionProcess(RandomVariable):
