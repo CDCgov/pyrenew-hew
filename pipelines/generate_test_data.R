@@ -328,7 +328,9 @@ generate_fake_nwss_data <- function(
       CA = c(4e6, 2e6, 1e6, 5e5),
       MT = c(3e5, 2e5, 1e5, 5e4)
     )) {
-  ww_dir <- fs::path(private_data_dir, "nwss_vintages")
+  ww_dir <- fs::path(
+    private_data_dir, "nwss_vintages", paste0("NWSS-ETL-covid-", end_reference)
+  )
   fs::dir_create(ww_dir, recurse = TRUE)
 
   site_info <- function(state) {
@@ -355,7 +357,7 @@ generate_fake_nwss_data <- function(
     )
 
   arrow::write_parquet(
-    ww_data, fs::path(ww_dir, paste0(end_reference, ".parquet"))
+    ww_data, fs::path(ww_dir, "bronze.parquet")
   )
 }
 

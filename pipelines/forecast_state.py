@@ -335,13 +335,31 @@ def main(
             "No data available for the requested report date " f"{report_date}"
         )
 
+    nwss_data_disease_map = {
+        "COVID-19": "covid",
+        "Influenza": "flu",
+    }
+
+    def get_nwss_reports(
+        data_dir: str | Path,
+        glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
+    ):
+        return [
+            datetime.strptime(
+                f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
+            ).date()
+            for f in Path(data_dir).glob(f"{glob_pattern}*")
+        ]
+
     if fit_wastewater:
-        available_nwss_reports = get_available_reports(nwss_data_dir)
-        # assming NWSS_vintage directory follows naming convention
-        # using as of date
+        available_nwss_reports = get_nwss_reports(nwss_data_dir)
         if report_date in available_nwss_reports:
             nwss_data_raw = pl.scan_parquet(
-                Path(nwss_data_dir, f"{report_date}.parquet")
+                Path(
+                    nwss_data_dir,
+                    f"NWSS-ETL-{nwss_data_disease_map[disease]}-{report_date}",
+                    "bronze.parquet",
+                )
             )
             nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
                 (pl.col("location") == state)
