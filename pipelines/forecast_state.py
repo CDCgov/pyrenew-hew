@@ -340,7 +340,7 @@ def main(
         "Influenza": "flu",
     }
 
-    def get_nwss_reports(
+    def get_available_nwss_reports(
         data_dir: str | Path,
         glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
     ):

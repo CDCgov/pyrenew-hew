@@ -357,7 +357,7 @@ generate_fake_nwss_data <- function(
     )
 
   arrow::write_parquet(
-    ww_data, fs::path(ww_dir, "bronze.parquet")
+    ww_data, fs::path(ww_dir, "bronze", ext = "parquet")
   )
 }
 
