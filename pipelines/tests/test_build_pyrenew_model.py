@@ -77,9 +77,7 @@ pop_fraction=None
 autoreg_rt_subpop_rv=None
 sigma_rt_rv=None
 sigma_i_first_obs_rv=None
-sigma_initial_exp_growth_rate_rv=None
 offset_ref_logit_i_first_obs_rv=None
-offset_ref_initial_exp_growth_rate_rv=None
 offset_ref_log_rt_rv=None
 """
 
