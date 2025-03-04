@@ -352,7 +352,7 @@ def main(
         ]
 
     if fit_wastewater:
-        available_nwss_reports = get_nwss_reports(nwss_data_dir)
+        available_nwss_reports = get_available_nwss_reports(nwss_data_dir)
         if report_date in available_nwss_reports:
             nwss_data_raw = pl.scan_parquet(
                 Path(
