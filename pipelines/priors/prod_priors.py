@@ -38,7 +38,7 @@ inf_feedback_strength_rv = TransformedVariable(
 # Could be reparameterized?
 
 delay_offset_loc_rv = DistributionalVariable(
-    "delay_offset_loc", dist.Normal(0, 1)
+    "delay_offset_loc", dist.Normal(1, 1)
 )
 delay_log_offset_scale_rv = DistributionalVariable(
     "delay_log_offset_scale", dist.Normal(0, 0.5)
@@ -98,7 +98,7 @@ ed_neg_bin_concentration_rv = DistributionalVariable(
 
 # should be approx 7-fold more concentrated, all else equal
 hosp_admit_neg_bin_concentration_rv = DistributionalVariable(
-    "hosp_admit_neg_bin_concentration", dist.LogNormal(4 + jnp.log(7), 2)
+    "hosp_admit_neg_bin_concentration", dist.LogNormal(4 + jnp.log(7), 1.5)
 )
 
 t_peak_rv = DistributionalVariable("t_peak", dist.TruncatedNormal(5, 1, low=0))
