@@ -26,7 +26,7 @@ do
 	       --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
 	       --priors-path pipelines/priors/prod_priors.py \
 	       --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
-				 --nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
+	       --nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
 	       --output-dir "$BASE_DIR/private_data" \
 	       --n-training-days 60 \
 	       --n-chains 2 \

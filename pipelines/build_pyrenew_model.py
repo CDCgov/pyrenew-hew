@@ -161,14 +161,8 @@ def build_model_from_dir(
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
         sigma_rt_rv=priors["sigma_rt_rv"],
         sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
-        sigma_initial_exp_growth_rate_rv=priors[
-            "sigma_initial_exp_growth_rate_rv"
-        ],
         offset_ref_logit_i_first_obs_rv=priors[
             "offset_ref_logit_i_first_obs_rv"
-        ],
-        offset_ref_initial_exp_growth_rate_rv=priors[
-            "offset_ref_initial_exp_growth_rate_rv"
         ],
         offset_ref_log_rt_rv=priors["offset_ref_log_rt_rv"],
     )
