@@ -28,7 +28,7 @@ do
 	for disease in Influenza COVID-19
 	do
 
-	    if [[ $model == *w* ]] && [[ $disease == "Influenza" || $location == "US" ]] || [[ $model == "w" ]]
+	    if [[ ($model == *w* && ($disease == "Influenza"  || $location == "US") ) || $model == "w" ]]
 	    then
 		echo "TEST-MODE: skipping forecasting pipeline for $model, $disease, $location as w models not yet supported"
 	    else
