@@ -133,7 +133,7 @@ def build_model_from_dir(
             generation_interval_pmf_rv.size(),
             infection_feedback_pmf_rv.size(),
             inf_to_ed_rv.size() if fit_ed_visits else 1,
-            inf_to_hosp_admit_rv.size() if fit_hospital_admissions else 1,
+            inf_to_hosp_admit_rv.size() + 6 if fit_hospital_admissions else 1,
             priors["max_shed_interval"] if fit_wastewater else 1,
         )
         - 1

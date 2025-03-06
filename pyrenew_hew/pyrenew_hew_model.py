@@ -437,6 +437,7 @@ class HospAdmitObservationProcess(RandomVariable):
         first_latent_infection_dow: int,
         population_size: int,
         n_datapoints: int,
+        model_t_first_obs: int,
         data_observed: ArrayLike = None,
         iedr: ArrayLike = None,
     ) -> ArrayLike:
@@ -458,7 +459,7 @@ class HospAdmitObservationProcess(RandomVariable):
         elif self.ihr_rel_iedr_rv is not None:
             if iedr is None:
                 raise ValueError(
-                    "Must pass in an IEDR to " "compute IHR relative to IEDR."
+                    "Must pass in an IEDR to compute IHR relative to IEDR."
                 )
             ihr = iedr[0] * self.ihr_rel_iedr_rv()
             numpyro.deterministic("ihr", ihr)
@@ -476,18 +477,33 @@ class HospAdmitObservationProcess(RandomVariable):
             delay_incidence_to_observation_pmf=(inf_to_hosp_admit),
         )
 
-        longest_possible_delay = inf_to_hosp_admit.shape[0]
-
+        # roll into compute_delay_ascertained incidence?
+        model_t_first_latent_admit = inf_to_hosp_admit.shape[0] - 1
         # we should add functionality to automate this,
         # along with tests
+
         first_latent_admission_dow = (
-            first_latent_infection_dow + longest_possible_delay
+            first_latent_infection_dow + model_t_first_latent_admit
         ) % 7
+
+        truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
 
         predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
             input_data_first_dow=first_latent_admission_dow,
         )
+
+        model_t_first_pred_admit = (
+            model_t_first_latent_admit + truncated_latent_admit_days + 6
+        )
+        model_dow_first_pred_admit = (
+            model_t_first_pred_admit + first_latent_infection_dow
+        ) % 7
+        assert model_dow_first_pred_admit == 5
+        offset_first_obs_days = model_t_first_obs - model_t_first_pred_admit
+
+        assert offset_first_obs_days % 7 == 0
+        offset_first_obs_weeks = offset_first_obs_days // 7
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
@@ -495,7 +511,8 @@ class HospAdmitObservationProcess(RandomVariable):
         )
 
         observed_hospital_admissions = hospital_admissions_obs_rv(
-            mu=predicted_weekly_admissions[-n_datapoints:], obs=data_observed
+            mu=predicted_weekly_admissions[offset_first_obs_weeks:],
+            obs=data_observed,
         )
 
         return observed_hospital_admissions
@@ -787,6 +804,11 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
                 n_datapoints=data.n_hospital_admissions_data_days,
+                model_t_first_obs=n_init_days
+                + (
+                    data.first_hospital_admissions_date
+                    - data.first_data_date_overall
+                ).days,
                 data_observed=(data.data_observed_disease_hospital_admissions),
                 iedr=iedr,
             )

@@ -205,12 +205,19 @@ class PyrenewHEWData:
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
+        first_dow = self.first_data_date_overall.weekday()
+        to_first_sat = (5 - first_dow) % 7
+        first_mmwr_ending_date = (
+            self.first_data_date_overall
+            + datetime.timedelta(days=to_first_sat)
+        )
         return PyrenewHEWData(
             n_ed_visits_data_days=n_days,
             n_hospital_admissions_data_days=n_weeks,
             n_wastewater_data_days=n_days,
             first_ed_visits_date=self.first_data_date_overall,
-            first_hospital_admissions_date=(self.first_data_date_overall),
+            first_hospital_admissions_date=first_mmwr_ending_date,
+            # admissions are MMWR epiweekly
             first_wastewater_date=self.first_data_date_overall,
             right_truncation_offset=None,  # by default, want forecasts of complete reports
             n_ww_lab_sites=self.n_ww_lab_sites,
