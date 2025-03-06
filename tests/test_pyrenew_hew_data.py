@@ -7,6 +7,30 @@ from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
 
 
 @pytest.mark.parametrize(
+    "erroring_date",
+    [
+        datetime.datetime(2025, 3, 8) + datetime.timedelta(days=x)
+        for x in range(1, 7)
+    ],
+)
+def test_validation(erroring_date):
+    """
+    Confirm that constructor errors with non-Saturday
+    first_hospital_admissions_date(s)
+    """
+    with pytest.raises(ValueError, match="Saturdays"):
+        data = (
+            PyrenewHEWData(
+                n_ed_visits_data_days=5,
+                n_hospital_admissions_data_days=10,
+                first_ed_visits_date=datetime.datetime(2025, 3, 5),
+                first_hospital_admissions_date=erroring_date,
+                right_truncation_offset=0,
+            ),
+        )
+
+
+@pytest.mark.parametrize(
     [
         "n_ed_visits_data_days",
         "n_hospital_admissions_data_days",
@@ -34,7 +58,7 @@ from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
             2,
             5,
             datetime.date(2025, 1, 1),
-            datetime.date(2023, 5, 25),
+            datetime.date(2023, 5, 27),
             datetime.date(2022, 4, 5),
             10,
         ],
@@ -44,7 +68,7 @@ from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
             2,
             3,
             datetime.date(2025, 1, 1),
-            datetime.date(2025, 2, 5),
+            datetime.date(2025, 2, 8),
             datetime.date(2024, 12, 5),
             30,
         ],
@@ -54,7 +78,7 @@ from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
             23,
             3,
             datetime.date(2025, 1, 1),
-            datetime.date(2025, 2, 5),
+            datetime.date(2025, 2, 8),
             datetime.date(2024, 12, 5),
             30,
         ],

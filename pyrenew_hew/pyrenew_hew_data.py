@@ -45,6 +45,15 @@ class PyrenewHEWData:
         )
         self.right_truncation_offset = right_truncation_offset
         self.first_ed_visits_date = first_ed_visits_date
+        if (
+            first_hospital_admissions_date is not None
+            and not first_hospital_admissions_date.weekday() == 5
+        ):
+            raise ValueError(
+                "Dates for hospital admissions timeseries must "
+                "be Saturdays (MMWR epiweek end "
+                "days)."
+            )
         self.first_hospital_admissions_date = first_hospital_admissions_date
         self.first_wastewater_date_ = first_wastewater_date
         self.date_observed_disease_wastewater = (
