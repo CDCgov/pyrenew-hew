@@ -35,7 +35,9 @@ do
 
 	    if [[ ($model == *w* && ($disease == "Influenza"  || $location == "US") ) || $model == "w" ]]
 	    then
-		echo "TEST-MODE: skipping forecasting pipeline for $model, $disease, $location as w models not yet supported"
+		echo "TEST-MODE: Skipping forecasting pipeline for $model, $disease, $location. " \
+		     "W-only models, US-level wastewater models, and Influenza wastewater models " \
+		     "are not yet supported."
 	    else
 		echo "TEST-MODE: Running forecasting pipeline for $model, $disease, $location"
 		bash pipelines/tests/test_fit.sh $BASE_DIR $disease $location $model
