@@ -77,17 +77,17 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly(model_run_dir: Path) -> None:
+def generate_epiweekly_data(model_run_dir: Path) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/generate_epiweekly.R",
+            "pipelines/generate_epiweekly_data.R",
             f"{model_run_dir}",
         ],
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"generate_epiweekly: {result.stderr}")
+        raise RuntimeError(f"generate_epiweekly_data: {result.stderr}")
     return None
 
 
@@ -426,7 +426,7 @@ def main(
     logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly(model_run_dir)
+    generate_epiweekly_data(model_run_dir)
 
     logger.info("Data preparation complete.")
 
