@@ -400,9 +400,5 @@ private_data/*
 *_files/
 .vscode/settings.json
 
-# Test data exceptions to the general data exclusion
-!pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/data/data.tsv
-!pipelines/tests/covid-19_r_2024-01-29_f_2023-11-01_t_2024-01-29/model_runs/TD/data/eval_data.tsv
-
-# Ignore test pipe output
-pipelines/tests/private_data/*
+# Ignore end to end test output
+pipelines/tests/end_to_end_test_output/*
