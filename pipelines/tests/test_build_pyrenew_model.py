@@ -21,7 +21,7 @@ def mock_data():
             "inf_to_hosp_admit_lognormal_scale": 0.851,
             "right_truncation_pmf": [0.7, 0.1, 0.2],
             "nssp_training_dates": ["2025-01-01"],
-            "nhsn_training_dates": ["2025-01-02"],
+            "nhsn_training_dates": ["2025-01-04"],
             "right_truncation_offset": 10,
             "data_observed_disease_wastewater": {
                 "date": [
