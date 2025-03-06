@@ -1,14 +1,23 @@
 #!/bin/bash
 
-# Check if the base directory is provided as an argument
-if [ -z "$1" ]; then
-    echo "Usage: $0 <base_dir>"
-    exit 1
+BASE_DIR=pipelines/tests/end_to_end_test_output
+echo "TEST-MODE: Running forecast_state.py in test mode with base directory $BASE_DIR"
+
+if [ -d $BASE_DIR ]
+then
+    if [ $1 = "--force" ]
+    then
+	rm -r $BASE_DIR
+    else
+	# make the user delete the directory, to avoid accidental deletes of
+	# test output
+	echo "TEST-MODE FAIL: test output directory $BASE_DIR already exists. Delete the directory and re-run the test, or run with the --force flag".
+	echo "DETAILS: The test output directory persists after each run to allow the user to examine output. It must be deleted and recreated at the start of each new end-to-end test run to ensure that old output does not compromise test validity."
+	exit 1
+    fi
 fi
 
-BASE_DIR="$1"
-echo "TEST-MODE: Running forecast_state.py in test mode with base directory $BASE_DIR"
-Rscript pipelines/generate_test_data.R "$BASE_DIR/private_data"
+Rscript pipelines/generate_test_data.R $BASE_DIR/private_data
 
 if [ $? -ne 0 ]; then
     echo "TEST-MODE FAIL: Generating test data failed"
@@ -16,109 +25,36 @@ if [ $? -ne 0 ]; then
 else
     echo "TEST-MODE: Finished generating test data"
 fi
-echo "TEST-MODE: Running forecasting pipeline for COVID-19 in multiple states"
-for state in CA MT
+echo "TEST-MODE: Running forecasting pipelines for various signals, locations, and diseases"
+for location in US CA MT
 do
-	python pipelines/forecast_state.py \
-	       --disease COVID-19 \
-	       --state $state \
-	       --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
-	       --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
-	       --priors-path pipelines/priors/prod_priors.py \
-	       --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
-	       --nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
-	       --output-dir "$BASE_DIR/private_data" \
-	       --n-training-days 60 \
-	       --n-chains 2 \
-	       --n-samples 250 \
-	       --n-warmup 250 \
-	       --fit-ed-visits \
-	       --fit-hospital-admissions \
-	       --fit-wastewater \
-	       --forecast-ed-visits \
-	       --forecast-hospital-admissions \
-	       --forecast-wastewater \
-	       --score \
-	       --eval-data-path "$BASE_DIR/private_data/nssp-etl"
-	if [ $? -ne 0 ]; then
-	    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
-	    exit 1
-	else
-	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for COVID-19 in location" $state"."
-	fi
-done
+    for model in {,h}{,e}{,w}
+    do
+	for disease in Influenza COVID-19
+	do
 
-echo "TEST-MODE: Running forecasting pipeline for COVID-19 in US"
-python pipelines/forecast_state.py \
-				--disease COVID-19 \
-				--state US \
-				--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
-				--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
-				--priors-path pipelines/priors/prod_priors.py \
-				--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
-				--nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
-				--output-dir "$BASE_DIR/private_data" \
-				--n-training-days 60 \
-				--n-chains 2 \
-				--n-samples 250 \
-				--n-warmup 250 \
-				--fit-ed-visits \
-				--fit-hospital-admissions \
-				--no-fit-wastewater \
-				--forecast-ed-visits \
-				--forecast-hospital-admissions \
-				--no-forecast-wastewater \
-				--score \
-				--eval-data-path "$BASE_DIR/private_data/nssp-etl"
-if [ $? -ne 0 ]; then
+	    if [[ ($model == *w* && ($disease == "Influenza"  || $location == "US") ) || $model == "w" ]]
+	    then
+		echo "TEST-MODE: Skipping forecasting pipeline for $model, $disease, $location. " \
+		     "W-only models, US-level wastewater models, and Influenza wastewater models " \
+		     "are not yet supported."
+	    else
+		echo "TEST-MODE: Running forecasting pipeline for $model, $disease, $location"
+		bash pipelines/tests/test_fit.sh $BASE_DIR $disease $location $model
+	    fi
+	    if [ $? -ne 0 ]; then
 		echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
+		echo "TEST-MODE: Cleanup: removing temporary directories"
 		exit 1
-else
-		echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for COVID-19 in location US."
-fi
-
-echo "TEST-MODE: Running forecasting pipeline for Influenza in multiple states"
-for state in CA MT US
-do
-	python pipelines/forecast_state.py \
-	       --disease Influenza \
-	       --state $state \
-	       --facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
-	       --state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
-	       --priors-path pipelines/priors/prod_priors.py \
-	       --param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
-	       --output-dir "$BASE_DIR/private_data" \
-	       --n-training-days 60 \
-	       --n-chains 2 \
-	       --n-samples 250 \
-	       --n-warmup 250 \
-	       --fit-ed-visits \
-	       --no-fit-hospital-admissions \
-	       --no-fit-wastewater \
-	       --forecast-ed-visits \
-	       --forecast-hospital-admissions \
-	       --no-forecast-wastewater \
-	       --score \
-	       --eval-data-path "$BASE_DIR/private_data/nssp-etl"
-	if [ $? -ne 0 ]; then
-	    echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
-	    exit 1
-	else
-	    echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for Influenza in location" $state"."
-	fi
+	    else
+		echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for location $location."
+	    fi
+	done
+    done
 done
 
-echo "TEST-MODE: pipeline runs complete for all location/disease pairs."
+echo "TEST-MODE: All pipeline runs complete."
 
-echo "TEST-MODE: Extending tests for H and HE models..."
-Rscript pipelines/tests/create_more_model_test_data.R
-
-if [ $? -ne 0 ]; then
-	echo "TEST-MODE FAIL: Creating more model test data failed"
-	exit 1
-else
-	echo "TEST-MODE: Finished creating more model test data"
-fi
 
 echo "TEST-MODE: Running batch postprocess..."
 

@@ -9,39 +9,136 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
-jobs:
-  run-pipeline:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04, macos-latest]
-    runs-on:  ${{matrix.os}}
+env:
+  BASE_DIR: "pipelines/end_to_end_test_output"
+  DATA_DIR: "pipelines/end_to_end_test_output/private_data"
 
+jobs:
+  generate-data:
+    runs-on:  ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "release"
+          use-public-rspm: true
+      - name: "Set up dependencies for hewr"
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: hewr
+      - name: Install hewr
+        run: pak::local_install("hewr", ask = FALSE)
+        shell: Rscript {0}
+      - name: Generate test data
+        run: Rscript pipelines/generate_test_data.R ${{ env.DATA_DIR }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-data
+          path: ${{ env.DATA_DIR }}
+          retention-days: 1
+
+  fit-models:
+    needs: generate-data
+    runs-on: ubuntu-latest
     env:
       NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
       NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
+    strategy:
+      matrix:
+        model: [h, e, he, hw, ew, hew]
+        disease: [COVID-19, Influenza]
+        location: [US, CA, MT]
+        exclude:
+          - model: hw
+            disease: Influenza
+          - model: ew
+            disease: Influenza
+          - model: hew
+            disease: Influenza
+          - model: hw
+            location: US
+          - model: ew
+            location: US
+          - model: hew
+            location: US
     steps:
       - uses: actions/checkout@v4
       - name: Set up python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: "Set up R"
+      - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: "release"
           use-public-rspm: true
-      - name: "Set up Quarto"
+      - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
-      - name: "Install poetry"
+      - name: Install poetry
         run: pip install poetry
-      - name: "Install pyrenew-hew"
+      - name: Install pyrenew-hew
         run: poetry install
-      - name: "Set up dependencies for hewr"
+      - name: Set up dependencies for hewr
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: hewr
-      - name: "Install hewr"
+      - name: Install hewr
         run: pak::local_install("hewr", ask = FALSE)
         shell: Rscript {0}
-      - name: "Run pipeline"
-        run: poetry run bash pipelines/tests/test_end_to_end.sh pipelines/tests
+      - name: Download test data
+        uses: actions/download-artifact@v4
+        with:
+          name: test-data
+          path: ${{ env.DATA_DIR }}
+      - name: Fit model
+        run: |
+          poetry run bash pipelines/tests/test_fit.sh ${{ env.BASE_DIR }} \
+          ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: |
+            test-fit-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
+          path: ${{ env.BASE_DIR }}
+
+  postprocess-models:
+    needs: fit-models
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "release"
+          use-public-rspm: true
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+      - name: Install poetry
+        run: pip install poetry
+      - name: Install pyrenew-hew
+        run: poetry install
+      - name: Set up dependencies for hewr
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: hewr
+      - name: Install hewr
+        run: pak::local_install("hewr", ask = FALSE)
+        shell: Rscript {0}
+      - name: Download fitting output
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-fit-*
+          path: ${{ env.BASE_DIR }}
+          merge-multiple: true
+      - name: Run postprocessing
+        run: |
+          poetry run python pipelines/postprocess_forecast_batches.py \
+          ${{ env.DATA_DIR }} \
+          ${{ env.DATA_DIR }}/nssp-etl/latest_comprehensive.parquet

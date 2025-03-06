@@ -76,25 +76,39 @@ def hew_letters_from_flags(
     return result
 
 
-def flags_from_hew_letters(hew_letters: str) -> dict[str, bool]:
+def flags_from_hew_letters(
+    hew_letters: str, flag_prefix: str = "fit"
+) -> dict[str, bool]:
     """
     Get a set of boolean flags indicating which
-    datastreams, if any, were used in fitting
-    from the {h, e, w} letters (or 'null')
-    defining the model. Inverse of
-    :func:`hew_letters_from_flags`
+    datastreams, if any, correspond to the set of
+    {h, e, w} letters (or 'null') in a model name.
+
+    Inverse of :func:`hew_letters_from_flags` when used
+    with the default ``flag_prefix``, ``"fit"``.
 
     Parameters
     ----------
     hew_letters
-        The relevant HEW letters, or 'null',
+        The relevant HEW letters, or 'null'.
+
+    flag_prefix
+        Prefix for the names of the boolean flags in the
+        output dictionary, which will be
+        ``{flag_prefix}_hospital_admissions``,
+        ``{flag_prefix}_ed_visits``, and
+        ``{flag_prefix}_wastewater``. Default ``"fit"``,
+        since {H,E,W} models are named according to the
+        datastreams used in fitting.
 
     Returns
     -------
     dict[str, bool]
-       Dictionary with boolean entries named
-       ``fit_hospital_admissions``, ``fit_ed_visits``,
-       and ``fit_wastewater``.
+        Dictionary of boolean values with keys named
+        ``{flag_prefix}_hospital_admissions``,
+        ``{flag_prefix)_ed_visits``, and
+        ``{flag_prefix}_wastewater`` (with the given
+        ``flag_prefix``).
 
     Raises
     ------
@@ -113,11 +127,11 @@ def flags_from_hew_letters(hew_letters: str) -> dict[str, bool]:
             "a string consisting only of the letters "
             f"in {valid_letters} or the string 'null'"
         )
-    return dict(
-        fit_hospital_admissions="h" in hew_letters,
-        fit_ed_visits="e" in hew_letters,
-        fit_wastewater="w" in hew_letters,
-    )
+    return {
+        f"{flag_prefix}_hospital_admissions": "h" in hew_letters,
+        f"{flag_prefix}_ed_visits": "e" in hew_letters,
+        f"{flag_prefix}_wastewater": "w" in hew_letters,
+    }
 
 
 def pyrenew_model_name_from_flags(
@@ -185,4 +199,4 @@ def flags_from_pyrenew_model_name(model_name: str) -> dict[str, bool]:
             f"'pyrenew_'. Got {model_name}."
         )
     hew_letters = model_name.removeprefix("pyrenew_")
-    return flags_from_hew_letters(hew_letters)
+    return flags_from_hew_letters(hew_letters, flag_prefix="fit")
