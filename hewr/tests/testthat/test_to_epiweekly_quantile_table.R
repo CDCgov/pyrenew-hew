@@ -60,6 +60,7 @@ test_that(paste0(
       "reference_date",
       "target",
       "horizon",
+      "horizon_timescale",
       "target_end_date",
       "location",
       "output_type",
