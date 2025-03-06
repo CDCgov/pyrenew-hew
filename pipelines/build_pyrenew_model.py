@@ -64,17 +64,17 @@ def build_model_from_dir(
         model_data = json.load(file)
 
     he = fit_hospital_admissions and fit_ed_visits
+    inf_to_hosp_admit_rv = DeterministicPMF(
+        "inf_to_hosp_admit", jnp.array(model_data["inf_to_hosp_admit_pmf"])
+    )  # else use same, following NNH
 
-    inf_to_ed_rv = DeterministicPMF(
-        "inf_to_ed", jnp.array(model_data["inf_to_hosp_admit_pmf"])
-    )
     # For now follow NNH in just substituting
     # (eventually will use a different inferred fixed).
     if he:
         # offset from approx inf to ed distribution
         # when fitting admissions
-        inf_to_hosp_admit_rv = OffsetDiscretizedLognormalPMF(
-            "inf_to_hosp_admit",
+        inf_to_ed_rv = OffsetDiscretizedLognormalPMF(
+            "inf_to_ed",
             reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
             reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
             n=jnp.size(model_data["inf_to_hosp_admit_pmf"]) * 2,
@@ -82,9 +82,9 @@ def build_model_from_dir(
             log_offset_scale_rv=priors["delay_log_offset_scale_rv"],
         )
     else:
-        inf_to_hosp_admit_rv = DeterministicPMF(
-            "inf_to_hosp_admit", jnp.array(model_data["inf_to_hosp_admit_pmf"])
-        )  # else use same, following NNH
+        inf_to_ed_rv = DeterministicPMF(
+            "inf_to_ed", jnp.array(model_data["inf_to_hosp_admit_pmf"])
+        )
 
     generation_interval_pmf_rv = DeterministicPMF(
         "generation_interval_pmf",

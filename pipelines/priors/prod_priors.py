@@ -38,7 +38,7 @@ inf_feedback_strength_rv = TransformedVariable(
 # Could be reparameterized?
 
 delay_offset_loc_rv = DistributionalVariable(
-    "delay_offset_loc", dist.Normal(1, 1)
+    "delay_offset_loc", dist.Normal(-jnp.log(2), 0.5)
 )
 delay_log_offset_scale_rv = DistributionalVariable(
     "delay_log_offset_scale", dist.Normal(0, 0.5)
