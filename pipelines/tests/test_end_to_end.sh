@@ -5,11 +5,16 @@ echo "TEST-MODE: Running forecast_state.py in test mode with base directory $BAS
 
 if [ -d $BASE_DIR ]
 then
-    # make the user delete the directory, to avoid accidental deletes of
-    # test output
-    echo "TEST-MODE FAIL: test output directory $BASE_DIR already exists."
-    echo "DETAILS: The test output directory persists after each run to allow the user to examine output. It must be deleted and recreated at the start of each new end-to-end test run to ensure that old output does not compromise test validity. Delete the directory and re-run the test."
-    exit 1
+    if [ $1 = "--force" ]
+    then
+	rm -r $BASE_DIR
+    else
+	# make the user delete the directory, to avoid accidental deletes of
+	# test output
+	echo "TEST-MODE FAIL: test output directory $BASE_DIR already exists. Delete the directory and re-run the test, or run with the --force flag".
+	echo "DETAILS: The test output directory persists after each run to allow the user to examine output. It must be deleted and recreated at the start of each new end-to-end test run to ensure that old output does not compromise test validity."
+	exit 1
+    fi
 fi
 
 Rscript pipelines/generate_test_data.R $BASE_DIR/private_data
