@@ -621,7 +621,7 @@ if __name__ == "__main__":
         type=int,
         default=1000,
         help=(
-            "Number of warmup iterations per chain for NUTS(default: 1000)."
+            "Number of warmup iterations per chain for NUTS (default: 1000)."
         ),
     )
 
