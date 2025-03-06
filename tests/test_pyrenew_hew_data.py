@@ -95,9 +95,17 @@ def test_to_forecast_data(
     assert forecast_data.n_hospital_admissions_data_days == n_weeks_expected
     assert forecast_data.right_truncation_offset is None
     assert forecast_data.first_ed_visits_date == data.first_data_date_overall
+
+    ## hosp admit date should be the first Saturday
     assert (
         forecast_data.first_hospital_admissions_date
-        == data.first_data_date_overall
+        >= data.first_data_date_overall
     )
+    assert forecast_data.first_hospital_admissions_date.weekday() == 5
+    assert (
+        forecast_data.first_hospital_admissions_date
+        - data.first_data_date_overall
+    ).days <= 6
+
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
     assert forecast_data.data_observed_disease_wastewater_conc is None
