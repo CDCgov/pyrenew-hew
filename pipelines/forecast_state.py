@@ -670,15 +670,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     numpyro.set_host_device_count(args.n_chains)
     fit_flags = flags_from_hew_letters(args.model_letters)
-    additional_forecast_flags = flags_from_hew_letters(
-        args.additional_forecast_letters
+    forecast_flags = flags_from_hew_letters(
+        args.model_letters + args.additional_forecast_letters,
+        flag_prefix="forecast",
     )
-    forecast_flags = {
-        f"forecast_{x}": (
-            fit_flags[f"fit_{x}"] or additional_forecast_flags[f"fit_{x}"]
-        )
-        for x in ["hospital_admissions", "ed_visits", "wastewater"]
-    }
     delattr(args, "model_letters")
     delattr(args, "additional_forecast_letters")
     main(**vars(args), **fit_flags, **forecast_flags)
