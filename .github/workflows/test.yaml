@@ -17,22 +17,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: cache poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: ${{ runner.os }}-poetry
-
-      - name: install poetry
-        run: pip install poetry
-
-      - name: install package
-        run: poetry install --with test
+      - name: Set up Pyrenew-HEW via poetry
+        uses: ./.github/actions/setup
 
       - name: run tests
         env:
@@ -60,22 +46,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: cache poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: ${{ runner.os }}-poetry
-
-      - name: install poetry
-        run: pip install poetry
-
-      - name: install package
-        run: poetry install --with test
+      - name: Set up Pyrenew-HEW via poetry
+        uses: ./.github/actions/setup
 
       - name: run tests
         run: |
@@ -99,6 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_LIBS_USER: $${ vars.R_LIBS_USER }}
 
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +79,10 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
+
+      - name: check rlibs variable
+        run: "message(Sys.getenv('R_LIBS_USER'))"
+        shell: Rscript {0}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
