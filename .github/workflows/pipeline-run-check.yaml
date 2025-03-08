@@ -19,7 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-hewr
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
 
       - name: Generate test data
         run: Rscript pipelines/generate_test_data.R ${{ env.DATA_DIR }}
@@ -61,23 +62,11 @@ jobs:
       - name: Set up Pyrenew-HEW via poetry
         uses: ./.github/actions/setup-pyrenew-hew
 
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: "release"
-          use-public-rspm: true
-
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Set up dependencies for hewr
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          working-directory: hewr
-
-      - name: Install hewr
-        run: pak::local_install("hewr", ask = FALSE)
-        shell: Rscript {0}
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
 
       - name: Download test data
         uses: actions/download-artifact@v4
@@ -106,20 +95,8 @@ jobs:
       - name: Set up Pyrenew-HEW via poetry
         uses: ./.github/actions/setup-pyrenew-hew
 
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: "release"
-          use-public-rspm: true
-
-      - name: Set up dependencies for hewr
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          working-directory: hewr
-
-      - name: Install hewr
-        run: pak::local_install("hewr", ask = FALSE)
-        shell: Rscript {0}
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
 
       - name: Download model fitting output
         uses: actions/download-artifact@v4
