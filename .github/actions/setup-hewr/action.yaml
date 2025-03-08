@@ -16,6 +16,8 @@ runs:
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
         working-directory: hewr
+        needs: check, coverage
+        extra-packages: any::covr, any::xml2
 
     - name: Install hewr
       run: pak::local_install("hewr", ask = FALSE)
