@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Pyrenew-HEW via poetry
-        uses: ./.github/actions/setup
+        uses: ./.github/actions/setup-pyrenew-hew
 
       - name: run tests
         run: |
