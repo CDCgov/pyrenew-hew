@@ -664,16 +664,17 @@ class WastewaterObservationProcess(RandomVariable):
                 scale=sigma_ww_site,
             ),
         )()
+        numpyro.deterministic("site_level_log_ww_conc", site_log_ww_conc)
 
-        population_latent_viral_genome_conc = jax.scipy.special.logsumexp(
+        pop_log_latent_viral_genome_conc = jax.scipy.special.logsumexp(
             expected_obs_viral_genomes, axis=1, b=pop_fraction
         )
         numpyro.deterministic(
-            "population_latent_viral_genome_conc",
-            population_latent_viral_genome_conc,
+            "pop_log_latent_viral_genome_conc",
+            pop_log_latent_viral_genome_conc,
         )
 
-        return site_log_ww_conc, population_latent_viral_genome_conc
+        return site_log_ww_conc, pop_log_latent_viral_genome_conc
 
 
 class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
