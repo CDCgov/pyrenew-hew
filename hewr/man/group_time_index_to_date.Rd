@@ -9,6 +9,7 @@ group_time_index_to_date(
   variable,
   first_nssp_date,
   first_nhsn_date,
+  first_nwss_date,
   nhsn_step_size
 )
 }
