@@ -156,6 +156,8 @@ main <- function(
 
   data_path <- path(model_run_dir, "data", data_name, ext = "tsv")
 
+  # Having a lab_site_index column of NA values errors
+  # while using full_join later
   target_and_other_data <- read_tsv(
     data_path,
     col_types = cols(
@@ -167,6 +169,7 @@ main <- function(
       .value = col_double()
     )
   ) |>
+    dplyr::select(-"lab_site_index") |>
     filter(str_ends(.variable, "ed_visits")) |>
     pivot_wider(names_from = ".variable", values_from = ".value")
 
