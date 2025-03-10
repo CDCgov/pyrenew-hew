@@ -15,6 +15,8 @@ from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
 
+from pyrenew_hew.util import hew_letters_from_flags
+
 
 def main(
     job_id: str,
@@ -197,21 +199,10 @@ def main(
         ],
     )
 
-    needed_hew_flags = [
-        "fit_ed_visits",
-        "fit_hospital_admissions",
-        "fit_wastewater",
-        "forecast_ed_visits",
-        "forecast_hospital_admissions",
-        "forecast_wastewater",
-    ]
-
-    def as_flag(flag_name, bool_val):
-        prefix = "" if bool_val else "no-"
-        return f"--{prefix}{re.sub("_", "-", flag_name)}"
-
-    hew_flags = " ".join(
-        [as_flag(k, v) for k, v in locals().items() if k in needed_hew_flags]
+    hew_flags = hew_letters_from_flags(
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
     )
 
     base_call = (
@@ -232,7 +223,7 @@ def main(
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
-        f"{hew_flags} "
+        f"--model-letters {hew_flags} "
         "--eval-data-path "
         "nssp-etl/latest_comprehensive.parquet"
         "'"
