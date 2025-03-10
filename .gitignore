@@ -397,6 +397,12 @@ demos/*_files/
 demos/*.md
 
 private_data/*
+nssp-etl
+nssp-archival-vintages
+output
+params
+config
+
 *_files/
 .vscode/settings.json
 
