@@ -114,8 +114,13 @@ epiweekly_samples_from_daily <- function(daily_samples, required_columns) {
 #' @export
 combine_training_and_eval_data <- function(train_dat,
                                            eval_dat) {
-  combined_dat <-
-    dplyr::bind_rows(train_dat, eval_dat) |>
+  dat <- dplyr::bind_rows(train_dat, eval_dat)
+  # Need to separte nwss data before using pivot_wider
+  # may include multiple obsrvation for a combination of a
+  # single lab_site_index date
+  non_ww_dat <- dat |>
+    dplyr::filter(.variable != "site_level_log_ww_conc") |>
+    dplyr::select(-c(lab_site_index)) |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
     dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
       (.data$observed_ed_visits + .data$other_ed_visits)) |>
@@ -124,6 +129,11 @@ combine_training_and_eval_data <- function(train_dat,
       names_to = ".variable", values_to = ".value"
     ) |>
     tidyr::drop_na()
+
+  ww_dat <- dat |>
+    dplyr::filter(.variable == "site_level_log_ww_conc")
+
+  combined_dat <- bind_rows(ww_dat, non_ww_dat)
 
   return(combined_dat)
 }
@@ -146,7 +156,8 @@ read_and_combine_data <- function(model_run_dir,
     disease = readr::col_character(),
     data_type = readr::col_character(),
     .variable = readr::col_character(),
-    .value = readr::col_double()
+    .value = readr::col_double(),
+    lab_site_index = readr::col_double()
   )
 
   train_data_path <- fs::path(model_run_dir,
@@ -259,21 +270,49 @@ group_time_index_to_date <- function(group_time_index,
                                      variable,
                                      first_nssp_date,
                                      first_nhsn_date,
+                                     first_nwss_date,
                                      nhsn_step_size) {
   first_date_key <- c(
     observed_hospital_admissions = first_nhsn_date,
-    observed_ed_visits = first_nssp_date
+    observed_ed_visits = first_nssp_date,
+    site_level_log_ww_conc = first_nwss_date
   ) |>
     purrr::map_vec(as.Date)
 
   step_size_key <- c(
     observed_hospital_admissions = nhsn_step_size,
-    observed_ed_visits = 1
+    observed_ed_visits = 1,
+    site_level_log_ww_conc = 1
   )
 
   first_date_key[variable] + lubridate::days(step_size_key[variable]) *
     group_time_index
 }
+
+
+#' Convert lab_site_index to lab_site_name
+#'
+#' @param lab_site_index integer vector of lab site indices
+#' @param lab_site_index_to_name_map a tibble mapping lab_site_index to names
+#'
+#' @returns a vector of lab site names
+#' @export
+#'
+#' @examples group_subpop_to_lab_site_index(
+#'   7,
+#'   "lab_site_index_to_name_map"
+#' )
+group_lab_site_index_to_name <- function(lab_site_index,
+                                         lab_site_index_to_name_map) {
+  mask <- match(
+    x = lab_site_index,
+    table = lab_site_index_to_name_map$lab_site_index
+  )
+  return(
+    lab_site_index_to_name_map$lab_site_name[mask]
+  )
+}
+
 
 #' Process state forecast
 #'
@@ -325,7 +364,20 @@ process_state_forecast <- function(model_run_dir,
 
   first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
   first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
+  first_nwss_date <- min(unlist(
+    data_for_model_fit$data_observed_disease_wastewater$date
+  ))
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
+
+  lab_site_index_to_name_map <- tibble::as_tibble(
+    data_for_model_fit$data_observed_disease_wastewater
+  ) |>
+    dplyr::mutate(across(everything(), ~ unlist(.))) |>
+    dplyr::select(
+      lab_site_index,
+      lab_site_name
+    ) |>
+    dplyr::distinct()
 
   # Used for augmenting denominator forecasts with training period denominator
   daily_training_dat <- readr::read_tsv(fs::path(
@@ -363,9 +415,18 @@ process_state_forecast <- function(model_run_dir,
     colnames() |>
     stringr::str_remove("\\[.+\\]$") |>
     unique() |>
-    purrr::keep(~ stringr::str_starts(., "observed_")) |>
-    stringr::str_c("[group_time_index]") |>
-    purrr::map(rlang::parse_expr)
+    purrr::keep(\(x) {
+      stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
+    }) |>
+    purrr::map(\(x) {
+      if (stringr::str_starts(x, "observed_")) {
+        rlang::parse_expr(stringr::str_c(x, "[group_time_index]"))
+      } else {
+        rlang::parse_expr(
+          stringr::str_c(x, "[group_time_index,lab_site_index]")
+        )
+      }
+    })
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
@@ -373,19 +434,25 @@ process_state_forecast <- function(model_run_dir,
     pyrenew_posterior_predictive |>
     tidybayes::gather_draws(!!!posterior_predictive_variables) |>
     dplyr::ungroup() |>
-    dplyr::mutate(date = group_time_index_to_date(
-      group_time_index = .data$group_time_index,
-      variable = .data$.variable,
-      first_nssp_date = first_nssp_date,
-      first_nhsn_date = first_nhsn_date,
-      nhsn_step_size = nhsn_step_size
-    )) |>
+    dplyr::mutate(
+      date = group_time_index_to_date(
+        group_time_index = .data$group_time_index,
+        variable = .data$.variable,
+        first_nssp_date = first_nssp_date,
+        first_nhsn_date = first_nhsn_date,
+        first_nwss_date = first_nwss_date,
+        nhsn_step_size = nhsn_step_size
+      ),
+      lab_site_name = group_lab_site_index_to_name(
+        lab_site_index = .data$lab_site_index,
+        lab_site_index_to_name_map = lab_site_index_to_name_map
+      )
+    ) |>
     dplyr::select(-"group_time_index") |>
     dplyr::mutate(
       geo_value = model_info$location,
       disease = model_info$disease
-    ) |>
-    dplyr::select(tidyselect::all_of(required_columns))
+    )
 
   samples_list <- list(daily_samples = daily_samples)
 
@@ -428,7 +495,7 @@ process_state_forecast <- function(model_run_dir,
       dplyr::select(x, -c(".chain", ".iteration", ".draw")) |>
         dplyr::group_by(
           .data$date, .data$geo_value, .data$disease,
-          .data$.variable
+          .data$.variable, .data$lab_site_index, .data$lab_site_name
         ) |>
         ggdist::median_qi(.width = ci_widths)
     }
