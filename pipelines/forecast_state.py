@@ -14,7 +14,10 @@ from prep_data import process_and_save_state
 from prep_eval_data import save_eval_data
 from pygit2 import Repository
 
-from pyrenew_hew.util import pyrenew_model_name_from_flags
+from pyrenew_hew.util import (
+    flags_from_hew_letters,
+    pyrenew_model_name_from_flags,
+)
 
 numpyro.set_host_device_count(4)
 
@@ -74,17 +77,17 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly(model_run_dir: Path) -> None:
+def generate_epiweekly_data(model_run_dir: Path) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/generate_epiweekly.R",
+            "pipelines/generate_epiweekly_data.R",
             f"{model_run_dir}",
         ],
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"generate_epiweekly: {result.stderr}")
+        raise RuntimeError(f"generate_epiweekly_data: {result.stderr}")
     return None
 
 
@@ -317,22 +320,20 @@ def main(
     facility_level_nssp_data, state_level_nssp_data = None, None
 
     if report_date in available_facility_level_reports:
-        logger.info(
-            "Facility level data available for " "the given report date"
-        )
+        logger.info("Facility level data available for the given report date")
         facility_datafile = f"{report_date}.parquet"
         facility_level_nssp_data = pl.scan_parquet(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
     if state_report_date in available_state_level_reports:
-        logger.info("State-level data available for the given report " "date.")
+        logger.info("State-level data available for the given report date.")
         state_datafile = f"{state_report_date}.parquet"
         state_level_nssp_data = pl.scan_parquet(
             Path(state_level_nssp_data_dir, state_datafile)
         )
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
-            "No data available for the requested report date " f"{report_date}"
+            f"No data available for the requested report date {report_date}"
         )
 
     nwss_data_disease_map = {
@@ -425,7 +426,7 @@ def main(
     logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly(model_run_dir)
+    generate_epiweekly_data(model_run_dir)
 
     logger.info("Data preparation complete.")
 
@@ -517,6 +518,15 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--model-letters",
+        type=str,
+        help=(
+            "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
+        ),
+        required=True,
+    )
+
+    parser.add_argument(
         "--report-date",
         type=str,
         default="latest",
@@ -528,8 +538,7 @@ if __name__ == "__main__":
         type=Path,
         default=Path("private_data", "nssp_etl_gold"),
         help=(
-            "Directory in which to look for facility-level NSSP "
-            "ED visit data"
+            "Directory in which to look for facility-level NSSP ED visit data"
         ),
     )
 
@@ -538,7 +547,7 @@ if __name__ == "__main__":
         type=Path,
         default=Path("private_data", "nssp_state_level_gold"),
         help=(
-            "Directory in which to look for state-level NSSP " "ED visit data."
+            "Directory in which to look for state-level NSSP ED visit data."
         ),
     )
 
@@ -612,7 +621,7 @@ if __name__ == "__main__":
         type=int,
         default=1000,
         help=(
-            "Number of warmup iterations per chain for NUTS" "(default: 1000)."
+            "Number of warmup iterations per chain for NUTS (default: 1000)."
         ),
     )
 
@@ -648,45 +657,23 @@ if __name__ == "__main__":
         type=Path,
         help=("Path to a parquet file containing compehensive truth data."),
     )
-
     parser.add_argument(
-        "--fit-ed-visits",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, fit to ED visit data.",
-    )
-    parser.add_argument(
-        "--fit-hospital-admissions",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help=("If provided, fit to hospital admissions data."),
-    )
-    parser.add_argument(
-        "--fit-wastewater",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, fit to wastewater data.",
-    )
-
-    parser.add_argument(
-        "--forecast-ed-visits",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, forecast ED visits.",
-    )
-    parser.add_argument(
-        "--forecast-hospital-admissions",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help=("If provided, forecast hospital admissions."),
-    )
-    parser.add_argument(
-        "--forecast-wastewater",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, forecast wastewater concentrations.",
+        "--additional-forecast-letters",
+        type=str,
+        help=(
+            "Forecast the following signals even if they were not fit. "
+            "Fit signals are always forecast."
+        ),
+        default="he",
     )
 
     args = parser.parse_args()
     numpyro.set_host_device_count(args.n_chains)
-    main(**vars(args))
+    fit_flags = flags_from_hew_letters(args.model_letters)
+    forecast_flags = flags_from_hew_letters(
+        args.model_letters + args.additional_forecast_letters,
+        flag_prefix="forecast",
+    )
+    delattr(args, "model_letters")
+    delattr(args, "additional_forecast_letters")
+    main(**vars(args), **fit_flags, **forecast_flags)
