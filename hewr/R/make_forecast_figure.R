@@ -51,12 +51,16 @@ make_forecast_figure <- function(target_variable,
     max()
 
   lineribbon_dat <- forecast_ci |>
-    dplyr::filter(.data$.variable == target_variable)
+    dplyr::filter(
+      .data$.variable == target_variable,
+      .data$lab_site_index <= 5 | is.na(.data$lab_site_index)
+    )
 
   point_dat <- combined_dat |>
     dplyr::filter(
       .data$.variable == target_variable,
-      .data$date <= max(forecast_ci$date)
+      .data$date <= max(forecast_ci$date),
+      .data$lab_site_index <= 5 | is.na(.data$lab_site_index)
     ) |>
     dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
     dplyr::arrange(dplyr::desc(.data$data_type))
@@ -100,6 +104,12 @@ make_forecast_figure <- function(target_variable,
     )
   } else {
     cutpoint_plot_components <- list()
+  }
+
+  if (target_variable == "site_level_log_ww_conc") {
+    facet_components <- ggplot2::facet_wrap(~lab_site_index)
+  } else {
+    facet_components <- list()
   }
 
   if (!is.null(highlight_dates)) {
@@ -176,6 +186,7 @@ make_forecast_figure <- function(target_variable,
       transform = y_transform
     ) +
     ggplot2::scale_x_date("Date") +
+    facet_components +
     cowplot::theme_minimal_grid() +
     ggplot2::theme(
       legend.position = "bottom",
