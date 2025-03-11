@@ -133,7 +133,7 @@ combine_training_and_eval_data <- function(train_dat,
   ww_dat <- dat |>
     dplyr::filter(.variable == "site_level_log_ww_conc")
 
-  combined_dat <- bind_rows(ww_dat, non_ww_dat)
+  combined_dat <- dplyr::bind_rows(ww_dat, non_ww_dat)
 
   return(combined_dat)
 }
