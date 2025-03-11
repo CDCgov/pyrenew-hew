@@ -18,7 +18,7 @@ a vector of lab site names
 Convert lab_site_index to lab_site_name
 }
 \examples{
-group_lab_site_index_to_name_map(
+group_lab_site_index_to_name(
   7,
   lab_site_index_to_name_map
 )
