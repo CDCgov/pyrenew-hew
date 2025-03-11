@@ -447,10 +447,6 @@ process_state_forecast <- function(model_run_dir,
         first_nhsn_date = first_nhsn_date,
         first_nwss_date = first_nwss_date,
         nhsn_step_size = nhsn_step_size
-      ),
-      lab_site_name = group_lab_site_index_to_name(
-        lab_site_index = .data$lab_site_index,
-        lab_site_index_to_name_map = lab_site_index_to_name_map
       )
     ) |>
     dplyr::select(-"group_time_index") |>
@@ -458,6 +454,16 @@ process_state_forecast <- function(model_run_dir,
       geo_value = model_info$location,
       disease = model_info$disease
     )
+
+  if (pyrenew_model_components[["w"]]) {
+    daily_samples <- daily_samples |>
+      dplyr::mutate(
+        lab_site_name = group_lab_site_index_to_name(
+          lab_site_index = .data$lab_site_index,
+          lab_site_index_to_name_map = lab_site_index_to_name_map
+        )
+      )
+  }
 
   samples_list <- list(daily_samples = daily_samples)
 
@@ -492,19 +498,25 @@ process_state_forecast <- function(model_run_dir,
     }
   }
 
-
   ci_list <- purrr::map(
     samples_list |>
       purrr::set_names(~ stringr::str_replace(., "samples", "ci")),
     \(x) {
+      group_vars <- if (pyrenew_model_components[["w"]]) {
+        c(
+          "date", "geo_value", "disease", ".variable",
+          "lab_site_index", "lab_site_name"
+        )
+      } else {
+        c("date", "geo_value", "disease", ".variable")
+      }
+
       dplyr::select(x, -c(".chain", ".iteration", ".draw")) |>
-        dplyr::group_by(
-          .data$date, .data$geo_value, .data$disease,
-          .data$.variable, .data$lab_site_index, .data$lab_site_name
-        ) |>
+        dplyr::group_by(across(all_of(group_vars))) |>
         ggdist::median_qi(.width = ci_widths)
     }
   )
+
 
   result <- c(
     samples_list,
