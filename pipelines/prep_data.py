@@ -490,7 +490,9 @@ def process_and_save_state(
     ).to_list()
 
     nwss_training_data = (
-        state_level_nwss_data if state_level_nwss_data is not None else None
+        state_level_nwss_data.to_dict(as_series=False)
+        if state_level_nwss_data is not None
+        else None
     )
 
     if state_level_nwss_data is None:
@@ -526,9 +528,7 @@ def process_and_save_state(
         "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": nwss_training_data.to_dict(
-            as_series=False
-        ),
+        "data_observed_disease_wastewater": nwss_training_data,
         "pop_fraction": pop_fraction.tolist(),
     }
 
@@ -541,7 +541,7 @@ def process_and_save_state(
     combined_training_dat = combine_surveillance_data(
         nssp_data=nssp_training_data,
         nhsn_data=nhsn_training_data,
-        nwss_data=nwss_training_data,
+        nwss_data=state_level_nwss_data,
         disease=disease,
     )
 

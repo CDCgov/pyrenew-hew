@@ -1,26 +1,31 @@
-example_train_dat <-
+example_train_dat <- tibble::tibble(
+  geo_value = "CA",
+  disease = "COVID-19",
+  data_type = "train",
+  .variable = c(
+    "observed_ed_visits", "other_ed_visits",
+    "observed_hospital_admissions", "site_level_log_ww_conc"
+  ),
+  lab_site_index = c(NA, NA, NA, 1)
+) |>
   tidyr::expand_grid(
-    date = seq.Date(as.Date("2024-10-22"), as.Date("2024-10-24"), by = "day"),
-    geo_value = "CA",
-    disease = "COVID-19",
-    data_type = "train",
-    .variable = c(
-      "observed_ed_visits", "other_ed_visits",
-      "observed_hospital_admissions"
-    )
+    date = seq.Date(as.Date("2024-10-22"), as.Date("2024-10-24"), by = "day")
   ) |>
   dplyr::mutate(.value = rpois(dplyr::n(), 100))
 
-example_eval_dat <- tidyr::expand_grid(
-  date = seq.Date(as.Date("2024-10-22"), as.Date("2024-10-26"), by = "day"),
+example_eval_dat <- tibble::tibble(
   geo_value = "CA",
   disease = "COVID-19",
   data_type = "eval",
   .variable = c(
     "observed_ed_visits", "other_ed_visits",
-    "observed_hospital_admissions"
-  )
+    "observed_hospital_admissions", "site_level_log_ww_conc"
+  ),
+  lab_site_index = c(NA, NA, NA, 1)
 ) |>
+  tidyr::expand_grid(
+    date = seq.Date(as.Date("2024-10-22"), as.Date("2024-10-24"), by = "day")
+  ) |>
   dplyr::mutate(.value = rpois(dplyr::n(), 100))
 
 test_that("combine_training_and_eval_data works as expected", {
@@ -32,7 +37,7 @@ test_that("combine_training_and_eval_data works as expected", {
   checkmate::assert_names(names(result),
     permutation.of = c(
       "date", "geo_value", "disease", "data_type",
-      ".variable", ".value"
+      ".variable", ".value", "lab_site_index"
     )
   )
 
@@ -40,7 +45,8 @@ test_that("combine_training_and_eval_data works as expected", {
     result$.variable,
     subset.of = c(
       "observed_ed_visits", "other_ed_visits",
-      "observed_hospital_admissions", "prop_disease_ed_visits"
+      "observed_hospital_admissions", "prop_disease_ed_visits",
+      "site_level_log_ww_conc"
     )
   )
 
@@ -49,7 +55,7 @@ test_that("combine_training_and_eval_data works as expected", {
     permutation.of = c("eval", "train")
   )
 
-  expect_equal(nrow(result), 32)
+  expect_equal(nrow(result), 30)
 })
 
 
