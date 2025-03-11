@@ -300,7 +300,7 @@ group_time_index_to_date <- function(group_time_index,
 #'
 #' @examples group_subpop_to_lab_site_index(
 #'   7,
-#'   "lab_site_index_to_name_map"
+#'   lab_site_index_to_name_map
 #' )
 group_lab_site_index_to_name <- function(lab_site_index,
                                          lab_site_index_to_name_map) {
