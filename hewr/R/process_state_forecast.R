@@ -298,11 +298,6 @@ group_time_index_to_date <- function(group_time_index,
 #'
 #' @returns a vector of lab site names
 #' @export
-#'
-#' @examples group_lab_site_index_to_name(
-#'   7,
-#'   lab_site_index_to_name_map
-#' )
 group_lab_site_index_to_name <- function(lab_site_index,
                                          lab_site_index_to_name_map) {
   mask <- match(
