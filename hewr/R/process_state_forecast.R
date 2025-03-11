@@ -119,8 +119,8 @@ combine_training_and_eval_data <- function(train_dat,
   # may include multiple obsrvation for a combination of a
   # single lab_site_index date
   non_ww_dat <- dat |>
-    dplyr::filter(.variable != "site_level_log_ww_conc") |>
-    dplyr::select(-c(lab_site_index)) |>
+    dplyr::filter(.data$.variable != "site_level_log_ww_conc") |>
+    dplyr::select(-c(.data$lab_site_index)) |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
     dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
       (.data$observed_ed_visits + .data$other_ed_visits)) |>
@@ -131,7 +131,7 @@ combine_training_and_eval_data <- function(train_dat,
     tidyr::drop_na()
 
   ww_dat <- dat |>
-    dplyr::filter(.variable == "site_level_log_ww_conc")
+    dplyr::filter(.data$.variable == "site_level_log_ww_conc")
 
   combined_dat <- dplyr::bind_rows(ww_dat, non_ww_dat)
 
@@ -374,8 +374,8 @@ process_state_forecast <- function(model_run_dir,
   ) |>
     dplyr::mutate(across(everything(), ~ unlist(.))) |>
     dplyr::select(
-      lab_site_index,
-      lab_site_name
+      .data$lab_site_index,
+      .data$lab_site_name
     ) |>
     dplyr::distinct()
 
