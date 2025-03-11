@@ -360,20 +360,29 @@ process_state_forecast <- function(model_run_dir,
 
   first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
   first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
-  first_nwss_date <- min(unlist(
-    data_for_model_fit$data_observed_disease_wastewater$date
-  ))
+  first_nwss_date <- ifelse(
+    !is.null(data_for_model_fit$data_observed_disease_wastewater),
+    min(unlist(data_for_model_fit$data_observed_disease_wastewater$date)),
+    NA
+  )
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
 
-  lab_site_index_to_name_map <- tibble::as_tibble(
-    data_for_model_fit$data_observed_disease_wastewater
-  ) |>
-    dplyr::mutate(across(everything(), ~ unlist(.))) |>
-    dplyr::select(
-      .data$lab_site_index,
-      .data$lab_site_name
+  if (!is.null(data_for_model_fit$data_observed_disease_wastewater)) {
+    lab_site_index_to_name_map <- tibble::as_tibble(
+      data_for_model_fit$data_observed_disease_wastewater
     ) |>
-    dplyr::distinct()
+      dplyr::mutate(across(everything(), ~ unlist(.))) |>
+      dplyr::select(
+        lab_site_index,
+        lab_site_name
+      ) |>
+      dplyr::distinct()
+  } else {
+    lab_site_index_to_name_map <- tibble::tibble(
+      lab_site_index = integer(),
+      lab_site_name = character()
+    )
+  }
 
   # Used for augmenting denominator forecasts with training period denominator
   daily_training_dat <- readr::read_tsv(fs::path(
