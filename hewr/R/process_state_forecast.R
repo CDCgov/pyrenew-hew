@@ -298,7 +298,7 @@ group_time_index_to_date <- function(group_time_index,
 #' @returns a vector of lab site names
 #' @export
 #'
-#' @examples group_subpop_to_lab_site_index(
+#' @examples group_lab_site_index_to_name_map(
 #'   7,
 #'   lab_site_index_to_name_map
 #' )
