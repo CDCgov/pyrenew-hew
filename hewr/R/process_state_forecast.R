@@ -257,14 +257,15 @@ join_and_calc_prop <- function(model_1, model_2) {
 #' @param variable variable name
 #' @param first_nssp_date first date in the nssp training data
 #' @param first_nhsn_date first date in the nhsn training data
+#' @param first_nwss_date first date in the nwss training data
 #' @param nhsn_step_size step size for nhsn data
 #'
 #' @returns a vector of dates
 #' @export
 #'
 #' @examples group_time_index_to_date(
-#'   3,
-#'   "observed_hospital_admissions", "2024-01-01", "2024-01-01", 7
+#'   3, "observed_hospital_admissions",
+#'   "2024-01-01", "2024-01-01", "2024-01-01", 7
 #' )
 group_time_index_to_date <- function(group_time_index,
                                      variable,
@@ -298,7 +299,7 @@ group_time_index_to_date <- function(group_time_index,
 #' @returns a vector of lab site names
 #' @export
 #'
-#' @examples group_lab_site_index_to_name_map(
+#' @examples group_lab_site_index_to_name(
 #'   7,
 #'   lab_site_index_to_name_map
 #' )
