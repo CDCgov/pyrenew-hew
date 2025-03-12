@@ -92,10 +92,11 @@ def get_nhsn(
     return dat
 
 
-def combine_nssp_and_nhsn(
+def combine_surveillance_data(
     nssp_data: pl.DataFrame,
     nhsn_data: pl.DataFrame,
     disease: str,
+    nwss_data: pl.DataFrame = None,
 ):
     count_type_dict = {
         disease: "observed_ed_visits",
@@ -111,27 +112,63 @@ def combine_nssp_and_nhsn(
             value_name=".value",
         )
         .with_columns(
-            pl.col("count_type").replace(count_type_dict).alias(".variable")
+            pl.col("count_type").replace(count_type_dict).alias(".variable"),
+            pl.lit(None).alias("lab_site_index"),
         )
         .select(cs.exclude(["count_type", "drop_me"]))
     )
 
-    nhsn_data_long = nhsn_data.rename(
-        {
-            "weekendingdate": "date",
-            "jurisdiction": "geo_value",
-            "hospital_admissions": "observed_hospital_admissions",
-        }
-    ).unpivot(
-        on="observed_hospital_admissions",
-        index=cs.exclude("observed_hospital_admissions"),
-        variable_name=".variable",
-        value_name=".value",
+    nhsn_data_long = (
+        nhsn_data.rename(
+            {
+                "weekendingdate": "date",
+                "jurisdiction": "geo_value",
+                "hospital_admissions": "observed_hospital_admissions",
+            }
+        )
+        .unpivot(
+            on="observed_hospital_admissions",
+            index=cs.exclude("observed_hospital_admissions"),
+            variable_name=".variable",
+            value_name=".value",
+        )
+        .with_columns(pl.lit(None).alias("lab_site_index"))
+    )
+
+    nwss_data_long = (
+        nwss_data.rename(
+            {
+                "log_genome_copies_per_ml": "site_level_log_ww_conc",
+                "location": "geo_value",
+            }
+        )
+        .with_columns(pl.lit("train").alias("data_type"))
+        .select(
+            cs.exclude(
+                [
+                    "lab",
+                    "log_lod",
+                    "below_lod",
+                    "site",
+                    "site_index",
+                    "site_pop",
+                    "lab_site_name",
+                ]
+            )
+        )
+        .unpivot(
+            on="site_level_log_ww_conc",
+            index=cs.exclude("site_level_log_ww_conc"),
+            variable_name=".variable",
+            value_name=".value",
+        )
+        if nwss_data is not None
+        else pl.DataFrame()
     )
 
     combined_dat = (
         pl.concat(
-            [nssp_data_long, nhsn_data_long],
+            [nssp_data_long, nhsn_data_long, nwss_data_long],
             how="diagonal_relaxed",
         )
         .with_columns(pl.lit(disease).alias("disease"))
@@ -144,6 +181,7 @@ def combine_nssp_and_nhsn(
                 "data_type",
                 ".variable",
                 ".value",
+                "lab_site_index",
             ]
         )
     )
@@ -532,7 +570,7 @@ def process_and_save_state(
         "hospital_admissions"
     ).to_list()
 
-    data_observed_disease_wastewater = (
+    nwss_training_data = (
         state_level_nwss_data.to_dict(as_series=False)
         if state_level_nwss_data is not None
         else None
@@ -544,6 +582,7 @@ def process_and_save_state(
         subpop_sizes = (
             state_level_nwss_data.select(["site_index", "site", "site_pop"])
             .unique()
+            .sort("site_pop", descending=True)
             .get_column("site_pop")
             .to_numpy()
         )
@@ -572,7 +611,7 @@ def process_and_save_state(
         "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": data_observed_disease_wastewater,
+        "data_observed_disease_wastewater": nwss_training_data,
         "pop_fraction": pop_fraction.tolist(),
     }
 
@@ -582,9 +621,10 @@ def process_and_save_state(
     with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file, default=str)
 
-    combined_training_dat = combine_nssp_and_nhsn(
+    combined_training_dat = combine_surveillance_data(
         nssp_data=nssp_training_data,
         nhsn_data=nhsn_training_data,
+        nwss_data=state_level_nwss_data,
         disease=disease,
     )
 

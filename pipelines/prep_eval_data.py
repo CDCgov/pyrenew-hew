@@ -4,7 +4,7 @@ from pathlib import Path
 
 import polars as pl
 from prep_data import (
-    combine_nssp_and_nhsn,
+    combine_surveillance_data,
     get_nhsn,
     get_state_pop_df,
     process_state_level_data,
@@ -53,7 +53,7 @@ def save_eval_data(
         credentials_dict=credentials_dict,
     ).with_columns(data_type=pl.lit("eval"))
 
-    combined_eval_dat = combine_nssp_and_nhsn(
+    combined_eval_dat = combine_surveillance_data(
         nssp_data=nssp_data,
         nhsn_data=nhsn_data,
         disease=disease,

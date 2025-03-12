@@ -51,7 +51,9 @@ make_forecast_figure <- function(target_variable,
     max()
 
   lineribbon_dat <- forecast_ci |>
-    dplyr::filter(.data$.variable == target_variable)
+    dplyr::filter(
+      .data$.variable == target_variable
+    )
 
   point_dat <- combined_dat |>
     dplyr::filter(
@@ -60,6 +62,19 @@ make_forecast_figure <- function(target_variable,
     ) |>
     dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
     dplyr::arrange(dplyr::desc(.data$data_type))
+
+
+  if (target_variable == "site_level_log_ww_conc") {
+    lineribbon_dat <- lineribbon_dat |>
+      dplyr::filter(.data$lab_site_index <= 5)
+
+    point_dat <- point_dat |>
+      dplyr::filter(.data$lab_site_index <= 5)
+
+    facet_components <- ggplot2::facet_wrap(~lab_site_index)
+  } else {
+    facet_components <- list()
+  }
 
   if (display_cutpoints &&
     target_variable == "prop_disease_ed_visits") {
@@ -176,6 +191,7 @@ make_forecast_figure <- function(target_variable,
       transform = y_transform
     ) +
     ggplot2::scale_x_date("Date") +
+    facet_components +
     cowplot::theme_minimal_grid() +
     ggplot2::theme(
       legend.position = "bottom",
