@@ -77,7 +77,7 @@ def build_model_from_dir(
             "inf_to_hosp_admit",
             reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
             reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
-            n=jnp.size(model_data["inf_to_hosp_admit_pmf"]),
+            n=jnp.size(model_data["inf_to_hosp_admit_pmf"]) * 2,
             offset_loc_rv=priors["delay_offset_loc_rv"],
             log_offset_scale_rv=priors["delay_log_offset_scale_rv"],
         )
