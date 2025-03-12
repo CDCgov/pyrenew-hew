@@ -37,6 +37,7 @@ def main(pool_name: str) -> None:
         storage_containers=[
             "nssp-etl",
             "nssp-archival-vintages",
+            "nwss-vintages",
             "prod-param-estimates",
             "pyrenew-hew-prod-output",
             "pyrenew-hew-config",

@@ -196,6 +196,10 @@ def main(
                 "source": "pyrenew-hew-config",
                 "target": "/pyrenew-hew/config",
             },
+            {
+                "source": "nwss-vintages",
+                "target": "/pyrenew-hew/nwss-vintages",
+            },
         ],
     )
 
@@ -217,6 +221,7 @@ def main(
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
+        "--nwss-data-dir nwss-vintages "
         "--output-dir {output_dir} "
         "--priors-path pipelines/priors/prod_priors.py "
         "--credentials-path config/creds.toml "
