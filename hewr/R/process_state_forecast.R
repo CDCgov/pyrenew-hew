@@ -354,9 +354,15 @@ process_state_forecast <- function(model_run_dir,
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
   ## Process data
-  data_for_model_fit <- jsonlite::read_json(
-    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json")
-  )
+  # data_for_model_fit <- jsonlite::read_json(
+  #   fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json")
+  # )
+
+  # read_json cannot parse -Infinity
+  dat_path <- fs::path(model_run_dir, "data", "data_for_model_fit.json")
+  dat_txt <- readLines(dat_path, warn = FALSE)
+  dat_txt <- gsub("-Infinity", "null", dat_txt)
+  data_for_model_fit <- fromJSON(dat_txt)
 
   first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
   first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
