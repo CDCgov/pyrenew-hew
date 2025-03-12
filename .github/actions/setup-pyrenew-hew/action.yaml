@@ -1,0 +1,26 @@
+name: "Set up Pyrenew-HEW"
+description: "This action sets up Pyrenew-HEW via Poetry."
+inputs: {}
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install poetry
+      run: pipx install poetry
+      shell: bash
+
+    - name: create lockfile
+      run: poetry lock
+      shell: bash
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+        cache: 'poetry'
+
+    - name: install Pyrenew-HEW via poetry
+      run: poetry install --with test
+      shell: bash
