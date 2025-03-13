@@ -163,6 +163,8 @@ read_and_score_location <- function(model_run_dir,
     ))
   }
 
+  # Removing lab_site_index column with all NAs
+  # will need to be modified when adding scoring for W
   samples_scorable <-
     scorable_datasets |>
     filter(forecast_type == "samples") |>
@@ -171,7 +173,7 @@ read_and_score_location <- function(model_run_dir,
       by = join_by(resolution, date, geo_value, disease, .variable)
     ) |>
     rename(sample_id = .draw) |>
-    select(-c(.chain, .iteration, forecast_type))
+    select(-c(.chain, .iteration, forecast_type, lab_site_index))
 
   quantiles_scorable <-
     scorable_datasets |>
@@ -180,7 +182,7 @@ read_and_score_location <- function(model_run_dir,
     inner_join(eval_data,
       by = join_by(resolution, date, geo_value, disease, .variable)
     ) |>
-    select(-forecast_type)
+    select(-c(forecast_type, lab_site_index))
 
   scored <- score_single_run(
     quantiles_scorable = quantiles_scorable,

@@ -9,8 +9,13 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
+import numpy as np
+import numpyro.distributions as dist
 import polars as pl
 import polars.selectors as cs
+from jax.scipy.special import logsumexp
+from jax.typing import ArrayLike
+from scipy.optimize import minimize
 
 _disease_map = {
     "COVID-19": "COVID-19/Omicron",
@@ -87,10 +92,11 @@ def get_nhsn(
     return dat
 
 
-def combine_nssp_and_nhsn(
+def combine_surveillance_data(
     nssp_data: pl.DataFrame,
     nhsn_data: pl.DataFrame,
     disease: str,
+    nwss_data: pl.DataFrame = None,
 ):
     count_type_dict = {
         disease: "observed_ed_visits",
@@ -106,27 +112,63 @@ def combine_nssp_and_nhsn(
             value_name=".value",
         )
         .with_columns(
-            pl.col("count_type").replace(count_type_dict).alias(".variable")
+            pl.col("count_type").replace(count_type_dict).alias(".variable"),
+            pl.lit(None).alias("lab_site_index"),
         )
         .select(cs.exclude(["count_type", "drop_me"]))
     )
 
-    nhsn_data_long = nhsn_data.rename(
-        {
-            "weekendingdate": "date",
-            "jurisdiction": "geo_value",
-            "hospital_admissions": "observed_hospital_admissions",
-        }
-    ).unpivot(
-        on="observed_hospital_admissions",
-        index=cs.exclude("observed_hospital_admissions"),
-        variable_name=".variable",
-        value_name=".value",
+    nhsn_data_long = (
+        nhsn_data.rename(
+            {
+                "weekendingdate": "date",
+                "jurisdiction": "geo_value",
+                "hospital_admissions": "observed_hospital_admissions",
+            }
+        )
+        .unpivot(
+            on="observed_hospital_admissions",
+            index=cs.exclude("observed_hospital_admissions"),
+            variable_name=".variable",
+            value_name=".value",
+        )
+        .with_columns(pl.lit(None).alias("lab_site_index"))
+    )
+
+    nwss_data_long = (
+        nwss_data.rename(
+            {
+                "log_genome_copies_per_ml": "site_level_log_ww_conc",
+                "location": "geo_value",
+            }
+        )
+        .with_columns(pl.lit("train").alias("data_type"))
+        .select(
+            cs.exclude(
+                [
+                    "lab",
+                    "log_lod",
+                    "below_lod",
+                    "site",
+                    "site_index",
+                    "site_pop",
+                    "lab_site_name",
+                ]
+            )
+        )
+        .unpivot(
+            on="site_level_log_ww_conc",
+            index=cs.exclude("site_level_log_ww_conc"),
+            variable_name=".variable",
+            value_name=".value",
+        )
+        if nwss_data is not None
+        else pl.DataFrame()
     )
 
     combined_dat = (
         pl.concat(
-            [nssp_data_long, nhsn_data_long],
+            [nssp_data_long, nhsn_data_long, nwss_data_long],
             how="diagonal_relaxed",
         )
         .with_columns(pl.lit(disease).alias("disease"))
@@ -139,6 +181,7 @@ def combine_nssp_and_nhsn(
                 "data_type",
                 ".variable",
                 ".value",
+                "lab_site_index",
             ]
         )
     )
@@ -313,7 +356,8 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
 
     delay_pmf = (
@@ -325,8 +369,16 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
+
+    # ensure 0 first entry; we do not model the possibility
+    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
+    delay_pmf[0] = 0.0
+    delay_pmf = jnp.array(delay_pmf)
+    delay_pmf = delay_pmf / delay_pmf.sum()
+    delay_pmf = delay_pmf.tolist()
 
     right_truncation_pmf = (
         param_estimates.filter(
@@ -338,10 +390,71 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
 
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
+
+
+def approx_lognorm(
+    pmf: ArrayLike, loc_guess, scale_guess, method: str = "Nelder-Mead"
+) -> tuple[float, float]:
+    """
+    Find loc and scale parameters
+    of a lognormal distribution such that
+    the lognormal PDF is approxmimately
+    proportional to the given discrete PMF.
+
+    Parameters
+    ----------
+    pmf
+       Array representing the PMF.
+
+    loc_guess
+       Initial loc value to pass to the optimizer.
+
+    scale_guess
+       Initial scale value to pass to the optimizer.
+
+    method
+       Optimization method. Passed as the ``method``
+       keyword argument to :func:`scipy.optimize.minimize`.
+       Default ``"Nelder-Mead"``.
+
+    Returns
+    -------
+    tuple[float, float]
+       A tuple containing the loc parameter as the first
+       entry and the scale parameter as the second.
+
+    Raises
+    ------
+    ValueError
+       If optimization fails.
+    """
+    log_pmf = jnp.log(pmf)
+    n = log_pmf.size
+
+    def err(loc_and_scale):
+        """
+        Our objective function: the squared
+        errors of log prob values
+        """
+        lnorm = dist.LogNormal(loc=loc_and_scale[0], scale=loc_and_scale[1])
+        lp = lnorm.log_prob(jnp.arange(1, n + 1))
+        normed_lp = lp - logsumexp(lp)
+        return jnp.sum((log_pmf - normed_lp) ** 2)
+
+    result = minimize(
+        err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead"
+    )
+    if not result.success:
+        print(result)
+        raise ValueError("Discretized lognormal approximation to PMF failed")
+    else:
+        res = result.x
+        return (float(res[0]), float(res[1]))
 
 
 def process_and_save_state(
@@ -376,6 +489,12 @@ def process_and_save_state(
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
+    )
+
+    delay_lognormal_loc, delay_lognormal_scale = approx_lognorm(
+        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+        loc_guess=0,
+        scale_guess=0.5,
     )
 
     right_truncation_offset = (report_date - last_training_date).days
@@ -451,7 +570,7 @@ def process_and_save_state(
         "hospital_admissions"
     ).to_list()
 
-    data_observed_disease_wastewater = (
+    nwss_training_data = (
         state_level_nwss_data.to_dict(as_series=False)
         if state_level_nwss_data is not None
         else None
@@ -463,6 +582,7 @@ def process_and_save_state(
         subpop_sizes = (
             state_level_nwss_data.select(["site_index", "site", "site_pop"])
             .unique()
+            .sort("site_pop", descending=True)
             .get_column("site_pop")
             .to_numpy()
         )
@@ -477,7 +597,9 @@ def process_and_save_state(
             pop_fraction = subpop_sizes / state_pop
 
     data_for_model_fit = {
-        "inf_to_ed_pmf": delay_pmf,
+        "inf_to_hosp_admit_pmf": delay_pmf,
+        "inf_to_hosp_admit_lognormal_loc": delay_lognormal_loc,
+        "inf_to_hosp_admit_lognormal_scale": delay_lognormal_scale,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "data_observed_disease_ed_visits": train_disease_ed_visits,
@@ -489,7 +611,7 @@ def process_and_save_state(
         "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": data_observed_disease_wastewater,
+        "data_observed_disease_wastewater": nwss_training_data,
         "pop_fraction": pop_fraction.tolist(),
     }
 
@@ -499,9 +621,10 @@ def process_and_save_state(
     with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file, default=str)
 
-    combined_training_dat = combine_nssp_and_nhsn(
+    combined_training_dat = combine_surveillance_data(
         nssp_data=nssp_training_data,
         nhsn_data=nhsn_training_data,
+        nwss_data=state_level_nwss_data,
         disease=disease,
     )
 

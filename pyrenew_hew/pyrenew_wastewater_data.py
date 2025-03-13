@@ -32,7 +32,7 @@ class PyrenewWastewaterData:
                     ["site_index", "site", "site_pop"]
                 )
                 .unique()
-                .sort("site_index")
+                .sort("site_index", descending=False)
             )
 
             total_pop_ww = (
@@ -184,7 +184,7 @@ class PyrenewWastewaterData:
                         "lab_site_index", "subpop_index"
                     ]
                     .unique()
-                    .sort(by="lab_site_index")
+                    .sort(by="lab_site_index", descending=False)
                 )
                 .get_column("subpop_index")
                 .to_numpy()
