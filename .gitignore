@@ -402,3 +402,11 @@ private_data/*
 
 # Ignore end to end test output
 pipelines/tests/end_to_end_test_output/*
+
+# subdirs reserved for mounting blob storage containers
+config
+nssp-archival-vintages
+nssp-etl
+output
+params
+nwss-vintages

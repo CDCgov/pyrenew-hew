@@ -135,13 +135,14 @@ cdc_flat_forecast <- function(data,
   cdc_flat_fit <- cdc_baseline_forecaster(epi_data, target_col, opts)
   # generate forecast
   cdc_flat_forecast <- cdc_flat_fit$predictions |>
-    pivot_quantiles_longer(.pred_distn) |>
-    mutate(!!output_col := values) |>
-    rename(
-      quantile_level = quantile_levels, report_date = forecast_date,
-      date = target_date
+    epipredict::pivot_quantiles_longer(".pred_distn") |>
+    dplyr::rename(
+      !!output_col := ".pred_distn_value",
+      quantile_level = ".pred_distn_quantile_level",
+      report_date = "forecast_date",
+      date = "target_date"
     ) |>
-    select(date, quantile_level, all_of(output_col))
+    dplyr::select("date", "quantile_level", all_of(output_col))
 
   return(cdc_flat_forecast)
 }
