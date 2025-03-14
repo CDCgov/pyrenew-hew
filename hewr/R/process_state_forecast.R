@@ -1,3 +1,4 @@
+# %%
 process_timeseries <- function(timeseries_model_dir,
                                daily_samples,
                                epiweekly_samples,
@@ -21,7 +22,9 @@ process_timeseries <- function(timeseries_model_dir,
         dplyr::select(-"data_type"),
       epiweekly = FALSE
     ) |>
-    dplyr::select(tidyselect::any_of(required_columns))
+    dplyr::select(
+      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
+    )
 
   ## ts model, daily denominator aggregated to epiweekly
   agg_ewkly_ts_denom_samples <-
@@ -34,7 +37,9 @@ process_timeseries <- function(timeseries_model_dir,
       with_epiweek_end_date = TRUE,
       epiweek_end_date_name = "date"
     ) |>
-    dplyr::select(tidyselect::any_of(required_columns))
+    dplyr::select(
+      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
+    )
 
   ## ts model, epiweekly denominator
   ewkly_ts_denom_samples <- arrow::read_parquet(
@@ -50,27 +55,30 @@ process_timeseries <- function(timeseries_model_dir,
         dplyr::select(-"data_type"),
       epiweekly = TRUE
     ) |>
-    dplyr::select(tidyselect::any_of(required_columns))
+    dplyr::select(
+      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
+    )
 
   # Daily Numerator, Daily Denominator
   daily_samples_daily_n_daily_d <- join_and_calc_prop(
     daily_samples,
-    daily_ts_denom_samples
+    daily_ts_denom_samples,
+    required_columns
   )
 
   # Epiweekly Aggregated Numerator, Epiweekly Aggregated Denominator
   ewkly_samples_agg_n_agg_d <- join_and_calc_prop(
     epiweekly_samples,
-    agg_ewkly_ts_denom_samples
+    agg_ewkly_ts_denom_samples,
+    required_columns
   )
 
   # Epiweekly Aggregated Numerator, Epiweekly Denominator
   ewkly_samples_agg_n_ewkly_d <- join_and_calc_prop(
     epiweekly_samples,
-    ewkly_ts_denom_samples
+    ewkly_ts_denom_samples,
+    required_columns
   )
-
-
 
   list(
     "daily_samples" = daily_samples_daily_n_daily_d,
@@ -80,16 +88,13 @@ process_timeseries <- function(timeseries_model_dir,
 }
 
 epiweekly_samples_from_daily <- function(daily_samples, required_columns) {
-  epiweekly_obs_ed_samples <-
+  epiweekly_obs_samples <-
     daily_samples |>
-    dplyr::filter(.data$.variable == "observed_ed_visits") |>
+    dplyr::filter(.data$.variable != "observed_hospital_admissions") |>
     forecasttools::daily_to_epiweekly(
       value_col = ".value",
       weekly_value_name = ".value",
-      id_cols = c(
-        ".chain", ".iteration", ".draw", "geo_value", "disease",
-        ".variable"
-      ),
+      id_cols = setdiff(required_columns, c("date", ".value")),
       strict = TRUE,
       with_epiweek_end_date = TRUE,
       epiweek_end_date_name = "date"
@@ -98,8 +103,8 @@ epiweekly_samples_from_daily <- function(daily_samples, required_columns) {
 
   epiweekly_samples <-
     daily_samples |>
-    dplyr::filter(.data$.variable != "observed_ed_visits") |>
-    dplyr::bind_rows(epiweekly_obs_ed_samples) |>
+    dplyr::filter(.data$.variable == "observed_hospital_admissions") |>
+    dplyr::bind_rows(epiweekly_obs_samples) |>
     dplyr::select(tidyselect::all_of(required_columns))
 
   return(epiweekly_samples)
@@ -227,7 +232,7 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
     dplyr::select(!!sample_id_colname, tidyselect::everything())
 }
 
-join_and_calc_prop <- function(model_1, model_2) {
+join_and_calc_prop <- function(model_1, model_2, required_columns) {
   dplyr::inner_join(
     tidyr::pivot_wider(model_1,
       names_from = ".variable",
@@ -242,13 +247,12 @@ join_and_calc_prop <- function(model_1, model_2) {
     dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
       (.data$observed_ed_visits + .data$other_ed_visits)) |>
     tidyr::pivot_longer(
-      -c(
-        tidyselect::starts_with("."),
-        "date", "geo_value", "disease"
-      ),
+      -c(setdiff(required_columns, c(".variable", ".value"))),
       names_to = ".variable", values_to = ".value"
     ) |>
-    tidyr::drop_na()
+    tidyr::drop_na(
+      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
+    )
 }
 
 #' Convert group time index to date
@@ -309,7 +313,7 @@ group_lab_site_index_to_name <- function(lab_site_index,
   )
 }
 
-
+# %%
 #' Process state forecast
 #'
 #' @param model_run_dir Model run directory
@@ -337,11 +341,6 @@ process_state_forecast <- function(model_run_dir,
                                    timeseries_model_name = NULL,
                                    ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
-  required_columns <- c(
-    ".chain", ".iteration", ".draw", "date", "geo_value",
-    "disease", ".variable", ".value"
-  )
-
   data_col_types <- readr::cols(
     date = readr::col_date(),
     geo_value = readr::col_character(),
@@ -352,6 +351,18 @@ process_state_forecast <- function(model_run_dir,
   )
   model_info <- parse_model_run_dir_path(model_run_dir)
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
+
+  if (pyrenew_model_components["w"]) {
+    required_columns <- c(
+      ".chain", ".iteration", ".draw", "date", "geo_value",
+      "disease", ".variable", ".value", "lab_site_index"
+    )
+  } else {
+    required_columns <- c(
+      ".chain", ".iteration", ".draw", "date", "geo_value",
+      "disease", ".variable", ".value"
+    )
+  }
 
   ## Process data
 
@@ -458,16 +469,6 @@ process_state_forecast <- function(model_run_dir,
       disease = model_info$disease
     )
 
-  if (pyrenew_model_components[["w"]]) {
-    daily_samples <- daily_samples |>
-      dplyr::mutate(
-        lab_site_name = group_lab_site_index_to_name(
-          lab_site_index = .data$lab_site_index,
-          lab_site_index_to_name_map = lab_site_index_to_name_map
-        )
-      )
-  }
-
   samples_list <- list(daily_samples = daily_samples)
 
   # For the E model, do epiweekly and process denominator
@@ -501,6 +502,7 @@ process_state_forecast <- function(model_run_dir,
     }
   }
 
+  # This migth not be needed when all postprocess completed
   ci_list <- purrr::map(
     samples_list |>
       purrr::set_names(~ stringr::str_replace(., "samples", "ci")),
@@ -508,7 +510,7 @@ process_state_forecast <- function(model_run_dir,
       group_vars <- if (pyrenew_model_components[["w"]]) {
         c(
           "date", "geo_value", "disease", ".variable",
-          "lab_site_index", "lab_site_name"
+          "lab_site_index"
         )
       } else {
         c("date", "geo_value", "disease", ".variable")
