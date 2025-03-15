@@ -171,11 +171,11 @@ read_and_score_location <- function(model_run_dir,
     unnest(forecast_data) |>
     inner_join(eval_data,
       by = join_by(
-        resolution, date, geo_value, disease, .variable, lab_site_index
+        resolution, date, geo_value, disease, .variable
       )
     ) |>
     rename(sample_id = .draw) |>
-    select(-c(.chain, .iteration, forecast_type, lab_site_index))
+    select(-c(.chain, .iteration, forecast_type, starts_with("lab_site_index")))
 
   quantiles_scorable <-
     scorable_datasets |>
