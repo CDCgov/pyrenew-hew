@@ -9,6 +9,7 @@ group_time_index_to_date(
   variable,
   first_nssp_date,
   first_nhsn_date,
+  first_nwss_date,
   nhsn_step_size
 )
 }
@@ -21,6 +22,8 @@ group_time_index_to_date(
 
 \item{first_nhsn_date}{first date in the nhsn training data}
 
+\item{first_nwss_date}{first date in the nwss training data}
+
 \item{nhsn_step_size}{step size for nhsn data}
 }
 \value{
@@ -31,7 +34,7 @@ Convert group time index to date
 }
 \examples{
 group_time_index_to_date(
-  3,
-  "observed_hospital_admissions", "2024-01-01", "2024-01-01", 7
+  3, "observed_hospital_admissions",
+  "2024-01-01", "2024-01-01", "2024-01-01", 7
 )
 }
