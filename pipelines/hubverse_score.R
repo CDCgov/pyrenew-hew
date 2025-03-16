@@ -179,7 +179,7 @@ score_and_save <- function(observed_data_path,
           obs_value_column =
             obs_col_from_target(.y$target[1]),
           obs_date_column = "reference_date",
-          obs_location_column = "location"
+          id_cols = c("location")
         )) |>
         dplyr::ungroup() |>
         dplyr::select(
