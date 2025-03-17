@@ -1,4 +1,3 @@
-# %%
 process_timeseries <- function(timeseries_model_dir,
                                daily_samples,
                                epiweekly_samples,
