@@ -248,9 +248,7 @@ join_and_calc_prop <- function(model_1, model_2, required_columns) {
       -c(setdiff(required_columns, c(".variable", ".value"))),
       names_to = ".variable", values_to = ".value"
     ) |>
-    tidyr::drop_na(
-      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
-    )
+    tidyr::drop_na(".value")
 }
 
 #' Convert group time index to date
@@ -330,17 +328,15 @@ process_state_forecast <- function(model_run_dir,
   model_info <- parse_model_run_dir_path(model_run_dir)
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
+
+  required_columns <- c(
+    ".chain", ".iteration", ".draw", "date", "geo_value",
+    "disease", ".variable", ".value"
+  )
   if (pyrenew_model_components["w"]) {
-    required_columns <- c(
-      ".chain", ".iteration", ".draw", "date", "geo_value",
-      "disease", ".variable", ".value", "lab_site_index"
-    )
-  } else {
-    required_columns <- c(
-      ".chain", ".iteration", ".draw", "date", "geo_value",
-      "disease", ".variable", ".value"
-    )
+    required_columns <- c(required_columns, "lab_site_index")
   }
+
 
   ## Process data
 
@@ -463,19 +459,13 @@ process_state_forecast <- function(model_run_dir,
     }
   }
 
-  # This migth not be needed when all postprocess completed
   ci_list <- purrr::map(
     samples_list |>
       purrr::set_names(~ stringr::str_replace(., "samples", "ci")),
     \(x) {
-      group_vars <- if (pyrenew_model_components[["w"]]) {
-        c(
-          "date", "geo_value", "disease", ".variable",
-          "lab_site_index"
-        )
-      } else {
-        c("date", "geo_value", "disease", ".variable")
-      }
+      group_vars <- setdiff(
+        required_columns, c(".chain", ".iteration", ".draw", ".value")
+      )
 
       dplyr::select(x, -c(".chain", ".iteration", ".draw")) |>
         dplyr::group_by(across(all_of(group_vars))) |>
