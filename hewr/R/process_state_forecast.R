@@ -396,13 +396,14 @@ process_state_forecast <- function(model_run_dir,
     purrr::keep(\(x) {
       stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
     }) |>
-    dplyr::case_when(
-      stringr::str_starts(x, "observed_") ~
-        rlang::parse_expr(stringr::str_c(x, "[group_time_index]")),
-      stringr::str_starts(x, "site_") ~ rlang::parse_expr(
-        stringr::str_c(x, "[group_time_index,lab_site_index]")
-      )
-    )
+    purrr::map(\(x) {
+      rlang::parse_expr(case_when(
+        stringr::str_starts(x, "observed_") ~
+          stringr::str_c(x, "[group_time_index]"),
+        stringr::str_starts(x, "site_") ~
+          stringr::str_c(x, "[group_time_index,lab_site_index]")
+      ))
+    })
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
