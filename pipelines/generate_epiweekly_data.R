@@ -54,7 +54,7 @@ convert_daily_to_epiweekly <- function(
   epiweekly_hosp_data <- daily_data |>
     filter(.variable == "observed_hospital_admissions")
 
-  epiweekly_ed_data <- daily_ed_data |> # this meant to be daily_ed_data?
+  epiweekly_ed_data <- daily_ed_data |>
     forecasttools::daily_to_epiweekly(
       value_col = ".value",
       weekly_value_name = ".value",
