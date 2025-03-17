@@ -292,7 +292,6 @@ group_time_index_to_date <- function(group_time_index,
     group_time_index
 }
 
-# %%
 #' Process state forecast
 #'
 #' @param model_run_dir Model run directory
