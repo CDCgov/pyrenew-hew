@@ -388,22 +388,24 @@ process_state_forecast <- function(model_run_dir,
   # posterior predictive variables are expected to be of the form
   # "observed_zzzzz[n]". This creates tidybayes::gather_draws()
   # compatible expression for each variable.
-  posterior_predictive_variables <-
-    pyrenew_posterior_predictive |>
+  post_pred_var_prefix <- pyrenew_posterior_predictive |>
     colnames() |>
     stringr::str_remove("\\[.+\\]$") |>
     unique() |>
     purrr::keep(\(x) {
       stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
-    }) |>
-    purrr::map(\(x) {
-      rlang::parse_expr(case_when(
-        stringr::str_starts(x, "observed_") ~
-          stringr::str_c(x, "[group_time_index]"),
-        stringr::str_starts(x, "site_") ~
-          stringr::str_c(x, "[group_time_index,lab_site_index]")
-      ))
     })
+
+  posterior_predictive_variables <-
+    dplyr::case_when(
+      stringr::str_starts(post_pred_var_prefix, "observed_") ~
+        stringr::str_c(post_pred_var_prefix, "[group_time_index]"),
+      stringr::str_starts(post_pred_var_prefix, "site_") ~
+        stringr::str_c(
+          post_pred_var_prefix, "[group_time_index,lab_site_index]"
+        )
+    ) |>
+    purrr::map(rlang::parse_expr)
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
