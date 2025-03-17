@@ -344,7 +344,7 @@ process_state_forecast <- function(model_run_dir,
 
   # read_json cannot parse -Infinity
   dat_path <- fs::path(model_run_dir, "data", "data_for_model_fit.json")
-  data_for_model_fit <- readr::read_lines(dat_path, warn = FALSE) |>
+  data_for_model_fit <- readr::read_lines(dat_path) |>
     stringr::str_replace_all("-Infinity", "null") |>
     jsonlite::fromJSON()
 
