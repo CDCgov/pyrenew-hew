@@ -7,6 +7,8 @@ process_timeseries <- function(timeseries_model_dir,
   # augment daily and epiweekly other ed visits forecast
   # with "sample" format observed data
 
+  required_col_denom_samples <- setdiff(required_columns, "lab_site_index")
+
   ## ts model, daily denominator
   daily_ts_denom_samples <- arrow::read_parquet(
     fs::path(timeseries_model_dir,
@@ -22,7 +24,7 @@ process_timeseries <- function(timeseries_model_dir,
       epiweekly = FALSE
     ) |>
     dplyr::select(
-      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
+      tidyselect::any_of(required_col_denom_samples)
     )
 
   ## ts model, daily denominator aggregated to epiweekly
@@ -37,7 +39,7 @@ process_timeseries <- function(timeseries_model_dir,
       epiweek_end_date_name = "date"
     ) |>
     dplyr::select(
-      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
+      tidyselect::any_of(required_col_denom_samples)
     )
 
   ## ts model, epiweekly denominator
@@ -55,7 +57,7 @@ process_timeseries <- function(timeseries_model_dir,
       epiweekly = TRUE
     ) |>
     dplyr::select(
-      tidyselect::any_of(setdiff(required_columns, "lab_site_index"))
+      tidyselect::any_of(required_col_denom_samples)
     )
 
   # Daily Numerator, Daily Denominator
@@ -342,9 +344,9 @@ process_state_forecast <- function(model_run_dir,
 
   # read_json cannot parse -Infinity
   dat_path <- fs::path(model_run_dir, "data", "data_for_model_fit.json")
-  dat_txt <- readLines(dat_path, warn = FALSE)
-  dat_txt <- gsub("-Infinity", "null", dat_txt)
-  data_for_model_fit <- jsonlite::fromJSON(dat_txt)
+  data_for_model_fit <- readr::read_lines(dat_path, warn = FALSE) |>
+    stringr::str_replace_all("-Infinity", "null") |>
+    jsonlite::fromJSON()
 
   first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
   first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
@@ -394,15 +396,13 @@ process_state_forecast <- function(model_run_dir,
     purrr::keep(\(x) {
       stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
     }) |>
-    purrr::map(\(x) {
-      if (stringr::str_starts(x, "observed_")) {
-        rlang::parse_expr(stringr::str_c(x, "[group_time_index]"))
-      } else {
-        rlang::parse_expr(
-          stringr::str_c(x, "[group_time_index,lab_site_index]")
-        )
-      }
-    })
+    dplyr::case_when(
+      stringr::str_starts(x, "observed_") ~
+        rlang::parse_expr(stringr::str_c(x, "[group_time_index]")),
+      stringr::str_starts(x, "site_") ~ rlang::parse_expr(
+        stringr::str_c(x, "[group_time_index,lab_site_index]")
+      )
+    )
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
