@@ -120,9 +120,8 @@ epiweekly_samples_from_daily <- function(daily_samples, required_columns) {
 combine_training_and_eval_data <- function(train_dat,
                                            eval_dat) {
   dat <- dplyr::bind_rows(train_dat, eval_dat)
-  # Need to separte nwss data before using pivot_wider
-  # may include multiple obsrvation for a combination of a
-  # single lab_site_index date
+  # NWSS data may include multiple obsrvation for a
+  # single lab_site_index, date combination
   non_ww_dat <- dat |>
     dplyr::filter(.data$.variable != "site_level_log_ww_conc") |>
     dplyr::select(-c(.data$lab_site_index)) |>
@@ -294,25 +293,6 @@ group_time_index_to_date <- function(group_time_index,
     group_time_index
 }
 
-
-#' Convert lab_site_index to lab_site_name
-#'
-#' @param lab_site_index integer vector of lab site indices
-#' @param lab_site_index_to_name_map a tibble mapping lab_site_index to names
-#'
-#' @returns a vector of lab site names
-#' @export
-group_lab_site_index_to_name <- function(lab_site_index,
-                                         lab_site_index_to_name_map) {
-  mask <- match(
-    x = lab_site_index,
-    table = lab_site_index_to_name_map$lab_site_index
-  )
-  return(
-    lab_site_index_to_name_map$lab_site_name[mask]
-  )
-}
-
 # %%
 #' Process state forecast
 #'
@@ -380,23 +360,6 @@ process_state_forecast <- function(model_run_dir,
     NA
   )
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
-
-  if (!is.null(data_for_model_fit$data_observed_disease_wastewater)) {
-    lab_site_index_to_name_map <- tibble::as_tibble(
-      data_for_model_fit$data_observed_disease_wastewater
-    ) |>
-      dplyr::mutate(across(everything(), ~ unlist(.))) |>
-      dplyr::select(
-        lab_site_index,
-        lab_site_name
-      ) |>
-      dplyr::distinct()
-  } else {
-    lab_site_index_to_name_map <- tibble::tibble(
-      lab_site_index = integer(),
-      lab_site_name = character()
-    )
-  }
 
   # Used for augmenting denominator forecasts with training period denominator
   daily_training_dat <- readr::read_tsv(fs::path(
