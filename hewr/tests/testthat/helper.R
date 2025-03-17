@@ -37,10 +37,11 @@ create_model_results <- function(file,
 }
 
 create_observation_data <- function(
-    date_range, locations) {
+    date_range, locations, target = "wk inc covid prop ed visits") {
   data <- tidyr::expand_grid(
     reference_date = date_range,
-    location = locations
+    location = locations,
+    target = target
   ) |>
     dplyr::mutate(value = sample(1:100, dplyr::n(), replace = TRUE))
   return(data)
