@@ -91,7 +91,7 @@ process_timeseries <- function(timeseries_model_dir,
 epiweekly_samples_from_daily <- function(daily_samples, required_columns) {
   epiweekly_obs_samples <-
     daily_samples |>
-    dplyr::filter(.data$.variable == "observed_ed_visits") |>
+    dplyr::filter(.data$.variable != "observed_hospital_admissions") |>
     forecasttools::daily_to_epiweekly(
       value_col = ".value",
       weekly_value_name = ".value",
