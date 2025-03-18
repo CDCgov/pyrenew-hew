@@ -168,7 +168,7 @@ parse_variable_name <- function(variable_name) {
       "Emergency Department Visits",
     stringr::str_detect(variable_name, "hospital") ~ "Hospital Admissions",
     stringr::str_detect(variable_name, "ww_conc") ~
-      "Viral Genomes Concentrations",
+      "Viral Genomes Concentration",
     TRUE ~ ""
   )
 
