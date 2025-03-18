@@ -41,6 +41,7 @@ save_forecast_figures <- function(model_run_dir,
   # This isn't quite right. Gives misleading file names to h figures
   # They are labelled "daily" but are actually epiweekly
   # No prefix at all would also be fine
+  # This section is a mess and needs to be re-written.
   figure_save_tbl <-
     expand_grid(
       target_variable = variables,
