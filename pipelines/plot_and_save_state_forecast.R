@@ -41,11 +41,15 @@ save_forecast_figures <- function(model_run_dir,
   # This isn't quite right. Gives misleading file names to h figures
   # They are labelled "daily" but are actually epiweekly
   # No prefix at all would also be fine
+  # This section is a mess. It produces redundant plots.
   figure_save_tbl <-
     expand_grid(
       target_variable = variables,
       y_transform = names(y_transforms),
       timescale = timescales
+    ) |>
+    filter(
+      !(target_variable == "site_level_log_ww_conc" & y_transform == "log10")
     ) |>
     filter(!(.data$target_variable == "observed_ed_visits" &
       .data$timescale == "epiweekly_with_epiweekly_other")) |>

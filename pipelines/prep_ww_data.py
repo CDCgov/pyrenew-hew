@@ -235,22 +235,26 @@ def preprocess_ww_data(
         lod_col_name=lod_col_name,
         date_col_name=date_col_name,
     )
-    ww_data_ordered = ww_data.sort(by=wwtp_pop_name, descending=True)
     lab_site_df = (
-        ww_data_ordered.select([lab_col_name, wwtp_col_name])
+        ww_data.select([lab_col_name, wwtp_col_name, wwtp_pop_name])
         .unique()
+        .sort(by=wwtp_pop_name, descending=True)
         .with_row_index("lab_site_index")
     )
     site_df = (
-        ww_data_ordered.select([wwtp_col_name])
+        ww_data.select([wwtp_col_name, wwtp_pop_name])
         .unique()
+        .sort(by=wwtp_pop_name, descending=True)
         .with_row_index("site_index")
     )
     ww_preprocessed = (
-        ww_data_ordered.join(
-            lab_site_df, on=[lab_col_name, wwtp_col_name], how="left"
+        ww_data.sort(by=wwtp_pop_name, descending=True)
+        .join(
+            lab_site_df,
+            on=[lab_col_name, wwtp_col_name, wwtp_pop_name],
+            how="left",
         )
-        .join(site_df, on=wwtp_col_name, how="left")
+        .join(site_df, on=[wwtp_col_name, wwtp_pop_name], how="left")
         .rename(
             {
                 lod_col_name: "log_lod",
@@ -273,8 +277,10 @@ def preprocess_ww_data(
                 "date",
                 "site",
                 "lab",
+                "location",
                 "site_pop",
                 "site_index",
+                "lab_site_name",
                 "lab_site_index",
                 "log_genome_copies_per_ml",
                 "log_lod",
