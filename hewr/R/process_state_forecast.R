@@ -274,9 +274,6 @@ process_state_forecast <- function(model_run_dir,
                                    timeseries_model_name = NULL,
                                    ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
-  # an older version of this function may have processed and saved "numerators"
-  # from the timeseries model. I'm not sure. If it did, we need to add
-  # functionality to accept a NULL pyrenew_model_name.
   variable_resolution_key <-
     c(
       "observed_ed_visits" = "daily",
