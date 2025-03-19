@@ -353,6 +353,13 @@ process_state_forecast <- function(model_run_dir,
   model_info <- parse_model_run_dir_path(model_run_dir)
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
+  required_columns <- c(
+    ".chain", ".iteration", ".draw", "date", "geo_value",
+    "disease", ".variable", ".value"
+  )
+  if (pyrenew_model_components["w"]) {
+    required_columns <- c(required_columns, "lab_site_index")
+  }
 
   ## Process data
 
