@@ -218,29 +218,33 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 #' @param variable variable name
 #' @param first_nssp_date first date in the nssp training data
 #' @param first_nhsn_date first date in the nhsn training data
+#' @param first_nwss_date first date in the nwss training data
 #' @param nhsn_step_size step size for nhsn data
 #'
 #' @returns a vector of dates
 #' @export
 #'
 #' @examples group_time_index_to_date(
-#'   3,
-#'   "observed_hospital_admissions", "2024-01-01", "2024-01-01", 7
+#'   3, "observed_hospital_admissions",
+#'   "2024-01-01", "2024-01-01", "2024-01-01", 7
 #' )
 group_time_index_to_date <- function(group_time_index,
                                      variable,
                                      first_nssp_date,
                                      first_nhsn_date,
+                                     first_nwss_date,
                                      nhsn_step_size) {
   first_date_key <- c(
     observed_hospital_admissions = first_nhsn_date,
-    observed_ed_visits = first_nssp_date
+    observed_ed_visits = first_nssp_date,
+    site_level_log_ww_conc = first_nwss_date
   ) |>
     purrr::map_vec(as.Date)
 
   step_size_key <- c(
     observed_hospital_admissions = nhsn_step_size,
-    observed_ed_visits = 1
+    observed_ed_visits = 1,
+    site_level_log_ww_conc = 1
   )
 
   first_date_key[variable] + lubridate::days(step_size_key[variable]) *
