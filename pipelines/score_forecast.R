@@ -163,17 +163,21 @@ read_and_score_location <- function(model_run_dir,
     ))
   }
 
-  # Removing lab_site_index column with all NAs
-  # will need to be modified when adding scoring for W
+
+  # Removing lab_site_index column
+  # NWSS data is not added to eval data yet
+
   samples_scorable <-
     scorable_datasets |>
     filter(forecast_type == "samples") |>
     unnest(forecast_data) |>
     inner_join(eval_data,
-      by = join_by(resolution, date, geo_value, disease, .variable)
+      by = join_by(
+        resolution, date, geo_value, disease, .variable
+      )
     ) |>
     rename(sample_id = .draw) |>
-    select(-c(.chain, .iteration, forecast_type, lab_site_index))
+    select(-c(.chain, .iteration, forecast_type, starts_with("lab_site_index")))
 
   quantiles_scorable <-
     scorable_datasets |>
