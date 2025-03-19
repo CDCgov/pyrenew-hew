@@ -426,7 +426,6 @@ process_state_forecast <- function(model_run_dir,
     unique() |>
     purrr::keep(\(x) {
       stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
-
     })
 
   posterior_predictive_variables <-
