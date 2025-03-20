@@ -97,10 +97,11 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
         "observed_ed_visits" = glue::glue("wk inc {disease_abbr} ed visits"),
         "other_ed_visits" = "wk inc other ed visits",
         "prop_disease_ed_visits" =
-          glue::glue("wk inc {disease_abbr} prop ed visits")
+          glue::glue("wk inc {disease_abbr} prop ed visits"),
       )
 
       forecast_data |>
+        dplyr::filter(.data$.variable %in% names(variable_target_key)) |>
         tidyr::nest(.by = ".variable") |>
         dplyr::mutate(data = purrr::map2(
           .data$.variable, .data$data,
