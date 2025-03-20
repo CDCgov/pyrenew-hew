@@ -22,7 +22,7 @@ prop_from_timeseries <- function(timeseries_model_dir,
       purrr::map(\(x) {
         x |>
           dplyr::filter(.data$.variable == "other_ed_visits") |>
-          dplyr::select(-"data_type")
+          dplyr::select(-"data_type", -"lab_site_index")
       }),
     aggregated_denominator = FALSE
   ) |>
@@ -61,7 +61,8 @@ prop_from_timeseries <- function(timeseries_model_dir,
     aggregated_ts_samples
   ) |>
     dplyr::rename("other_ed_visits" = ".value") |>
-    dplyr::select(-".variable")
+    dplyr::select(-".variable") |>
+    dplyr::filter(.data$.draw <= max(e_numerator_samples$.draw))
 
   prop_disease_ed_visits_tbl <-
     dplyr::left_join(e_denominator_samples, e_numerator_samples,
@@ -71,7 +72,7 @@ prop_from_timeseries <- function(timeseries_model_dir,
       (.data$observed_ed_visits + .data$other_ed_visits)) |>
     dplyr::rename(.value = "prop_disease_ed_visits") |>
     dplyr::mutate(.variable = "prop_disease_ed_visits") |>
-    dplyr::select(tidyselect::all_of(required_columns))
+    dplyr::select(tidyselect::any_of(required_columns))
 
   return(prop_disease_ed_visits_tbl)
 }
@@ -284,12 +285,6 @@ process_state_forecast <- function(model_run_dir,
       "observed_hospital_admissions" = "epiweekly"
     )
 
-  required_columns <- c(
-    ".chain", ".iteration", ".draw", "date", "geo_value", "disease",
-    ".variable", ".value", "resolution", "aggregated_numerator",
-    "aggregated_denominator"
-  )
-
   data_col_types <- readr::cols(
     date = readr::col_date(),
     geo_value = readr::col_character(),
@@ -301,6 +296,18 @@ process_state_forecast <- function(model_run_dir,
   model_info <- parse_model_run_dir_path(model_run_dir)
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
+  required_columns_e <- c(
+    ".chain", ".iteration", ".draw", "date", "geo_value", "disease",
+    ".variable", ".value", "resolution", "aggregated_numerator",
+    "aggregated_denominator"
+  )
+
+  if (pyrenew_model_components["w"]) {
+    required_columns <- c(required_columns_e, "lab_site_index")
+  } else {
+    required_columns <- required_columns_e
+  }
+
   ## Process data
   data_for_model_fit <- jsonlite::read_json(
     fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json")
@@ -308,6 +315,12 @@ process_state_forecast <- function(model_run_dir,
 
   first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
   first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
+  first_nwss_date <- ifelse(
+    !is.null(data_for_model_fit$data_observed_disease_wastewater),
+    min(unlist(data_for_model_fit$data_observed_disease_wastewater$date)),
+    NA
+  )
+
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
 
   # Used for augmenting denominator forecasts with training period denominator
@@ -341,15 +354,24 @@ process_state_forecast <- function(model_run_dir,
   # posterior predictive variables are expected to be of the form
   # "observed_zzzzz[n]". This creates tidybayes::gather_draws()
   # compatible expression for each variable.
-  post_pred_vars_exp <-
-    pyrenew_posterior_predictive |>
+  post_pred_var_prefix <- pyrenew_posterior_predictive |>
     colnames() |>
     stringr::str_remove("\\[.+\\]$") |>
     unique() |>
-    purrr::keep(~ stringr::str_starts(., "observed_")) |>
-    stringr::str_c("[group_time_index]") |>
-    purrr::map(rlang::parse_expr)
+    purrr::keep(\(x) {
+      stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
+    })
 
+  post_pred_vars_exp <-
+    dplyr::case_when(
+      stringr::str_starts(post_pred_var_prefix, "observed_") ~
+        stringr::str_c(post_pred_var_prefix, "[group_time_index]"),
+      stringr::str_starts(post_pred_var_prefix, "site_") ~
+        stringr::str_c(
+          post_pred_var_prefix, "[group_time_index,lab_site_index]"
+        )
+    ) |>
+    purrr::map(rlang::parse_expr)
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
@@ -362,6 +384,7 @@ process_state_forecast <- function(model_run_dir,
       variable = .data$.variable,
       first_nssp_date = first_nssp_date,
       first_nhsn_date = first_nhsn_date,
+      first_nwss_date = first_nwss_date,
       nhsn_step_size = nhsn_step_size
     )) |>
     dplyr::select(-"group_time_index") |>
@@ -379,11 +402,12 @@ process_state_forecast <- function(model_run_dir,
     epiweekly_e_numerator_samples <- epiweekly_samples_from_daily(
       daily_samples = pyrenew_samples_tidy,
       variables_to_aggregate = "observed_ed_visits",
-      required_columns
+      required_columns_e
     )
 
     e_numerator_samples <- dplyr::bind_rows(
       pyrenew_samples_tidy |>
+        dplyr::select(tidyselect::all_of(required_columns_e)) |>
         dplyr::filter(.data$.variable == "observed_ed_visits"),
       epiweekly_e_numerator_samples
     ) |>
@@ -394,7 +418,8 @@ process_state_forecast <- function(model_run_dir,
     pyrenew_samples_tidy <- dplyr::bind_rows(
       pyrenew_samples_tidy,
       epiweekly_e_numerator_samples
-    )
+    ) |>
+      dplyr::distinct()
 
 
     ## Process timeseries posterior
@@ -407,7 +432,7 @@ process_state_forecast <- function(model_run_dir,
       prop_e_samples <- prop_from_timeseries(
         timeseries_model_dir,
         e_numerator_samples,
-        required_columns,
+        required_columns_e,
         daily_training_dat,
         epiweekly_training_dat
       )
@@ -415,7 +440,8 @@ process_state_forecast <- function(model_run_dir,
       pyrenew_samples_tidy <- dplyr::bind_rows(
         pyrenew_samples_tidy,
         prop_e_samples
-      )
+      ) |>
+        dplyr::distinct()
     }
   }
 
@@ -429,6 +455,7 @@ process_state_forecast <- function(model_run_dir,
       .data$resolution,
       .data$aggregated_numerator,
       .data$aggregated_denominator,
+      .data$lab_site_index
     ) |>
     ggdist::median_qi(.width = ci_widths)
 
