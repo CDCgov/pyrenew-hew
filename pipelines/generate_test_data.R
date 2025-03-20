@@ -243,11 +243,11 @@ generate_fake_param_data <-
     dir_create(prod_param_estimates_dir, recurse = TRUE)
 
     purrr::map(target_diseases, \(target_disease) {
-      ## Simple discretize exponential distribution
+      ## Simple discretized lognormal distribution
       gi_pmf <- seq(0.5, 6.5) |> dexp()
       gi_pmf <- gi_pmf / sum(gi_pmf)
-      delay_pmf <- seq(0.5, 10.5) |> dexp(rate = 1 / 2)
-      delay_pmf <- delay_pmf / sum(delay_pmf)
+      delay_pmf <- log(seq(1, 11)) |> dnorm(log(3), 0.5)
+      delay_pmf <- c(0, delay_pmf / sum(delay_pmf))
       rt_truncation_pmf <- c(1, 0, 0, 0)
 
       gi_data <- tibble(

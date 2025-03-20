@@ -21,7 +21,7 @@ def mock_data():
             "inf_to_hosp_admit_lognormal_scale": 0.851,
             "right_truncation_pmf": [0.7, 0.1, 0.2],
             "nssp_training_dates": ["2025-01-01"],
-            "nhsn_training_dates": ["2025-01-02"],
+            "nhsn_training_dates": ["2025-01-04"],
             "right_truncation_offset": 10,
             "data_observed_disease_wastewater": {
                 "date": [
@@ -65,13 +65,13 @@ ihr_rv = None
 ihr_rel_iedr_rv = None
 t_peak_rv = None
 duration_shed_after_peak_rv = None
-inf_to_ed_offset_loc_rv = None
-inf_to_ed_log_offset_scale_rv = None
+delay_offset_loc_rv = None
+delay_log_offset_scale_rv = None
 log10_genome_per_inf_ind_rv = None
 mode_sigma_ww_site_rv = None
 sd_log_sigma_ww_site_rv = None
 mode_sd_ww_site_rv = None
-max_shed_interval = None
+max_shed_interval = 10
 ww_ml_produced_per_day = None
 pop_fraction=None
 autoreg_rt_subpop_rv=None
