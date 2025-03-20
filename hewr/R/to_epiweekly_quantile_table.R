@@ -97,7 +97,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
         "observed_ed_visits" = glue::glue("wk inc {disease_abbr} ed visits"),
         "other_ed_visits" = "wk inc other ed visits",
         "prop_disease_ed_visits" =
-          glue::glue("wk inc {disease_abbr} prop ed visits"),
+          glue::glue("wk inc {disease_abbr} prop ed visits")
       )
 
       forecast_data |>
@@ -119,7 +119,10 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
 
     loc_epiweekly_hubverse_table <-
       scorable_datasets |>
-      dplyr::filter(.data$resolution == "epiweekly") |>
+      dplyr::filter(.data$resolution == "epiweekly" |
+        .data$model == "pyrenew_h_daily" |
+        .data$model == "pyrenew_hw_daily" |
+        .data$model == "pyrenew_hew_daily") |>
       dplyr::mutate(hubverse_data = purrr::map(
         .data$forecast_data, process_forecast_data
       )) |>
