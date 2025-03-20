@@ -447,16 +447,7 @@ process_state_forecast <- function(model_run_dir,
 
   ci <- pyrenew_samples_tidy |>
     dplyr::select(-c(".chain", ".iteration", ".draw")) |>
-    dplyr::group_by(
-      .data$date,
-      .data$geo_value,
-      .data$disease,
-      .data$.variable,
-      .data$resolution,
-      .data$aggregated_numerator,
-      .data$aggregated_denominator,
-      .data$lab_site_index
-    ) |>
+    dplyr::group_by(dplyr::across(-".value")) |>
     ggdist::median_qi(.width = ci_widths)
 
   result <- list(
