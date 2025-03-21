@@ -1,3 +1,11 @@
+variable_resolution_key <-
+  c(
+    "observed_ed_visits" = "daily",
+    "other_ed_visits" = "daily",
+    "observed_hospital_admissions" = "epiweekly",
+    "site_level_log_ww_conc" = "daily"
+  )
+
 prop_from_timeseries <- function(timeseries_model_dir,
                                  e_numerator_samples,
                                  required_columns,
@@ -62,7 +70,7 @@ prop_from_timeseries <- function(timeseries_model_dir,
   ) |>
     dplyr::rename("other_ed_visits" = ".value") |>
     dplyr::select(-".variable") |>
-    dplyr::filter(.data$.draw <= max(e_numerator_samples$.draw))
+    dplyr::filter(.data$.draw %in% e_numerator_samples$.draw)
 
   prop_disease_ed_visits_tbl <-
     dplyr::left_join(e_denominator_samples, e_numerator_samples,
@@ -101,41 +109,13 @@ epiweekly_samples_from_daily <- function(daily_samples,
   return(aggregated_samples)
 }
 
-#' Combine training and evaluation data for
-#' postprocessing.
-#'
-#' @param train_dat Training data, as a [`tibble`][tibble::tibble()].
-#' @param eval_dat Evaluation data, as a [`tibble`][tibble::tibble()].
-#' @return The combined data, as a [`tibble`][tibble::tibble()].
-#' @export
-combine_training_and_eval_data <- function(train_dat,
-                                           eval_dat) {
-  combined_dat <-
-    dplyr::bind_rows(train_dat, eval_dat) |>
-    tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
-    dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
-      (.data$observed_ed_visits + .data$other_ed_visits)) |>
-    tidyr::pivot_longer(
-      cols = -c("date", "geo_value", "disease", "data_type"),
-      names_to = ".variable", values_to = ".value"
-    ) |>
-    tidyr::drop_na()
-
-  return(combined_dat)
-}
-
 #' Read in and combine training and evaluation
 #' data from a model run directory.
 #'
 #' @param model_run_dir model run directoryh in which to look
 #' for data.
-#' @param epiweekly Get epiweekly data instead of daily data?
-#' Boolean, default `FALSE`.
 #' @export
-read_and_combine_data <- function(model_run_dir,
-                                  epiweekly = FALSE) {
-  prefix <- ifelse(epiweekly, "epiweekly_", "")
-
+read_and_combine_data <- function(model_run_dir) {
   data_cols <- readr::cols(
     date = readr::col_date(),
     geo_value = readr::col_character(),
@@ -145,24 +125,48 @@ read_and_combine_data <- function(model_run_dir,
     .value = readr::col_double()
   )
 
-  train_data_path <- fs::path(model_run_dir,
-    "data",
-    glue::glue("{prefix}combined_training_data"),
-    ext = "tsv"
-  )
-  train_dat <- readr::read_tsv(train_data_path, col_types = data_cols)
+  combined_dat <-
+    tidyr::expand_grid(
+      epiweekly = c(FALSE, TRUE),
+      root = c("combined_training_data", "combined_eval_data")
+    ) |>
+    dplyr::mutate(
+      prefix = ifelse(.data$epiweekly, "epiweekly_", ""),
+      aggregated = .data$epiweekly
+    ) |>
+    tidyr::unite("file_name", "prefix", "root", sep = "") |>
+    dplyr::mutate(file_path = fs::path(model_run_dir, "data",
+      file_name,
+      ext = "tsv"
+    )) |>
+    dplyr::mutate(data = purrr::map(
+      file_path,
+      \(x) readr::read_tsv(x, col_types = data_cols)
+    )) |>
+    dplyr::select(data, aggregated) |>
+    tidyr::unnest("data") |>
+    dplyr::mutate(resolution = dplyr::if_else(aggregated, "epiweekly",
+      variable_resolution_key[.data$.variable]
+    )) |>
+    dplyr::select(-"aggregated") |>
+    dplyr::distinct() |>
+    # suggest reforms to prep_data to prevent duplicate data being in each table
+    tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
+    dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
+      (.data$observed_ed_visits + .data$other_ed_visits)) |>
+    tidyr::pivot_longer(
+      cols = -c(
+        "date", "geo_value", "disease", "data_type", "lab_site_index",
+        "resolution"
+      ),
+      names_to = ".variable", values_to = ".value"
+    ) |>
+    tidyr::drop_na(".value")
 
-  eval_data_path <- fs::path(model_run_dir,
-    "data",
-    glue::glue("{prefix}combined_eval_data"),
-    ext = "tsv"
-  )
-  eval_dat <- readr::read_tsv(eval_data_path, col_types = data_cols)
-
-  combined_dat <- combine_training_and_eval_data(train_dat, eval_dat)
 
   return(combined_dat)
 }
+
 
 #' Combine a forecast in tidy draws based format
 #' with observed values to create a synthetic set
@@ -279,12 +283,6 @@ process_state_forecast <- function(model_run_dir,
                                    timeseries_model_name = NULL,
                                    ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
-  variable_resolution_key <-
-    c(
-      "observed_ed_visits" = "daily",
-      "observed_hospital_admissions" = "epiweekly"
-    )
-
   data_col_types <- readr::cols(
     date = readr::col_date(),
     geo_value = readr::col_character(),
