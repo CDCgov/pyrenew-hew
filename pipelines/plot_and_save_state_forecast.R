@@ -22,9 +22,23 @@ save_forecast_figures <- function(model_run_dir,
     timeseries_model_name,
     save = TRUE
   )
-  processed_forecast$daily_data <- read_and_combine_data(model_run_dir,
-    epiweekly = FALSE
-  )
+
+  processed_forecast$data <- read_and_combine_data(model_run_dir)
+
+  left_join(processed_forecast$ci, processed_forecast$data)
+
+  distinct_plot_tbl <-
+    processed_forecast$ci |>
+    distinct(
+      geo_value, disease, .variable, resolution, aggregated_numerator,
+      aggregated_denominator
+    ) |>
+    arrange(.variable)
+  # ^^^
+  # This should be all you need to make the plots
+  # just left merge each row with CI and data to get everything needed for
+  # plotting
+
 
 
   variables <- unique(processed_forecast$daily_samples[[".variable"]])
