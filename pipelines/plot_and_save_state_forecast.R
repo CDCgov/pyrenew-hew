@@ -14,6 +14,9 @@ purrr::walk(script_packages, \(pkg) {
 save_forecast_figures <- function(model_run_dir,
                                   pyrenew_model_name,
                                   timeseries_model_name = NULL) {
+  figure_dir <- path(model_run_dir, pyrenew_model_name, "figures")
+  dir_create(figure_dir)
+
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
   processed_forecast <- process_state_forecast(
@@ -23,92 +26,64 @@ save_forecast_figures <- function(model_run_dir,
     save = TRUE
   )
 
+  y_transforms <- c("identity" = "", "log10" = "_log")
+
   processed_forecast$data <- read_and_combine_data(model_run_dir)
 
-  left_join(processed_forecast$ci, processed_forecast$data)
-
-  distinct_plot_tbl <-
+  distinct_fig_type_tbl <-
     processed_forecast$ci |>
     distinct(
       geo_value, disease, .variable, resolution, aggregated_numerator,
       aggregated_denominator
     ) |>
-    arrange(.variable)
-  # ^^^
-  # This should be all you need to make the plots
-  # just left merge each row with CI and data to get everything needed for
-  # plotting
+    expand_grid(y_transform = names(y_transforms)) |>
+    filter(!(.variable == "site_level_log_ww_conc" & y_transform == "log10"))
 
-
-
-  variables <- unique(processed_forecast$daily_samples[[".variable"]])
-
-  y_transforms <- c("identity" = "", "log10" = "_log")
-
-  timescales <- "daily"
-  if (pyrenew_model_components[["e"]]) {
-    timescales <- c(timescales, "epiweekly", "epiweekly_with_epiweekly_other")
-    processed_forecast$epiweekly_data <- read_and_combine_data(model_run_dir,
-      epiweekly = TRUE
-    )
-  }
-  # This isn't quite right. Gives misleading file names to h figures
-  # They are labelled "daily" but are actually epiweekly
-  # No prefix at all would also be fine
-  # This section is a mess. It produces redundant plots.
   figure_save_tbl <-
-    expand_grid(
-      target_variable = variables,
-      y_transform = names(y_transforms),
-      timescale = timescales
-    ) |>
-    filter(
-      !(target_variable == "site_level_log_ww_conc" & y_transform == "log10")
-    ) |>
-    filter(!(.data$target_variable == "observed_ed_visits" &
-      .data$timescale == "epiweekly_with_epiweekly_other")) |>
-    mutate(
-      transform_name = y_transforms[y_transform],
-      dat_timescale = ifelse(timescale == "daily",
-        "daily",
-        "epiweekly"
-      )
-    ) |>
-    mutate(
-      figure_path = path(
-        model_run_dir,
-        pyrenew_model_name,
-        glue(
-          "{target_variable}_",
-          "{timescale}",
-          "{transform_name}"
-        ),
-        ext = "pdf"
-      ),
-      dat_to_use = glue("{dat_timescale}_data"),
-      ci_to_use = glue("{timescale}_ci")
-    ) |>
+    distinct_fig_type_tbl |>
     mutate(figure = pmap(
       list(
-        target_variable,
-        y_transform,
-        dat_to_use,
-        ci_to_use
+        geo_value,
+        disease,
+        .variable,
+        resolution,
+        aggregated_numerator,
+        aggregated_denominator,
+        y_transform
       ),
-      \(target_variable,
-        y_transform,
-        dat_to_use,
-        ci_to_use) {
+      \(geo_value,
+        disease,
+        .variable,
+        resolution,
+        aggregated_numerator,
+        aggregated_denominator,
+        y_transform) {
         make_forecast_figure(
-          target_variable = target_variable,
-          combined_dat = processed_forecast[[dat_to_use]],
-          forecast_ci = processed_forecast[[ci_to_use]],
-          data_vintage_date = parsed_model_run_dir$report_date,
-          y_transform = y_transform
+          geo_value,
+          disease,
+          .variable,
+          resolution,
+          aggregated_numerator,
+          aggregated_denominator,
+          y_transform,
+          processed_forecast$data,
+          processed_forecast$ci,
+          parsed_model_run_dir$report_date
         )
       }
-    ))
+    )) |>
+    mutate(file_name = glue(
+      "{.variable}_{resolution}_",
+      "{if_else(aggregated_numerator, 'agg_num', '')}_",
+      "{if_else(aggregated_denominator | ",
+      "is.na(aggregated_denominator), 'agg_denom', '')}",
+      "{y_transforms[y_transform]}"
+    ) |>
+      str_replace_all("_+", "_")) |>
+    mutate(figure_path = path(figure_dir, file_name, ext = "pdf"))
 
+
+  figure_save_tbl$figure[[1]]
 
   walk2(
     figure_save_tbl$figure, figure_save_tbl$figure_path,
