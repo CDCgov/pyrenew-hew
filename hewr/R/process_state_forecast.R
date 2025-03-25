@@ -6,11 +6,13 @@ variable_resolution_key <-
     "site_level_log_ww_conc" = "daily"
   )
 
-prop_from_timeseries <- function(timeseries_model_dir,
-                                 e_numerator_samples,
-                                 required_columns,
-                                 daily_training_dat,
-                                 epiweekly_training_dat) {
+load_and_aggregate_ts <- function(model_run_dir,
+                                  timeseries_model_name = "timeseries_e",
+                                  daily_training_dat,
+                                  epiweekly_training_dat,
+                                  required_columns) {
+  timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
+
   samples_file_names <- c(
     "daily_baseline_ts_forecast_samples",
     "epiweekly_baseline_ts_forecast_samples"
@@ -21,18 +23,11 @@ prop_from_timeseries <- function(timeseries_model_dir,
       samples_file_names,
       ext = "parquet"
     ) |>
-      purrr::map(\(x) {
-        arrow::read_parquet(x) |>
-          dplyr::filter(.data$.variable == "other_ed_visits")
-      }),
+      purrr::map(arrow::read_parquet),
     resolution = c("daily", "epiweekly"),
     observed = list(daily_training_dat, epiweekly_training_dat) |>
-      purrr::map(\(x) {
-        x |>
-          dplyr::filter(.data$.variable == "other_ed_visits") |>
-          dplyr::select(-"data_type", -"lab_site_index")
-      }),
-    aggregated_denominator = FALSE
+      purrr::map(\(x) dplyr::select(x, -"data_type", -"lab_site_index")),
+    aggregated_numerator = FALSE
   ) |>
     dplyr::mutate(data = purrr::pmap(
       list(.data$samples, .data$observed, .data$resolution == "epiweekly"),
@@ -44,12 +39,18 @@ prop_from_timeseries <- function(timeseries_model_dir,
         )
       }
     )) |>
-    dplyr::select("resolution", "aggregated_denominator", "data") |>
-    tidyr::unnest("data")
+    dplyr::select("resolution", "aggregated_numerator", "data") |>
+    tidyr::unnest("data") |>
+    dplyr::mutate(aggregated_denominator = if_else(
+      stringr::str_starts(.data$.variable, "prop_"),
+      FALSE,
+      NA
+    ))
 
-  aggregated_ts_samples <-
+  aggregated_ts_samples_non_prop <-
     unaggregated_ts_samples |>
     dplyr::filter(.data$resolution == "daily") |>
+    dplyr::filter(!stringr::str_starts(.data$.variable, "prop_")) |>
     forecasttools::daily_to_epiweekly(
       value_col = ".value",
       weekly_value_name = ".value",
@@ -60,18 +61,23 @@ prop_from_timeseries <- function(timeseries_model_dir,
     ) |>
     dplyr::mutate(
       resolution = "epiweekly",
-      aggregated_denominator = TRUE
+      aggregated_numerator = TRUE
     ) |>
     dplyr::select(tidyselect::any_of(required_columns))
 
-  e_denominator_samples <- dplyr::bind_rows(
-    unaggregated_ts_samples,
-    aggregated_ts_samples
-  ) |>
-    dplyr::rename("other_ed_visits" = ".value") |>
-    dplyr::select(-".variable") |>
-    dplyr::filter(.data$.draw %in% e_numerator_samples$.draw)
 
+
+  bind_rows(
+    unaggregated_ts_samples,
+    aggregated_ts_samples_non_prop
+  )
+}
+
+prop_from_timeseries <- function(e_denominator_samples,
+                                 e_numerator_samples,
+                                 required_columns,
+                                 daily_training_dat,
+                                 epiweekly_training_dat) {
   prop_disease_ed_visits_tbl <-
     dplyr::left_join(e_denominator_samples, e_numerator_samples,
       by = c("resolution", ".draw", "date", "geo_value", "disease")
@@ -256,49 +262,13 @@ group_time_index_to_date <- function(group_time_index,
     group_time_index
 }
 
-#' Process state forecast
-#'
-#' @param model_run_dir Model run directory
-#' @param pyrenew_model_name Name of directory containing pyrenew
-#' model outputs
-#' @param timeseries_model_name Name of directory containing timeseries
-#' model outputs
-#' @param ci_widths Vector of probabilities indicating one or more
-#' central credible intervals to compute. Passed as the `.width`
-#' argument to [ggdist::median_qi()]. Default `c(0.5, 0.8, 0.95)`.
-#' @param save Boolean indicating whether or not to save the output
-#' to parquet files. Default `TRUE`.
-#' @return a list of 8 tibbles:
-#' `daily_combined_training_eval_data`,
-#' `epiweekly_combined_training_eval_data`,
-#' `daily_samples`,
-#' `epiweekly_samples`,
-#' `epiweekly_with_epiweekly_other_samples`,
-#' `daily_ci`,
-#' `epiweekly_ci`,
-#' `epiweekly_with_epiweekly_other_ci`
-#' @export
-process_state_forecast <- function(model_run_dir,
-                                   pyrenew_model_name,
-                                   timeseries_model_name = NULL,
-                                   ci_widths = c(0.5, 0.8, 0.95),
-                                   save = TRUE) {
-  data_col_types <- readr::cols(
-    date = readr::col_date(),
-    geo_value = readr::col_character(),
-    disease = readr::col_character(),
-    data_type = readr::col_character(),
-    .variable = readr::col_character(),
-    .value = readr::col_double()
-  )
+process_pyrenew_model <- function(model_run_dir,
+                                  pyrenew_model_name,
+                                  ts_samples,
+                                  required_columns_e) {
   model_info <- parse_model_run_dir_path(model_run_dir)
-  pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
-  required_columns_e <- c(
-    ".chain", ".iteration", ".draw", "date", "geo_value", "disease",
-    ".variable", ".value", "resolution", "aggregated_numerator",
-    "aggregated_denominator"
-  )
+  pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
   if (pyrenew_model_components["w"]) {
     required_columns <- c(required_columns_e, "lab_site_index")
@@ -320,19 +290,6 @@ process_state_forecast <- function(model_run_dir,
   )
 
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
-
-  # Used for augmenting denominator forecasts with training period denominator
-  daily_training_dat <- readr::read_tsv(fs::path(
-    model_run_dir, "data", "combined_training_data",
-    ext = "tsv"
-  ), col_types = data_col_types)
-
-
-  # Used for augmenting denominator forecasts with training period denominator
-  epiweekly_training_dat <- readr::read_tsv(fs::path(
-    model_run_dir, "data", "epiweekly_combined_training_data",
-    ext = "tsv"
-  ), col_types = data_col_types)
 
   ## Process PyRenew posterior
   pyrenew_model_dir <- fs::path(
@@ -373,7 +330,7 @@ process_state_forecast <- function(model_run_dir,
 
   # must use gather_draws
   # use of spread_draws results in indices being dropped
-  pyrenew_samples_tidy <-
+  model_samples_tidy <-
     pyrenew_posterior_predictive |>
     tidybayes::gather_draws(!!!post_pred_vars_exp) |>
     dplyr::ungroup() |>
@@ -398,13 +355,13 @@ process_state_forecast <- function(model_run_dir,
   # For the E model, do epiweekly and process denominator
   if (pyrenew_model_components["e"]) {
     epiweekly_e_numerator_samples <- epiweekly_samples_from_daily(
-      daily_samples = pyrenew_samples_tidy,
+      daily_samples = model_samples_tidy,
       variables_to_aggregate = "observed_ed_visits",
       required_columns_e
     )
 
     e_numerator_samples <- dplyr::bind_rows(
-      pyrenew_samples_tidy |>
+      model_samples_tidy |>
         dplyr::select(tidyselect::all_of(required_columns_e)) |>
         dplyr::filter(.data$.variable == "observed_ed_visits"),
       epiweekly_e_numerator_samples
@@ -413,51 +370,145 @@ process_state_forecast <- function(model_run_dir,
       dplyr::select(-c(".variable", "aggregated_denominator"))
 
 
-    pyrenew_samples_tidy <- dplyr::bind_rows(
-      pyrenew_samples_tidy,
+    model_samples_tidy <- dplyr::bind_rows(
+      model_samples_tidy,
       epiweekly_e_numerator_samples
     ) |>
       dplyr::distinct()
 
 
     ## Process timeseries posterior
-    if (!is.null(timeseries_model_name)) {
-      timeseries_model_dir <- fs::path(
-        model_run_dir,
-        timeseries_model_name
-      )
+    if (!is.null(ts_samples)) {
+      e_denominator_samples <- ts_samples |>
+        filter(.data$.variable == "other_ed_visits") |>
+        mutate(aggregated_denominator = aggregated_numerator) |>
+        select(-aggregated_numerator) |>
+        dplyr::rename("other_ed_visits" = ".value") |>
+        dplyr::select(-".variable") |>
+        dplyr::filter(.data$.draw %in% e_numerator_samples$.draw)
 
       prop_e_samples <- prop_from_timeseries(
-        timeseries_model_dir,
+        e_denominator_samples,
         e_numerator_samples,
-        required_columns_e,
+        required_columns,
         daily_training_dat,
         epiweekly_training_dat
       )
 
-      pyrenew_samples_tidy <- dplyr::bind_rows(
-        pyrenew_samples_tidy,
+      model_samples_tidy <- dplyr::bind_rows(
+        model_samples_tidy,
         prop_e_samples
       ) |>
         dplyr::distinct()
     }
   }
+  return(model_samples_tidy)
+}
 
-  ci <- pyrenew_samples_tidy |>
-    dplyr::select(-c(".chain", ".iteration", ".draw")) |>
+#' Process state forecast
+#'
+#' @param model_run_dir Model run directory
+#' @param pyrenew_model_name Name of directory containing pyrenew
+#' model outputs
+#' @param timeseries_model_name Name of directory containing timeseries
+#' model outputs
+#' @param ci_widths Vector of probabilities indicating one or more
+#' central credible intervals to compute. Passed as the `.width`
+#' argument to [ggdist::median_qi()]. Default `c(0.5, 0.8, 0.95)`.
+#' @param save Boolean indicating whether or not to save the output
+#' to parquet files. Default `TRUE`.
+#' @return a list of 8 tibbles:
+#' `daily_combined_training_eval_data`,
+#' `epiweekly_combined_training_eval_data`,
+#' `daily_samples`,
+#' `epiweekly_samples`,
+#' `epiweekly_with_epiweekly_other_samples`,
+#' `daily_ci`,
+#' `epiweekly_ci`,
+#' `epiweekly_with_epiweekly_other_ci`
+#' @export
+process_state_forecast <- function(model_run_dir,
+                                   pyrenew_model_name = NULL,
+                                   timeseries_model_name = NULL,
+                                   ci_widths = c(0.5, 0.8, 0.95),
+                                   save = TRUE) {
+  if (is.null(pyrenew_model_name) && is.null(timeseries_model_name)) {
+    stop(
+      "Either `pyrenew_model_name` or `timeseries_model_name`",
+      "must be provided."
+    )
+  }
+
+  data_col_types <- readr::cols(
+    date = readr::col_date(),
+    geo_value = readr::col_character(),
+    disease = readr::col_character(),
+    data_type = readr::col_character(),
+    .variable = readr::col_character(),
+    .value = readr::col_double()
+  )
+
+  # Used for augmenting denominator forecasts with training period denominator
+  daily_training_dat <- readr::read_tsv(fs::path(
+    model_run_dir, "data", "combined_training_data",
+    ext = "tsv"
+  ), col_types = data_col_types)
+
+
+  # Used for augmenting denominator forecasts with training period denominator
+  epiweekly_training_dat <- readr::read_tsv(fs::path(
+    model_run_dir, "data", "epiweekly_combined_training_data",
+    ext = "tsv"
+  ), col_types = data_col_types)
+
+
+  required_columns_e <- c(
+    ".chain", ".iteration", ".draw", "date", "geo_value", "disease",
+    ".variable", ".value", "resolution", "aggregated_numerator",
+    "aggregated_denominator"
+  )
+
+  if (!is.null(timeseries_model_name)) {
+    ts_samples <- load_and_aggregate_ts(model_run_dir,
+      timeseries_model_name = "timeseries_e",
+      daily_training_dat,
+      epiweekly_training_dat,
+      required_columns = required_columns_e
+    )
+  }
+
+  if (is.null(pyrenew_model_name)) {
+    model_samples_tidy <- ts_samples
+  } else {
+    model_samples_tidy <- process_pyrenew_model(
+      model_run_dir,
+      pyrenew_model_name,
+      ts_samples,
+      required_columns = required_columns_e
+    )
+  }
+
+  ci <- model_samples_tidy |>
+    dplyr::select(-tidyselect::any_of(c(".chain", ".iteration", ".draw"))) |>
     dplyr::group_by(dplyr::across(-".value")) |>
     ggdist::median_qi(.width = ci_widths)
 
   result <- list(
-    "samples" = pyrenew_samples_tidy,
+    "samples" = model_samples_tidy,
     "ci" = ci
   )
 
   if (save) {
+    save_dir <- if (is.null(pyrenew_model_name)) {
+      fs::path(model_run_dir, timeseries_model_name)
+    } else {
+      fs::path(model_run_dir, pyrenew_model_name)
+    }
+
     purrr::iwalk(result, \(tab, name) {
       arrow::write_parquet(
         tab,
-        fs::path(pyrenew_model_dir, name, ext = "parquet")
+        fs::path(save_dir, name, ext = "parquet")
       )
     })
   }
