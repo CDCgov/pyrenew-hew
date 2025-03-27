@@ -12,13 +12,25 @@ purrr::walk(script_packages, \(pkg) {
 
 
 save_forecast_figures <- function(model_run_dir,
-                                  pyrenew_model_name,
-                                  timeseries_model_name = NULL) {
-  figure_dir <- path(model_run_dir, pyrenew_model_name, "figures")
+                                  pyrenew_model_name = NA,
+                                  timeseries_model_name = NA) {
+  if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
+    stop(
+      "Either `pyrenew_model_name` or `timeseries_model_name`",
+      "must be provided."
+    )
+  }
+
+  figure_dir <- fs::path(
+    model_run_dir,
+    dplyr::if_else(is.na(pyrenew_model_name),
+      timeseries_model_name,
+      pyrenew_model_name
+    ), "figures"
+  )
   dir_create(figure_dir)
 
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
-  pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
   processed_forecast <- process_state_forecast(
     model_run_dir,
     pyrenew_model_name,
@@ -81,9 +93,6 @@ save_forecast_figures <- function(model_run_dir,
     ) |>
       str_replace_all("_+", "_")) |>
     mutate(figure_path = path(figure_dir, file_name, ext = "pdf"))
-
-
-  figure_save_tbl$figure[[1]]
 
   walk2(
     figure_save_tbl$figure, figure_save_tbl$figure_path,

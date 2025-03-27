@@ -204,9 +204,11 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
   day_count <- ifelse(epiweekly, 7, 1)
   n_draws <- max(tidy_forecast[[sample_id_colname]])
 
+  target_variables <- unique(tidy_forecast$.variable)
   transformed_obs <- observed |>
     dplyr::filter(
-      .data[[date_colname]] < !!first_forecast_date
+      .data[[date_colname]] < !!first_forecast_date,
+      .data$.variable %in% target_variables
     ) |>
     tidyr::expand_grid(!!sample_id_colname := 1:n_draws)
 
@@ -428,11 +430,11 @@ process_pyrenew_model <- function(model_run_dir,
 #' `epiweekly_with_epiweekly_other_ci`
 #' @export
 process_state_forecast <- function(model_run_dir,
-                                   pyrenew_model_name = NULL,
-                                   timeseries_model_name = NULL,
+                                   pyrenew_model_name = NA,
+                                   timeseries_model_name = NA,
                                    ci_widths = c(0.5, 0.8, 0.95),
                                    save = TRUE) {
-  if (is.null(pyrenew_model_name) && is.null(timeseries_model_name)) {
+  if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
     stop(
       "Either `pyrenew_model_name` or `timeseries_model_name`",
       "must be provided."
@@ -468,7 +470,7 @@ process_state_forecast <- function(model_run_dir,
     "aggregated_denominator"
   )
 
-  if (!is.null(timeseries_model_name)) {
+  if (!is.na(timeseries_model_name)) {
     ts_samples <- load_and_aggregate_ts(model_run_dir,
       timeseries_model_name = "timeseries_e",
       daily_training_dat,
@@ -477,7 +479,7 @@ process_state_forecast <- function(model_run_dir,
     )
   }
 
-  if (is.null(pyrenew_model_name)) {
+  if (is.na(pyrenew_model_name)) {
     model_samples_tidy <- ts_samples
   } else {
     model_samples_tidy <- process_pyrenew_model(
@@ -499,11 +501,14 @@ process_state_forecast <- function(model_run_dir,
   )
 
   if (save) {
-    save_dir <- if (is.null(pyrenew_model_name)) {
-      fs::path(model_run_dir, timeseries_model_name)
-    } else {
-      fs::path(model_run_dir, pyrenew_model_name)
-    }
+    save_dir <- fs::path(
+      model_run_dir,
+      dplyr::if_else(is.na(pyrenew_model_name),
+        timeseries_model_name,
+        pyrenew_model_name
+      )
+    )
+
 
     purrr::iwalk(result, \(tab, name) {
       arrow::write_parquet(
