@@ -458,6 +458,8 @@ def main(
         "Performing baseline forecasting and non-target pathogen "
         "forecasting..."
     )
+    # Timeseries models get run, even if they aren't used.
+    # Surprised this doesn't create race condition problems.
     n_denominator_samples = n_samples * n_chains
     timeseries_forecasts(
         model_run_dir,
@@ -475,8 +477,8 @@ def main(
     plot_and_save_state_forecast(
         model_run_dir, pyrenew_model_name, "timeseries_e"
     )
-    if pyrenew_model_name == "pyrenew_e":
-        plot_and_save_state_forecast(model_run_dir, None, "timeseries_e")
+    # Timeseries models get processed, even if they aren't used.
+    plot_and_save_state_forecast(model_run_dir, None, "timeseries_e")
     logger.info("Postprocessing complete.")
 
     # if pyrenew_model_name == "pyrenew_e":
