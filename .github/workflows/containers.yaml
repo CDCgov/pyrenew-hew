@@ -15,44 +15,41 @@ env:
 
 jobs:
     build-pipeline-image:
-    runs-on: ubuntu-latest
-    name: Build image
+      runs-on: ubuntu-latest
+      name: Build image
+      outputs:
+        tag: ${{ steps.image-tag.outputs.tag }}
+      steps:
 
-    outputs:
-      tag: ${{ steps.image-tag.outputs.tag }}
+        - name: Checkout code
+          uses: actions/checkout@v4
 
-    steps:
+        - name: Extract branch name
+          shell: bash
+          run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+          id: branch-name
 
-      - name: Checkout code
-        uses: actions/checkout@v4
+        - name: Figure out tag (either latest if it is main or the branch name)
+          shell: bash
+          id: image-tag
+          run: |
+            if [ "${{ steps.branch-name.outputs.branch }}" = "${{ inputs.main-branch-name }}" ]; then
+              echo "tag=${{ inputs.main-branch-tag }}" >> $GITHUB_OUTPUT
+            else
+              echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
+            fi
 
-      - name: Extract branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: branch-name
+        - name: Docker Login
+          uses: docker/login-action@v3
+          with:
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Figure out tag (either latest if it is main or the branch name)
-        shell: bash
-        id: image-tag
-        run: |
-          if [ "${{ steps.branch-name.outputs.branch }}" = "${{ inputs.main-branch-name }}" ]; then
-            echo "tag=${{ inputs.main-branch-tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Docker Login
-        uses: docker/login-action@v3
-        with:
-
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker build and push
-        run: |
-          chmod +x $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh
-          $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh ${{ env.IMAGE_NAME }} ${{ steps.image-tag.outputs.tag }}
+        - name: Docker build and push
+          run: |
+            chmod +x $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh
+            $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh ${{ env.IMAGE_NAME }} ${{ steps.image-tag.outputs.tag }}
 
     acr-import:
       needs: build-pipeline-image
