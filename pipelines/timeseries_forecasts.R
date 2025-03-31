@@ -150,7 +150,8 @@ cdc_flat_forecast <- function(data,
 main <- function(
     model_run_dir, model_name, n_forecast_days = 28, n_samples = 2000,
     epiweekly = FALSE) {
-  prefix <- if_else(epiweekly, "epiweekly_", "daily_")
+  resolution <- if_else(epiweekly, "epiweekly", "daily")
+  prefix <- str_c(resolution, "_")
   base_data_name <- "combined_training_data"
   data_name <- if_else(epiweekly, str_c(prefix, base_data_name), base_data_name)
   data_frequency <- if_else(epiweekly, "1 week", "1 day")
@@ -227,19 +228,38 @@ main <- function(
       names_to = ".variable",
       values_to = ".value"
     ) |>
-    mutate(geo_value = geo_value, disease = disease) |>
+    mutate(
+      geo_value = geo_value, disease = disease, resolution = resolution,
+      aggregated_numerator = FALSE,
+      aggregated_denominator = if_else(str_starts(.variable, "prop_"),
+        FALSE, NA
+      )
+    ) |>
     select(
-      "date", ".draw", "geo_value", "disease", ".variable", ".value"
+      ".draw", "date", "geo_value", "disease",
+      ".variable", ".value", "resolution", "aggregated_numerator",
+      "aggregated_denominator"
     )
 
+
+
   baseline_cdc_forecast <-
-    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop) |>
+    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop,
+      by = c("date", "quantile_level")
+    ) |>
     pivot_longer(-c("date", "quantile_level"),
       names_to = ".variable", values_to = ".value"
     ) |>
-    mutate(geo_value = geo_value, disease = disease) |>
+    mutate(
+      geo_value = geo_value, disease = disease, resolution = resolution,
+      aggregated_numerator = FALSE,
+      aggregated_denominator = if_else(str_starts(.variable, "prop_"),
+        FALSE, NA
+      )
+    ) |>
     select(
-      "date", "geo_value", "disease", ".variable", "quantile_level", ".value"
+      "date", "geo_value", "disease", ".variable", "quantile_level", ".value",
+      "resolution", "aggregated_numerator", "aggregated_denominator"
     )
 
 
