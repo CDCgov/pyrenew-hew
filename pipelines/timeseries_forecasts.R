@@ -228,38 +228,19 @@ main <- function(
       names_to = ".variable",
       values_to = ".value"
     ) |>
-    mutate(
-      geo_value = geo_value, disease = disease, resolution = resolution,
-      aggregated_numerator = FALSE,
-      aggregated_denominator = if_else(str_starts(.variable, "prop_"),
-        FALSE, NA
-      )
-    ) |>
+    mutate(geo_value = geo_value, disease = disease) |>
     select(
-      ".draw", "date", "geo_value", "disease",
-      ".variable", ".value", "resolution", "aggregated_numerator",
-      "aggregated_denominator"
+      "date", ".draw", "geo_value", "disease", ".variable", ".value"
     )
 
-
-
   baseline_cdc_forecast <-
-    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop,
-      by = c("date", "quantile_level")
-    ) |>
+    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop) |>
     pivot_longer(-c("date", "quantile_level"),
       names_to = ".variable", values_to = ".value"
     ) |>
-    mutate(
-      geo_value = geo_value, disease = disease, resolution = resolution,
-      aggregated_numerator = FALSE,
-      aggregated_denominator = if_else(str_starts(.variable, "prop_"),
-        FALSE, NA
-      )
-    ) |>
+    mutate(geo_value = geo_value, disease = disease) |>
     select(
-      "date", "geo_value", "disease", ".variable", "quantile_level", ".value",
-      "resolution", "aggregated_numerator", "aggregated_denominator"
+      "date", "geo_value", "disease", ".variable", "quantile_level", ".value"
     )
 
 
