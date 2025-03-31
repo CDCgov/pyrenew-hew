@@ -501,13 +501,12 @@ process_state_forecast <- function(model_run_dir,
   )
 
   if (save) {
-    save_dir <- fs::path(
-      model_run_dir,
-      dplyr::if_else(is.na(pyrenew_model_name),
-        timeseries_model_name,
-        pyrenew_model_name
-      )
+    model_name <- dplyr::if_else(is.na(pyrenew_model_name),
+      timeseries_model_name,
+      pyrenew_model_name
     )
+
+    save_dir <- fs::path(model_run_dir, model_name)
 
 
     purrr::iwalk(result, \(tab, name) {
