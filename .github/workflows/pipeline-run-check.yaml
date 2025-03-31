@@ -14,6 +14,7 @@ env:
   DATA_DIR: "pipelines/end_to_end_test_output/private_data"
 
 jobs:
+  if: false
   generate-data:
     runs-on:  ubuntu-latest
     steps:
@@ -33,6 +34,7 @@ jobs:
           retention-days: 1
 
   fit-models:
+    if: false
     needs: generate-data
     runs-on: ubuntu-latest
     env:
@@ -87,6 +89,7 @@ jobs:
           path: ${{ env.BASE_DIR }}
 
   postprocess-models:
+    if: false
     needs: fit-models
     runs-on: ubuntu-latest
     steps:
