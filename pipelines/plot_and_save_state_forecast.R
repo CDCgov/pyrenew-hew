@@ -21,13 +21,13 @@ save_forecast_figures <- function(model_run_dir,
     )
   }
 
-  figure_dir <- fs::path(
-    model_run_dir,
-    dplyr::if_else(is.na(pyrenew_model_name),
-      timeseries_model_name,
-      pyrenew_model_name
-    ), "figures"
+  model_name <- dplyr::if_else(is.na(pyrenew_model_name),
+    timeseries_model_name,
+    pyrenew_model_name
   )
+
+
+  figure_dir <- fs::path(model_run_dir, model_name, "figures")
   dir_create(figure_dir)
 
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
@@ -85,10 +85,10 @@ save_forecast_figures <- function(model_run_dir,
       }
     )) |>
     mutate(file_name = glue(
-      "{.variable}_{resolution}_",
-      "{if_else(aggregated_numerator, 'agg_num', '')}_",
-      "{if_else(aggregated_denominator | ",
-      "is.na(aggregated_denominator), 'agg_denom', '')}",
+      "{model_name}_",
+      "{.variable}_{resolution}",
+      "{if_else(base::isTRUE(aggregated_numerator), '_agg_num', '')}",
+      "{if_else(base::isTRUE(aggregated_denominator), '_agg_denom', '')}",
       "{y_transforms[y_transform]}"
     ) |>
       str_replace_all("_+", "_")) |>
