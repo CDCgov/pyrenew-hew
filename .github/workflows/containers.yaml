@@ -14,31 +14,96 @@ env:
   IMAGE_NAME: pyrenew-hew
 
 jobs:
+    build-pipeline-image:
+    runs-on: ubuntu-latest
+    name: Build image
 
-  build-and-push-image:
-    runs-on: cfa-cdcgov
-    name: Build and push image
+    outputs:
+      tag: ${{ steps.image-tag.outputs.tag }}
 
     steps:
-      - name: Login to Azure
-        id: azure_login_2
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: branch-name
+
+      - name: Figure out tag (either latest if it is main or the branch name)
+        shell: bash
+        id: image-tag
+        run: |
+          if [ "${{ steps.branch-name.outputs.branch }}" = "${{ inputs.main-branch-name }}" ]; then
+            echo "tag=${{ inputs.main-branch-tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker build and push
+        run: |
+          chmod +x $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh
+          $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh ${{ env.IMAGE_NAME }} ${{ steps.image-tag.outputs.tag }}
+
+  acr-import:
+    needs: build-pipeline-image
+    runs-on: cfa-cdcgov-aca
+
+    name: Copy image from GHCR to ACR
+    outputs:
+      tag: ${{ needs.build-pipeline-image.outputs.tag }}
+    steps:
+
+      - name: Azure login with OIDC
         uses: azure/login@v2
         with:
           creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
 
-      - name: Login to ACR
-        run: az acr login --name ${{ vars.CONTAINER_REGISTRY_NAME }}
+      - name: Copy Image
+        run: |
+          IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ needs.build-pipeline-image.outputs.tag }}
+          az acr import --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
+            --source "ghcr.io/cdcgov/$IMAGE_TAG" \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
+            --image "$IMAGE_TAG" \ #TODO
+            --force && echo 'Copied image!'
+            if [ $? -ne 0 ]; then
+              echo "Failed to copy image"
+            fi
+  # build-and-push-image:
+  #   runs-on: ubuntu-latest
+  #   name: Build and push image
 
-      - name: Build and push image
-        id: build-push
-        uses: CDCgov/cfa-actions/twostep-container-build@v1.2.1
-        with:
-          registry: ${{ vars.CONTAINER_REGISTRY_NAME }}.azurecr.io/
-          container-file-1: ./Containerfile.dependencies
-          container-file-2: ./Containerfile
-          first-step-cache-key: docker-dependencies-${{ runner.os }}-${{ hashFiles('./Containerfile.dependencies') }}
-          image: ${{ env.IMAGE_NAME }}
-          build-args-2: |
-            TAG=${{ steps.image.outputs.tag }}
-            GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
-            GIT_BRANCH_NAME=${{ steps.branch.outputs.name }}
+  #   steps:
+  #     - name: Login to Azure
+  #       id: azure_login_2
+  #       uses: azure/login@v2
+  #       with:
+  #         creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
+
+  #     - name: Login to ACR
+  #       run: az acr login --name ${{ vars.CONTAINER_REGISTRY_NAME }}
+
+  #     - name: Build and push image
+  #       id: build-push
+  #       uses: CDCgov/cfa-actions/twostep-container-build@v1.2.1
+  #       with:
+  #         registry: ${{ vars.CONTAINER_REGISTRY_NAME }}.azurecr.io/
+  #         container-file-1: ./Containerfile.dependencies
+  #         container-file-2: ./Containerfile
+  #         first-step-cache-key: docker-dependencies-${{ runner.os }}-${{ hashFiles('./Containerfile.dependencies') }}
+  #         image: ${{ env.IMAGE_NAME }}
+  #         build-args-2: |
+  #           TAG=${{ steps.image.outputs.tag }}
+  #           GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
+  #           GIT_BRANCH_NAME=${{ steps.branch.outputs.name }}
