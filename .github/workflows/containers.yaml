@@ -54,32 +54,32 @@ jobs:
           chmod +x $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh
           $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh ${{ env.IMAGE_NAME }} ${{ steps.image-tag.outputs.tag }}
 
-  acr-import:
-    needs: build-pipeline-image
-    runs-on: cfa-cdcgov-aca
+    acr-import:
+      needs: build-pipeline-image
+      runs-on: cfa-cdcgov-aca
 
-    name: Copy image from GHCR to ACR
-    outputs:
-      tag: ${{ needs.build-pipeline-image.outputs.tag }}
-    steps:
+      name: Copy image from GHCR to ACR
+      outputs:
+        tag: ${{ needs.build-pipeline-image.outputs.tag }}
+      steps:
 
-      - name: Azure login with OIDC
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
+        - name: Azure login with OIDC
+          uses: azure/login@v2
+          with:
+            creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
 
-      - name: Copy Image
-        run: |
-          IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ needs.build-pipeline-image.outputs.tag }}
-          az acr import --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
-            --source "ghcr.io/cdcgov/$IMAGE_TAG" \
-            --username ${{ github.actor }} \
-            --password ${{ secrets.GITHUB_TOKEN }} \
-            --image "$IMAGE_TAG" \ #TODO
-            --force && echo 'Copied image!'
-            if [ $? -ne 0 ]; then
-              echo "Failed to copy image"
-            fi
+        - name: Copy Image
+          run: |
+            IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ needs.build-pipeline-image.outputs.tag }}
+            az acr import --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
+              --source "ghcr.io/cdcgov/$IMAGE_TAG" \
+              --username ${{ github.actor }} \
+              --password ${{ secrets.GITHUB_TOKEN }} \
+              --image "$IMAGE_TAG" \ #TODO
+              --force && echo 'Copied image!'
+              if [ $? -ne 0 ]; then
+                echo "Failed to copy image"
+              fi
   # build-and-push-image:
   #   runs-on: ubuntu-latest
   #   name: Build and push image
