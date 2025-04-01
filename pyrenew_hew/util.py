@@ -107,8 +107,9 @@ def validate_hew_letters(letters: str) -> None:
     letterset = set(letters)
     if not (letters.lower() == "null" or letterset.issubset(valid_letters)):
         raise ValueError(
-            f"{letters} do not define a valid Pyrenew-HEW "
-            "family. Expected either a string consisting "
+            f"The letters in '{letters}' do not "
+            "define a valid Pyrenew-HEW-family model. "
+            "Expected either a string consisting "
             "only of combinations of the letters "
             f"{valid_letters} or the string 'null'"
         )
