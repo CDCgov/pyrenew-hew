@@ -34,7 +34,7 @@ jobs:
           wait_for_completion: true
           print_logs: true
           script: |
-            az login --service-principal \&& 
+            az login --service-principal \
             --username ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).clientId }} \
             --password ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).clientSecret }} \
             --tenant ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).tenantId }}
