@@ -8,7 +8,6 @@ import os
 import re
 from pathlib import Path
 
-import polars as pl
 from forecasttools import ensure_listlike, location_table
 
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}

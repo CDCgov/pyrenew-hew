@@ -76,6 +76,45 @@ def hew_letters_from_flags(
     return result
 
 
+def validate_hew_letters(letters: str) -> None:
+    """
+    Confirm that a string of letters defines a
+    valid Pyrenew-HEW family model, raising
+    an error if not.
+
+    Valid letters are combinations of
+    'h', 'e', and 'w' (repeats permitted and ignored)
+    or the string 'null'.
+
+    Parameters
+    ----------
+    letters
+        The string of letters to validate.
+
+    Returns
+    -------
+    None
+        If validation passes.
+
+    Raises
+    ------
+    ValueError
+        if input is neither ``'null'`` nor a
+        combination of the letters
+        ``'h'``, ``'e'``, and ``'w'``.
+    """
+    valid_letters = {"h", "e", "w"}
+    letterset = set(letters)
+    if not (letters.lower() == "null" or letterset.issubset(valid_letters)):
+        raise ValueError(
+            f"{letters} do not define a valid Pyrenew-HEW "
+            "family. Expected either a string consisting "
+            "only of combinations of the letters "
+            f"{valid_letters} or the string 'null'"
+        )
+    return None
+
+
 def flags_from_hew_letters(
     hew_letters: str, flag_prefix: str = "fit"
 ) -> dict[str, bool]:
@@ -117,16 +156,7 @@ def flags_from_hew_letters(
         combination of the letters
         ``'h'``, ``'e'``, and ``'w'``.
     """
-    valid_letters = {"h", "e", "w"}
-    letterset = set(hew_letters)
-    if not (
-        hew_letters.lower() == "null" or letterset.issubset(valid_letters)
-    ):
-        raise ValueError(
-            "Input failed validation. Must either be "
-            "a string consisting only of the letters "
-            f"in {valid_letters} or the string 'null'"
-        )
+    validate_hew_letters(hew_letters)
     return {
         f"{flag_prefix}_hospital_admissions": "h" in hew_letters,
         f"{flag_prefix}_ed_visits": "e" in hew_letters,

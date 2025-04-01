@@ -5,7 +5,6 @@ of pyrenew-hew on Azure Batch.
 
 import argparse
 import itertools
-import re
 from pathlib import Path
 
 from azure.batch import models
@@ -15,7 +14,7 @@ from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
 
-from pyrenew_hew.util import hew_letters_from_flags
+from pyrenew_hew.util import validate_hew_letters
 
 
 def main(
@@ -113,23 +112,8 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
-    signals = ["ed_visits", "hospital_admissions", "wastewater"]
-
-    for signal in signals:
-        fit = locals().get(f"fit_{signal}", False)
-        forecast = locals().get(f"forecast_{signal}", False)
-        if fit and not forecast:
-            raise ValueError(
-                "This pipeline does not currently support "
-                "fitting to but not forecasting a signal. "
-                f"Asked to fit but not forecast {signal}."
-            )
-    any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
-    if not any_fit:
-        raise ValueError(
-            "pyrenew_null (fitting to no signals) "
-            "is not supported by this pipeline"
-        )
+    validate_hew_letters(model_letters)
+    validate_hew_letters(additional_forecast_letters)
 
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
