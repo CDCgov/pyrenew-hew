@@ -9,6 +9,7 @@ from pyrenew_hew.util import (
     hew_models,
     powerset,
     pyrenew_model_name_from_flags,
+    validate_hew_letters,
 )
 
 
@@ -68,10 +69,19 @@ def test_hew_naming_from_flags(
     )
 
 
+def test_validate_hew_letters():
+    with pytest.raises(ValueError, match="Expected either a string"):
+        validate_hew_letters("hewr")
+    with pytest.raises(ValueError, match="Expected either a string"):
+        validate_hew_letters("nulle")
+    validate_hew_letters("hew")
+    validate_hew_letters("heewwh")
+
+
 def test_flag_from_string_errors():
-    with pytest.raises(ValueError, match="Must either be a string"):
+    with pytest.raises(ValueError, match="Expected either a string"):
         flags_from_hew_letters("hewr")
-    with pytest.raises(ValueError, match="Must either be a string"):
+    with pytest.raises(ValueError, match="Expected either a string"):
         flags_from_hew_letters("nulle")
     with pytest.raises(ValueError, match="pyrenew_"):
         flags_from_pyrenew_model_name("a_pyrenew_hew")
