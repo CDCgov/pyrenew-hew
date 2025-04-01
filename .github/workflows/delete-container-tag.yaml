@@ -27,7 +27,7 @@ jobs:
           fi
 
       - name: ACR Import
-        uses: CDCgov/cfa-actions/runner-action@1.3.0
+        uses: CDCgov/cfa-actions/runner-action@v1.3.0
         with:
           github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }}
           github_app_pem: ${{ secrets.CDCENT_ACTOR_APP_PEM }}

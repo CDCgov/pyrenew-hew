@@ -59,7 +59,7 @@ jobs:
       - name: ACR Import
         uses: CDCgov/cfa-actions/runner-action@v1.3.0
         with:
-          github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }}
+          github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }} 
           github_app_pem: ${{ secrets.CDCENT_ACTOR_APP_PEM }}
           wait_for_completion: true
           print_logs: true
@@ -81,31 +81,3 @@ jobs:
             if [ $? -ne 0 ]; then
               echo "Failed to copy image"
             fi      
-
-  # build-and-push-image:
-  #   runs-on: ubuntu-latest
-  #   name: Build and push image
-
-  #   steps:
-  #     - name: Login to Azure
-  #       id: azure_login_2
-  #       uses: azure/login@v2
-  #       with:
-  #         creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
-
-  #     - name: Login to ACR
-  #       run: az acr login --name ${{ vars.CONTAINER_REGISTRY_NAME }}
-
-  #     - name: Build and push image
-  #       id: build-push
-  #       uses: CDCgov/cfa-actions/twostep-container-build@v1.2.1
-  #       with:
-  #         registry: ${{ vars.CONTAINER_REGISTRY_NAME }}.azurecr.io/
-  #         container-file-1: ./Containerfile.dependencies
-  #         container-file-2: ./Containerfile
-  #         first-step-cache-key: docker-dependencies-${{ runner.os }}-${{ hashFiles('./Containerfile.dependencies') }}
-  #         image: ${{ env.IMAGE_NAME }}
-  #         build-args-2: |
-  #           TAG=${{ steps.image.outputs.tag }}
-  #           GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
-  #           GIT_BRANCH_NAME=${{ steps.branch.outputs.name }}
