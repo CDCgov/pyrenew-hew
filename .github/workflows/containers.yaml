@@ -80,4 +80,5 @@ jobs:
 
             if [ $? -ne 0 ]; then
               echo "Failed to copy image"
-            fi      
+            fi  
+                
