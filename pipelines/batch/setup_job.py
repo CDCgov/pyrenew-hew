@@ -1,11 +1,10 @@
 """
-Set up a multi-location, multi-disease production run
+Set up a multi-location, multi-disease run
 of pyrenew-hew on Azure Batch.
 """
 
 import argparse
 import itertools
-import re
 from pathlib import Path
 
 from azure.batch import models
@@ -15,20 +14,16 @@ from azuretools.job import create_job_if_not_exists
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
 
-from pyrenew_hew.util import hew_letters_from_flags
+from pyrenew_hew.util import validate_hew_letters
 
 
 def main(
+    model_letters: str,
     job_id: str,
     pool_id: str,
     diseases: str | list[str],
     output_subdir: str | Path = "./",
-    fit_ed_visits: bool = False,
-    fit_hospital_admissions: bool = False,
-    fit_wastewater: bool = False,
-    forecast_ed_visits: bool = False,
-    forecast_hospital_admissions: bool = False,
-    forecast_wastewater: bool = False,
+    additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     n_training_days: int = 90,
@@ -61,24 +56,6 @@ def main(
      output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
-
-    fit_ed_visits
-        Fit to ED visits data? Default ``False``.
-
-    fit_hospital_admissions
-        Fit to hospital admissions data? Default ``False``.
-
-    fit_wastewater
-        Fit to wastewater data? Default ``False``.
-
-    forecast_ed_visits
-        Forecast ED visits? Default ``False``.
-
-    forecast_hospital_admissions
-        Forecast hospital admissions? Default ``False``.
-
-    forecast_wastewater
-        Forecast wastewater concentrations? Default ``False``.
 
     container_image_name
         Name of the container to use for the job.
@@ -135,23 +112,8 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
-    signals = ["ed_visits", "hospital_admissions", "wastewater"]
-
-    for signal in signals:
-        fit = locals().get(f"fit_{signal}", False)
-        forecast = locals().get(f"forecast_{signal}", False)
-        if fit and not forecast:
-            raise ValueError(
-                "This pipeline does not currently support "
-                "fitting to but not forecasting a signal. "
-                f"Asked to fit but not forecast {signal}."
-            )
-    any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
-    if not any_fit:
-        raise ValueError(
-            "pyrenew_null (fitting to no signals) "
-            "is not supported by this pipeline"
-        )
+    validate_hew_letters(model_letters)
+    validate_hew_letters(additional_forecast_letters)
 
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
@@ -203,12 +165,6 @@ def main(
         ],
     )
 
-    hew_flags = hew_letters_from_flags(
-        fit_ed_visits=fit_ed_visits,
-        fit_hospital_admissions=fit_hospital_admissions,
-        fit_wastewater=fit_wastewater,
-    )
-
     base_call = (
         "/bin/bash -c '"
         "python pipelines/forecast_state.py "
@@ -228,7 +184,8 @@ def main(
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         "--no-score "
-        f"--model-letters {hew_flags} "
+        f"--model-letters {model_letters} "
+        f"--additional-forecast-letters {additional_forecast_letters} "
         "--eval-data-path "
         "nssp-etl/latest_comprehensive.parquet"
         "'"
@@ -264,6 +221,14 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "model_letters",
+        type=str,
+        help=(
+            "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
+        ),
+    )
 
     parser.add_argument(
         "job_id", type=str, help="Name for the Azure batch job"
@@ -310,48 +275,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--fit-ed-visits",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, fit to ED visit data.",
-    )
-
-    parser.add_argument(
-        "--fit-hospital-admissions",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help=("If provided, fit to hospital admissions data."),
-    )
-
-    parser.add_argument(
-        "--fit-wastewater",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, fit to wastewater data.",
-    )
-
-    parser.add_argument(
-        "--forecast-ed-visits",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, forecast ED visits.",
-    )
-
-    parser.add_argument(
-        "--forecast-hospital-admissions",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help=("If provided, forecast hospital admissions."),
-    )
-
-    parser.add_argument(
-        "--forecast-wastewater",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="If provided, forecast wastewater concentrations.",
-    )
-
-    parser.add_argument(
         "--n-training-days",
         type=int,
         help=(
@@ -395,6 +318,16 @@ if __name__ == "__main__":
             "data: 'AS GU MO MP PR UM VI WY'."
         ),
         default="AS GU MO MP PR UM VI WY",
+    )
+
+    parser.add_argument(
+        "--additional-forecast-letters",
+        type=str,
+        help=(
+            "Forecast the following signals even if they were not fit. "
+            "Fit signals are always forecast."
+        ),
+        default="he",
     )
 
     args = parser.parse_args()
