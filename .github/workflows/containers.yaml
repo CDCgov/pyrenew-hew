@@ -53,30 +53,35 @@ jobs:
 
     acr-import:
       needs: build-pipeline-image
-      runs-on: cfa-cdcgov-aca
-
-      name: Copy image from GHCR to ACR
-      outputs:
-        tag: ${{ needs.build-pipeline-image.outputs.tag }}
+      name: Import image from GHCR
+      runs-on: ubuntu-latest
       steps:
-
-        - name: Azure login with OIDC
-          uses: azure/login@v2
-          with:
-            creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
-
-        - name: Copy Image
-          run: |
+      - name: ACR Import
+        uses: CDCgov/cfa-actions/runner-action@1.3.0
+        with:
+          github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
             IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ needs.build-pipeline-image.outputs.tag }}
+
+            az login --service-principal \
+            --username ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).clientId }} \
+            --password ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).clientSecret }} \
+            --tenant ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).tenantId }}
+
             az acr import --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
               --source "ghcr.io/cdcgov/$IMAGE_TAG" \
-              --username ${{ github.actor }} \
+              --username '${{ github.repository_owner }}'\
               --password ${{ secrets.GITHUB_TOKEN }} \
-              --image "$IMAGE_TAG" \ #TODO
+              --image "$IMAGE_TAG" \
               --force && echo 'Copied image!'
-              if [ $? -ne 0 ]; then
-                echo "Failed to copy image"
-              fi
+
+            if [ $? -ne 0 ]; then
+              echo "Failed to copy image"
+            fi      
+
   # build-and-push-image:
   #   runs-on: ubuntu-latest
   #   name: Build and push image
