@@ -100,6 +100,15 @@ def main(
     base_forecast_dir: Path | str,
     path_to_latest_data: Path | str,
     diseases: list[str] = ["COVID-19", "Influenza"],
+    locations_exclude: list[str] = [
+        "AS",
+        "GU",
+        "MO",
+        "MP",
+        "PR",
+        "UM",
+        "VI",
+    ],
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
