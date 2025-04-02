@@ -144,7 +144,20 @@ if __name__ == "__main__":
             "Default 'COVID-19 Influenza' (i.e. postprocess both)."
         ),
     )
+    parser.add_argument(
+        "--locations-exclude",
+        type=str,
+        help=(
+            "Two-letter USPS location abbreviations to "
+            "exclude from the job, as a whitespace-separated "
+            "string. Defaults to a set of locations for which "
+            "we typically do not have available NSSP ED visit "
+            "data: 'AS GU MO MP PR UM VI'."
+        ),
+        default="AS GU MO MP PR UM VI",
+    )
 
     args = parser.parse_args()
     args.diseases = args.diseases.split()
+    args.locations_exclude = args.locations_exclude.split()
     main(**vars(args))
