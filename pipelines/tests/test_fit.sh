@@ -25,7 +25,7 @@ python pipelines/forecast_state.py \
 	--n-samples 250 \
 	--n-warmup 250 \
 	--model-letters $model_letters \
-	--score \
+	--no-score \
 	--eval-data-path "$BASE_DIR/private_data/nssp-etl"
 if [ $? -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"

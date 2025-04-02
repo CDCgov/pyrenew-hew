@@ -402,16 +402,16 @@ class ww_site_level_dynamics_model(Model):  # numpydoc ignore=GL08
 
         hosp_wday_effect = tile_until_n(hosp_wday_effect_raw, n_datapoints)
 
-        potential_latent_hospital_admissions = (
+        potential_latent_hospital_admissions, hospital_admissions_offset = (
             compute_delay_ascertained_incidence(
                 p_observed_given_incident=1,
                 latent_incidence=latent_infections,
                 delay_incidence_to_observation_pmf=inf_to_hosp,
-            )[-n_datapoints:]
+            )
         )
 
         latent_hospital_admissions = (
-            potential_latent_hospital_admissions
+            potential_latent_hospital_admissions[-n_datapoints:]
             * ihr
             * hosp_wday_effect
             * self.state_pop
