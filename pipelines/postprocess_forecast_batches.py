@@ -41,12 +41,15 @@ def create_hubverse_table(
 
     output_path = Path(model_batch_dir_path, output_file_name)
 
+    locations_exclude_arg = ",".join(locations_exclude)
+
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/hubverse_create_table.R",
             f"{model_batch_dir_path}",
             f"{output_path}",
+            f"--locations-exclude={locations_exclude_arg}",
         ],
         capture_output=True,
     )
@@ -99,7 +102,7 @@ def process_model_batch_dir(
     logger.info("Creating hubverse table...")
     create_hubverse_table(model_batch_dir_path, locations_exclude)
     logger.info("Creating pointinterval plot...")
-    create_pointinterval_plot(model_batch_dir_path, locations_exclude)
+    create_pointinterval_plot(model_batch_dir_path)
 
 
 def main(
