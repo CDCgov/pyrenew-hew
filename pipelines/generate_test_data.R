@@ -304,7 +304,6 @@ generate_fake_param_data <-
       )
   }
 
-
 #' Generate Fake NWSS Data
 #'
 #' This function generates fake wastewater data for a
@@ -360,7 +359,6 @@ generate_fake_nwss_data <- function(
     ww_data, fs::path(ww_dir, "bronze", ext = "parquet")
   )
 }
-
 
 main <- function(private_data_dir,
                  target_diseases,
