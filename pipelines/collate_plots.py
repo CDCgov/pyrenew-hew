@@ -33,7 +33,9 @@ def merge_pdfs(to_merge: list[Path], output_path: Path) -> None:
     pdf_writer.write(str(output_path))
 
 
-def collect_pdfs(model_batch_dir: Path) -> dict[str, dict[str, list[Path]]]:
+def collect_pdfs(
+    model_batch_dir: Path, locations_exclude: list[str]
+) -> dict[str, dict[str, list[Path]]]:
     """Find and group PDFs by their shared filenames within each model folder."""
     model_runs_dir = model_batch_dir / "model_runs"
 
@@ -44,6 +46,9 @@ def collect_pdfs(model_batch_dir: Path) -> dict[str, dict[str, list[Path]]]:
     pdf_groups = defaultdict(lambda: defaultdict(list))
 
     for location_path in model_runs_dir.iterdir():
+        if location_path.name in locations_exclude:
+            continue
+
         if not location_path.is_dir():
             continue
 
@@ -58,9 +63,11 @@ def collect_pdfs(model_batch_dir: Path) -> dict[str, dict[str, list[Path]]]:
     return pdf_groups
 
 
-def merge_and_save_pdfs(model_batch_dir: Path) -> None:
+def merge_and_save_pdfs(
+    model_batch_dir: Path, locations_exclude: list[str]
+) -> None:
     """Merge PDFs by shared name and save to model_batch_dir."""
-    pdf_groups = collect_pdfs(model_batch_dir)
+    pdf_groups = collect_pdfs(model_batch_dir, locations_exclude)
 
     if not pdf_groups:
         print("No PDFs found to merge.")

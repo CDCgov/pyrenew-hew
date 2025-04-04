@@ -28,7 +28,9 @@ def _hubverse_table_filename(
     return f"{report_date}-{disease.lower()}-hubverse-table.parquet"
 
 
-def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
+def create_hubverse_table(
+    model_batch_dir_path: str | Path, locations_exclude: list[str]
+) -> None:
     model_batch_dir_path = Path(model_batch_dir_path)
     model_batch_dir_name = model_batch_dir_path.name
     batch_info = parse_model_batch_dir_name(model_batch_dir_name)
@@ -55,7 +57,9 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     return None
 
 
-def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
+def create_pointinterval_plot(
+    model_batch_dir_path: Path | str, locations_exclude: list[str]
+) -> None:
     model_batch_dir_path = Path(model_batch_dir_path)
     f_info = parse_model_batch_dir_name(model_batch_dir_path.name)
     disease = f_info["disease"]
@@ -85,15 +89,17 @@ def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
 
 
 def process_model_batch_dir(
-    model_batch_dir_path: Path, plot_ext: str = "pdf"
+    model_batch_dir_path: Path,
+    locations_exclude: list[str],
+    plot_ext: str = "pdf",
 ) -> None:
     logger = logging.getLogger(__name__)
     logger.info("Collating plots...")
-    cp.merge_and_save_pdfs(model_batch_dir_path)
+    cp.merge_and_save_pdfs(model_batch_dir_path, locations_exclude)
     logger.info("Creating hubverse table...")
-    create_hubverse_table(model_batch_dir_path)
+    create_hubverse_table(model_batch_dir_path, locations_exclude)
     logger.info("Creating pointinterval plot...")
-    create_pointinterval_plot(model_batch_dir_path)
+    create_pointinterval_plot(model_batch_dir_path, locations_exclude)
 
 
 def main(
@@ -116,7 +122,7 @@ def main(
     for batch_dir in to_process:
         logger.info(f"Processing {batch_dir}...")
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)
-        process_model_batch_dir(model_batch_dir_path)
+        process_model_batch_dir(model_batch_dir_path, locations_exclude)
         logger.info(f"Finished processing {batch_dir}")
     logger.info("Created observed data tables for visualization...")
     save_observed_data_tables(
@@ -156,6 +162,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--locations-exclude",
         type=str,
+        default="AS GU MO MP PR UM VI",
         help=(
             "Two-letter USPS location abbreviations to "
             "exclude from the job, as a whitespace-separated "
@@ -163,7 +170,6 @@ if __name__ == "__main__":
             "we typically do not have available NSSP ED visit "
             "data: 'AS GU MO MP PR UM VI'."
         ),
-        default="AS GU MO MP PR UM VI",
     )
 
     args = parser.parse_args()
