@@ -1,88 +1,119 @@
 #' Make Forecast Figure
 #'
-#' @param target_variable a variable matching the .variable columns
-#' in `combined_dat` and `forecast_ci`
-#' @param combined_dat `combined_dat` from the result of
-#' [process_state_forecast()]
-#' @param forecast_ci `forecast_ci` from the result of
-#' [process_state_forecast()]
+#' @param geo_value character matching the geo_value column in `dat` and `ci`
+#' @param disease character matching the disease column in `dat` and `ci`
+#' @param .variable character matching the .variable column in `dat` and `ci`
+#' @param resolution character matching the resolution column in `dat` and `ci`
+#' @param aggregated_numerator character matching the aggregated_numerator
+#' column in `dat` and `ci`
+#' @param aggregated_denominator character matching the aggregated_denominator
+#' column in `dat` and `ci`
+#' @param dat a data frame containing the data to be plotted
+#' @param ci a data frame containing the credible intervals to be plotted
 #' @param data_vintage_date date that the data was collected
 #' @param y_transform a character passed as the transform argument to
 #' [ggplot2::scale_y_continuous()].
-#' @param display_cutpoints a logical indicating whether to include cutpoints
-#' relevant to the `target_variable`.
 #' @param highlight_dates a vector of dates to highlight on the plot
 #' @param highlight_labels a vector of labels to display at the
 #' `highlight_dates`
+#' @param display_cutpoints a logical indicating whether to include cutpoints
+#' relevant to the `target_variable`.
+#' @param max_lab_site_index an integer indicating the maximum lab site index to
+#' plot. Default is 5.
 #'
 #' @return a ggplot object
 #' @export
-make_forecast_figure <- function(target_variable,
-                                 combined_dat,
-                                 forecast_ci,
+make_forecast_figure <- function(geo_value,
+                                 disease,
+                                 .variable,
+                                 resolution,
+                                 aggregated_numerator,
+                                 aggregated_denominator,
+                                 y_transform,
+                                 dat,
+                                 ci,
                                  data_vintage_date,
-                                 y_transform = "identity",
-                                 display_cutpoints = TRUE,
                                  highlight_dates = NULL,
-                                 highlight_labels = NULL) {
-  disease_name <- forecast_ci[["disease"]][1]
+                                 highlight_labels = NULL,
+                                 display_cutpoints = TRUE,
+                                 max_lab_site_index = 5) {
+  tbl_for_join <- tibble(
+    geo_value = geo_value,
+    disease = disease,
+    .variable = .variable,
+    resolution = resolution,
+    aggregated_numerator = aggregated_numerator,
+    aggregated_denominator = aggregated_denominator
+  )
+  # Join is used because NA == NA evaluates to NA
+
+  fig_ci <- left_join(tbl_for_join, ci,
+    by = c(
+      "geo_value", "disease", ".variable", "resolution",
+      "aggregated_numerator", "aggregated_denominator"
+    )
+  )
+
+  fig_dat <- left_join(
+    tbl_for_join |>
+      select(-starts_with("agg")), dat,
+    by = c("geo_value", "disease", ".variable", "resolution")
+  )
+
+
   disease_name_pretty <- c(
     "COVID-19" = "COVID-19",
     "Influenza" = "Flu"
-  )[disease_name]
+  )[disease] |> unname()
 
-  state_abb <- unique(combined_dat$geo_value)[1]
-  parsed_variable_name <- parse_variable_name(target_variable)
+  state_abb <- geo_value
+  parsed_variable_name <- parse_variable_name(.variable)
 
   y_axis_label <- parsed_variable_name[["full_name"]]
   y_axis_labels <- parsed_variable_name[["y_axis_labels"]]
   core_name <- parsed_variable_name[["core_name"]]
 
   title_prefix <- ifelse(
-    stringr::str_starts(target_variable, "other"),
+    stringr::str_starts(.variable, "other"),
     "Other",
     disease_name_pretty
   )
+
   title <- glue::glue("{title_prefix} {core_name} in {state_abb}")
 
-  last_training_date <- combined_dat |>
+  last_training_date <- dat |>
     dplyr::filter(.data$data_type == "train") |>
     dplyr::pull(date) |>
     max()
 
-  lineribbon_dat <- forecast_ci |>
-    dplyr::filter(
-      .data$.variable == target_variable
-    )
+  lineribbon_dat <- fig_ci
 
-  point_dat <- combined_dat |>
-    dplyr::filter(
-      .data$.variable == target_variable,
-      .data$date <= max(forecast_ci$date)
-    ) |>
+  point_dat <- fig_dat |>
+    dplyr::filter(.data$date <= max(lineribbon_dat$date)) |>
     dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
     dplyr::arrange(dplyr::desc(.data$data_type))
 
-
-  if (target_variable == "site_level_log_ww_conc") {
+  ## Processing for wastewater plots
+  if (.variable == "site_level_log_ww_conc") {
     lineribbon_dat <- lineribbon_dat |>
-      dplyr::filter(.data$lab_site_index <= 5)
+      dplyr::filter(.data$lab_site_index <= max_lab_site_index)
 
     point_dat <- point_dat |>
-      dplyr::filter(.data$lab_site_index <= 5)
+      dplyr::filter(.data$lab_site_index <= max_lab_site_index)
 
     facet_components <- ggplot2::facet_wrap(~lab_site_index)
   } else {
     facet_components <- list()
   }
 
+  ## Processing for proportion plots
   if (display_cutpoints &&
-    target_variable == "prop_disease_ed_visits") {
+    .variable == "prop_disease_ed_visits") {
     max_y <- max(lineribbon_dat$.upper, point_dat$.value)
 
     full_prism_cutpoints <- forecasttools::get_prism_cutpoints(
       state_abb,
-      disease_name
+      disease
     ) |>
       unlist() |>
       utils::head(-1) |>
@@ -117,6 +148,7 @@ make_forecast_figure <- function(target_variable,
     cutpoint_plot_components <- list()
   }
 
+  # Processing for highlight dates
   if (!is.null(highlight_dates)) {
     highlight_components <-
       list(
