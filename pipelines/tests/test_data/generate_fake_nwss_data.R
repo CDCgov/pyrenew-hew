@@ -2,13 +2,13 @@ base_dir <- "pipelines/tests/end_to_end_test_output/private_data/covid-19_r_2024
 state_params <- tibble::tibble(
   state_abb = c("CA", "MT"),
   state_offset = c(10, 0), # add to lab_site_index for uniqueness
-  pyrenew_model_name <- c("pyrenew_hw", "pyrenew_hew") # model with W signal
 )
 
 get_nwss_data_from_posterior <- function(
-    state_abb, state_offset, pyrenew_model_name) {
+    state_abb, state_offset) {
   model_run_dir <- fs::path(base_dir, state_abb)
   model_info <- hewr::parse_model_run_dir_path(model_run_dir)
+  pyrenew_model_name <- "pyrenew_hew"
   dat_path <- fs::path(model_run_dir, "data", "data_for_model_fit.json")
   data_for_model_fit <- readr::read_lines(dat_path) |>
     stringr::str_replace_all("-Infinity", "null") |>
