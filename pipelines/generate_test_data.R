@@ -317,7 +317,7 @@ generate_fake_param_data <-
 #' @param end_reference A string to specify the
 #' end reference date (e.g., "2024-12-21").
 copy_test_nwss_data <- function(
-    private_data_dir = fs::path(getwd()),
+    private_data_dir = fs::path_wd(),
     end_reference = "2024-12-21",
     test_data_dir = fs::path(
       "pipelines/tests/test_data/nwss_vintages", paste0(
