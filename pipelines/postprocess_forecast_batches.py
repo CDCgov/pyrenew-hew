@@ -50,7 +50,7 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"create_hubverse_table: {result.stdout}\n{result.stderr}"
+            f"create_hubverse_table: {result.stdout}\n{result.stderr.decode('utf-8')}"
         )
     return None
 
@@ -80,7 +80,9 @@ def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"create_pointinterval_plot: {result.stderr}")
+        raise RuntimeError(
+            f"create_pointinterval_plot: {result.stderr.decode('utf-8')}"
+        )
     return None
 
 
