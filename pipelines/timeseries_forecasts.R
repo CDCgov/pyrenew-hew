@@ -152,6 +152,9 @@ main <- function(
     epiweekly = FALSE) {
   resolution <- if_else(epiweekly, "epiweekly", "daily")
   prefix <- str_c(resolution, "_")
+  aheads_cdc_baseline <- if_else(epiweekly, ceiling(n_forecast_days / 7),
+    n_forecast_days
+  )
   base_data_name <- "combined_training_data"
   data_name <- if_else(epiweekly, str_c(prefix, base_data_name), base_data_name)
   data_frequency <- if_else(epiweekly, "1 week", "1 day")
@@ -203,7 +206,7 @@ main <- function(
     target_col = "observed_ed_visits",
     output_col = "observed_ed_visits",
     data_frequency = data_frequency,
-    aheads = 1:n_forecast_days
+    aheads = 1:aheads_cdc_baseline
   )
 
   baseline_ts_prop <- baseline_ts_count |>
@@ -216,7 +219,7 @@ main <- function(
     target_col = "prop_disease_ed_visits",
     output_col = "prop_disease_ed_visits",
     data_frequency = data_frequency,
-    aheads = 1:n_forecast_days
+    aheads = 1:aheads_cdc_baseline
   )
 
   model_dir <- path(model_run_dir, model_name)
