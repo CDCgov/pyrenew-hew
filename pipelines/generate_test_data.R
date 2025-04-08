@@ -304,63 +304,35 @@ generate_fake_param_data <-
       )
   }
 
-
-#' Generate Fake NWSS Data
+#' Copy test NWSS wastewater data for end-to-end testing
 #'
-#' This function generates fake wastewater data for a
-#' and saves it as a parquet file.
-
-generate_fake_nwss_data <- function(
-    private_data_dir = fs::path(getwd()),
-    states_to_generate = c("MT", "CA"),
-    start_reference = as.Date("2024-06-01"),
-    end_reference = as.Date("2024-12-21"),
-    site = list(
-      CA = c(1, 2, 3, 4),
-      MT = c(5, 6, 7, 8)
-    ),
-    lab = list(
-      CA = c(1, 1, 2, 2),
-      MT = c(3, 3, 4, 4)
-    ),
-    lod = c(20, 31, 20, 30),
-    site_pop = list(
-      CA = c(4e6, 2e6, 1e6, 5e5),
-      MT = c(3e5, 2e5, 1e5, 5e4)
+#' This function copies wastewater data from
+#' `pipelines/tests/test_data/nwss_vintages/NWSS-ETL-covid-<date>` to
+#' `end_to_end_test_output/private_data/nwss_vintages/
+#' NWSS-ETL-covid-<end_reference>`.
+#'
+#' @param private_data_dir Path to private data directory
+#' (default: current working directory).
+#' @param test_data_dir Path to the source test data directory.
+#' @param end_reference A string to specify the
+#' end reference date (e.g., "2024-12-21").
+copy_test_nwss_data <- function(
+    private_data_dir = fs::path_wd(),
+    end_reference = "2024-12-21",
+    test_data_dir = fs::path(
+      "pipelines/tests/test_data/nwss_vintages", paste0(
+        "NWSS-ETL-covid-", end_reference
+      )
     )) {
   ww_dir <- fs::path(
     private_data_dir, "nwss_vintages", paste0("NWSS-ETL-covid-", end_reference)
   )
   fs::dir_create(ww_dir, recurse = TRUE)
-
-  site_info <- function(state) {
-    tibble::tibble(
-      wwtp_id = site[[state]],
-      lab_id = lab[[state]],
-      lod_sewage = lod,
-      population_served = site_pop[[state]],
-      sample_location = "wwtp",
-      sample_matrix = "raw wastewater",
-      pcr_target_units = "copies/l wastewater",
-      pcr_target = "sars-cov-2",
-      quality_flag = c("no", NA_character_, "n", "n"),
-      wwtp_jurisdiction = state
-    )
-  }
-
-  ww_data <- purrr::map_dfr(states_to_generate, site_info) |>
-    tidyr::expand_grid(
-      sample_collect_date = seq(start_reference, end_reference, by = "week")
-    ) |>
-    dplyr::mutate(
-      pcr_target_avg_conc = abs(rnorm(dplyr::n(), mean = 500, sd = 50))
-    )
-
-  arrow::write_parquet(
-    ww_data, fs::path(ww_dir, "bronze", ext = "parquet")
+  ww_data <- arrow::read_parquet(
+    fs::path(test_data_dir, "bronze", ext = "parquet")
   )
+  arrow::write_parquet(ww_data, fs::path(ww_dir, "bronze", ext = "parquet"))
 }
-
 
 main <- function(private_data_dir,
                  target_diseases,
@@ -393,7 +365,7 @@ main <- function(private_data_dir,
     states_to_generate = c("MT", "CA", "US"),
     target_diseases = short_target_diseases
   )
-  generate_fake_nwss_data(
+  copy_test_nwss_data(
     private_data_dir
   )
 }
