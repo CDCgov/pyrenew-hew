@@ -251,7 +251,8 @@ main <- function(
       )
     ) |>
     select(
-      "date", "geo_value", "disease", ".variable", "quantile_level", ".value"
+      "date", "geo_value", "disease", "resolution", "aggregated_numerator",
+      "aggregated_denominator", ".variable", "quantile_level", ".value"
     )
 
 
