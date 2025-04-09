@@ -368,14 +368,16 @@ class EDVisitObservationProcess(RandomVariable):
 
         inf_to_ed = self.inf_to_ed_rv()
 
-        potential_latent_ed_visits = compute_delay_ascertained_incidence(
-            p_observed_given_incident=1,
-            latent_incidence=latent_infections,
-            delay_incidence_to_observation_pmf=inf_to_ed,
-        )[-n_datapoints:]
+        potential_latent_ed_visits, ed_visit_offset = (
+            compute_delay_ascertained_incidence(
+                p_observed_given_incident=1,
+                latent_incidence=latent_infections,
+                delay_incidence_to_observation_pmf=inf_to_ed,
+            )
+        )
 
         latent_ed_visits_final = (
-            potential_latent_ed_visits
+            potential_latent_ed_visits[-n_datapoints:]
             * iedr
             * ed_wday_effect
             * population_size
@@ -471,10 +473,12 @@ class HospAdmitObservationProcess(RandomVariable):
                 "or an ihr_rel_iedr_rv. "
                 "Got neither (both were None)."
             )
-        latent_hospital_admissions = compute_delay_ascertained_incidence(
-            p_observed_given_incident=1,
-            latent_incidence=(population_size * ihr * latent_infections),
-            delay_incidence_to_observation_pmf=(inf_to_hosp_admit),
+        latent_hospital_admissions, hospital_admissions_offset = (
+            compute_delay_ascertained_incidence(
+                p_observed_given_incident=1,
+                latent_incidence=(population_size * ihr * latent_infections),
+                delay_incidence_to_observation_pmf=(inf_to_hosp_admit),
+            )
         )
 
         # roll into compute_delay_ascertained incidence?

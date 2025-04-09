@@ -84,7 +84,9 @@ def get_nhsn(
     result = subprocess.run(r_command)
 
     if result.returncode != 0:
-        raise RuntimeError(f"pull_and_save_nhsn: {result.stderr}")
+        raise RuntimeError(
+            f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
+        )
     raw_dat = pl.read_parquet(temp_file)
     dat = raw_dat.with_columns(
         weekendingdate=pl.col("weekendingdate").cast(pl.Date)

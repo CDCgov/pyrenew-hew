@@ -109,6 +109,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
             forecasttools::get_hubverse_table(data,
               report_epiweek_end,
               target_name = variable_target_key[[.variable]],
+              horizons = -1:3,
               horizon_timescale = "weeks",
               timepoint_cols = c("epiweek", "epiyear")
             )
