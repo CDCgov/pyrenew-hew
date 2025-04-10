@@ -57,13 +57,13 @@ to_hub_quantile_table <- function(model_batch_dir) {
         )
       }) |>
       tibble::enframe(name = "file_path", value = "data") |>
-      dplyr::mutate(model = file_path |>
-        path_dir() |>
-        path_file()) |>
-      dplyr::mutate(model = dplyr::if_else(model == "timeseries_e",
-        "baseline_ts", model
+      dplyr::mutate(model = .data$file_path |>
+        fs::path_dir() |>
+        fs::path_file()) |>
+      dplyr::mutate(model = dplyr::if_else(.data$model == "timeseries_e",
+        "baseline_ts", .data$model
       )) |>
-      dplyr::select(model, data)
+      dplyr::select("model", "data")
 
     quantiles_forecast <- quantiles_paths |>
       purrr::map(\(x) {
@@ -72,26 +72,29 @@ to_hub_quantile_table <- function(model_batch_dir) {
       }) |>
       tibble::enframe(name = "file_path", value = "data") |>
       dplyr::mutate(model = "baseline_cdc") |>
-      dplyr::select(model, data)
+      dplyr::select("model", "data")
 
     forecast_data <-
       dplyr::bind_rows(
         quantilized_samples_forecast,
         quantiles_forecast
       ) |>
-      tidyr::unnest(data) |>
-      dplyr::filter(.variable %in% names(variable_target_key)) |>
+      tidyr::unnest("data") |>
+      dplyr::filter(.data$.variable %in% names(variable_target_key)) |>
       dplyr::mutate(target_prefix = dplyr::if_else(
-        resolution == "epiweekly", "wk ", ""
+        .data$resolution == "epiweekly", "wk ", ""
       )) |>
-      dplyr::mutate(target_core = variable_target_key[.variable]) |>
-      mutate(target = str_c(target_prefix, target_core)) |>
-      dplyr::mutate(reference_date = report_date) |>
+      dplyr::mutate(target_core = variable_target_key[.data$.variable]) |>
+      dplyr::mutate(target = stringr::str_c(
+        .data$target_prefix,
+        .data$target_core
+      )) |>
+      dplyr::mutate(reference_date = .data$report_date) |>
       dplyr::mutate(horizon_timescale = "days") |>
       dplyr::mutate(horizon = forecasttools::horizons_from_target_end_dates(
-        reference_date = report_date,
-        horizon_timescale = horizon_timescale,
-        target_end_dates = date
+        reference_date = .data$report_date,
+        horizon_timescale = .data$horizon_timescale,
+        target_end_dates = .data$date
       )) |>
       dplyr::mutate(
         output_type = "quantile",
@@ -107,21 +110,21 @@ to_hub_quantile_table <- function(model_batch_dir) {
         "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
       )) |>
       dplyr::select(
-        model_id,
-        model,
-        output_type,
-        output_type_id,
-        value = quantile_value,
-        reference_date,
-        target,
-        horizon = horizon,
-        horizon_timescale,
-        resolution,
-        target_end_date = date,
-        location = geo_value,
-        disease,
-        aggregated_numerator,
-        aggregated_denominator
+        "model_id",
+        "model",
+        "output_type",
+        "output_type_id",
+        "value" = "quantile_value",
+        "reference_date",
+        "target",
+        "horizon",
+        "horizon_timescale",
+        "resolution",
+        "target_end_date" = "date",
+        "location" = "geo_value",
+        "disease",
+        "aggregated_numerator",
+        "aggregated_denominator"
       )
 
     return(forecast_data)

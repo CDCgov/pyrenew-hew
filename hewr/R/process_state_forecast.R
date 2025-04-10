@@ -41,7 +41,7 @@ load_and_aggregate_ts <- function(model_run_dir,
     )) |>
     dplyr::select("resolution", "aggregated_numerator", "data") |>
     tidyr::unnest("data") |>
-    dplyr::mutate(aggregated_denominator = if_else(
+    dplyr::mutate(aggregated_denominator = dplyr::if_else(
       stringr::str_starts(.data$.variable, "prop_"),
       FALSE,
       NA
@@ -67,7 +67,7 @@ load_and_aggregate_ts <- function(model_run_dir,
 
 
 
-  bind_rows(
+  dplyr::bind_rows(
     unaggregated_ts_samples,
     aggregated_ts_samples_non_prop
   )
@@ -142,16 +142,16 @@ read_and_combine_data <- function(model_run_dir) {
     ) |>
     tidyr::unite("file_name", "prefix", "root", sep = "") |>
     dplyr::mutate(file_path = fs::path(model_run_dir, "data",
-      file_name,
+      .data$file_name,
       ext = "tsv"
     )) |>
     dplyr::mutate(data = purrr::map(
-      file_path,
+      .data$file_path,
       \(x) readr::read_tsv(x, col_types = data_cols)
     )) |>
-    dplyr::select(data, aggregated) |>
+    dplyr::select("data", "aggregated") |>
     tidyr::unnest("data") |>
-    dplyr::mutate(resolution = dplyr::if_else(aggregated, "epiweekly",
+    dplyr::mutate(resolution = dplyr::if_else(.data$aggregated, "epiweekly",
       variable_resolution_key[.data$.variable]
     )) |>
     dplyr::select(-"aggregated") |>
@@ -267,7 +267,9 @@ group_time_index_to_date <- function(group_time_index,
 process_pyrenew_model <- function(model_run_dir,
                                   pyrenew_model_name,
                                   ts_samples,
-                                  required_columns_e) {
+                                  required_columns_e,
+                                  daily_training_dat,
+                                  epiweekly_training_dat) {
   model_info <- parse_model_run_dir_path(model_run_dir)
 
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
@@ -382,9 +384,9 @@ process_pyrenew_model <- function(model_run_dir,
     ## Process timeseries posterior
     if (!is.null(ts_samples)) {
       e_denominator_samples <- ts_samples |>
-        filter(.data$.variable == "other_ed_visits") |>
-        mutate(aggregated_denominator = aggregated_numerator) |>
-        select(-aggregated_numerator) |>
+        dplyr::filter(.data$.variable == "other_ed_visits") |>
+        dplyr::mutate(aggregated_denominator = .data$aggregated_numerator) |>
+        dplyr::select(-"aggregated_numerator") |>
         dplyr::rename("other_ed_visits" = ".value") |>
         dplyr::select(-".variable") |>
         dplyr::filter(.data$.draw %in% e_numerator_samples$.draw)
@@ -486,7 +488,9 @@ process_state_forecast <- function(model_run_dir,
       model_run_dir,
       pyrenew_model_name,
       ts_samples,
-      required_columns = required_columns_e
+      required_columns_e,
+      daily_training_dat,
+      epiweekly_training_dat
     )
   }
 

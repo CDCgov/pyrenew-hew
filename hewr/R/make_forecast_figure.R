@@ -37,7 +37,7 @@ make_forecast_figure <- function(geo_value,
                                  highlight_labels = NULL,
                                  display_cutpoints = TRUE,
                                  max_lab_site_index = 5) {
-  tbl_for_join <- tibble(
+  tbl_for_join <- tibble::tibble(
     geo_value = geo_value,
     disease = disease,
     .variable = .variable,
@@ -47,16 +47,16 @@ make_forecast_figure <- function(geo_value,
   )
   # Join is used because NA == NA evaluates to NA
 
-  fig_ci <- left_join(tbl_for_join, ci,
+  fig_ci <- dplyr::left_join(tbl_for_join, ci,
     by = c(
       "geo_value", "disease", ".variable", "resolution",
       "aggregated_numerator", "aggregated_denominator"
     )
   )
 
-  fig_dat <- left_join(
+  fig_dat <- dplyr::left_join(
     tbl_for_join |>
-      select(-starts_with("agg")), dat,
+      dplyr::select(-tidyselect::starts_with("agg")), dat,
     by = c("geo_value", "disease", ".variable", "resolution")
   )
 
