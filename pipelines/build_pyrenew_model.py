@@ -79,20 +79,37 @@ def build_model_from_dir(
         jnp.array(model_data["generation_interval_pmf"]),
     )  # check if off by 1 or reversed
 
-    data_observed_disease_ed_visits = (
-        jnp.array(model_data["data_observed_disease_ed_visits"])
+    nssp_training_data = (
+        pl.DataFrame(
+            model_data["nssp_training_data"],
+            schema={
+                "date": pl.Date,
+                "geo_value": pl.String,
+                "disease": pl.String,
+                "ed_visits": pl.Float64,
+                "data_type": pl.String,
+            },
+        )
         if fit_ed_visits
         else None
     )
-    data_observed_disease_hospital_admissions = (
-        jnp.array(model_data["data_observed_disease_hospital_admissions"])
+    nhsn_training_data = (
+        pl.DataFrame(
+            model_data["nhsn_training_data"],
+            schema={
+                "weekendingdate": pl.Date,
+                "jurisdiction": pl.String,
+                "hospital_admissions": pl.Float64,
+                "data_type": pl.String,
+            },
+        )
         if fit_hospital_admissions
         else None
     )
 
-    data_observed_disease_wastewater = (
+    nwss_training_data = (
         pl.DataFrame(
-            model_data["data_observed_disease_wastewater"],
+            model_data["nwss_training_data"],
             schema_overrides={
                 "date": pl.Date,
                 "lab_index": pl.Int64,
@@ -118,13 +135,6 @@ def build_model_from_dir(
         )
         - 1
     )
-
-    first_ed_visits_date = datetime.datetime.strptime(
-        model_data["nssp_training_dates"][0], "%Y-%m-%d"
-    ).date()
-    first_hospital_admissions_date = datetime.datetime.strptime(
-        model_data["nhsn_training_dates"][0], "%Y-%m-%d"
-    ).date()
 
     priors = runpy.run_path(str(prior_path))
 
@@ -190,18 +200,15 @@ def build_model_from_dir(
     )
 
     wastewater_data = PyrenewWastewaterData(
-        data_observed_disease_wastewater=data_observed_disease_wastewater,
+        nwss_training_data=nwss_training_data,
         population_size=population_size,
     )
 
     dat = PyrenewHEWData(
-        data_observed_disease_ed_visits=data_observed_disease_ed_visits,
-        data_observed_disease_hospital_admissions=(
-            data_observed_disease_hospital_admissions
-        ),
+        nssp_training_data=nssp_training_data,
+        nhsn_training_data=nhsn_training_data,
+        nwss_training_data=nwss_training_data,
         right_truncation_offset=right_truncation_offset,
-        first_ed_visits_date=first_ed_visits_date,
-        first_hospital_admissions_date=first_hospital_admissions_date,
         pop_fraction=pop_fraction,
         **wastewater_data.to_pyrenew_hew_data_args(),
     )

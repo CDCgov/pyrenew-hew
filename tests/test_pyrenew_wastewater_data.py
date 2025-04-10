@@ -45,7 +45,7 @@ def test_pyrenew_wastewater_data():
     n_forecast_points = 10
 
     wastewater_data = PyrenewWastewaterData(
-        data_observed_disease_wastewater=ww_data,
+        nwss_training_data=ww_data,
         population_size=1e6,
     )
 
@@ -53,6 +53,7 @@ def test_pyrenew_wastewater_data():
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,
         first_wastewater_date=first_wastewater_date,
+        nwss_training_data=ww_data,
         **wastewater_data.to_pyrenew_hew_data_args(),
     )
 

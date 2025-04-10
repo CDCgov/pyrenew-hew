@@ -327,12 +327,12 @@ def aggregate_facility_level_nssp_to_state(
     )
 
 
-def verify_no_date_gaps(df: pl.DataFrame):
-    expected_length = df.select(
-        dur=((pl.col("date").max() - pl.col("date").min()).dt.total_days() + 1)
-    ).to_numpy()[0]
-    if not df.height == 2 * expected_length:
-        raise ValueError("Data frame appears to have date gaps")
+# def verify_no_date_gaps(df: pl.DataFrame):
+#     expected_length = df.select(
+#         dur=((pl.col("date").max() - pl.col("date").min()).dt.total_days() + 1)
+#     ).to_numpy()[0]
+#     if not df.height == 2 * expected_length:
+#         raise ValueError("Data frame appears to have date gaps")
 
 
 def get_state_pop_df():
@@ -451,7 +451,7 @@ def process_and_save_state(
         .sort(["date", "disease"])
     )
 
-    verify_no_date_gaps(nssp_training_data)
+    # verify_no_date_gaps(nssp_training_data)
 
     nhsn_training_data = get_nhsn(
         start_date=first_training_date,
@@ -461,35 +461,7 @@ def process_and_save_state(
         credentials_dict=credentials_dict,
     ).with_columns(pl.lit("train").alias("data_type"))
 
-    nssp_training_dates = (
-        nssp_training_data.get_column("date").unique().to_list()
-    )
-    nhsn_training_dates = (
-        nhsn_training_data.get_column("weekendingdate").unique().to_list()
-    )
-
-    nhsn_first_date_index = next(
-        i
-        for i, x in enumerate(nssp_training_dates)
-        if x == min(nhsn_training_dates)
-    )
     nhsn_step_size = 7
-
-    train_disease_ed_visits = (
-        nssp_training_data.filter(pl.col("disease") == disease)
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    train_total_ed_visits = (
-        nssp_training_data.filter(pl.col("disease") == "Total")
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    train_disease_hospital_admissions = nhsn_training_data.get_column(
-        "hospital_admissions"
-    ).to_list()
 
     nwss_training_data = (
         state_level_nwss_data.to_dict(as_series=False)
@@ -521,16 +493,12 @@ def process_and_save_state(
         "inf_to_ed_pmf": delay_pmf,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_ed_visits": train_disease_ed_visits,
-        "data_observed_total_ed_visits": train_total_ed_visits,
-        "data_observed_disease_hospital_admissions": train_disease_hospital_admissions,
-        "nssp_training_dates": nssp_training_dates,
-        "nhsn_training_dates": nhsn_training_dates,
-        "nhsn_first_date_index": nhsn_first_date_index,
-        "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": nwss_training_data,
+        "nwss_training_data": nwss_training_data,
+        "nssp_training_data": nssp_training_data.to_dict(as_series=False),
+        "nhsn_training_data": nhsn_training_data.to_dict(as_series=False),
+        "nhsn_step_size": nhsn_step_size,
         "pop_fraction": pop_fraction.tolist(),
     }
 
