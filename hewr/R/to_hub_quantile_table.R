@@ -89,10 +89,10 @@ to_hub_quantile_table <- function(model_batch_dir) {
         .data$target_prefix,
         .data$target_core
       )) |>
-      dplyr::mutate(reference_date = .data$report_date) |>
+      dplyr::mutate(reference_date = report_date) |>
       dplyr::mutate(horizon_timescale = "days") |>
       dplyr::mutate(horizon = forecasttools::horizons_from_target_end_dates(
-        reference_date = .data$report_date,
+        reference_date = .data$reference_date,
         horizon_timescale = .data$horizon_timescale,
         target_end_dates = .data$date
       )) |>
@@ -104,9 +104,9 @@ to_hub_quantile_table <- function(model_batch_dir) {
       ) |>
       dplyr::mutate(model_id = glue::glue(
         "{model}_{resolution}",
-        "{if_else(vctrs::vec_equal(",
+        "{dplyr::if_else(vctrs::vec_equal(",
         "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
-        "{if_else(vctrs::vec_equal(",
+        "{dplyr::if_else(vctrs::vec_equal(",
         "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
       )) |>
       dplyr::select(
