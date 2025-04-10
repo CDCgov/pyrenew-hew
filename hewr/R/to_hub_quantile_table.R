@@ -121,8 +121,7 @@ to_hub_quantile_table <- function(model_batch_dir) {
         location = geo_value,
         disease,
         aggregated_numerator,
-        aggregated_denominator,
-        lab_site_index
+        aggregated_denominator
       )
 
     return(forecast_data)
