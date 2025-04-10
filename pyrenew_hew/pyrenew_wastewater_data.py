@@ -1,10 +1,4 @@
-import datetime
-from typing import Self
-
-import jax
-import jax.numpy as jnp
 import polars as pl
-from jax.typing import ArrayLike
 
 
 class PyrenewWastewaterData:
@@ -15,20 +9,18 @@ class PyrenewWastewaterData:
 
     def __init__(
         self,
-        data_observed_disease_wastewater: pl.DataFrame = None,
+        nwss_training_data: pl.DataFrame = None,
         population_size: int = None,
     ) -> None:
-        self.data_observed_disease_wastewater = (
-            data_observed_disease_wastewater
-        )
+        self.nwss_training_data = nwss_training_data
         self.population_size = population_size
 
     @property
     def site_subpop_spine(self):
-        ww_data_present = self.data_observed_disease_wastewater is not None
+        ww_data_present = self.nwss_training_data is not None
         if ww_data_present:
             site_indices = (
-                self.data_observed_disease_wastewater.select(
+                self.nwss_training_data.select(
                     ["site_index", "site", "site_pop"]
                 )
                 .unique()
@@ -36,9 +28,7 @@ class PyrenewWastewaterData:
             )
 
             total_pop_ww = (
-                self.data_observed_disease_wastewater.unique(
-                    ["site_pop", "site"]
-                )
+                self.nwss_training_data.unique(["site_pop", "site"])
                 .get_column("site_pop")
                 .sum()
             )
@@ -80,128 +70,105 @@ class PyrenewWastewaterData:
             )
         return site_subpop_spine
 
-    @property
-    def date_time_spine(self):
-        if self.data_observed_disease_wastewater is not None:
-            date_time_spine = pl.DataFrame(
-                {
-                    "date": pl.date_range(
-                        start=self.date_observed_disease_wastewater.min(),
-                        end=self.date_observed_disease_wastewater.max(),
-                        interval="1d",
-                        eager=True,
-                    )
-                }
-            ).with_row_index("t")
-            return date_time_spine
+    # @property
+    # def date_time_spine(self):
+    #     if self.nwss_training_data is not None:
+    #         date_time_spine = pl.DataFrame(
+    #             {
+    #                 "date": pl.date_range(
+    #                     start=self.date_observed_disease_wastewater.min(),
+    #                     end=self.date_observed_disease_wastewater.max(),
+    #                     interval="1d",
+    #                     eager=True,
+    #                 )
+    #             }
+    #         ).with_row_index("t")
+    #         return date_time_spine
 
-    @property
-    def wastewater_data_extended(self):
-        if self.data_observed_disease_wastewater is not None:
-            return (
-                self.data_observed_disease_wastewater.join(
-                    self.date_time_spine, on="date", how="left", coalesce=True
-                )
-                .join(
-                    self.site_subpop_spine,
-                    on=["site_index", "site"],
-                    how="left",
-                    coalesce=True,
-                )
-                .with_row_index("ind_rel_to_observed_times")
-            )
+    # @property
+    # def wastewater_data_extended(self):
+    #     if self.nwss_training_data is not None:
+    #         return (
+    #             self.nwss_training_data.join(
+    #                 self.date_time_spine, on="date", how="left", coalesce=True
+    #             )
+    #             .join(
+    #                 self.site_subpop_spine,
+    #                 on=["site_index", "site"],
+    #                 how="left",
+    #                 coalesce=True,
+    #             )
+    #             .with_row_index("ind_rel_to_observed_times")
+    #         )
 
-    @property
-    def date_observed_disease_wastewater(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.data_observed_disease_wastewater.get_column(
-                "date"
-            ).unique()
+    # @property
+    # def date_observed_disease_wastewater(self):
+    #     if self.nwss_training_data is not None:
+    #         return self.nwss_training_data.get_column("date").unique()
 
-    @property
-    def data_observed_disease_wastewater_conc(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column(
-                "log_genome_copies_per_ml"
-            ).to_numpy()
+    # @property
+    # def data_observed_disease_wastewater_conc(self):
+    #     if self.nwss_training_data is not None:
+    #         return self.wastewater_data_extended.get_column(
+    #             "log_genome_copies_per_ml"
+    #         ).to_numpy()
 
-    @property
-    def ww_censored(self):
-        if self.data_observed_disease_wastewater is not None:
-            return (
-                self.wastewater_data_extended.filter(pl.col("below_lod") == 1)
-                .get_column("ind_rel_to_observed_times")
-                .to_numpy()
-            )
-        return None
+    # @property
+    # def ww_censored(self):
+    #     if self.nwss_training_data is not None:
+    #         return (
+    #             self.wastewater_data_extended.filter(pl.col("below_lod") == 1)
+    #             .get_column("ind_rel_to_observed_times")
+    #             .to_numpy()
+    #         )
+    #     return None
 
-    @property
-    def ww_uncensored(self):
-        if self.data_observed_disease_wastewater is not None:
-            return (
-                self.wastewater_data_extended.filter(pl.col("below_lod") == 0)
-                .get_column("ind_rel_to_observed_times")
-                .to_numpy()
-            )
+    # @property
+    # def ww_uncensored(self):
+    #     if self.nwss_training_data is not None:
+    #         return (
+    #             self.wastewater_data_extended.filter(pl.col("below_lod") == 0)
+    #             .get_column("ind_rel_to_observed_times")
+    #             .to_numpy()
+    #         )
 
-    @property
-    def ww_observed_times(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column("t").to_numpy()
+    # @property
+    # def ww_observed_times(self):
+    #     if self.nwss_training_data is not None:
+    #         return self.wastewater_data_extended.get_column("t").to_numpy()
 
-    @property
-    def ww_observed_subpops(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column(
-                "subpop_index"
-            ).to_numpy()
+    # @property
+    # def ww_observed_subpops(self):
+    #     if self.nwss_training_data is not None:
+    #         return self.wastewater_data_extended.get_column("subpop_index").to_numpy()
 
-    @property
-    def ww_observed_lab_sites(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column(
-                "lab_site_index"
-            ).to_numpy()
+    # @property
+    # def ww_observed_lab_sites(self):
+    #     if self.nwss_training_data is not None:
+    #         return self.wastewater_data_extended.get_column("lab_site_index").to_numpy()
 
-    @property
-    def ww_log_lod(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended.get_column(
-                "log_lod"
-            ).to_numpy()
+    # @property
+    # def ww_log_lod(self):
+    #     if self.nwss_training_data is not None:
+    #         return self.wastewater_data_extended.get_column("log_lod").to_numpy()
 
-    @property
-    def n_ww_lab_sites(self):
-        if self.data_observed_disease_wastewater is not None:
-            return self.wastewater_data_extended["lab_site_index"].n_unique()
+    # @property
+    # def n_ww_lab_sites(self):
+    #     if self.nwss_training_data is not None:
+    #         return self.wastewater_data_extended["lab_site_index"].n_unique()
 
-    @property
-    def lab_site_to_subpop_map(self):
-        if self.data_observed_disease_wastewater is not None:
-            return (
-                (
-                    self.wastewater_data_extended[
-                        "lab_site_index", "subpop_index"
-                    ]
-                    .unique()
-                    .sort(by="lab_site_index", descending=False)
-                )
-                .get_column("subpop_index")
-                .to_numpy()
-            )
+    # @property
+    # def lab_site_to_subpop_map(self):
+    #     if self.nwss_training_data is not None:
+    #         return (
+    #             (
+    #                 self.wastewater_data_extended["lab_site_index", "subpop_index"]
+    #                 .unique()
+    #                 .sort(by="lab_site_index", descending=False)
+    #             )
+    #             .get_column("subpop_index")
+    #             .to_numpy()
+    #         )
 
     def to_pyrenew_hew_data_args(self):
-        return {
-            attr: getattr(self, attr)
-            for attr in [
-                "n_ww_lab_sites",
-                "ww_censored",
-                "ww_uncensored",
-                "ww_log_lod",
-                "ww_observed_lab_sites",
-                "ww_observed_subpops",
-                "ww_observed_times",
-                "data_observed_disease_wastewater_conc",
-                "lab_site_to_subpop_map",
-            ]
-        }
+        return {attr: getattr(self, attr) for attr in ["site_subpop_spine"]}
