@@ -349,11 +349,11 @@ process_state_forecast <- function(model_run_dir,
     stringr::str_replace_all("-Infinity", "null") |>
     jsonlite::fromJSON()
 
-  first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
-  first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
+  first_nhsn_date <- min(data_for_model_fit$nhsn_training_data$weekendingdate)
+  first_nssp_date <- min(data_for_model_fit$nssp_training_data$date)
   first_nwss_date <- ifelse(
-    !is.null(data_for_model_fit$data_observed_disease_wastewater),
-    min(unlist(data_for_model_fit$data_observed_disease_wastewater$date)),
+    !is.null(data_for_model_fit$nwss_training_data),
+    min(unlist(data_for_model_fit$nwss_training_data$date)),
     NA
   )
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
