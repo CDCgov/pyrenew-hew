@@ -128,7 +128,7 @@ combine_training_and_eval_data <- function(train_dat,
 
   non_ww_dat <- dat |>
     dplyr::filter(.data$.variable != "site_level_log_ww_conc") |>
-    dplyr::select(-c(.data$lab_site_index)) |>
+    dplyr::select(-"lab_site_index") |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
     dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
       (.data$observed_ed_visits + .data$other_ed_visits)) |>
