@@ -101,6 +101,7 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
       )
 
       forecast_data |>
+        dplyr::filter(.data$.variable %in% names(variable_target_key)) |>
         tidyr::nest(.by = ".variable") |>
         dplyr::mutate(data = purrr::map2(
           .data$.variable, .data$data,
@@ -119,7 +120,10 @@ to_epiweekly_quantile_table <- function(model_batch_dir) {
 
     loc_epiweekly_hubverse_table <-
       scorable_datasets |>
-      dplyr::filter(.data$resolution == "epiweekly") |>
+      dplyr::filter(.data$resolution == "epiweekly" |
+        .data$model == "pyrenew_h_daily" |
+        .data$model == "pyrenew_hw_daily" |
+        .data$model == "pyrenew_hew_daily") |>
       dplyr::mutate(hubverse_data = purrr::map(
         .data$forecast_data, process_forecast_data
       )) |>

@@ -163,8 +163,10 @@ read_and_score_location <- function(model_run_dir,
     ))
   }
 
+
   # Removing lab_site_index column
   # NWSS data is not added to eval data yet
+
   samples_scorable <-
     scorable_datasets |>
     filter(forecast_type == "samples") |>
