@@ -24,15 +24,13 @@ to_hub_quantile_table <- function(model_batch_dir) {
     TRUE ~ disease
   )
 
-  timely_key <- c("daily" = "days", "epiweekly" = "weeks")
-
   variable_target_key <- c(
     "observed_hospital_admissions" =
-      glue::glue("wk inc {disease_abbr} hosp"),
-    "observed_ed_visits" = glue::glue("wk inc {disease_abbr} ed visits"),
-    "other_ed_visits" = "wk inc other ed visits",
+      glue::glue("inc {disease_abbr} hosp"),
+    "observed_ed_visits" = glue::glue("inc {disease_abbr} ed visits"),
+    "other_ed_visits" = "inc other ed visits",
     "prop_disease_ed_visits" =
-      glue::glue("wk inc {disease_abbr} prop ed visits")
+      glue::glue("inc {disease_abbr} prop ed visits")
   )
 
 
@@ -75,15 +73,21 @@ to_hub_quantile_table <- function(model_batch_dir) {
       tibble::enframe(name = "file_path", value = "data") |>
       dplyr::mutate(model = "baseline_cdc") |>
       dplyr::select(model, data)
+
     forecast_data <-
       dplyr::bind_rows(
         quantilized_samples_forecast,
         quantiles_forecast
       ) |>
       tidyr::unnest(data) |>
-      dplyr::mutate(.variable = variable_target_key[.variable]) |>
+      dplyr::filter(.variable %in% names(variable_target_key)) |>
+      dplyr::mutate(target_prefix = dplyr::if_else(
+        resolution == "epiweekly", "wk ", ""
+      )) |>
+      dplyr::mutate(target_core = variable_target_key[.variable]) |>
+      mutate(target = str_c(target_prefix, target_core)) |>
       dplyr::mutate(reference_date = report_date) |>
-      dplyr::mutate(horizon_timescale = timely_key[resolution]) |>
+      dplyr::mutate(horizon_timescale = "days") |>
       dplyr::mutate(horizon = forecasttools::horizons_from_target_end_dates(
         reference_date = report_date,
         horizon_timescale = horizon_timescale,
@@ -95,14 +99,24 @@ to_hub_quantile_table <- function(model_batch_dir) {
           digits = 4
         )
       ) |>
+      dplyr::mutate(model_id = glue::glue(
+        "{model}_{resolution}",
+        "{if_else(vctrs::vec_equal(",
+        "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
+        "{if_else(vctrs::vec_equal(",
+        "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
+      )) |>
       dplyr::select(
-        model_id = model,
+        model_id,
+        model,
         output_type,
         output_type_id,
         value = quantile_value,
         reference_date,
-        target = .variable,
-        horizon_timescale = horizon,
+        target,
+        horizon = horizon,
+        horizon_timescale,
+        resolution,
         target_end_date = date,
         location = geo_value,
         disease,
