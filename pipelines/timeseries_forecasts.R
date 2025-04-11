@@ -150,7 +150,8 @@ cdc_flat_forecast <- function(data,
 main <- function(
     model_run_dir, model_name, n_forecast_days = 28, n_samples = 2000,
     epiweekly = FALSE) {
-  prefix <- if_else(epiweekly, "epiweekly_", "daily_")
+  resolution <- if_else(epiweekly, "epiweekly", "daily")
+  prefix <- str_c(resolution, "_")
   aheads_cdc_baseline <- if_else(epiweekly, ceiling(n_forecast_days / 7),
     n_forecast_days
   )
@@ -236,13 +237,22 @@ main <- function(
     )
 
   baseline_cdc_forecast <-
-    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop) |>
+    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop,
+      by = c("date", "quantile_level")
+    ) |>
     pivot_longer(-c("date", "quantile_level"),
       names_to = ".variable", values_to = ".value"
     ) |>
-    mutate(geo_value = geo_value, disease = disease) |>
+    mutate(
+      geo_value = geo_value, disease = disease, resolution = resolution,
+      aggregated_numerator = FALSE,
+      aggregated_denominator = if_else(str_starts(.variable, "prop_"),
+        FALSE, NA
+      )
+    ) |>
     select(
-      "date", "geo_value", "disease", ".variable", "quantile_level", ".value"
+      "date", "geo_value", "disease", "resolution", "aggregated_numerator",
+      "aggregated_denominator", ".variable", "quantile_level", ".value"
     )
 
 

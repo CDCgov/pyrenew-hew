@@ -140,18 +140,17 @@ def convert_inferencedata_to_parquet(
 def plot_and_save_state_forecast(
     model_run_dir: Path, pyrenew_model_name: str, timeseries_model_name: str
 ) -> None:
-    result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/plot_and_save_state_forecast.R",
-            f"{model_run_dir}",
-            "--pyrenew-model-name",
-            f"{pyrenew_model_name}",
-            "--timeseries-model-name",
-            f"{timeseries_model_name}",
-        ],
-        capture_output=True,
-    )
+    command = [
+        "Rscript",
+        "pipelines/plot_and_save_state_forecast.R",
+        f"{model_run_dir}",
+        "--timeseries-model-name",
+        f"{timeseries_model_name}",
+    ]
+    if pyrenew_model_name is not None:
+        command.extend(["--pyrenew-model-name", f"{pyrenew_model_name}"])
+
+    result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(
             f"plot_and_save_state_forecast: {result.stderr.decode('utf-8')}"
@@ -467,6 +466,8 @@ def main(
         "Performing baseline forecasting and non-target pathogen "
         "forecasting..."
     )
+    # Timeseries models get run, even if they aren't used.
+    # Surprised this doesn't create race condition problems.
     n_denominator_samples = n_samples * n_chains
     timeseries_forecasts(
         model_run_dir,
@@ -484,6 +485,8 @@ def main(
     plot_and_save_state_forecast(
         model_run_dir, pyrenew_model_name, "timeseries_e"
     )
+    # Timeseries models get processed, even if they aren't used.
+    plot_and_save_state_forecast(model_run_dir, None, "timeseries_e")
     logger.info("Postprocessing complete.")
 
     # if pyrenew_model_name == "pyrenew_e":
@@ -491,9 +494,9 @@ def main(
     #     render_diagnostic_report(model_run_dir)
     #     logger.info("Rendering complete.")
 
-    if score:
-        logger.info("Scoring forecast...")
-        score_forecast(model_run_dir)
+    # if score:
+    #     logger.info("Scoring forecast...")
+    #     score_forecast(model_run_dir)
 
     logger.info(
         "Single-location pipeline complete "

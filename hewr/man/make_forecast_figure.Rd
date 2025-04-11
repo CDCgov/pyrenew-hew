@@ -5,38 +5,56 @@
 \title{Make Forecast Figure}
 \usage{
 make_forecast_figure(
-  target_variable,
-  combined_dat,
-  forecast_ci,
+  geo_value,
+  disease,
+  .variable,
+  resolution,
+  aggregated_numerator,
+  aggregated_denominator,
+  y_transform,
+  dat,
+  ci,
   data_vintage_date,
-  y_transform = "identity",
-  display_cutpoints = TRUE,
   highlight_dates = NULL,
-  highlight_labels = NULL
+  highlight_labels = NULL,
+  display_cutpoints = TRUE,
+  max_lab_site_index = 5
 )
 }
 \arguments{
-\item{target_variable}{a variable matching the .variable columns
-in \code{combined_dat} and \code{forecast_ci}}
+\item{geo_value}{character matching the geo_value column in \code{dat} and \code{ci}}
 
-\item{combined_dat}{\code{combined_dat} from the result of
-\code{\link[=process_state_forecast]{process_state_forecast()}}}
+\item{disease}{character matching the disease column in \code{dat} and \code{ci}}
 
-\item{forecast_ci}{\code{forecast_ci} from the result of
-\code{\link[=process_state_forecast]{process_state_forecast()}}}
+\item{.variable}{character matching the .variable column in \code{dat} and \code{ci}}
 
-\item{data_vintage_date}{date that the data was collected}
+\item{resolution}{character matching the resolution column in \code{dat} and \code{ci}}
+
+\item{aggregated_numerator}{character matching the aggregated_numerator
+column in \code{dat} and \code{ci}}
+
+\item{aggregated_denominator}{character matching the aggregated_denominator
+column in \code{dat} and \code{ci}}
 
 \item{y_transform}{a character passed as the transform argument to
 \code{\link[ggplot2:scale_continuous]{ggplot2::scale_y_continuous()}}.}
 
-\item{display_cutpoints}{a logical indicating whether to include cutpoints
-relevant to the \code{target_variable}.}
+\item{dat}{a data frame containing the data to be plotted}
+
+\item{ci}{a data frame containing the credible intervals to be plotted}
+
+\item{data_vintage_date}{date that the data was collected}
 
 \item{highlight_dates}{a vector of dates to highlight on the plot}
 
 \item{highlight_labels}{a vector of labels to display at the
 \code{highlight_dates}}
+
+\item{display_cutpoints}{a logical indicating whether to include cutpoints
+relevant to the \code{target_variable}.}
+
+\item{max_lab_site_index}{an integer indicating the maximum lab site index to
+plot. Default is 5.}
 }
 \value{
 a ggplot object

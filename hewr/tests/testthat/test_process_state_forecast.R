@@ -28,37 +28,6 @@ example_eval_dat <- tibble::tibble(
   ) |>
   dplyr::mutate(.value = rpois(dplyr::n(), 100))
 
-test_that("combine_training_and_eval_data works as expected", {
-  result <- combine_training_and_eval_data(
-    example_train_dat,
-    example_eval_dat
-  )
-
-  checkmate::assert_names(names(result),
-    permutation.of = c(
-      "date", "geo_value", "disease", "data_type",
-      ".variable", ".value", "lab_site_index"
-    )
-  )
-
-  checkmate::expect_names(
-    result$.variable,
-    subset.of = c(
-      "observed_ed_visits", "other_ed_visits",
-      "observed_hospital_admissions", "prop_disease_ed_visits",
-      "site_level_log_ww_conc"
-    )
-  )
-
-  checkmate::expect_names(
-    result$data_type,
-    permutation.of = c("eval", "train")
-  )
-
-  expect_equal(nrow(result), 30)
-})
-
-
 test_that("to_tidy_draws_timeseries() works as expected", {
   forecast <- tibble::tibble(
     date = as.Date(c("2024-12-21", "2024-12-22")),
