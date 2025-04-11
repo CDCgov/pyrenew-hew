@@ -33,8 +33,8 @@ jobs:
           shell: bash
           id: image-tag
           run: |
-            if [ "${{ steps.branch-name.outputs.branch }}" = "${{ inputs.main-branch-name }}" ]; then
-              echo "tag=${{ inputs.main-branch-tag }}" >> $GITHUB_OUTPUT
+            if [ "${{ steps.branch-name.outputs.branch }}" = "main" ]; then
+              echo "tag=latest" >> $GITHUB_OUTPUT
             else
               echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
             fi
@@ -52,10 +52,24 @@ jobs:
             $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh ${{ env.IMAGE_NAME }} ${{ steps.image-tag.outputs.tag }}
 
     acr-import:
+      environment: production
       needs: build-pipeline-image
       name: Import image from GHCR
       runs-on: ubuntu-latest
       steps:
+
+      # From: https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers#requesting-the-jwt-using-the-actions-core-toolkit
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+      - name: Get Id Token
+        uses: actions/github-script@v7
+        id: idtoken
+        with:
+          script: |
+            const coredemo = require('@actions/core')
+            const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
+            coredemo.setOutput('id_token', id_token)
+
       - name: ACR Import
         uses: CDCgov/cfa-actions/runner-action@v1.3.0
         with:
@@ -66,11 +80,14 @@ jobs:
           script: |
             IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ needs.build-pipeline-image.outputs.tag }}
 
+            echo "Logging into Azure CLI"
             az login --service-principal \
             --username ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).clientId }} \
-            --password ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).clientSecret }} \
-            --tenant ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).tenantId }}
+            --tenant ${{ fromJSON(secrets.EDAV_STF_SERVICE_PRINCIPAL).tenantId }} \
+            --federated-token ${{ steps.idtoken.outputs.id_token }} \
+            --output none
 
+            echo "Running acr import"
             az acr import --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
               --source "ghcr.io/cdcgov/$IMAGE_TAG" \
               --username '${{ github.repository_owner }}'\
