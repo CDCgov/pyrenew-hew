@@ -52,6 +52,10 @@ jobs:
             $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh ${{ env.IMAGE_NAME }} ${{ steps.image-tag.outputs.tag }}
 
     acr-import:
+      permissions:
+        contents: read
+        id-token: write
+        packages: read
       environment: production
       needs: build-pipeline-image
       name: Import image from GHCR
