@@ -50,4 +50,3 @@ jobs:
               --yes \
               --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
               --image ${{ env.IMAGE_NAME }}:dependencies-${{ steps.image-tag.outputs.tag }}
-              
