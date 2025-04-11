@@ -18,7 +18,7 @@ Imports:
     fable,
     feasts,
     forcats,
-    forecasttools (>= 0.1.5),
+    forecasttools (>= 0.1.6),
     fs,
     ggdist,
     ggnewscale,
@@ -46,7 +46,7 @@ Imports:
     epiprocess,
     urca
 Remotes:
-    github::cdcgov/forecasttools@v0.1.5,
+    github::cdcgov/forecasttools,
     github::cmu-delphi/epipredict,
     github::cmu-delphi/epiprocess,
     github::damonbayer/ggdist
