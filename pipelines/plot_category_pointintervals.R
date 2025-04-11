@@ -1,131 +1,92 @@
+library(tidyverse)
+library(arrow)
 library(forecasttools)
-library(ggplot2)
-library(dplyr)
-library(argparser)
 library(fs)
 library(hewr)
-library(tidyr)
-library(purrr)
 library(glue)
+library(argparser)
 
-to_categorized_iqr <- function(hub_table,
-                               disease) {
-  result <- hub_table |>
-    pivot_hubverse_quantiles_wider() |>
-    mutate(
-      across(c("point", "lower", "upper"),
-        ~ forecasttools::categorize_prism(
-          .x,
-          .data$location,
-          !!disease
-        ),
-        .names = "category_{.col}"
-      )
-    )
-  return(result)
-}
+plot_category_pointintervals <- function(target_model,
+                                         target_horizon,
+                                         data_slice,
+                                         report_date) {
+  target_disease <- unique(data_slice[["disease"]])
+  target_end_date <- unique(data_slice[["target_end_date"]])
 
-plot_category_pointintervals <- function(data, horizon) {
-  plot <- data |>
-    filter(
-      .data$horizon == !!horizon,
-      stringr::str_detect(.data$target, "prop")
-    ) |>
-    arrange(point) |>
-    mutate("location" = factor(.data$location,
-      levels = unique(.data$location),
-      ordered = TRUE
-    )) |>
-    ggplot(aes(
-      y = location,
-      x = point,
-      xmin = lower,
-      xmax = upper
-    )) +
-    ggdist::geom_pointinterval() +
-    geom_point(
-      aes(
-        x = lower,
-        color = category_lower
-      ),
+  figure <- data_slice |>
+    arrange(value) |>
+    ggplot(aes(y = location)) +
+    ggdist::geom_pointinterval(aes(x = value, xmin = .lower, xmax = .upper)) +
+    geom_point(aes(x = .lower, color = category_.lower),
       size = 3,
       show.legend = TRUE
     ) +
-    geom_point(
-      aes(
-        x = upper,
-        color = category_upper
-      ),
+    geom_point(aes(x = .upper, color = category_.upper),
       size = 3,
       show.legend = TRUE
     ) +
-    geom_point(
-      aes(
-        x = point,
-        color = category_point
-      ),
+    geom_point(aes(x = value, color = category_value),
       size = 5,
       show.legend = TRUE
     ) +
-    scale_x_continuous(label = scales::label_percent()) +
-    scale_color_prism(drop = FALSE) +
-    labs(color = "Activity Level") +
+    scale_x_continuous("Proportion ED Visists with Disease",
+      label = scales::label_percent()
+    ) +
+    scale_y_discrete("Location") +
+    scale_color_prism("Activity Level", drop = FALSE) +
+    scale_size(guide = "none") +
+    ggtitle(glue::glue("{target_disease}, {target_model}"),
+      subtitle = glue(
+        "Report Date: {report_date}, ",
+        "Target: {target_horizon} week ahead ({target_end_date})"
+      )
+    ) +
     theme_minimal()
 
-  return(plot)
+  return(figure)
 }
 
 
-main <- function(hubverse_table_path,
-                 output_path,
-                 ...) {
-  parsed_model_batch_dir <- hubverse_table_path |>
+main <- function(hubverse_table_path, output_path) {
+  model_details <- hubverse_table_path |>
     path_dir() |>
-    parse_model_batch_dir_path()
+    hewr::parse_model_batch_dir_path()
 
-  disease <- parsed_model_batch_dir$disease
-  report_date <- parsed_model_batch_dir$report_date
+  report_date <- model_details$report_date
 
-  dat <- arrow::read_parquet(hubverse_table_path)
+  hub_table <- read_parquet(hubverse_table_path) |>
+    filter(
+      resolution == "epiweekly",
+      str_detect(target, "prop ed visits")
+    ) |>
+    modify_reference_date(ceiling_mmwr_epiweek,
+      horizon_timescale = "weeks"
+    ) |>
+    filter(horizon %in% 0:1) |>
+    forecasttools::hub_quantiles_to_median_qi(.width = 0.95) |>
+    rename(value = x) |>
+    mutate(across(c(value, .lower, .upper),
+      \(x) {
+        categorize_prism(diseases = disease, locations = location, values = x)
+      },
+      .names = "category_{.col}"
+    )) |>
+    group_by(model_id, horizon) |>
+    nest()
 
-  if (!(".variable" %in% colnames(dat)) ||
-    !("prop_disease_ed_visits" %in% dat[[".variable"]])) {
-    warning("Input hubverse table must contain a .variable column with
-         prop_disease_ed_visits")
-  } else {
-    dat <- to_categorized_iqr(dat, disease)
+  figures <- pmap(
+    hub_table,
+    \(model_id, horizon, data) {
+      plot_category_pointintervals(
+        model_id,
+        horizon, data, report_date
+      )
+    }
+  )
 
-    figure_tbl <-
-      dat |>
-      distinct(model, horizon, target_end_date) |>
-      filter(horizon %in% c(0, 1)) |>
-      mutate(figure = pmap(
-        list(model, horizon, target_end_date),
-        \(target_model, horizon, target_end_date) {
-          plot_category_pointintervals(
-            dat |>
-              filter(model == target_model),
-            horizon = horizon
-          ) +
-            labs(
-              x = "% ED visits",
-              y = "Location"
-            ) +
-            ggtitle(glue::glue("{disease}, {target_model}"),
-              subtitle = glue(
-                "Report Date: {report_date}, ",
-                "Target: {horizon} week ahead ({target_end_date})"
-              )
-            )
-        }
-      ))
-
-    plots_to_pdf(
-      figure_tbl$figure,
-      output_path
-    )
-  }
+  plots_to_pdf(figures, output_path)
 }
+
 
 
 p <- arg_parser("Create a pointinterval plot of forecasts") |>
