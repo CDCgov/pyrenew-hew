@@ -47,7 +47,7 @@ plot_category_pointintervals <- function(target_model,
 }
 
 
-main <- function(hubverse_table_path, output_path) {
+main <- function(hubverse_table_path, output_path, ...) {
   model_details <- hubverse_table_path |>
     path_dir() |>
     hewr::parse_model_batch_dir_path()
@@ -64,7 +64,6 @@ main <- function(hubverse_table_path, output_path) {
     ) |>
     filter(horizon %in% 0:1) |>
     forecasttools::hub_quantiles_to_median_qi(.width = 0.95) |>
-    rename(value = x) |>
     mutate(across(c(value, .lower, .upper),
       \(x) {
         categorize_prism(diseases = disease, locations = location, values = x)
