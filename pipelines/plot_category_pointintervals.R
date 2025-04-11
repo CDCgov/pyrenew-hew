@@ -77,10 +77,7 @@ main <- function(hubverse_table_path, output_path) {
   figures <- pmap(
     hub_table,
     \(model_id, horizon, data) {
-      plot_category_pointintervals(
-        model_id,
-        horizon, data, report_date
-      )
+      plot_category_pointintervals(model_id, horizon, data, report_date)
     }
   )
 
