@@ -71,6 +71,7 @@ save_forecast_figures <- function(model_run_dir,
         aggregated_denominator,
         y_transform) {
         make_forecast_figure(
+          processed_forecast$data,
           geo_value,
           disease,
           .variable,
@@ -78,7 +79,6 @@ save_forecast_figures <- function(model_run_dir,
           aggregated_numerator,
           aggregated_denominator,
           y_transform,
-          processed_forecast$data,
           processed_forecast$ci,
           parsed_model_run_dir$report_date
         )

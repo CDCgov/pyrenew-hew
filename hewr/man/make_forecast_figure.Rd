@@ -5,6 +5,7 @@
 \title{Make Forecast Figure}
 \usage{
 make_forecast_figure(
+  dat,
   geo_value,
   disease,
   .variable,
@@ -12,7 +13,6 @@ make_forecast_figure(
   aggregated_numerator,
   aggregated_denominator,
   y_transform,
-  dat,
   ci,
   data_vintage_date,
   highlight_dates = NULL,
@@ -22,6 +22,8 @@ make_forecast_figure(
 )
 }
 \arguments{
+\item{dat}{a data frame containing the data to be plotted}
+
 \item{geo_value}{character matching the geo_value column in \code{dat} and \code{ci}}
 
 \item{disease}{character matching the disease column in \code{dat} and \code{ci}}
@@ -38,8 +40,6 @@ column in \code{dat} and \code{ci}}
 
 \item{y_transform}{a character passed as the transform argument to
 \code{\link[ggplot2:scale_continuous]{ggplot2::scale_y_continuous()}}.}
-
-\item{dat}{a data frame containing the data to be plotted}
 
 \item{ci}{a data frame containing the credible intervals to be plotted}
 

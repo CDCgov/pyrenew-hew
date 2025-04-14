@@ -1,5 +1,6 @@
 #' Make Forecast Figure
 #'
+#' @param dat a data frame containing the data to be plotted
 #' @param geo_value character matching the geo_value column in `dat` and `ci`
 #' @param disease character matching the disease column in `dat` and `ci`
 #' @param .variable character matching the .variable column in `dat` and `ci`
@@ -8,7 +9,6 @@
 #' column in `dat` and `ci`
 #' @param aggregated_denominator character matching the aggregated_denominator
 #' column in `dat` and `ci`
-#' @param dat a data frame containing the data to be plotted
 #' @param ci a data frame containing the credible intervals to be plotted
 #' @param data_vintage_date date that the data was collected
 #' @param y_transform a character passed as the transform argument to
@@ -23,14 +23,14 @@
 #'
 #' @return a ggplot object
 #' @export
-make_forecast_figure <- function(geo_value,
+make_forecast_figure <- function(dat,
+                                 geo_value,
                                  disease,
                                  .variable,
                                  resolution,
                                  aggregated_numerator,
                                  aggregated_denominator,
                                  y_transform,
-                                 dat,
                                  ci,
                                  data_vintage_date,
                                  highlight_dates = NULL,
