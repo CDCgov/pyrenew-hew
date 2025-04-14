@@ -66,7 +66,6 @@ make_forecast_figure <- function(dat,
     "Influenza" = "Flu"
   )[[disease]]
 
-  state_abb <- geo_value
   parsed_variable_name <- parse_variable_name(.variable)
 
   y_axis_label <- parsed_variable_name[["full_name"]]
@@ -79,7 +78,7 @@ make_forecast_figure <- function(dat,
     disease_name_pretty
   )
 
-  title <- glue::glue("{title_prefix} {core_name} in {state_abb}")
+  title <- glue::glue("{title_prefix} {core_name} in {geo_value}")
 
   last_training_date <- dat |>
     dplyr::filter(.data$data_type == "train") |>
@@ -112,7 +111,7 @@ make_forecast_figure <- function(dat,
     max_y <- max(lineribbon_dat$.upper, point_dat$.value)
 
     full_prism_cutpoints <- forecasttools::get_prism_cutpoints(
-      state_abb,
+      geo_value,
       disease
     ) |>
       unlist() |>
