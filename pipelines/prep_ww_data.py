@@ -182,9 +182,9 @@ def validate_ww_conc_data(
         lab_col_name,
     ]
 
-    assert all(
-        col in ww_data.columns for col in required_cols
-    ), "One or more required column(s) missing"
+    assert all(col in ww_data.columns for col in required_cols), (
+        "One or more required column(s) missing"
+    )
 
     check_missing_values(
         ww_data,
