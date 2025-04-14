@@ -64,7 +64,7 @@ make_forecast_figure <- function(dat,
   disease_name_pretty <- c(
     "COVID-19" = "COVID-19",
     "Influenza" = "Flu"
-  )[disease] |> unname()
+  )[[disease]]
 
   state_abb <- geo_value
   parsed_variable_name <- parse_variable_name(.variable)
