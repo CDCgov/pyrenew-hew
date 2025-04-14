@@ -49,7 +49,11 @@ jobs:
         - name: Docker build and push
           run: |
             chmod +x $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh
-            $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh ${{ env.IMAGE_NAME }} ${{ steps.image-tag.outputs.tag }}
+            $GITHUB_WORKSPACE/.github/scripts/docker_build_and_push.sh \
+              ${{ env.IMAGE_NAME }} \
+              ${{ steps.image-tag.outputs.tag }} \
+              ${{ github.event.pull_request.head.sha || github.sha }} \
+              ${{ steps.branch.outputs.name }} \
 
     acr-import:
       permissions:
