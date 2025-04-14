@@ -281,9 +281,11 @@ process_pyrenew_model <- function(model_run_dir,
   }
 
   ## Process data
-  data_for_model_fit <- jsonlite::read_json(
-    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json")
-  )
+  data_for_model_fit <-
+    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json") |>
+    readr::read_lines() |>
+    stringr::str_replace_all("-Infinity", "null") |>
+    jsonlite::fromJSON()
 
   first_nhsn_date <- data_for_model_fit$nhsn_training_dates[[1]]
   first_nssp_date <- data_for_model_fit$nssp_training_dates[[1]]
