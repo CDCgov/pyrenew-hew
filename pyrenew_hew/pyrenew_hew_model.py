@@ -270,6 +270,7 @@ class EDVisitObservationProcess(RandomVariable):
         latent_infections: ArrayLike,
         population_size: int,
         data_observed: ArrayLike,
+        model_t_observed: ArrayLike,
         n_datapoints: int,
         right_truncation_offset: int = None,
     ) -> tuple[ArrayLike]:
@@ -728,6 +729,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 latent_infections=latent_infections,
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
+                model_t_observed=data.model_t_obs_ed_visits,
                 n_datapoints=data.n_ed_visits_data_days,
                 right_truncation_offset=data.right_truncation_offset,
             )
@@ -738,7 +740,8 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
                 n_datapoints=data.n_hospital_admissions_data_days,
-                data_observed=(data.data_observed_disease_hospital_admissions),
+                data_observed=data.data_observed_disease_hospital_admissions,
+                model_t_observed=data.model_t_obs_hospital_admissions,
                 iedr=iedr,
             )
         if sample_wastewater:
@@ -753,7 +756,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 ww_censored=data.ww_censored,
                 ww_observed_lab_sites=data.ww_observed_lab_sites,
                 ww_observed_subpops=data.ww_observed_subpops,
-                ww_observed_times=data.ww_observed_times,
+                ww_observed_times=data.model_t_obs_wastewater_conc,
                 ww_log_lod=data.ww_log_lod,
                 lab_site_to_subpop_map=data.lab_site_to_subpop_map,
                 n_ww_lab_sites=data.n_ww_lab_sites,

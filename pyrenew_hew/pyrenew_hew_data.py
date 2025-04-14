@@ -30,7 +30,7 @@ class PyrenewHEWData:
         ww_censored: ArrayLike = None,
         ww_uncensored: ArrayLike = None,
         ww_observed_subpops: ArrayLike = None,
-        ww_observed_times: ArrayLike = None,
+        model_t_obs_wastewater_conc: ArrayLike = None,
         ww_observed_lab_sites: ArrayLike = None,
         lab_site_to_subpop_map: ArrayLike = None,
         ww_log_lod: ArrayLike = None,
@@ -49,7 +49,7 @@ class PyrenewHEWData:
         self.ww_censored_ = ww_censored
         self.ww_observed_lab_sites_ = ww_observed_lab_sites
         self.ww_observed_subpops_ = ww_observed_subpops
-        self.ww_observed_times_ = ww_observed_times
+        self.model_t_obs_wastewater_conc_ = model_t_obs_wastewater_conc
         self.lab_site_to_subpop_map_ = lab_site_to_subpop_map
         self.ww_log_lod_ = ww_log_lod
         self.right_truncation_offset = right_truncation_offset
@@ -251,10 +251,38 @@ class PyrenewHEWData:
         return self.ww_uncensored_
 
     @property
-    def ww_observed_times(self):
+    def model_t_obs_wastewater_conc(self):
         if self.nwss_training_data is not None:
             return self.wastewater_data_extended.get_column("t").to_numpy()
-        return self.ww_observed_times_
+        return self.model_t_obs_wastewater_conc_
+
+    @property
+    def model_t_obs_ed_visits(self):
+        if self.nssp_training_data is not None:
+            return (
+                self.nssp_training_data.join(
+                    self.date_time_spine, on="date", how="left"
+                )
+                .get_column("t")
+                .unique()
+                .to_numpy()
+            )
+        return None
+
+    @property
+    def model_t_obs_hospital_admissions(self):
+        if self.nhsn_training_data is not None:
+            return (
+                self.nhsn_training_data.join(
+                    self.date_time_spine,
+                    left_on="weekendingdate",
+                    right_on="date",
+                    how="left",
+                )
+                .get_column("t")
+                .to_numpy()
+            )
+        return None
 
     @property
     def ww_observed_subpops(self):
@@ -302,6 +330,18 @@ class PyrenewHEWData:
             )
         return self.lab_site_to_subpop_map_
 
+    # @property
+    # def model_t_first_ed_visits(self):
+    #     return (self.first_ed_visits_date - self.first_data_date_overall).days
+
+    # @property
+    # def model_t_first_hospital_admissions(self):
+    #     return (self.first_hospital_admissions_date - self.first_data_date_overall).days
+
+    # @property
+    # def model_t_first_wastewater(self):
+    #     return (self.first_wastewater_date - self.first_data_date_overall).days
+
     def get_end_date(
         self,
         first_date: datetime.date,
@@ -348,9 +388,6 @@ class PyrenewHEWData:
         else:
             return n_datapoints
 
-    def date_to_model_time(self, first_data_date_overall, dates_observed):
-        offset = (first_data_date_overall - dates_observed).days
-
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
@@ -367,7 +404,7 @@ class PyrenewHEWData:
             ww_censored=self.ww_censored,
             ww_observed_lab_sites=self.ww_observed_lab_sites,
             ww_observed_subpops=self.ww_observed_subpops,
-            ww_observed_times=self.ww_observed_times,
+            model_t_obs_wastewater_conc=self.model_t_obs_wastewater_conc,
             lab_site_to_subpop_map=self.lab_site_to_subpop_map,
             ww_log_lod=self.ww_log_lod,
             pop_fraction=self.pop_fraction,
