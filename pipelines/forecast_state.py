@@ -87,7 +87,9 @@ def generate_epiweekly_data(model_run_dir: Path) -> None:
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"generate_epiweekly_data: {result.stderr}")
+        raise RuntimeError(
+            f"generate_epiweekly_data: {result.stderr.decode('utf-8')}"
+        )
     return None
 
 
@@ -109,7 +111,9 @@ def timeseries_forecasts(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"timeseries_forecasts: {result.stderr}")
+        raise RuntimeError(
+            f"timeseries_forecasts: {result.stderr.decode('utf-8')}"
+        )
     return None
 
 
@@ -128,7 +132,7 @@ def convert_inferencedata_to_parquet(
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"convert_inferencedata_to_parquet: {result.stderr}"
+            f"convert_inferencedata_to_parquet: {result.stderr.decode('utf-8')}"
         )
     return None
 
@@ -149,7 +153,9 @@ def plot_and_save_state_forecast(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"plot_and_save_state_forecast: {result.stderr}")
+        raise RuntimeError(
+            f"plot_and_save_state_forecast: {result.stderr.decode('utf-8')}"
+        )
     return None
 
 
@@ -163,7 +169,7 @@ def score_forecast(model_run_dir: Path) -> None:
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"score_forecast: {result.stderr}")
+        raise RuntimeError(f"score_forecast: {result.stderr.decode('utf-8')}")
     return None
 
 
@@ -177,7 +183,9 @@ def render_diagnostic_report(model_run_dir: Path) -> None:
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"render_diagnostic_report: {result.stderr}")
+        raise RuntimeError(
+            f"render_diagnostic_report: {result.stderr.decode('utf-8')}"
+        )
     return None
 
 
@@ -478,10 +486,10 @@ def main(
     )
     logger.info("Postprocessing complete.")
 
-    if pyrenew_model_name == "pyrenew_e":
-        logger.info("Rendering webpage...")
-        render_diagnostic_report(model_run_dir)
-        logger.info("Rendering complete.")
+    # if pyrenew_model_name == "pyrenew_e":
+    #     logger.info("Rendering webpage...")
+    #     render_diagnostic_report(model_run_dir)
+    #     logger.info("Rendering complete.")
 
     if score:
         logger.info("Scoring forecast...")

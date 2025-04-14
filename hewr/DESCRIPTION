@@ -46,9 +46,10 @@ Imports:
     epiprocess,
     urca
 Remotes:
-    https://github.com/cdcgov/forecasttools,
-    https://github.com/cmu-delphi/epipredict,
-    https://github.com/cmu-delphi/epiprocess
+    github::cdcgov/forecasttools@v0.1.4,
+    github::cmu-delphi/epipredict,
+    github::cmu-delphi/epiprocess,
+    github::damonbayer/ggdist
 Suggests:
     checkmate,
     rcmdcheck,
