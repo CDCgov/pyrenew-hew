@@ -123,8 +123,7 @@ parser.add_argument(
     "nssp_data_dir",
     type=Path,
     help=(
-        "Directory in which to look for NSSP data gold table "
-        ".parquet files."
+        "Directory in which to look for NSSP data gold table .parquet files."
     ),
 )
 parser.add_argument(
