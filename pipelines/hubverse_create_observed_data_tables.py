@@ -132,8 +132,7 @@ parser.add_argument(
     "path_to_latest_data",
     type=Path,
     help=(
-        "Path to a parquet file containing the latest "
-        "ED visit observations."
+        "Path to a parquet file containing the latest ED visit observations."
     ),
 )
 
