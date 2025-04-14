@@ -9,8 +9,9 @@
 #' @param output_path path to save the table as a tsv
 #' @return Nothing, saving the table as a side effect.
 main <- function(model_batch_dir,
-                 output_path) {
-  hewr::to_epiweekly_quantile_table(model_batch_dir) |>
+                 output_path,
+                 locations_exclude) {
+  hewr::to_epiweekly_quantile_table(model_batch_dir, locations_exclude) |>
     arrow::write_parquet(output_path)
 }
 
@@ -29,11 +30,21 @@ p <- argparser::arg_parser(
   argparser::add_argument(
     "output_path",
     help = "Path to which to save the table."
+  ) |>
+  argparser::add_argument(
+    "--locations-exclude",
+    help = paste0(
+      "Comma-separated list of two-letter location codes to ",
+      "exclude."
+    ),
+    default = "AS,GU,MO,MP,PR,UM,VI"
   )
 
 argv <- argparser::parse_args(p)
+locations_exclude_vec <- unlist(strsplit(argv$locations_exclude, split = ","))
 
 main(
   argv$model_batch_dir,
-  argv$output_path
+  argv$output_path,
+  locations_exclude_vec
 )

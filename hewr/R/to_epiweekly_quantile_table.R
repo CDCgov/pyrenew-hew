@@ -8,7 +8,8 @@
 #' `{disease}_r_{reference_date}_f_{first_data_date}_t_{last_data_date}`.
 #' @return The complete hubverse-format [`tibble`][tibble::tibble()].
 #' @export
-to_epiweekly_quantile_table <- function(model_batch_dir) {
+to_epiweekly_quantile_table <- function(
+    model_batch_dir, locations_exclude = c()) {
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
 
   batch_params <- parse_model_batch_dir_path(
