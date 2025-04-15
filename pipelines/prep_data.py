@@ -9,8 +9,13 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
+import numpy as np
+import numpyro.distributions as dist
 import polars as pl
 import polars.selectors as cs
+from jax.scipy.special import logsumexp
+from jax.typing import ArrayLike
+from scipy.optimize import minimize
 
 _disease_map = {
     "COVID-19": "COVID-19/Omicron",
@@ -353,7 +358,8 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
 
     delay_pmf = (
@@ -365,8 +371,16 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
+
+    # ensure 0 first entry; we do not model the possibility
+    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
+    delay_pmf[0] = 0.0
+    delay_pmf = jnp.array(delay_pmf)
+    delay_pmf = delay_pmf / delay_pmf.sum()
+    delay_pmf = delay_pmf.tolist()
 
     right_truncation_pmf = (
         param_estimates.filter(
@@ -378,10 +392,71 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
 
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
+
+
+def approx_lognorm(
+    pmf: ArrayLike, loc_guess, scale_guess, method: str = "Nelder-Mead"
+) -> tuple[float, float]:
+    """
+    Find loc and scale parameters
+    of a lognormal distribution such that
+    the lognormal PDF is approxmimately
+    proportional to the given discrete PMF.
+
+    Parameters
+    ----------
+    pmf
+       Array representing the PMF.
+
+    loc_guess
+       Initial loc value to pass to the optimizer.
+
+    scale_guess
+       Initial scale value to pass to the optimizer.
+
+    method
+       Optimization method. Passed as the ``method``
+       keyword argument to :func:`scipy.optimize.minimize`.
+       Default ``"Nelder-Mead"``.
+
+    Returns
+    -------
+    tuple[float, float]
+       A tuple containing the loc parameter as the first
+       entry and the scale parameter as the second.
+
+    Raises
+    ------
+    ValueError
+       If optimization fails.
+    """
+    log_pmf = jnp.log(pmf)
+    n = log_pmf.size
+
+    def err(loc_and_scale):
+        """
+        Our objective function: the squared
+        errors of log prob values
+        """
+        lnorm = dist.LogNormal(loc=loc_and_scale[0], scale=loc_and_scale[1])
+        lp = lnorm.log_prob(jnp.arange(1, n + 1))
+        normed_lp = lp - logsumexp(lp)
+        return jnp.sum((log_pmf - normed_lp) ** 2)
+
+    result = minimize(
+        err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead"
+    )
+    if not result.success:
+        print(result)
+        raise ValueError("Discretized lognormal approximation to PMF failed")
+    else:
+        res = result.x
+        return (float(res[0]), float(res[1]))
 
 
 def process_and_save_state(
@@ -416,6 +491,12 @@ def process_and_save_state(
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
+    )
+
+    delay_lognormal_loc, delay_lognormal_scale = approx_lognorm(
+        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+        loc_guess=0,
+        scale_guess=0.5,
     )
 
     right_truncation_offset = (report_date - last_training_date).days
@@ -490,7 +571,9 @@ def process_and_save_state(
             pop_fraction = subpop_sizes / state_pop
 
     data_for_model_fit = {
-        "inf_to_ed_pmf": delay_pmf,
+        "inf_to_hosp_admit_pmf": delay_pmf,
+        "inf_to_hosp_admit_lognormal_loc": delay_lognormal_loc,
+        "inf_to_hosp_admit_lognormal_scale": delay_lognormal_scale,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "state_pop": state_pop,

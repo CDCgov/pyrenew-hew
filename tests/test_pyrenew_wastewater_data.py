@@ -40,7 +40,7 @@ def test_pyrenew_wastewater_data():
     )
 
     first_ed_visits_date = datetime.date(2023, 1, 1)
-    first_hospital_admissions_date = datetime.date(2023, 1, 1)
+    first_hospital_admissions_date = datetime.date(2023, 1, 7)  # Saturday
     first_wastewater_date = datetime.date(2023, 1, 1)
     n_forecast_points = 10
 
