@@ -77,7 +77,7 @@ def build_model_from_dir(
             "inf_to_hosp_admit",
             reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
             reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
-            n=jnp.size(model_data["inf_to_hosp_admit_pmf"]) * 2,
+            n=jnp.size(jnp.array(model_data["inf_to_hosp_admit_pmf"])) * 2,
             offset_loc_rv=priors["delay_offset_loc_rv"],
             log_offset_scale_rv=priors["delay_log_offset_scale_rv"],
         )
@@ -156,8 +156,6 @@ def build_model_from_dir(
         - 1
     )
 
-    priors = runpy.run_path(str(prior_path))
-
     right_truncation_offset = model_data["right_truncation_offset"]
 
     latent_infections_rv = LatentInfectionProcess(
@@ -173,7 +171,9 @@ def build_model_from_dir(
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
         sigma_rt_rv=priors["sigma_rt_rv"],
         sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
-        offset_ref_logit_i_first_obs_rv=priors["offset_ref_logit_i_first_obs_rv"],
+        offset_ref_logit_i_first_obs_rv=priors[
+            "offset_ref_logit_i_first_obs_rv"
+        ],
         offset_ref_log_rt_rv=priors["offset_ref_log_rt_rv"],
     )
 
