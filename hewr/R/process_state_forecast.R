@@ -118,7 +118,7 @@ epiweekly_samples_from_daily <- function(daily_samples,
 #' Read in and combine training and evaluation
 #' data from a model run directory.
 #'
-#' @param model_run_dir model run directoryh in which to look
+#' @param model_run_dir model run directory in which to look
 #' for data.
 #' @export
 read_and_combine_data <- function(model_run_dir) {
