@@ -114,7 +114,7 @@ to_hub_quantile_table <- function(model_batch_dir) {
         "model",
         "output_type",
         "output_type_id",
-        "value" = "quantile_value",
+        value = "quantile_value",
         "reference_date",
         "target",
         "horizon",
