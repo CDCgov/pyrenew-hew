@@ -52,7 +52,7 @@ def main(pool_name: str) -> None:
     ) = models.ContainerConfiguration(
         type="dockerCompatible",
         container_image_names=[
-            "https://cfaprdbatchcr.azurecr.io/pyrenew-hew:latest"
+            "https://ghcr.io/cdcgov/pyrenew-hew:latest"
         ],
         container_registries=[creds.azure_container_registry],
     )
