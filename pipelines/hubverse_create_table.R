@@ -10,7 +10,7 @@
 #' @return Nothing, saving the table as a side effect.
 main <- function(model_batch_dir,
                  output_path) {
-  hewr::to_epiweekly_quantile_table(model_batch_dir) |>
+  hewr::to_hub_quantile_table(model_batch_dir) |>
     arrow::write_parquet(output_path)
 }
 
