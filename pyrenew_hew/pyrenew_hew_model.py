@@ -286,7 +286,10 @@ class LatentInfectionProcess(RandomVariable):
             latent_infections = jnp.sum(
                 self.pop_fraction * latent_infections_subpop, axis=1
             )
-
+        assert (
+            latent_infections.shape[0]
+            == self.n_initialization_points + n_days_post_init
+        )
         numpyro.deterministic("rtu_subpop", rtu_subpop)
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
@@ -325,16 +328,38 @@ class EDVisitObservationProcess(RandomVariable):
         population_size: int,
         data_observed: ArrayLike,
         model_t_observed: ArrayLike,
-        n_datapoints: int,
+        n_init_days: int,
         right_truncation_offset: int = None,
     ) -> tuple[ArrayLike]:
         """
         Observe and/or predict ED visit values
         """
+        inf_to_ed = self.inf_to_ed_rv()
+        potential_latent_ed_visits, ed_visit_offset = (
+            compute_delay_ascertained_incidence(
+                p_observed_given_incident=1,
+                latent_incidence=latent_infections,
+                delay_incidence_to_observation_pmf=inf_to_ed,
+            )
+        )
+
+        model_t_first_latent_ed_visit = ed_visit_offset - n_init_days
+
+        if (
+            model_t_observed is None
+        ):  # True for forecasting/posterior prediction
+            which_obs_ed_visits = jnp.arange(
+                -model_t_first_latent_ed_visit, potential_latent_ed_visits.size
+            )
+        else:
+            which_obs_ed_visits = (
+                model_t_observed - model_t_first_latent_ed_visit
+            )
+
         p_ed_mean = self.p_ed_mean_rv()
         p_ed_w_sd = self.p_ed_w_sd_rv()
         autoreg_p_ed = self.autoreg_p_ed_rv()
-        n_weeks_p_ed_ar = n_datapoints // 7 + 1
+        n_weeks_p_ed_ar = potential_latent_ed_visits.size // 7 + 1
 
         p_ed_ar_init_rv = DistributionalVariable(
             "p_ed_ar_init",
@@ -356,7 +381,9 @@ class EDVisitObservationProcess(RandomVariable):
         iedr = jnp.repeat(
             transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
             repeats=7,
-        )[:n_datapoints]  # indexed rel to first ed report day
+        )[
+            : potential_latent_ed_visits.size
+        ]  # indexed rel to first ed report day
         # this is only applied after the ed visits are generated, not to all
         # the latent infections. This is why we cannot apply the iedr in
         # compute_delay_ascertained_incidence
@@ -365,20 +392,12 @@ class EDVisitObservationProcess(RandomVariable):
         numpyro.deterministic("iedr", iedr)
 
         ed_wday_effect_raw = self.ed_wday_effect_rv()
-        ed_wday_effect = tile_until_n(ed_wday_effect_raw, n_datapoints)
-
-        inf_to_ed = self.inf_to_ed_rv()
-
-        potential_latent_ed_visits, ed_visit_offset = (
-            compute_delay_ascertained_incidence(
-                p_observed_given_incident=1,
-                latent_incidence=latent_infections,
-                delay_incidence_to_observation_pmf=inf_to_ed,
-            )
+        ed_wday_effect = tile_until_n(
+            ed_wday_effect_raw, potential_latent_ed_visits.size
         )
 
         latent_ed_visits_final = (
-            potential_latent_ed_visits[-n_datapoints:]
+            potential_latent_ed_visits
             * iedr
             * ed_wday_effect
             * population_size
@@ -389,7 +408,8 @@ class EDVisitObservationProcess(RandomVariable):
                 self.ed_right_truncation_cdf_rv()[right_truncation_offset:]
             )
             n_points_to_prepend = (
-                n_datapoints - prop_already_reported_tail.shape[0]
+                potential_latent_ed_visits.size
+                - prop_already_reported_tail.shape[0]
             )
             prop_already_reported = jnp.pad(
                 prop_already_reported_tail,
@@ -409,7 +429,7 @@ class EDVisitObservationProcess(RandomVariable):
         )
 
         observed_ed_visits = ed_visit_obs_rv(
-            mu=latent_ed_visits_now,
+            mu=latent_ed_visits_now[which_obs_ed_visits],
             obs=data_observed,
         )
 
@@ -439,8 +459,7 @@ class HospAdmitObservationProcess(RandomVariable):
         latent_infections: ArrayLike,
         first_latent_infection_dow: int,
         population_size: int,
-        n_datapoints: int,
-        model_t_first_obs: int,
+        n_init_days: int,
         data_observed: ArrayLike = None,
         model_t_observed: ArrayLike = None,
         iedr: ArrayLike = None,
@@ -483,15 +502,15 @@ class HospAdmitObservationProcess(RandomVariable):
             )
         )
 
-        # roll into compute_delay_ascertained incidence?
-        model_t_first_latent_admit = inf_to_hosp_admit.shape[0] - 1
-        # we should add functionality to automate this,
-        # along with tests
+        model_t_first_latent_admissions = (
+            hospital_admissions_offset - n_init_days
+        )
 
         first_latent_admission_dow = (
-            first_latent_infection_dow + model_t_first_latent_admit
+            first_latent_infection_dow + hospital_admissions_offset
         ) % 7
 
+        # latent admit days discarded
         truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
 
         predicted_weekly_admissions = daily_to_mmwr_epiweekly(
@@ -499,17 +518,36 @@ class HospAdmitObservationProcess(RandomVariable):
             input_data_first_dow=first_latent_admission_dow,
         )
 
-        model_t_first_pred_admit = (
-            model_t_first_latent_admit + truncated_latent_admit_days + 6
+        model_t_first_pred_admissions = (
+            model_t_first_latent_admissions + truncated_latent_admit_days + 6
         )
-        model_dow_first_pred_admit = (
-            model_t_first_pred_admit + first_latent_infection_dow
+        model_dow_first_pred_admissions = (
+            first_latent_admission_dow + truncated_latent_admit_days + 6
         ) % 7
-        assert model_dow_first_pred_admit == 5
-        offset_first_obs_days = model_t_first_obs - model_t_first_pred_admit
+
+        assert model_dow_first_pred_admissions == 5
+
+        offset_first_obs_days = (
+            model_t_observed[0] - model_t_first_pred_admissions
+        )
 
         assert offset_first_obs_days % 7 == 0
-        offset_first_obs_weeks = offset_first_obs_days // 7
+
+        which_weekly_obs_hosp_admissions = jnp.floor_divide(
+            model_t_observed - model_t_first_pred_admissions, 7
+        )
+
+        if (
+            model_t_observed is None
+        ):  # True for forecasting/posterior prediction
+            which_weekly_obs_hosp_admissions = (
+                jnp.arange(predicted_weekly_admissions.size) * 7
+                + model_t_first_pred_admissions
+            )
+        else:
+            which_weekly_obs_hosp_admissions = jnp.floor_divide(
+                model_t_observed - model_t_first_pred_admissions, 7
+            )
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
@@ -517,7 +555,7 @@ class HospAdmitObservationProcess(RandomVariable):
         )
 
         observed_hospital_admissions = hospital_admissions_obs_rv(
-            mu=predicted_weekly_admissions[offset_first_obs_weeks:],
+            mu=predicted_weekly_admissions[which_weekly_obs_hosp_admissions],
             obs=data_observed,
         )
 
@@ -802,7 +840,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
                 model_t_observed=data.model_t_obs_ed_visits,
-                n_datapoints=data.n_ed_visits_data_days,
+                n_init_days=n_init_days,
                 right_truncation_offset=data.right_truncation_offset,
             )
 
@@ -811,12 +849,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 latent_infections=latent_infections,
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
-                n_datapoints=data.n_hospital_admissions_data_days,
-                model_t_first_obs=n_init_days
-                + (
-                    data.first_hospital_admissions_date
-                    - data.first_data_date_overall
-                ).days,
+                n_init_days=n_init_days,
                 data_observed=data.data_observed_disease_hospital_admissions,
                 model_t_observed=data.model_t_obs_hospital_admissions,
                 iedr=iedr,
