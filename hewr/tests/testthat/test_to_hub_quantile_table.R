@@ -1,6 +1,6 @@
-# tests for `to_epiweekly_quantile_table`
+# tests for `to_hub_quantile_table`
 test_that(paste0(
-  "to_epiweekly_quantile_table ",
+  "to_hub_quantile_table ",
   "handles multiple locations ",
   "and multiple source files"
 ), {
@@ -17,35 +17,29 @@ test_that(paste0(
     date_options <- as.Date(c("2024-12-13", "2024-12-14", "2024-12-15"))
     disease_options <- "COVID-19"
     variable_options <- c("observed_ed_visits", "other_ed_visits")
+    resolution_options <- c("daily", "epiweekly")
+    aggregated_numerator_options <- c(TRUE, FALSE)
+    aggregated_denominator_options <- c(TRUE, FALSE, NA)
     n_draw <- 4
 
     create_model_results(
       file = fs::path(loc_dir,
-        "epiweekly_samples",
+        "samples",
         ext = "parquet"
       ),
       model_name = fs::path_file(loc_dir),
       date_options = date_options,
       geo_value_options = loc,
       disease_options = disease_options,
-      n_draw = n_draw
-    )
-
-    create_model_results(
-      file = fs::path(loc_dir,
-        "epiweekly_with_epiweekly_other_samples",
-        ext = "parquet"
-      ),
-      model_name = fs::path_file(loc_dir),
-      date_options = date_options,
-      geo_value_options = loc,
-      disease_options = disease_options,
+      resolution_options = resolution_options,
+      aggregated_numerator_options = aggregated_numerator_options,
+      aggregated_denominator_options = aggregated_denominator_options,
       n_draw = n_draw
     )
   })
 
   result <-
-    to_epiweekly_quantile_table(temp_batch_dir) |>
+    to_hub_quantile_table(temp_batch_dir) |>
     suppressMessages()
 
   expect_gt(nrow(result), 0)
@@ -53,19 +47,21 @@ test_that(paste0(
   checkmate::expect_names(
     colnames(result),
     identical.to = c(
+      "model_id",
       "model",
-      "forecast_type",
-      "resolution",
-      ".variable",
+      "output_type",
+      "output_type_id",
+      "value",
       "reference_date",
       "target",
       "horizon",
       "horizon_timescale",
+      "resolution",
       "target_end_date",
       "location",
-      "output_type",
-      "output_type_id",
-      "value"
+      "disease",
+      "aggregated_numerator",
+      "aggregated_denominator"
     )
   )
 })
