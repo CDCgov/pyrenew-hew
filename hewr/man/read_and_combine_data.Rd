@@ -8,7 +8,7 @@ data from a model run directory.}
 read_and_combine_data(model_run_dir)
 }
 \arguments{
-\item{model_run_dir}{model run directoryh in which to look
+\item{model_run_dir}{model run directory in which to look
 for data.}
 }
 \description{
