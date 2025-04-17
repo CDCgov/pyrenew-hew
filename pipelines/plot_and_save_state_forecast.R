@@ -21,6 +21,22 @@ save_forecast_figures <- function(model_run_dir,
     )
   }
 
+  create_file_name <- function(model_name,
+                               .variable,
+                               resolution,
+                               aggregated_numerator,
+                               aggregated_denominator,
+                               y_transform) {
+    glue(
+      "{model_name}_",
+      "{.variable}_{resolution}",
+      "{if_else(base::isTRUE(aggregated_numerator), '_agg_num', '')}",
+      "{if_else(base::isTRUE(aggregated_denominator), '_agg_denom', '')}",
+      "{y_transforms[y_transform]}"
+    ) |>
+      str_replace_all("_+", "_")
+  }
+
   model_name <- dplyr::if_else(is.na(pyrenew_model_name),
     timeseries_model_name,
     pyrenew_model_name
@@ -84,14 +100,14 @@ save_forecast_figures <- function(model_run_dir,
         )
       }
     )) |>
-    mutate(file_name = glue(
-      "{model_name}_",
-      "{.variable}_{resolution}",
-      "{if_else(base::isTRUE(aggregated_numerator), '_agg_num', '')}",
-      "{if_else(base::isTRUE(aggregated_denominator), '_agg_denom', '')}",
-      "{y_transforms[y_transform]}"
-    ) |>
-      str_replace_all("_+", "_")) |>
+    mutate(file_name = create_file_name(
+      model_name,
+      .data$.variable,
+      .data$resolution,
+      .data$aggregated_numerator,
+      .data$aggregated_denominator,
+      .data$y_transform
+    )) |>
     mutate(figure_path = path(figure_dir, file_name, ext = "pdf"))
 
   walk2(

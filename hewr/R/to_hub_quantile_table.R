@@ -9,6 +9,19 @@
 #' @return The complete hubverse-format [`tibble`][tibble::tibble()].
 #' @export
 to_hub_quantile_table <- function(model_batch_dir) {
+  create_model_id <- function(model,
+                              resolution,
+                              aggregated_numerator,
+                              aggregated_denominator) {
+    glue::glue(
+      "{model}_{resolution}",
+      "{dplyr::if_else(vctrs::vec_equal(",
+      "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
+      "{dplyr::if_else(vctrs::vec_equal(",
+      "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
+    )
+  }
+
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
 
   batch_params <- parse_model_batch_dir_path(
@@ -102,12 +115,11 @@ to_hub_quantile_table <- function(model_batch_dir) {
           digits = 4
         )
       ) |>
-      dplyr::mutate(model_id = glue::glue(
-        "{model}_{resolution}",
-        "{dplyr::if_else(vctrs::vec_equal(",
-        "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
-        "{dplyr::if_else(vctrs::vec_equal(",
-        "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
+      dplyr::mutate(model_id = create_model_id(
+        model = .data$model,
+        resolution = .data$resolution,
+        aggregated_numerator = .data$aggregated_numerator,
+        aggregated_denominator = .data$aggregated_denominator
       )) |>
       dplyr::select(
         "model_id",
