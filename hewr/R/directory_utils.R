@@ -36,16 +36,20 @@ parse_model_batch_dir_path <- function(model_batch_dir_path) {
     )
   }
 
-  result <- list(
-    disease = disease_map_lower[matches[2]] |> unname(),
-    # disease_map_lower
-    # is a named vector
-    # but we want disease
-    # just to be a string
-    report_date = lubridate::ymd(matches[3], quiet = TRUE),
-    first_training_date = lubridate::ymd(matches[4], quiet = TRUE),
-    last_training_date = lubridate::ymd(matches[5], quiet = TRUE)
-  )
+  result <-
+    matches[, -1, drop = FALSE] |>
+    `colnames<-`(c(
+      "disease",
+      "report_date",
+      "first_training_date",
+      "last_training_date"
+    )) |>
+    tibble::as_tibble() |>
+    dplyr::mutate(
+      disease = unname(disease_map_lower[disease]),
+      first_training_date = lubridate::ymd(first_training_date, quiet = TRUE),
+      last_training_date = lubridate::ymd(last_training_date, quiet = TRUE)
+    )
 
   if (any(is.na(result))) {
     stop(
@@ -84,12 +88,10 @@ parse_model_run_dir_path <- function(model_run_dir_path) {
     fs::path_dir() |>
     fs::path_file()
 
-  location <- fs::path_file(model_run_dir_path)
 
-  return(c(
-    location = location,
-    parse_model_batch_dir_path(batch_dir)
-  ))
+  batch_dir |>
+    parse_model_batch_dir_path() |>
+    dplyr::mutate(location = fs::path_file(model_run_dir_path))
 }
 
 
