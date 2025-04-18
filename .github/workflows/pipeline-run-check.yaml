@@ -14,6 +14,7 @@ env:
   DATA_DIR: "pipelines/end_to_end_test_output/private_data"
 
 jobs:
+
   generate-data:
     runs-on:  ubuntu-latest
     steps:

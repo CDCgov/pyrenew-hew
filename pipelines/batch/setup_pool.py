@@ -51,9 +51,7 @@ def main(pool_name: str) -> None:
         pool_config.deployment_configuration.virtual_machine_configuration.container_configuration
     ) = models.ContainerConfiguration(
         type="dockerCompatible",
-        container_image_names=[
-            "https://cfaprdbatchcr.azurecr.io/pyrenew-hew:latest"
-        ],
+        container_image_names=["https://ghcr.io/cdcgov/pyrenew-hew:latest"],
         container_registries=[creds.azure_container_registry],
     )
 

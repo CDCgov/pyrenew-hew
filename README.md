@@ -15,14 +15,14 @@ This repository contains code for the [PyRenew-HEW model](https://github.com/CDC
 
 ## Containers
 
-The project uses GitHub Actions for automatically building container images based on the project's [Containerfile](Containerfile) and [Containerfile.dependencies](Containerfile.dependencies) files. The images are currently hosted on Azure Container Registry and are built and pushed via the [containers.yaml](.github/workflows/containers.yaml) GitHub Actions workflow.
+The project uses GitHub Actions for automatically building container images based on the project's [Containerfile](Containerfile). The images are currently hosted on Github Container Registry and are built and pushed via the [containers.yaml](.github/workflows/containers.yaml) GitHub Actions workflow.
 
 Images can also be built locally. The [Makefile](Makefile) contains several targets for building and pushing images. Although the Makefile uses Docker as the default engine, the `ENGINE` environment variable can be set to `podman` to use Podman instead, for example:
 
 ```bash
-ENGINE=podman make dep_container_build
+ENGINE=podman make container_build
 # Equivalent to:
-# podman build . -t pyrenew-hew-dependencies -f Containerfile.dependencies
+# podman build . -t pyrenew-hew -f Containerfile
 ```
 
 Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
