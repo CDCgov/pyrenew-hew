@@ -43,15 +43,13 @@ def collect_pdfs(model_batch_dir: Path) -> dict[str, dict[str, list[Path]]]:
 
     pdf_groups = defaultdict(lambda: defaultdict(list))
 
-    for location_path in model_runs_dir.iterdir():
-        if not location_path.is_dir():
-            continue
-
-        for model_path in location_path.iterdir():
-            if not model_path.is_dir():
+    for location_path in filter(Path.is_dir, model_runs_dir.iterdir()):
+        for model_path in filter(Path.is_dir, location_path.iterdir()):
+            figures_path = model_path / "figures"
+            if not figures_path.is_dir():
                 continue
 
-            for file_path in model_path.glob("*.pdf"):
+            for file_path in figures_path.glob("*.pdf"):
                 base_name = file_path.name  # Keep full filename
                 pdf_groups[model_path.name][base_name].append(file_path)
 
