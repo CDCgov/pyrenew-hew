@@ -30,8 +30,10 @@ save_forecast_figures <- function(model_run_dir,
     glue(
       "{model_name}_",
       "{.variable}_{resolution}",
-      "{if_else(base::isTRUE(aggregated_numerator), '_agg_num', '')}",
-      "{if_else(base::isTRUE(aggregated_denominator), '_agg_denom', '')}",
+      "{dplyr::if_else(vctrs::vec_equal(",
+      "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
+      "{dplyr::if_else(vctrs::vec_equal(",
+      "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}",
       "{y_transforms[y_transform]}"
     ) |>
       str_replace_all("_+", "_")
