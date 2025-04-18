@@ -53,7 +53,7 @@ def collect_pdfs(model_batch_dir: Path) -> dict[str, dict[str, list[Path]]]:
             for file_path in figures_path.glob("*.pdf"):
                 base_name = file_path.name  # Keep full filename
                 cleaned_name = re.sub(
-                    f"^{model_path.name}_|(_epiweekly|_daily|_log)+$",
+                    f"^{model_path.name}_|(_epiweekly|_daily|_log|_agg_num|_agg_denom)+$",
                     "",
                     file_path.stem,
                 )
