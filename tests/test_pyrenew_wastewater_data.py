@@ -71,8 +71,8 @@ def test_pyrenew_wastewater_data():
         data.ww_observed_subpops, forecast_data.ww_observed_subpops
     )
     assert np.array_equal(
-        data.model_t_obs_wastewater_conc,
-        forecast_data.model_t_obs_wastewater_conc,
+        data.model_t_obs_wastewater,
+        forecast_data.model_t_obs_wastewater,
     )
     assert np.array_equal(data.n_ww_lab_sites, forecast_data.n_ww_lab_sites)
     assert np.array_equal(data.pop_fraction, forecast_data.pop_fraction)
