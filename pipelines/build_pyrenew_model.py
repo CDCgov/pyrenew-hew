@@ -1,12 +1,10 @@
-import datetime
 import json
 import runpy
 from pathlib import Path
 
 import jax.numpy as jnp
 import polars as pl
-from pyrenew.deterministic import DeterministicPMF, DeterministicVariable
-from pyrenew.randomvariable import DistributionalVariable
+from pyrenew.deterministic import DeterministicPMF
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
