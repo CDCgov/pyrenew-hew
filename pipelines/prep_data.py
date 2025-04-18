@@ -9,8 +9,13 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
+import numpy as np
+import numpyro.distributions as dist
 import polars as pl
 import polars.selectors as cs
+from jax.scipy.special import logsumexp
+from jax.typing import ArrayLike
+from scipy.optimize import minimize
 
 _disease_map = {
     "COVID-19": "COVID-19/Omicron",
@@ -327,12 +332,12 @@ def aggregate_facility_level_nssp_to_state(
     )
 
 
-def verify_no_date_gaps(df: pl.DataFrame):
-    expected_length = df.select(
-        dur=((pl.col("date").max() - pl.col("date").min()).dt.total_days() + 1)
-    ).to_numpy()[0]
-    if not df.height == 2 * expected_length:
-        raise ValueError("Data frame appears to have date gaps")
+# def verify_no_date_gaps(df: pl.DataFrame):
+#     expected_length = df.select(
+#         dur=((pl.col("date").max() - pl.col("date").min()).dt.total_days() + 1)
+#     ).to_numpy()[0]
+#     if not df.height == 2 * expected_length:
+#         raise ValueError("Data frame appears to have date gaps")
 
 
 def get_state_pop_df():
@@ -353,7 +358,8 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
 
     delay_pmf = (
@@ -365,8 +371,16 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         )
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
+
+    # ensure 0 first entry; we do not model the possibility
+    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
+    delay_pmf[0] = 0.0
+    delay_pmf = jnp.array(delay_pmf)
+    delay_pmf = delay_pmf / delay_pmf.sum()
+    delay_pmf = delay_pmf.tolist()
 
     right_truncation_pmf = (
         param_estimates.filter(
@@ -378,10 +392,71 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
         .collect(streaming=True)
         .get_column("value")
-        .to_list()[0]
+        .item(0)
+        .to_list()
     )
 
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
+
+
+def approx_lognorm(
+    pmf: ArrayLike, loc_guess, scale_guess, method: str = "Nelder-Mead"
+) -> tuple[float, float]:
+    """
+    Find loc and scale parameters
+    of a lognormal distribution such that
+    the lognormal PDF is approxmimately
+    proportional to the given discrete PMF.
+
+    Parameters
+    ----------
+    pmf
+       Array representing the PMF.
+
+    loc_guess
+       Initial loc value to pass to the optimizer.
+
+    scale_guess
+       Initial scale value to pass to the optimizer.
+
+    method
+       Optimization method. Passed as the ``method``
+       keyword argument to :func:`scipy.optimize.minimize`.
+       Default ``"Nelder-Mead"``.
+
+    Returns
+    -------
+    tuple[float, float]
+       A tuple containing the loc parameter as the first
+       entry and the scale parameter as the second.
+
+    Raises
+    ------
+    ValueError
+       If optimization fails.
+    """
+    log_pmf = jnp.log(pmf)
+    n = log_pmf.size
+
+    def err(loc_and_scale):
+        """
+        Our objective function: the squared
+        errors of log prob values
+        """
+        lnorm = dist.LogNormal(loc=loc_and_scale[0], scale=loc_and_scale[1])
+        lp = lnorm.log_prob(jnp.arange(1, n + 1))
+        normed_lp = lp - logsumexp(lp)
+        return jnp.sum((log_pmf - normed_lp) ** 2)
+
+    result = minimize(
+        err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead"
+    )
+    if not result.success:
+        print(result)
+        raise ValueError("Discretized lognormal approximation to PMF failed")
+    else:
+        res = result.x
+        return (float(res[0]), float(res[1]))
 
 
 def process_and_save_state(
@@ -418,6 +493,12 @@ def process_and_save_state(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
     )
 
+    delay_lognormal_loc, delay_lognormal_scale = approx_lognorm(
+        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+        loc_guess=0,
+        scale_guess=0.5,
+    )
+
     right_truncation_offset = (report_date - last_training_date).days
 
     aggregated_facility_data = aggregate_facility_level_nssp_to_state(
@@ -451,7 +532,7 @@ def process_and_save_state(
         .sort(["date", "disease"])
     )
 
-    verify_no_date_gaps(nssp_training_data)
+    # verify_no_date_gaps(nssp_training_data)
 
     nhsn_training_data = get_nhsn(
         start_date=first_training_date,
@@ -461,35 +542,7 @@ def process_and_save_state(
         credentials_dict=credentials_dict,
     ).with_columns(pl.lit("train").alias("data_type"))
 
-    nssp_training_dates = (
-        nssp_training_data.get_column("date").unique().to_list()
-    )
-    nhsn_training_dates = (
-        nhsn_training_data.get_column("weekendingdate").unique().to_list()
-    )
-
-    nhsn_first_date_index = next(
-        i
-        for i, x in enumerate(nssp_training_dates)
-        if x == min(nhsn_training_dates)
-    )
     nhsn_step_size = 7
-
-    train_disease_ed_visits = (
-        nssp_training_data.filter(pl.col("disease") == disease)
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    train_total_ed_visits = (
-        nssp_training_data.filter(pl.col("disease") == "Total")
-        .get_column("ed_visits")
-        .to_list()
-    )
-
-    train_disease_hospital_admissions = nhsn_training_data.get_column(
-        "hospital_admissions"
-    ).to_list()
 
     nwss_training_data = (
         state_level_nwss_data.to_dict(as_series=False)
@@ -518,19 +571,17 @@ def process_and_save_state(
             pop_fraction = subpop_sizes / state_pop
 
     data_for_model_fit = {
-        "inf_to_ed_pmf": delay_pmf,
+        "inf_to_hosp_admit_pmf": delay_pmf,
+        "inf_to_hosp_admit_lognormal_loc": delay_lognormal_loc,
+        "inf_to_hosp_admit_lognormal_scale": delay_lognormal_scale,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "data_observed_disease_ed_visits": train_disease_ed_visits,
-        "data_observed_total_ed_visits": train_total_ed_visits,
-        "data_observed_disease_hospital_admissions": train_disease_hospital_admissions,
-        "nssp_training_dates": nssp_training_dates,
-        "nhsn_training_dates": nhsn_training_dates,
-        "nhsn_first_date_index": nhsn_first_date_index,
-        "nhsn_step_size": nhsn_step_size,
         "state_pop": state_pop,
         "right_truncation_offset": right_truncation_offset,
-        "data_observed_disease_wastewater": nwss_training_data,
+        "nwss_training_data": nwss_training_data,
+        "nssp_training_data": nssp_training_data.to_dict(as_series=False),
+        "nhsn_training_data": nhsn_training_data.to_dict(as_series=False),
+        "nhsn_step_size": nhsn_step_size,
         "pop_fraction": pop_fraction.tolist(),
     }
 

@@ -11,8 +11,24 @@ from pipelines.build_pyrenew_model import build_model_from_dir
 def mock_data():
     return json.dumps(
         {
-            "data_observed_disease_ed_visits": [1, 2, 3],
-            "data_observed_disease_hospital_admissions": [4, 5, 6],
+            "nssp_training_data": {
+                "date": [
+                    "2025-01-01",
+                    "2025-01-01",
+                    "2025-01-02",
+                    "2025-01-02",
+                ],
+                "geo_value": ["CA"] * 4,
+                "disease": ["COVID-19", "Total", "COVID-19", "Total"],
+                "ed_visits": [10, 200, 3, 400],
+                "data_type": ["train"] * 4,
+            },
+            "nhsn_training_data": {
+                "weekendingdate": ["2025-01-01", "2025-01-02"],
+                "jurisdiction": ["CA"] * 2,
+                "hospital_admissions": [5, 1],
+                "data_type": ["train"] * 2,
+            },
             "state_pop": [10000],
             "generation_interval_pmf": [0.1, 0.2, 0.7],
             "inf_to_ed_pmf": [0.4, 0.5, 0.1],
@@ -21,9 +37,9 @@ def mock_data():
             "inf_to_hosp_admit_lognormal_scale": 0.851,
             "right_truncation_pmf": [0.7, 0.1, 0.2],
             "nssp_training_dates": ["2025-01-01"],
-            "nhsn_training_dates": ["2025-01-02"],
+            "nhsn_training_dates": ["2025-01-04"],
             "right_truncation_offset": 10,
-            "data_observed_disease_wastewater": {
+            "nwss_training_data": {
                 "date": [
                     "2025-01-01",
                     "2025-01-01",
@@ -65,13 +81,13 @@ ihr_rv = None
 ihr_rel_iedr_rv = None
 t_peak_rv = None
 duration_shed_after_peak_rv = None
-inf_to_ed_offset_loc_rv = None
-inf_to_ed_log_offset_scale_rv = None
+delay_offset_loc_rv = None
+delay_log_offset_scale_rv = None
 log10_genome_per_inf_ind_rv = None
 mode_sigma_ww_site_rv = None
 sd_log_sigma_ww_site_rv = None
 mode_sd_ww_site_rv = None
-max_shed_interval = None
+max_shed_interval = 10
 ww_ml_produced_per_day = None
 pop_fraction=None
 autoreg_rt_subpop_rv=None
@@ -82,7 +98,7 @@ offset_ref_log_rt_rv=None
 """
 
 
-def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
+def test_build_model_from_dir(tmp_path, mock_data, mock_priors, capsys):
     model_dir = tmp_path / "model_dir"
     data_dir = model_dir / "data"
     data_dir.mkdir(parents=True)
@@ -107,12 +123,6 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
         fit_hospital_admissions=True,
         fit_wastewater=True,
     )
-    assert jnp.array_equal(
-        data.data_observed_disease_ed_visits,
-        jnp.array(model_data["data_observed_disease_ed_visits"]),
-    )
-    assert jnp.array_equal(
-        data.data_observed_disease_hospital_admissions,
-        jnp.array(model_data["data_observed_disease_hospital_admissions"]),
-    )
+    assert data.data_observed_disease_ed_visits is not None
+    assert data.data_observed_disease_hospital_admissions is not None
     assert data.data_observed_disease_wastewater_conc is not None

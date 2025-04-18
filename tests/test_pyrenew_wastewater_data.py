@@ -40,12 +40,12 @@ def test_pyrenew_wastewater_data():
     )
 
     first_ed_visits_date = datetime.date(2023, 1, 1)
-    first_hospital_admissions_date = datetime.date(2023, 1, 1)
+    first_hospital_admissions_date = datetime.date(2023, 1, 7)  # Saturday
     first_wastewater_date = datetime.date(2023, 1, 1)
     n_forecast_points = 10
 
     wastewater_data = PyrenewWastewaterData(
-        data_observed_disease_wastewater=ww_data,
+        nwss_training_data=ww_data,
         population_size=1e6,
     )
 
@@ -53,6 +53,7 @@ def test_pyrenew_wastewater_data():
         first_ed_visits_date=first_ed_visits_date,
         first_hospital_admissions_date=first_hospital_admissions_date,
         first_wastewater_date=first_wastewater_date,
+        nwss_training_data=ww_data,
         **wastewater_data.to_pyrenew_hew_data_args(),
     )
 
@@ -70,7 +71,8 @@ def test_pyrenew_wastewater_data():
         data.ww_observed_subpops, forecast_data.ww_observed_subpops
     )
     assert np.array_equal(
-        data.ww_observed_times, forecast_data.ww_observed_times
+        data.model_t_obs_wastewater,
+        forecast_data.model_t_obs_wastewater,
     )
     assert np.array_equal(data.n_ww_lab_sites, forecast_data.n_ww_lab_sites)
     assert np.array_equal(data.pop_fraction, forecast_data.pop_fraction)
