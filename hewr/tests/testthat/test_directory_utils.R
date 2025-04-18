@@ -70,14 +70,16 @@ test_that("parse_model_run_dir_path() works as expected.", {
     dplyr::select(valid_model_run, -dirname)
   )
 
-  ## should work identically with a longer path
-  expect_error(
+  ## should work identically with a full path rather
+  ## than just base dir
+  expect_equal(
     valid_model_run |>
-      dplyr::mutate(dirname = fs::path(dirname, "test")) |>
+      dplyr::mutate(dirname = fs::path("this", "is", "a", "test", dirname)) |>
       dplyr::pull(dirname) |>
       parse_model_run_dir_path(),
-    regex = "Invalid format for model batch directory name"
+    dplyr::select(valid_model_run, -dirname)
   )
+
 
   ## should fail if there is additional terminal pathing
   expect_error(
