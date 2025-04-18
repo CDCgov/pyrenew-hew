@@ -287,7 +287,7 @@ class LatentInfectionProcess(RandomVariable):
                 self.pop_fraction * latent_infections_subpop, axis=1
             )
         assert (
-            latent_infections.shape[0]
+            latent_infections.size
             == self.n_initialization_points + n_days_post_init
         )
         numpyro.deterministic("rtu_subpop", rtu_subpop)
@@ -454,12 +454,47 @@ class HospAdmitObservationProcess(RandomVariable):
     def validate(self):
         pass
 
+    @staticmethod
+    def calculate_weekly_hosp_indices(
+        first_latent_admission_dow: int,
+        model_t_first_latent_admissions: int,
+        n_datapoints: int,
+        model_t_observed: ArrayLike,
+    ):
+        truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
+
+        model_t_first_pred_admissions = (
+            model_t_first_latent_admissions + truncated_latent_admit_days + 6
+        )
+
+        model_dow_first_pred_admissions = (
+            first_latent_admission_dow + truncated_latent_admit_days + 6
+        ) % 7
+
+        # Check the first predicted admissions day is a Saturday
+        assert model_dow_first_pred_admissions == 5
+
+        if model_t_observed is not None:
+            offset_first_obs_days = (
+                model_t_observed[0] - model_t_first_pred_admissions
+            )
+            assert offset_first_obs_days >= 0
+            assert offset_first_obs_days % 7 == 0
+            which_obs_weekly_hosp_admissions = jnp.floor_divide(
+                model_t_observed - model_t_first_pred_admissions, 7
+            )
+        else:
+            which_obs_weekly_hosp_admissions = jnp.arange(n_datapoints)
+
+        return which_obs_weekly_hosp_admissions
+
     def sample(
         self,
         latent_infections: ArrayLike,
         first_latent_infection_dow: int,
         population_size: int,
         n_init_days: int,
+        n_datapoints: int,  # This is actually n_weeks
         data_observed: ArrayLike = None,
         model_t_observed: ArrayLike = None,
         iedr: ArrayLike = None,
@@ -467,6 +502,11 @@ class HospAdmitObservationProcess(RandomVariable):
         """
         Observe and/or predict incident hospital admissions.
         """
+        if n_datapoints is None and model_t_observed is None:
+            raise ValueError(
+                "Must provide at least one of n_datapoints "
+                "or model_t_observed."
+            )
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
         if self.ihr_rel_iedr_rv is not None and self.ihr_rv is not None:
@@ -510,37 +550,17 @@ class HospAdmitObservationProcess(RandomVariable):
             first_latent_infection_dow + hospital_admissions_offset
         ) % 7
 
-        # latent admit days discarded
-        truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
-
         predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
             input_data_first_dow=first_latent_admission_dow,
         )
 
-        model_t_first_pred_admissions = (
-            model_t_first_latent_admissions + truncated_latent_admit_days + 6
+        which_obs_weekly_hosp_admissions = self.calculate_weekly_hosp_indices(
+            first_latent_admission_dow,
+            model_t_first_latent_admissions,
+            n_datapoints,
+            model_t_observed,
         )
-        model_dow_first_pred_admissions = (
-            first_latent_admission_dow + truncated_latent_admit_days + 6
-        ) % 7
-
-        assert model_dow_first_pred_admissions == 5
-
-        if (
-            model_t_observed is None
-        ):  # True for forecasting/posterior prediction
-            which_weekly_obs_hosp_admissions = jnp.arange(
-                predicted_weekly_admissions.size
-            )
-        else:
-            offset_first_obs_days = (
-                model_t_observed[0] - model_t_first_pred_admissions
-            )
-            assert offset_first_obs_days % 7 == 0
-            which_weekly_obs_hosp_admissions = jnp.floor_divide(
-                model_t_observed - model_t_first_pred_admissions, 7
-            )
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
@@ -548,7 +568,7 @@ class HospAdmitObservationProcess(RandomVariable):
         )
 
         observed_hospital_admissions = hospital_admissions_obs_rv(
-            mu=predicted_weekly_admissions[which_weekly_obs_hosp_admissions],
+            mu=predicted_weekly_admissions[which_obs_weekly_hosp_admissions],
             obs=data_observed,
         )
 
@@ -850,6 +870,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
                 n_init_days=n_init_days,
+                n_datapoints=data.n_hospital_admissions_data_days,
                 data_observed=data.data_observed_disease_hospital_admissions,
                 model_t_observed=data.model_t_obs_hospital_admissions,
                 iedr=iedr,
