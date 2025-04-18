@@ -287,13 +287,24 @@ process_pyrenew_model <- function(model_run_dir,
     stringr::str_replace_all("-Infinity", "null") |>
     jsonlite::fromJSON()
 
-  first_nhsn_date <- min(data_for_model_fit$nhsn_training_data$weekendingdate)
-  first_nssp_date <- min(data_for_model_fit$nssp_training_data$date)
-  first_nwss_date <- ifelse(
-    !is.null(data_for_model_fit$nwss_training_data),
-    min(unlist(data_for_model_fit$nwss_training_data$date)),
-    NA
+  first_data_dates <- list(
+    if (!is.null(data_for_model_fit$nssp_training_data)) {
+      data_for_model_fit$nssp_training_data$date
+    },
+    if (!is.null(data_for_model_fit$nhsn_training_data)) {
+      data_for_model_fit$nhsn_training_data$weekendingdate
+    },
+    if (!is.null(data_for_model_fit$nwss_training_data)) {
+      data_for_model_fit$nwss_training_data$date
+    }
   )
+
+  first_data_date_overall <- as.Date(min(unlist(first_data_dates)))
+  first_dow <- lubridate::wday(first_data_date_overall, week_start = 7)
+  to_first_sat <- (7 - first_dow) %% 7
+  first_nssp_date <- first_data_date_overall
+  first_nwss_date <- first_data_date_overall
+  first_nhsn_date <- first_data_date_overall + lubridate::days(to_first_sat)
 
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
 

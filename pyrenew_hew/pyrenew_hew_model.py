@@ -527,24 +527,17 @@ class HospAdmitObservationProcess(RandomVariable):
 
         assert model_dow_first_pred_admissions == 5
 
-        offset_first_obs_days = (
-            model_t_observed[0] - model_t_first_pred_admissions
-        )
-
-        assert offset_first_obs_days % 7 == 0
-
-        which_weekly_obs_hosp_admissions = jnp.floor_divide(
-            model_t_observed - model_t_first_pred_admissions, 7
-        )
-
         if (
             model_t_observed is None
         ):  # True for forecasting/posterior prediction
-            which_weekly_obs_hosp_admissions = (
-                jnp.arange(predicted_weekly_admissions.size) * 7
-                + model_t_first_pred_admissions
+            which_weekly_obs_hosp_admissions = jnp.arange(
+                predicted_weekly_admissions.size
             )
         else:
+            offset_first_obs_days = (
+                model_t_observed[0] - model_t_first_pred_admissions
+            )
+            assert offset_first_obs_days % 7 == 0
             which_weekly_obs_hosp_admissions = jnp.floor_divide(
                 model_t_observed - model_t_first_pred_admissions, 7
             )
@@ -683,12 +676,12 @@ class WastewaterObservationProcess(RandomVariable):
         self,
         latent_infections_subpop: ArrayLike,
         data_observed: ArrayLike,
-        n_datapoints: int,
+        n_init_days: int,
         ww_uncensored: ArrayLike,
         ww_censored: ArrayLike,
         ww_observed_lab_sites: ArrayLike,
         ww_observed_subpops: ArrayLike,
-        ww_observed_times: ArrayLike,
+        ww_model_t_observed: ArrayLike,
         ww_log_lod: ArrayLike,
         lab_site_to_subpop_map: ArrayLike,
         n_ww_lab_sites: int,
@@ -704,10 +697,7 @@ class WastewaterObservationProcess(RandomVariable):
 
         model_net_inf_ind_shedding = jax.vmap(
             batch_colvolve_fn, in_axes=1, out_axes=1
-        )(jnp.atleast_2d(latent_infections_subpop))[-n_datapoints:, :]
-        numpyro.deterministic(
-            "model_net_inf_ind_shedding", model_net_inf_ind_shedding
-        )
+        )(jnp.atleast_2d(latent_infections_subpop))
 
         log10_genome_per_inf_ind = self.log10_genome_per_inf_ind_rv()
         expected_obs_viral_genomes = (
@@ -743,9 +733,19 @@ class WastewaterObservationProcess(RandomVariable):
             mode_ww_site = mode_ww_site_rv()
             sigma_ww_site = sigma_ww_site_rv()
 
+        viral_genome_offset = (
+            viral_kinetics.shape[0] - 1
+        )  # max_shed_interval-2
+        model_t_first_latent_viral_genome = viral_genome_offset - n_init_days
+        which_obs_t_viral_genome = (
+            ww_model_t_observed - model_t_first_latent_viral_genome
+        )
+
         # multiply the expected observed genomes by the site-specific multiplier at that sampling time
         expected_obs_log_v_site = (
-            expected_obs_viral_genomes[ww_observed_times, ww_observed_subpops]
+            expected_obs_viral_genomes[
+                which_obs_t_viral_genome, ww_observed_subpops
+            ]
             + mode_ww_site[ww_observed_lab_sites]
         )
 
@@ -861,12 +861,12 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             ) = self.wastewater_obs_process_rv(
                 latent_infections_subpop=latent_infections_subpop,
                 data_observed=data.data_observed_disease_wastewater_conc,
-                n_datapoints=data.n_wastewater_data_days,
+                n_init_days=n_init_days,
                 ww_uncensored=data.ww_uncensored,
                 ww_censored=data.ww_censored,
                 ww_observed_lab_sites=data.ww_observed_lab_sites,
                 ww_observed_subpops=data.ww_observed_subpops,
-                ww_observed_times=data.model_t_obs_wastewater_conc,
+                ww_model_t_observed=data.model_t_obs_wastewater,
                 ww_log_lod=data.ww_log_lod,
                 lab_site_to_subpop_map=data.lab_site_to_subpop_map,
                 n_ww_lab_sites=data.n_ww_lab_sites,

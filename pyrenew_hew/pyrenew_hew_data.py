@@ -30,7 +30,7 @@ class PyrenewHEWData:
         ww_censored: ArrayLike = None,
         ww_uncensored: ArrayLike = None,
         ww_observed_subpops: ArrayLike = None,
-        model_t_obs_wastewater_conc: ArrayLike = None,
+        model_t_obs_wastewater: ArrayLike = None,
         ww_observed_lab_sites: ArrayLike = None,
         lab_site_to_subpop_map: ArrayLike = None,
         ww_log_lod: ArrayLike = None,
@@ -46,7 +46,7 @@ class PyrenewHEWData:
         self.ww_censored_ = ww_censored
         self.ww_observed_lab_sites_ = ww_observed_lab_sites
         self.ww_observed_subpops_ = ww_observed_subpops
-        self.model_t_obs_wastewater_conc_ = model_t_obs_wastewater_conc
+        self.model_t_obs_wastewater_ = model_t_obs_wastewater
         self.lab_site_to_subpop_map_ = lab_site_to_subpop_map
         self.ww_log_lod_ = ww_log_lod
         self.right_truncation_offset = right_truncation_offset
@@ -205,22 +205,21 @@ class PyrenewHEWData:
 
     @property
     def date_time_spine(self):
-        if self.nwss_training_data is not None:
-            date_time_spine = (
-                pl.DataFrame(
-                    {
-                        "date": pl.date_range(
-                            start=self.first_data_date_overall,
-                            end=self.last_data_date_overall,
-                            interval="1d",
-                            eager=True,
-                        )
-                    }
-                )
-                .with_row_index("t")
-                .with_columns(pl.col("t").cast(pl.Int64))
+        date_time_spine = (
+            pl.DataFrame(
+                {
+                    "date": pl.date_range(
+                        start=self.first_data_date_overall,
+                        end=self.last_data_date_overall,
+                        interval="1d",
+                        eager=True,
+                    )
+                }
             )
-            return date_time_spine
+            .with_row_index("t")
+            .with_columns(pl.col("t").cast(pl.Int64))
+        )
+        return date_time_spine
 
     @property
     def wastewater_data_extended(self):
@@ -266,10 +265,10 @@ class PyrenewHEWData:
         return self.ww_uncensored_
 
     @property
-    def model_t_obs_wastewater_conc(self):
+    def model_t_obs_wastewater(self):
         if self.nwss_training_data is not None:
             return self.wastewater_data_extended.get_column("t").to_numpy()
-        return self.model_t_obs_wastewater_conc_
+        return self.model_t_obs_wastewater_
 
     @property
     def model_t_obs_ed_visits(self):
@@ -345,18 +344,6 @@ class PyrenewHEWData:
             )
         return self.lab_site_to_subpop_map_
 
-    # @property
-    # def model_t_first_ed_visits(self):
-    #     return (self.first_ed_visits_date - self.first_data_date_overall).days
-
-    # @property
-    # def model_t_first_hospital_admissions(self):
-    #     return (self.first_hospital_admissions_date - self.first_data_date_overall).days
-
-    # @property
-    # def model_t_first_wastewater(self):
-    #     return (self.first_wastewater_date - self.first_data_date_overall).days
-
     def get_end_date(
         self,
         first_date: datetime.date,
@@ -417,8 +404,7 @@ class PyrenewHEWData:
             n_hospital_admissions_data_days=n_weeks,
             n_wastewater_data_days=n_days,
             first_ed_visits_date=self.first_data_date_overall,
-            first_hospital_admissions_date=first_mmwr_ending_date,
-            # admissions are MMWR epiweekly
+            first_hospital_admissions_date=first_mmwr_ending_date,  # admissions are MMWR epiweekly
             first_wastewater_date=self.first_data_date_overall,
             right_truncation_offset=None,  # by default, want forecasts of complete reports
             n_ww_lab_sites=self.n_ww_lab_sites,
@@ -426,7 +412,7 @@ class PyrenewHEWData:
             ww_censored=self.ww_censored,
             ww_observed_lab_sites=self.ww_observed_lab_sites,
             ww_observed_subpops=self.ww_observed_subpops,
-            model_t_obs_wastewater_conc=self.model_t_obs_wastewater_conc,
+            model_t_obs_wastewater=self.model_t_obs_wastewater,
             lab_site_to_subpop_map=self.lab_site_to_subpop_map,
             ww_log_lod=self.ww_log_lod,
             pop_fraction=self.pop_fraction,
