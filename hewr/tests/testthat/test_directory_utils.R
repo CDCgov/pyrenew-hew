@@ -1,7 +1,7 @@
 valid_model_batch_dirs <- list(
   list(
     dirname = "covid-19_r_2024-02-03_f_2021-04-01_t_2024-01-23",
-    expected = list(
+    expected = tibble::tibble(
       disease = "COVID-19",
       report_date = lubridate::ymd("2024-02-03"),
       first_training_date = lubridate::ymd("2021-04-1"),
@@ -10,7 +10,7 @@ valid_model_batch_dirs <- list(
   ),
   list(
     dirname = "influenza_r_2022-12-11_f_2021-02-05_t_2027-12-30",
-    expected = list(
+    expected = tibble::tibble(
       disease = "Influenza",
       report_date = lubridate::ymd("2022-12-11"),
       first_training_date = lubridate::ymd("2021-02-5"),
@@ -26,11 +26,8 @@ invalid_model_batch_dirs <- c(
 
 to_valid_run_dir <- function(valid_batch_dir_entry, location) {
   x <- valid_batch_dir_entry
-  x$dirpath <- fs::path(x$dirname, "model_runs", location)
-  x$expected <- c(
-    location = location,
-    x$expected
-  )
+  x$dirname <- fs::path(x$dirname, "model_runs", location)
+  x$expected$location <- location
   return(x)
 }
 
@@ -88,7 +85,7 @@ test_that("parse_model_batch_dir_path() works as expected.", {
 test_that("parse_model_run_dir_path() works as expected.", {
   for (valid_pair in valid_model_run_dirs) {
     expect_equal(
-      parse_model_run_dir_path(valid_pair$dirpath),
+      parse_model_run_dir_path(valid_pair$dirname),
       valid_pair$expected
     )
 
@@ -96,7 +93,7 @@ test_that("parse_model_run_dir_path() works as expected.", {
     expect_equal(
       parse_model_run_dir_path(fs::path(
         "this", "is", "a", "test",
-        valid_pair$dirpath
+        valid_pair$dirname
       )),
       valid_pair$expected
     )
@@ -104,7 +101,7 @@ test_that("parse_model_run_dir_path() works as expected.", {
     ## should fail if there is additional terminal pathing
     expect_error(
       {
-        parse_model_run_dir_path(fs::path(valid_pair$dirpath, "test"))
+        parse_model_run_dir_path(fs::path(valid_pair$dirname, "test"))
       },
       regex = "Invalid format for model batch directory name"
     )
