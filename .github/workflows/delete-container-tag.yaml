@@ -42,4 +42,3 @@ jobs:
             const coredemo = require('@actions/core')
             const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
             coredemo.setOutput('id_token', id_token)
-
