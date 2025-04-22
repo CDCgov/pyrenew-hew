@@ -274,6 +274,7 @@ process_pyrenew_model <- function(model_run_dir,
 
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
 
+
   if (pyrenew_model_components["w"]) {
     required_columns <- c(required_columns_e, "lab_site_index")
   } else {
@@ -296,6 +297,7 @@ process_pyrenew_model <- function(model_run_dir,
   )
 
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
+
 
   ## Process PyRenew posterior
   pyrenew_model_dir <- fs::path(

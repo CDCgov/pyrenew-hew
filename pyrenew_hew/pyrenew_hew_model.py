@@ -8,10 +8,11 @@ import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
+from numpyro.handlers import scope
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
-from pyrenew.deterministic import DeterministicVariable
+from pyrenew.deterministic import DeterministicPMF, DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,
@@ -25,6 +26,95 @@ from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew.time import daily_to_mmwr_epiweekly
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+
+
+class OffsetDiscretizedLognormalPMF(RandomVariable):
+    """
+    Discrete PMF modeled by offseting the location or
+    scale of a lognormal distribution from central
+    values, then discretizing and normalizing.
+
+    Attributes
+    ----------
+    name
+        Name for the `RandomVariable`.
+
+    reference_loc
+        Reference location(s) from which to offset the
+        distribution's own location. If `offset_loc_rv`
+        is `None`, this will be the (deterministic)
+        location parameter(s) for the distribution.
+
+    reference_scale
+        Reference scale(s) from which to offset the
+        distribution's own scale. If `offset_scale_rv`
+        is `None`, this will be the (deterministic)
+        scale parameter(s) for the distribution.
+
+    n
+       Number of points over which to discrete the distribution.
+       The final PMF will have support on [0, n - 1],
+       but with 0 mass at 0.
+
+    offset_loc_rv
+       `RandomVariable` representing the offset of the
+        distribution's location parameter from the
+       `reference_loc`. If `None`, use the `reference_loc`
+        as a fixed location parameter (i.e. a use a fixed loc
+        offset of 0).
+
+    offset_scale_rv
+       `RandomVariable` representing the offset of the
+        distribution's scale parameter from the
+       `reference_scale`. If `None`, use the `reference_scale`
+        as a fixed location parameter (i.e. a use a fixed scale
+        offset of 0).
+    """
+
+    def __init__(
+        self,
+        name: str,
+        reference_loc: ArrayLike,
+        reference_scale: ArrayLike,
+        n: int,
+        offset_loc_rv: RandomVariable = None,
+        log_offset_scale_rv: RandomVariable = None,
+    ):
+        """
+        Default constructor.
+        """
+        self.name = name
+        self.reference_loc = reference_loc
+        self.reference_scale = reference_scale
+        self.n = n
+
+        if offset_loc_rv is None:
+            offset_loc_rv = DeterministicVariable("offset_loc", 0)
+
+        if log_offset_scale_rv is None:
+            log_offset_scale_rv = DeterministicVariable("log_offset_scale", 0)
+
+        self.offset_loc_rv = offset_loc_rv
+        self.log_offset_scale_rv = log_offset_scale_rv
+
+    def sample(self):
+        with scope(prefix=self.name, divider="_"):
+            offset_loc = self.offset_loc_rv()
+            log_offset_scale = self.log_offset_scale_rv()
+        lognorm = dist.LogNormal(
+            loc=self.reference_loc + offset_loc,
+            scale=jnp.exp(jnp.log(self.reference_scale) + log_offset_scale),
+        )
+        unnormed = jnp.exp(lognorm.log_prob(jnp.arange(1, self.n)))
+        pmf = jnp.pad(unnormed / jnp.sum(unnormed), [1, 0])
+        numpyro.deterministic(self.name, pmf)
+        return pmf
+
+    def validate(self):
+        pass
+
+    def size(self):
+        return self.n
 
 
 class LatentInfectionProcess(RandomVariable):
@@ -385,6 +475,7 @@ class HospAdmitObservationProcess(RandomVariable):
         first_latent_infection_dow: int,
         population_size: int,
         n_datapoints: int,
+        model_t_first_obs: int,
         data_observed: ArrayLike = None,
         iedr: ArrayLike = None,
     ) -> ArrayLike:
@@ -426,18 +517,33 @@ class HospAdmitObservationProcess(RandomVariable):
             )
         )
 
-        longest_possible_delay = inf_to_hosp_admit.shape[0]
-
+        # roll into compute_delay_ascertained incidence?
+        model_t_first_latent_admit = inf_to_hosp_admit.shape[0] - 1
         # we should add functionality to automate this,
         # along with tests
+
         first_latent_admission_dow = (
-            first_latent_infection_dow + longest_possible_delay
+            first_latent_infection_dow + model_t_first_latent_admit
         ) % 7
+
+        truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
 
         predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
             input_data_first_dow=first_latent_admission_dow,
         )
+
+        model_t_first_pred_admit = (
+            model_t_first_latent_admit + truncated_latent_admit_days + 6
+        )
+        model_dow_first_pred_admit = (
+            model_t_first_pred_admit + first_latent_infection_dow
+        ) % 7
+        assert model_dow_first_pred_admit == 5
+        offset_first_obs_days = model_t_first_obs - model_t_first_pred_admit
+
+        assert offset_first_obs_days % 7 == 0
+        offset_first_obs_weeks = offset_first_obs_days // 7
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
@@ -445,7 +551,8 @@ class HospAdmitObservationProcess(RandomVariable):
         )
 
         observed_hospital_admissions = hospital_admissions_obs_rv(
-            mu=predicted_weekly_admissions[-n_datapoints:], obs=data_observed
+            mu=predicted_weekly_admissions[offset_first_obs_weeks:],
+            obs=data_observed,
         )
 
         return observed_hospital_admissions
@@ -738,6 +845,11 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
                 n_datapoints=data.n_hospital_admissions_data_days,
+                model_t_first_obs=n_init_days
+                + (
+                    data.first_hospital_admissions_date
+                    - data.first_data_date_overall
+                ).days,
                 data_observed=(data.data_observed_disease_hospital_admissions),
                 iedr=iedr,
             )

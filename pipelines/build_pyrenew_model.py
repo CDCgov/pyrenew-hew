@@ -5,13 +5,15 @@ from pathlib import Path
 
 import jax.numpy as jnp
 import polars as pl
-from pyrenew.deterministic import DeterministicVariable
+from pyrenew.deterministic import DeterministicPMF, DeterministicVariable
+from pyrenew.randomvariable import DistributionalVariable
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
     EDVisitObservationProcess,
     HospAdmitObservationProcess,
     LatentInfectionProcess,
+    OffsetDiscretizedLognormalPMF,
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
@@ -53,6 +55,7 @@ def build_model_from_dir(
     """
     data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
     prior_path = Path(model_dir) / "priors.py"
+    priors = runpy.run_path(str(prior_path))
 
     with open(
         data_path,
@@ -60,21 +63,36 @@ def build_model_from_dir(
     ) as file:
         model_data = json.load(file)
 
-    inf_to_ed_rv = DeterministicVariable(
-        "inf_to_ed", jnp.array(model_data["inf_to_ed_pmf"])
-    )  # check if off by 1 or reversed
+    he = fit_hospital_admissions and fit_ed_visits
 
-    # use same as inf to ed, per NNH guidelines
-    inf_to_hosp_admit_rv = DeterministicVariable(
-        "inf_to_hosp_admit", jnp.array(model_data["inf_to_ed_pmf"])
-    )  # check if off by 1 or reversed
+    inf_to_ed_rv = DeterministicPMF(
+        "inf_to_ed", jnp.array(model_data["inf_to_hosp_admit_pmf"])
+    )
+    # For now follow NNH in just substituting
+    # (eventually will use a different inferred fixed).
+    if he:
+        # offset from approx inf to ed distribution
+        # when fitting admissions
+        inf_to_hosp_admit_rv = OffsetDiscretizedLognormalPMF(
+            "inf_to_hosp_admit",
+            reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
+            reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
+            n=jnp.size(model_data["inf_to_hosp_admit_pmf"]) * 2,
+            # Flexibility to infer delays with a longer tail, up to a point.
+            offset_loc_rv=priors["delay_offset_loc_rv"],
+            log_offset_scale_rv=priors["delay_log_offset_scale_rv"],
+        )
+    else:
+        inf_to_hosp_admit_rv = DeterministicPMF(
+            "inf_to_hosp_admit", jnp.array(model_data["inf_to_hosp_admit_pmf"])
+        )  # else use same, following NNH
 
-    generation_interval_pmf_rv = DeterministicVariable(
+    generation_interval_pmf_rv = DeterministicPMF(
         "generation_interval_pmf",
         jnp.array(model_data["generation_interval_pmf"]),
     )  # check if off by 1 or reversed
 
-    infection_feedback_pmf_rv = DeterministicVariable(
+    infection_feedback_pmf_rv = DeterministicPMF(
         "infection_feedback_pmf",
         jnp.array(model_data["generation_interval_pmf"]),
     )  # check if off by 1 or reversed
@@ -107,14 +125,17 @@ def build_model_from_dir(
 
     pop_fraction = jnp.array(model_data["pop_fraction"])
 
-    ed_right_truncation_pmf_rv = DeterministicVariable(
+    ed_right_truncation_pmf_rv = DeterministicPMF(
         "right_truncation_pmf", jnp.array(model_data["right_truncation_pmf"])
     )
 
     n_initialization_points = (
         max(
-            len(model_data["generation_interval_pmf"]),
-            len(model_data["inf_to_ed_pmf"]),
+            generation_interval_pmf_rv.size(),
+            infection_feedback_pmf_rv.size(),
+            inf_to_ed_rv.size() if fit_ed_visits else 1,
+            inf_to_hosp_admit_rv.size() + 6 if fit_hospital_admissions else 1,
+            priors["max_shed_interval"] if fit_wastewater else 1,
         )
         - 1
     )
@@ -125,8 +146,6 @@ def build_model_from_dir(
     first_hospital_admissions_date = datetime.datetime.strptime(
         model_data["nhsn_training_dates"][0], "%Y-%m-%d"
     ).date()
-
-    priors = runpy.run_path(str(prior_path))
 
     right_truncation_offset = model_data["right_truncation_offset"]
 
@@ -159,15 +178,13 @@ def build_model_from_dir(
         ed_right_truncation_pmf_rv=ed_right_truncation_pmf_rv,
     )
 
-    eh = fit_hospital_admissions and fit_ed_visits
-
     hosp_admit_obs_rv = HospAdmitObservationProcess(
         inf_to_hosp_admit_rv=inf_to_hosp_admit_rv,
         hosp_admit_neg_bin_concentration_rv=(
             priors["hosp_admit_neg_bin_concentration_rv"]
         ),
-        ihr_rel_iedr_rv=priors["ihr_rel_iedr_rv"] if eh else None,
-        ihr_rv=None if eh else priors["ihr_rv"],
+        ihr_rel_iedr_rv=priors["ihr_rel_iedr_rv"] if he else None,
+        ihr_rv=None if he else priors["ihr_rv"],
     )
 
     wastewater_obs_rv = WastewaterObservationProcess(
