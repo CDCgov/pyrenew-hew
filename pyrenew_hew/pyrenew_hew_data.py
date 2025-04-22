@@ -97,7 +97,9 @@ class PyrenewHEWData:
     @property
     def dates_observed_hospital_admissions(self):
         if self.nhsn_training_data is not None:
-            return self.nhsn_training_data.get_column("weekendingdate").unique()
+            return self.nhsn_training_data.get_column(
+                "weekendingdate"
+            ).unique()
 
     @property
     def dates_observed_disease_wastewater(self):
@@ -172,7 +174,9 @@ class PyrenewHEWData:
 
     @property
     def n_days_post_init(self):
-        return (self.last_data_date_overall - self.first_data_date_overall).days
+        return (
+            self.last_data_date_overall - self.first_data_date_overall
+        ).days
 
     @property
     def data_observed_disease_ed_visits(self):
@@ -195,7 +199,9 @@ class PyrenewHEWData:
     @property
     def data_observed_disease_hospital_admissions(self):
         if self.nhsn_training_data is not None:
-            return self.nhsn_training_data.get_column("hospital_admissions").to_numpy()
+            return self.nhsn_training_data.get_column(
+                "hospital_admissions"
+            ).to_numpy()
 
     @property
     def date_time_spine(self):
@@ -295,19 +301,25 @@ class PyrenewHEWData:
     @property
     def ww_observed_subpops(self):
         if self.nwss_training_data is not None:
-            return self.wastewater_data_extended.get_column("subpop_index").to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "subpop_index"
+            ).to_numpy()
         return self.ww_observed_subpops_
 
     @property
     def ww_observed_lab_sites(self):
         if self.nwss_training_data is not None:
-            return self.wastewater_data_extended.get_column("lab_site_index").to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "lab_site_index"
+            ).to_numpy()
         return self.ww_observed_lab_sites_
 
     @property
     def ww_log_lod(self):
         if self.nwss_training_data is not None:
-            return self.wastewater_data_extended.get_column("log_lod").to_numpy()
+            return self.wastewater_data_extended.get_column(
+                "log_lod"
+            ).to_numpy()
         return self.ww_log_lod_
 
     @property
@@ -321,7 +333,9 @@ class PyrenewHEWData:
         if self.nwss_training_data is not None:
             return (
                 (
-                    self.wastewater_data_extended["lab_site_index", "subpop_index"]
+                    self.wastewater_data_extended[
+                        "lab_site_index", "subpop_index"
+                    ]
                     .unique()
                     .sort(by="lab_site_index", descending=False)
                 )
@@ -350,7 +364,9 @@ class PyrenewHEWData:
                 )
             result = None
         else:
-            result = first_date + datetime.timedelta(days=n_datapoints * timestep_days)
+            result = first_date + datetime.timedelta(
+                days=n_datapoints * timestep_days
+            )
         return result
 
     def get_n_data_days(
@@ -368,7 +384,9 @@ class PyrenewHEWData:
                 "an array of dates data is observed."
             )
         elif date_array is not None:
-            return (max(date_array) - min(date_array)).days // timestep_days + 1
+            return (
+                max(date_array) - min(date_array)
+            ).days // timestep_days + 1
         else:
             return n_datapoints
 
@@ -377,8 +395,9 @@ class PyrenewHEWData:
         n_weeks = n_days // 7
         first_dow = self.first_data_date_overall.weekday()
         to_first_sat = (5 - first_dow) % 7
-        first_mmwr_ending_date = self.first_data_date_overall + datetime.timedelta(
-            days=to_first_sat
+        first_mmwr_ending_date = (
+            self.first_data_date_overall
+            + datetime.timedelta(days=to_first_sat)
         )
         return PyrenewHEWData(
             n_ed_visits_data_days=n_days,
