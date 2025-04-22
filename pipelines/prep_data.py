@@ -493,10 +493,12 @@ def process_and_save_state(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
     )
 
-    delay_lognormal_loc, delay_lognormal_scale = approx_lognorm(
-        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
-        loc_guess=0,
-        scale_guess=0.5,
+    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
+        approx_lognorm(
+            jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+            loc_guess=0,
+            scale_guess=0.5,
+        )
     )
 
     right_truncation_offset = (report_date - last_training_date).days
@@ -600,8 +602,8 @@ def process_and_save_state(
 
     data_for_model_fit = {
         "inf_to_hosp_admit_pmf": delay_pmf,
-        "inf_to_hosp_admit_lognormal_loc": delay_lognormal_loc,
-        "inf_to_hosp_admit_lognormal_scale": delay_lognormal_scale,
+        "inf_to_hosp_admit_lognormal_loc": inf_to_hosp_admit_lognormal_loc,
+        "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "data_observed_disease_ed_visits": train_disease_ed_visits,
