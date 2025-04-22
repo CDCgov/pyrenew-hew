@@ -11,8 +11,13 @@ import forecasttools
 import jax.numpy as jnp
 import numpy as np
 import numpyro.distributions as dist
+import numpy as np
+import numpyro.distributions as dist
 import polars as pl
 import polars.selectors as cs
+from jax.scipy.special import logsumexp
+from jax.typing import ArrayLike
+from scipy.optimize import minimize
 from jax.scipy.special import logsumexp
 from jax.typing import ArrayLike
 from scipy.optimize import minimize
@@ -52,9 +57,7 @@ def get_nhsn(
     state_abb_for_query = state_abb if state_abb != "US" else "USA"
 
     temp_file = Path(temp_dir, "nhsn_temp.parquet")
-    api_key_id = credentials_dict.get(
-        "nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID")
-    )
+    api_key_id = credentials_dict.get("nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID"))
     api_key_secret = credentials_dict.get(
         "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
     )
@@ -84,13 +87,9 @@ def get_nhsn(
     result = subprocess.run(r_command)
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
-        )
+        raise RuntimeError(f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}")
     raw_dat = pl.read_parquet(temp_file)
-    dat = raw_dat.with_columns(
-        weekendingdate=pl.col("weekendingdate").cast(pl.Date)
-    )
+    dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
     return dat
 
 
@@ -232,9 +231,7 @@ def process_state_level_data(
 
     if state_abb == "US":
         locations_to_aggregate = (
-            state_pop_df.filter(pl.col("abb") != "US")
-            .get_column("abb")
-            .unique()
+            state_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
         logger.info("Aggregating state-level data to national")
         state_level_nssp_data = aggregate_to_national(
@@ -261,9 +258,7 @@ def process_state_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect(streaming=True)
@@ -295,9 +290,7 @@ def aggregate_facility_level_nssp_to_state(
     if state_abb == "US":
         logger.info("Aggregating facility-level data to national")
         locations_to_aggregate = (
-            state_pop_df.filter(pl.col("abb") != "US")
-            .get_column("abb")
-            .unique()
+            state_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
         facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
@@ -316,9 +309,7 @@ def aggregate_facility_level_nssp_to_state(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
             geo_value=pl.lit(state_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -448,9 +439,7 @@ def approx_lognorm(
         normed_lp = lp - logsumexp(lp)
         return jnp.sum((log_pmf - normed_lp) ** 2)
 
-    result = minimize(
-        err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead"
-    )
+    result = minimize(err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead")
     if not result.success:
         print(result)
         raise ValueError("Discretized lognormal approximation to PMF failed")
@@ -478,22 +467,18 @@ def process_and_save_state(
 
     if facility_level_nssp_data is None and state_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one "
-            "of facility-level and state-level"
-            "NSSP data"
+            "Must provide at least one " "of facility-level and state-level" "NSSP data"
         )
 
     state_pop_df = get_state_pop_df()
 
-    state_pop = state_pop_df.filter(pl.col("abb") == state_abb).item(
-        0, "population"
-    )
+    state_pop = state_pop_df.filter(pl.col("abb") == state_abb).item(0, "population")
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
         param_estimates=param_estimates, state_abb=state_abb, disease=disease
     )
 
-    delay_lognormal_loc, delay_lognormal_scale = approx_lognorm(
+    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = approx_lognorm(
         jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
         loc_guess=0,
         scale_guess=0.5,
@@ -572,8 +557,8 @@ def process_and_save_state(
 
     data_for_model_fit = {
         "inf_to_hosp_admit_pmf": delay_pmf,
-        "inf_to_hosp_admit_lognormal_loc": delay_lognormal_loc,
-        "inf_to_hosp_admit_lognormal_scale": delay_lognormal_scale,
+        "inf_to_hosp_admit_lognormal_loc": inf_to_hosp_admit_lognormal_loc,
+        "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
         "state_pop": state_pop,

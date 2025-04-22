@@ -9,9 +9,11 @@ import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from jax.typing import ArrayLike
 from numpyro.handlers import scope
+from numpyro.handlers import scope
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
+from pyrenew.deterministic import DeterministicPMF, DeterministicVariable
 from pyrenew.deterministic import DeterministicPMF, DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
@@ -33,11 +35,47 @@ class OffsetDiscretizedLognormalPMF(RandomVariable):
     Discrete PMF modeled by offseting the location or
     scale of a lognormal distribution from central
     values, then discretizing and normalizing.
+
+    Attributes
+    ----------
+    name
+        Name for the `RandomVariable`.
+
+    reference_loc
+        Reference location(s) from which to offset the
+        distribution's own location. If `offset_loc_rv`
+        is `None`, this will be the (deterministic)
+        location parameter(s) for the distribution.
+
+    reference_scale
+        Reference scale(s) from which to offset the
+        distribution's own scale. If `offset_scale_rv`
+        is `None`, this will be the (deterministic)
+        scale parameter(s) for the distribution.
+
+    n
+       Number of points over which to discrete the distribution.
+       The final PMF will have support on [0, n - 1],
+       but with 0 mass at 0.
+
+    offset_loc_rv
+       `RandomVariable` representing the offset of the
+        distribution's location parameter from the
+       `reference_loc`. If `None`, use the `reference_loc`
+        as a fixed location parameter (i.e. a use a fixed loc
+        offset of 0).
+
+    offset_scale_rv
+       `RandomVariable` representing the offset of the
+        distribution's scale parameter from the
+       `reference_scale`. If `None`, use the `reference_scale`
+        as a fixed location parameter (i.e. a use a fixed scale
+        offset of 0).
     """
 
     def __init__(
         self,
-        name,
+        name: str,
         reference_loc: ArrayLike,
         reference_scale: ArrayLike,
         n: int,
@@ -168,9 +206,7 @@ class LatentInfectionProcess(RandomVariable):
                 transformation.SigmoidTransform().inv(i0_first_obs_n)
                 + self.offset_ref_logit_i_first_obs_rv(),
             )
-            log_rtu_weekly_ref_subpop = (
-                log_rtu_weekly + self.offset_ref_log_rt_rv()
-            )
+            log_rtu_weekly_ref_subpop = log_rtu_weekly + self.offset_ref_log_rt_rv()
             i_first_obs_over_n_non_ref_subpop_rv = TransformedVariable(
                 "i_first_obs_over_n_non_ref_subpop",
                 DistributionalVariable(
@@ -237,9 +273,7 @@ class LatentInfectionProcess(RandomVariable):
             )
         )
 
-        initial_exp_growth_rate_subpop = r_approx(
-            jnp.exp(log_rtu_weekly_subpop[0])
-        )
+        initial_exp_growth_rate_subpop = r_approx(jnp.exp(log_rtu_weekly_subpop[0]))
 
         rtu_subpop = jnp.squeeze(
             jnp.repeat(
@@ -249,9 +283,7 @@ class LatentInfectionProcess(RandomVariable):
             )[:n_days_post_init, :]
         )  # indexed rel to first post-init day.
 
-        i0_subpop_rv = DeterministicVariable(
-            "i0_subpop", i_first_obs_over_n_subpop
-        )
+        i0_subpop_rv = DeterministicVariable("i0_subpop", i_first_obs_over_n_subpop)
         initial_exp_growth_rate_subpop_rv = DeterministicVariable(
             "initial_exp_growth_rate_subpop", initial_exp_growth_rate_subpop
         )
@@ -286,10 +318,7 @@ class LatentInfectionProcess(RandomVariable):
             latent_infections = jnp.sum(
                 self.pop_fraction * latent_infections_subpop, axis=1
             )
-        assert (
-            latent_infections.size
-            == self.n_initialization_points + n_days_post_init
-        )
+        assert latent_infections.size == self.n_initialization_points + n_days_post_init
         numpyro.deterministic("rtu_subpop", rtu_subpop)
         numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
@@ -345,16 +374,12 @@ class EDVisitObservationProcess(RandomVariable):
 
         model_t_first_latent_ed_visit = ed_visit_offset - n_init_days
 
-        if (
-            model_t_observed is None
-        ):  # True for forecasting/posterior prediction
+        if model_t_observed is None:  # True for forecasting/posterior prediction
             which_obs_ed_visits = jnp.arange(
                 -model_t_first_latent_ed_visit, potential_latent_ed_visits.size
             )
         else:
-            which_obs_ed_visits = (
-                model_t_observed - model_t_first_latent_ed_visit
-            )
+            which_obs_ed_visits = model_t_observed - model_t_first_latent_ed_visit
 
         p_ed_mean = self.p_ed_mean_rv()
         p_ed_w_sd = self.p_ed_w_sd_rv()
@@ -397,10 +422,7 @@ class EDVisitObservationProcess(RandomVariable):
         )
 
         latent_ed_visits_final = (
-            potential_latent_ed_visits
-            * iedr
-            * ed_wday_effect
-            * population_size
+            potential_latent_ed_visits * iedr * ed_wday_effect * population_size
         )
 
         if right_truncation_offset is not None:
@@ -408,8 +430,7 @@ class EDVisitObservationProcess(RandomVariable):
                 self.ed_right_truncation_cdf_rv()[right_truncation_offset:]
             )
             n_points_to_prepend = (
-                potential_latent_ed_visits.size
-                - prop_already_reported_tail.shape[0]
+                potential_latent_ed_visits.size - prop_already_reported_tail.shape[0]
             )
             prop_already_reported = jnp.pad(
                 prop_already_reported_tail,
@@ -417,9 +438,7 @@ class EDVisitObservationProcess(RandomVariable):
                 mode="constant",
                 constant_values=(1, 0),
             )
-            latent_ed_visits_now = (
-                latent_ed_visits_final * prop_already_reported
-            )
+            latent_ed_visits_now = latent_ed_visits_final * prop_already_reported
         else:
             latent_ed_visits_now = latent_ed_visits_final
 
@@ -445,9 +464,7 @@ class HospAdmitObservationProcess(RandomVariable):
         ihr_rel_iedr_rv: RandomVariable = None,
     ) -> None:
         self.inf_to_hosp_admit_rv = inf_to_hosp_admit_rv
-        self.hosp_admit_neg_bin_concentration_rv = (
-            hosp_admit_neg_bin_concentration_rv
-        )
+        self.hosp_admit_neg_bin_concentration_rv = hosp_admit_neg_bin_concentration_rv
         self.ihr_rv = ihr_rv
         self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
 
@@ -475,9 +492,7 @@ class HospAdmitObservationProcess(RandomVariable):
         assert model_dow_first_pred_admissions == 5
 
         if model_t_observed is not None:
-            offset_first_obs_days = (
-                model_t_observed[0] - model_t_first_pred_admissions
-            )
+            offset_first_obs_days = model_t_observed[0] - model_t_first_pred_admissions
             assert offset_first_obs_days >= 0
             assert offset_first_obs_days % 7 == 0
             which_obs_weekly_hosp_admissions = jnp.floor_divide(
@@ -504,8 +519,7 @@ class HospAdmitObservationProcess(RandomVariable):
         """
         if n_datapoints is None and model_t_observed is None:
             raise ValueError(
-                "Must provide at least one of n_datapoints "
-                "or model_t_observed."
+                "Must provide at least one of n_datapoints " "or model_t_observed."
             )
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
@@ -542,13 +556,13 @@ class HospAdmitObservationProcess(RandomVariable):
             )
         )
 
-        model_t_first_latent_admissions = (
-            hospital_admissions_offset - n_init_days
-        )
+        model_t_first_latent_admissions = hospital_admissions_offset - n_init_days
 
         first_latent_admission_dow = (
             first_latent_infection_dow + hospital_admissions_offset
         ) % 7
+
+        truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
 
         predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
@@ -632,10 +646,7 @@ class WastewaterObservationProcess(RandomVariable):
         norm_const = (t_p + t_d) * ((log_base - 1) / jnp.log(log_base) - 1)
 
         def ad_pre(x):
-            return (
-                t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p)
-                - x
-            )
+            return t_p / jnp.log(log_base) * jnp.exp(jnp.log(log_base) * x / t_p) - x
 
         def ad_post(x):
             return (
@@ -715,9 +726,9 @@ class WastewaterObservationProcess(RandomVariable):
         def batch_colvolve_fn(m):
             return jnp.convolve(m, viral_kinetics, mode="valid")
 
-        model_net_inf_ind_shedding = jax.vmap(
-            batch_colvolve_fn, in_axes=1, out_axes=1
-        )(jnp.atleast_2d(latent_infections_subpop))
+        model_net_inf_ind_shedding = jax.vmap(batch_colvolve_fn, in_axes=1, out_axes=1)(
+            jnp.atleast_2d(latent_infections_subpop)
+        )
 
         log10_genome_per_inf_ind = self.log10_genome_per_inf_ind_rv()
         expected_obs_viral_genomes = (
@@ -725,9 +736,7 @@ class WastewaterObservationProcess(RandomVariable):
             + jnp.log(model_net_inf_ind_shedding + shedding_offset)
             - jnp.log(self.ww_ml_produced_per_day)
         )
-        numpyro.deterministic(
-            "expected_obs_viral_genomes", expected_obs_viral_genomes
-        )
+        numpyro.deterministic("expected_obs_viral_genomes", expected_obs_viral_genomes)
 
         mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
         sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
@@ -753,9 +762,7 @@ class WastewaterObservationProcess(RandomVariable):
             mode_ww_site = mode_ww_site_rv()
             sigma_ww_site = sigma_ww_site_rv()
 
-        viral_genome_offset = (
-            viral_kinetics.shape[0] - 1
-        )  # max_shed_interval-2
+        viral_genome_offset = viral_kinetics.shape[0] - 1  # max_shed_interval-2
         model_t_first_latent_viral_genome = viral_genome_offset - n_init_days
         which_obs_t_viral_genome = (
             ww_model_t_observed - model_t_first_latent_viral_genome
@@ -763,9 +770,7 @@ class WastewaterObservationProcess(RandomVariable):
 
         # multiply the expected observed genomes by the site-specific multiplier at that sampling time
         expected_obs_log_v_site = (
-            expected_obs_viral_genomes[
-                which_obs_t_viral_genome, ww_observed_subpops
-            ]
+            expected_obs_viral_genomes[which_obs_t_viral_genome, ww_observed_subpops]
             + mode_ww_site[ww_observed_lab_sites]
         )
 
@@ -776,11 +781,7 @@ class WastewaterObservationProcess(RandomVariable):
                 scale=sigma_ww_site[ww_observed_lab_sites[ww_uncensored]],
             ),
         ).sample(
-            obs=(
-                data_observed[ww_uncensored]
-                if data_observed is not None
-                else None
-            ),
+            obs=(data_observed[ww_uncensored] if data_observed is not None else None),
         )
 
         if ww_censored.shape[0] != 0:
@@ -838,10 +839,8 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_wastewater: bool = False,
     ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
         n_init_days = self.latent_infection_process_rv.n_initialization_points
-        latent_infections, latent_infections_subpop = (
-            self.latent_infection_process_rv(
-                n_days_post_init=data.n_days_post_init,
-            )
+        latent_infections, latent_infections_subpop = self.latent_infection_process_rv(
+            n_days_post_init=data.n_days_post_init,
         )
         first_latent_infection_dow = (
             data.first_data_date_overall - datetime.timedelta(days=n_init_days)

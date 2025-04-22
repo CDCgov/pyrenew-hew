@@ -49,7 +49,7 @@ Remotes:
     github::cdcgov/forecasttools,
     github::cmu-delphi/epipredict,
     github::cmu-delphi/epiprocess,
-    github::damonbayer/ggdist
+    github::mjskay/ggdist
 Suggests:
     checkmate,
     rcmdcheck,

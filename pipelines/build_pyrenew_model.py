@@ -75,7 +75,8 @@ def build_model_from_dir(
             "inf_to_hosp_admit",
             reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
             reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
-            n=jnp.size(jnp.array(model_data["inf_to_hosp_admit_pmf"])) * 2,
+            n=jnp.size(model_data["inf_to_hosp_admit_pmf"]) * 2,
+            # Flexibility to infer delays with a longer tail, up to a point.
             offset_loc_rv=priors["delay_offset_loc_rv"],
             log_offset_scale_rv=priors["delay_log_offset_scale_rv"],
         )
@@ -169,9 +170,7 @@ def build_model_from_dir(
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
         sigma_rt_rv=priors["sigma_rt_rv"],
         sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
-        offset_ref_logit_i_first_obs_rv=priors[
-            "offset_ref_logit_i_first_obs_rv"
-        ],
+        offset_ref_logit_i_first_obs_rv=priors["offset_ref_logit_i_first_obs_rv"],
         offset_ref_log_rt_rv=priors["offset_ref_log_rt_rv"],
     )
 
