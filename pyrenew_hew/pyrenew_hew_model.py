@@ -33,11 +33,47 @@ class OffsetDiscretizedLognormalPMF(RandomVariable):
     Discrete PMF modeled by offseting the location or
     scale of a lognormal distribution from central
     values, then discretizing and normalizing.
+
+    Attributes
+    ----------
+    name
+        Name for the `RandomVariable`.
+
+    reference_loc
+        Reference location(s) from which to offset the
+        distribution's own location. If `offset_loc_rv`
+        is `None`, this will be the (deterministic)
+        location parameter(s) for the distribution.
+
+    reference_scale
+        Reference scale(s) from which to offset the
+        distribution's own scale. If `offset_scale_rv`
+        is `None`, this will be the (deterministic)
+        scale parameter(s) for the distribution.
+
+    n
+       Number of points over which to discrete the distribution.
+       The final PMF will have support on [0, n - 1],
+       but with 0 mass at 0.
+
+    offset_loc_rv
+       `RandomVariable` representing the offset of the
+        distribution's location parameter from the
+       `reference_loc`. If `None`, use the `reference_loc`
+        as a fixed location parameter (i.e. a use a fixed loc
+        offset of 0).
+
+    offset_scale_rv
+       `RandomVariable` representing the offset of the
+        distribution's scale parameter from the
+       `reference_scale`. If `None`, use the `reference_scale`
+        as a fixed location parameter (i.e. a use a fixed scale
+        offset of 0).
     """
 
     def __init__(
         self,
-        name,
+        name: str,
         reference_loc: ArrayLike,
         reference_scale: ArrayLike,
         n: int,
