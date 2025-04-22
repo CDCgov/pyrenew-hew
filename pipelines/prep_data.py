@@ -332,14 +332,6 @@ def aggregate_facility_level_nssp_to_state(
     )
 
 
-# def verify_no_date_gaps(df: pl.DataFrame):
-#     expected_length = df.select(
-#         dur=((pl.col("date").max() - pl.col("date").min()).dt.total_days() + 1)
-#     ).to_numpy()[0]
-#     if not df.height == 2 * expected_length:
-#         raise ValueError("Data frame appears to have date gaps")
-
-
 def get_state_pop_df():
     return forecasttools.location_table.select(
         pl.col("short_name").alias("abb"),
@@ -533,8 +525,6 @@ def process_and_save_state(
         .with_columns(pl.lit("train").alias("data_type"))
         .sort(["date", "disease"])
     )
-
-    # verify_no_date_gaps(nssp_training_data)
 
     nhsn_training_data = get_nhsn(
         start_date=first_training_date,
