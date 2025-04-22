@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -43,17 +44,21 @@ def collect_pdfs(model_batch_dir: Path) -> dict[str, dict[str, list[Path]]]:
 
     pdf_groups = defaultdict(lambda: defaultdict(list))
 
-    for location_path in model_runs_dir.iterdir():
-        if not location_path.is_dir():
-            continue
-
-        for model_path in location_path.iterdir():
-            if not model_path.is_dir():
+    for location_path in filter(Path.is_dir, model_runs_dir.iterdir()):
+        for model_path in filter(Path.is_dir, location_path.iterdir()):
+            figures_path = model_path / "figures"
+            if not figures_path.is_dir():
                 continue
 
-            for file_path in model_path.glob("*.pdf"):
+            for file_path in figures_path.glob("*.pdf"):
                 base_name = file_path.name  # Keep full filename
-                pdf_groups[model_path.name][base_name].append(file_path)
+                # signal name is prefixed by the model name and may be postfixed with _epiweekly, _daily, etc.
+                signal_name = re.sub(
+                    f"^{model_path.name}_|(_epiweekly|_daily|_log|_agg_num|_agg_denom)+$",
+                    "",
+                    file_path.stem,
+                )
+                pdf_groups[signal_name][base_name].append(file_path)
 
     return pdf_groups
 
@@ -66,10 +71,11 @@ def merge_and_save_pdfs(model_batch_dir: Path) -> None:
         print("No PDFs found to merge.")
         return
 
-    for model, file_dict in pdf_groups.items():
+    for signal, file_dict in pdf_groups.items():
         for original_file_name, pdf_list in file_dict.items():
-            output_filename = f"{model}-{original_file_name}"
-            output_path = model_batch_dir / "figures" / output_filename
+            output_path = (
+                model_batch_dir / "figures" / signal / original_file_name
+            )
             output_path.parent.mkdir(parents=True, exist_ok=True)
             merge_pdfs(pdf_list, output_path)
 
