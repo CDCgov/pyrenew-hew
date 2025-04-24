@@ -130,9 +130,7 @@ def main(
     create_job_if_not_exists(client, job, verbose=True)
 
     container_image = (
-        f"{creds.azure_container_registry_account}."
-        f"{creds.azure_container_registry_domain}/"
-        f"{container_image_name}:{container_image_version}"
+        f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
     )
     container_settings = get_container_settings(
         container_image,

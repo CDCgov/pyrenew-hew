@@ -1,7 +1,15 @@
 #syntax=docker/dockerfile:1.7-labs
-ARG TAG=latest
 
-FROM cfaprdbatchcr.azurecr.io/pyrenew-hew:${TAG}
+FROM python:3.13
+
+ARG PYRENEW_VERSION="v0.1.2"
+RUN apt-get update
+RUN apt-get install -y r-base
+RUN apt-get install -y cmake
+RUN pip install --root-user-action=ignore -U pip
+RUN pip install --root-user-action=ignore git+https://github.com/cdcgov/pyrenew.git@$PYRENEW_VERSION
+RUN pip install --root-user-action=ignore quarto-cli
+
 ARG GIT_COMMIT_SHA
 ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
