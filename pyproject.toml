@@ -1,37 +1,37 @@
-[tool.poetry]
+[project]
 name = "pyrenew-hew"
 version = "0.1.0"
-description = ""
-authors = ["Damon Bayer <xum8@cdc.gov>"]
+description = "Models and infrastructure for forecasting COVID-19 and Flu hospitalizations using wastewater data with PyRenew"
 readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+  {name = "Damon Bayer", email = "xum8@cdc.gov"},
+  {name = "Dylan H. Morris"},
+  {name = "Subekshya Bidari"},
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-pyrenew = {git = "https://github.com/cdcgov/pyrenew"}
-ipywidgets = "^8.1.5"
-arviz = "^0.20.0"
-pyyaml = "^6.0.2"
-jupyter = "^1.0.0"
-ipykernel = "^6.29.5"
-polars = "^1.5.0"
-pypdf = "^5.1.0"
-pyarrow = "^18.0.0"
-pygit2 = "^1.17.0"
-azuretools = {git = "https://github.com/cdcgov/cfa-azuretools"}
-forecasttools = {git = "https://github.com/cdcgov/forecasttools-py"}
-tomli-w = "^1.1.0"
+dependencies = [
+    "pyrenew @ git+https://github.com/cdcgov/PyRenew/",
+    "azuretools @ git+https://github.com/cdcgov/cfa-azuretools",
+    "forecasttools @ git+https://github.com/cdcgov/forecasttools-py",
+    "ipywidgets>=8.1.5",
+    "arviz>=0.20.0",
+    "pyyaml>=6.0.2",
+    "jupyter>=1.0.0",
+    "ipykernel>=6.29.5",
+    "polars>=1.5.0",
+    "pypdf>=5.1.0",
+    "pyarrow>=18.0.0",
+    "pygit2>=1.17.0",
+    "tomli-w>=1.1.0",
+]
 
-[tool.poetry.group.test]
-optional = true
-
-[tool.poetry.group.test.dependencies]
-pytest = "^8.3.2"
-pytest-cov = "^5.0.0"
-pytest-mpl = "^0.17.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.2",
+    "pytest-cov>=5.0.0",
+    "pytest-mpl>=0.17.0"
+]
 
 [tool.ruff]
 fix = true
