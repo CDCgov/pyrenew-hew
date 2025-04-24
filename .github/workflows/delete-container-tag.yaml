@@ -8,8 +8,13 @@ env:
 
 jobs:
   delete-container:
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    environment: production
     if: github.event.ref_type == 'branch'
-    runs-on: cfa-cdcgov
+    runs-on: ubuntu-latest
     name: Delete tag
 
     steps:
@@ -26,22 +31,14 @@ jobs:
             echo "tag=${{ github.event.ref }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Login to Azure
-        id: azure_login_2
-        uses: azure/login@v2
+      # From: https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers#requesting-the-jwt-using-the-actions-core-toolkit
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+      - name: Get Id Token
+        uses: actions/github-script@v7
+        id: idtoken
         with:
-          creds: ${{ secrets.EDAV_STF_SERVICE_PRINCIPAL }}
-
-      - name: Deleting the image
-        run: |
-          # Remove the image from the registry
-          az acr repository delete \
-            --yes \
-            --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
-
-          # Remove the dependencies image from the registry
-          az acr repository delete \
-            --yes \
-            --name ${{ vars.CONTAINER_REGISTRY_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:dependencies-${{ steps.image-tag.outputs.tag }}
+          script: |
+            const coredemo = require('@actions/core')
+            const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
+            coredemo.setOutput('id_token', id_token)
