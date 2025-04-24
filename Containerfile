@@ -1,6 +1,7 @@
 #syntax=docker/dockerfile:1.7-labs
 
-FROM ghcr.io/astral-sh/uv:latest
+FROM python:3.13-slim-bookworm
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 ARG GIT_COMMIT_SHA
 ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
