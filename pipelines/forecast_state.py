@@ -3,13 +3,13 @@ import logging
 import os
 import shutil
 import subprocess
+import tomllib
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpyro
 import polars as pl
 import tomli_w
-import tomllib
 from prep_data import process_and_save_state
 from prep_eval_data import save_eval_data
 from pygit2 import Repository
