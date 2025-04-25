@@ -24,7 +24,7 @@ get_nwss_data_from_posterior <- function(
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
 
   pyrenew_posterior <-
-    arrow::read_parquet(
+    nanoparquet::read_parquet(
       fs::path(
         model_run_dir, pyrenew_model_name, "mcmc_tidy",
         "pyrenew_posterior",
@@ -88,6 +88,6 @@ ww_dir <- fs::path(
 )
 
 fs::dir_create(ww_dir, recurse = TRUE)
-arrow::write_parquet(
+nanoparquet::write_parquet(
   ww_data, fs::path(ww_dir, "bronze", ext = "parquet")
 )

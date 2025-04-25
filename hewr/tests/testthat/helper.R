@@ -39,7 +39,7 @@ create_model_results <- function(file,
   ) |>
     dplyr::mutate(.value = as.double(rpois(dplyr::n(), lambda = 100)))
 
-  arrow::write_parquet(data, file)
+  nanoparquet::write_parquet(data, file)
 }
 
 create_observation_data <- function(

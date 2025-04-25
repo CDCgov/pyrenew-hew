@@ -1,4 +1,4 @@
-library(arrow)
+library(nanoparquet)
 library(forecasttools)
 library(fs)
 library(hewr)

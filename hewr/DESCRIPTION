@@ -11,7 +11,6 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:
     argparser,
-    arrow,
     cowplot,
     dplyr,
     DT,
@@ -30,6 +29,7 @@ Imports:
     knitr,
     latex2exp,
     lubridate,
+    nanoparquet,
     purrr,
     quarto,
     readr,

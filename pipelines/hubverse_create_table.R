@@ -11,7 +11,7 @@
 main <- function(model_batch_dir,
                  output_path) {
   hewr::to_hub_quantile_table(model_batch_dir) |>
-    arrow::write_parquet(output_path)
+    nanoparquet::write_parquet(output_path)
 }
 
 
