@@ -1,5 +1,5 @@
 name: "Set up Pyrenew-HEW"
-description: "This action sets up Pyrenew-HEW via Poetry."
+description: "This action sets up Pyrenew-HEW via UV."
 inputs: {}
 runs:
   using: "composite"
@@ -7,20 +7,16 @@ runs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Install poetry
-      run: pipx install poetry
-      shell: bash
-
-    - name: create lockfile
-      run: poetry lock
-      shell: bash
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
 
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
-        cache: 'poetry'
+        python-version-file: "pyproject.toml"
 
-    - name: install Pyrenew-HEW via poetry
-      run: poetry install --with test
+    - name: Install the project
+      run: uv sync --all-extras
       shell: bash
