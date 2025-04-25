@@ -507,7 +507,7 @@ class HospAdmitObservationProcess(RandomVariable):
             first_latent_admission_dow + truncated_latent_admit_days + 6
         ) % 7
 
-        # Check the first predicted admissions day is a Saturday
+        # Check the first predicted admissions day is a Saturday (MMWR epiweek end)
         assert model_dow_first_pred_admissions == 5
 
         if model_t_observed is not None:
