@@ -14,14 +14,12 @@ def mock_data():
             "nssp_training_data": {
                 "date": [
                     "2025-01-01",
-                    "2025-01-01",
-                    "2025-01-02",
                     "2025-01-02",
                 ],
-                "geo_value": ["CA"] * 4,
+                "geo_value": ["CA"] * 2,
                 "other_ed_visits": [200, 400],
                 "observed_ed_visits": [10, 3],
-                "data_type": ["train"] * 4,
+                "data_type": ["train"] * 2,
             },
             "nhsn_training_data": {
                 "weekendingdate": ["2025-01-01", "2025-01-02"],
