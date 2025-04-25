@@ -172,22 +172,6 @@ def score_forecast(model_run_dir: Path) -> None:
     return None
 
 
-def render_diagnostic_report(model_run_dir: Path) -> None:
-    result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/diagnostic_report/render_diagnostic_report.R",
-            f"{model_run_dir}",
-        ],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"render_diagnostic_report: {result.stderr.decode('utf-8')}"
-        )
-    return None
-
-
 def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
@@ -488,11 +472,6 @@ def main(
     # Timeseries models get processed, even if they aren't used.
     plot_and_save_state_forecast(model_run_dir, None, "timeseries_e")
     logger.info("Postprocessing complete.")
-
-    # if pyrenew_model_name == "pyrenew_e":
-    #     logger.info("Rendering webpage...")
-    #     render_diagnostic_report(model_run_dir)
-    #     logger.info("Rendering complete.")
 
     # if score:
     #     logger.info("Scoring forecast...")
