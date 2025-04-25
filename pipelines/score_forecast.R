@@ -163,7 +163,6 @@ read_and_score_location <- function(model_run_dir,
     ))
   }
 
-
   samples_scorable <-
     scorable_datasets |>
     filter(forecast_type == "samples") |>
