@@ -6,7 +6,7 @@ authors = ["Damon Bayer <xum8@cdc.gov>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13"
 pyrenew = {git = "https://github.com/cdcgov/pyrenew"}
 ipywidgets = "^8.1.5"
 arviz = "^0.20.0"
