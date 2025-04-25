@@ -100,25 +100,12 @@ def combine_surveillance_data(
     disease: str,
     nwss_data: pl.DataFrame = None,
 ):
-    count_type_dict = {
-        disease: "observed_ed_visits",
-        "Total": "other_ed_visits",
-    }
-
-    nssp_data_long = (
-        nssp_data.rename({"disease": "count_type"})
-        .unpivot(
-            on="ed_visits",
-            index=cs.exclude(["ed_visits"]),
-            variable_name="drop_me",
-            value_name=".value",
-        )
-        .with_columns(
-            pl.col("count_type").replace(count_type_dict).alias(".variable"),
-            pl.lit(None).alias("lab_site_index"),
-        )
-        .select(cs.exclude(["count_type", "drop_me"]))
-    )
+    nssp_data_long = nssp_data.unpivot(
+        on=["observed_ed_visits", "other_ed_visits"],
+        variable_name=".variable",
+        index=cs.exclude(["observed_ed_visits", "other_ed_visits"]),
+        value_name=".value",
+    ).with_columns(pl.lit(None).alias("lab_site_index"))
 
     nhsn_data_long = (
         nhsn_data.rename(
@@ -523,7 +510,12 @@ def process_and_save_state(
         pl.concat([state_level_data, aggregated_facility_data])
         .filter(pl.col("date") <= last_training_date)
         .with_columns(pl.lit("train").alias("data_type"))
-        .sort(["date", "disease"])
+        .pivot(
+            on="disease",
+            values="ed_visits",
+        )
+        .rename({disease: "observed_ed_visits", "Total": "other_ed_visits"})
+        .sort("date")
     )
 
     nhsn_training_data = get_nhsn(

@@ -181,20 +181,16 @@ class PyrenewHEWData:
     @property
     def data_observed_disease_ed_visits(self):
         if self.nssp_training_data is not None:
-            return (
-                self.nssp_training_data.filter(pl.col("disease") != "Total")
-                .get_column("ed_visits")
-                .to_numpy()
-            )
+            return self.nssp_training_data.get_column(
+                "observed_ed_visits"
+            ).to_numpy()
 
     @property
     def data_observed_total_ed_visits(self):
         if self.nssp_training_data is not None:
-            return (
-                self.nssp_training_data.filter(pl.col("disease") == "Total")
-                .get_column("ed_visits")
-                .to_numpy()
-            )
+            return self.nssp_training_data.get_column(
+                "other_ed_visits"
+            ).to_numpy()
 
     @property
     def data_observed_disease_hospital_admissions(self):

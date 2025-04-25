@@ -19,8 +19,8 @@ def mock_data():
                     "2025-01-02",
                 ],
                 "geo_value": ["CA"] * 4,
-                "disease": ["COVID-19", "Total", "COVID-19", "Total"],
-                "ed_visits": [10, 200, 3, 400],
+                "other_ed_visits": [200, 400],
+                "observed_ed_visits": [10, 3],
                 "data_type": ["train"] * 4,
             },
             "nhsn_training_data": {

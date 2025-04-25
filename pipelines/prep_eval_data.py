@@ -42,7 +42,12 @@ def save_eval_data(
             state_pop_df=get_state_pop_df(),
         )
         .with_columns(data_type=pl.lit("eval"))
-        .sort(["date", "disease"])
+        .pivot(
+            on="disease",
+            values="ed_visits",
+        )
+        .rename({disease: "observed_ed_visits", "Total": "other_ed_visits"})
+        .sort("date")
     )
 
     nhsn_data = get_nhsn(

@@ -101,8 +101,8 @@ def build_model_from_dir(
             schema={
                 "date": pl.Date,
                 "geo_value": pl.String,
-                "disease": pl.String,
-                "ed_visits": pl.Float64,
+                "observed_ed_visits": pl.Float64,
+                "other_ed_visits": pl.Float64,
                 "data_type": pl.String,
             },
         )
