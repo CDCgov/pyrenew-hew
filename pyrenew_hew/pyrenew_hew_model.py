@@ -795,38 +795,33 @@ class WastewaterObservationProcess(RandomVariable):
             viral_kinetics.shape[0] - 1
         )  # max_shed_interval-2
         model_t_first_latent_viral_genome = viral_genome_offset - n_init_days
-        which_obs_t_viral_genome = (
-            ww_model_t_observed - model_t_first_latent_viral_genome
-        )
 
-        # multiply the expected observed genomes by the site-specific multiplier at that sampling time
-        expected_obs_log_v_site = (
-            expected_obs_viral_genomes[
-                which_obs_t_viral_genome, ww_observed_subpops
-            ]
-            + mode_ww_site[ww_observed_lab_sites]
-        )
-
-        DistributionalVariable(
-            "log_conc_obs",
-            dist.Normal(
-                loc=expected_obs_log_v_site[ww_uncensored],
-                scale=sigma_ww_site[ww_observed_lab_sites[ww_uncensored]],
-            ),
-        ).sample(
-            obs=(
-                data_observed[ww_uncensored]
-                if data_observed is not None
-                else None
-            ),
-        )
-
-        if ww_censored.shape[0] != 0:
-            log_cdf_values = dist.Normal(
-                loc=expected_obs_log_v_site[ww_censored],
-                scale=sigma_ww_site[ww_observed_lab_sites[ww_censored]],
-            ).log_cdf(ww_log_lod[ww_censored])
-            numpyro.factor("log_prob_censored", log_cdf_values.sum())
+        if data_observed is not None:
+            which_obs_t_viral_genome = (
+                ww_model_t_observed - model_t_first_latent_viral_genome
+            )
+            # multiply the expected observed genomes by the site-specific multiplier at that sampling time
+            expected_obs_log_v_site = (
+                expected_obs_viral_genomes[
+                    which_obs_t_viral_genome, ww_observed_subpops
+                ]
+                + mode_ww_site[ww_observed_lab_sites]
+            )
+            DistributionalVariable(
+                "log_conc_obs",
+                dist.Normal(
+                    loc=expected_obs_log_v_site[ww_uncensored],
+                    scale=sigma_ww_site[ww_observed_lab_sites[ww_uncensored]],
+                ),
+            ).sample(
+                obs=data_observed[ww_uncensored],
+            )
+            if ww_censored.shape[0] != 0:
+                log_cdf_values = dist.Normal(
+                    loc=expected_obs_log_v_site[ww_censored],
+                    scale=sigma_ww_site[ww_observed_lab_sites[ww_censored]],
+                ).log_cdf(ww_log_lod[ww_censored])
+                numpyro.factor("log_prob_censored", log_cdf_values.sum())
 
         # Predict site and population level wastewater concentrations
         site_log_ww_conc = DistributionalVariable(

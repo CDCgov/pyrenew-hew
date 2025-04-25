@@ -27,13 +27,7 @@ class PyrenewHEWData:
         site_subpop_spine: pl.DataFrame = None,
         pop_fraction: ArrayLike = None,
         n_ww_lab_sites: int = None,
-        ww_censored: ArrayLike = None,
-        ww_uncensored: ArrayLike = None,
-        ww_observed_subpops: ArrayLike = None,
-        model_t_obs_wastewater: ArrayLike = None,
-        ww_observed_lab_sites: ArrayLike = None,
         lab_site_to_subpop_map: ArrayLike = None,
-        ww_log_lod: ArrayLike = None,
     ) -> None:
         self.n_ed_visits_data_days_ = n_ed_visits_data_days
         self.n_hospital_admissions_data_days_ = n_hospital_admissions_data_days
@@ -42,13 +36,7 @@ class PyrenewHEWData:
         self.nhsn_training_data = nhsn_training_data
         self.nwss_training_data = nwss_training_data
         self.n_ww_lab_sites_ = n_ww_lab_sites
-        self.ww_uncensored_ = ww_uncensored
-        self.ww_censored_ = ww_censored
-        self.ww_observed_lab_sites_ = ww_observed_lab_sites
-        self.ww_observed_subpops_ = ww_observed_subpops
-        self.model_t_obs_wastewater_ = model_t_obs_wastewater
         self.lab_site_to_subpop_map_ = lab_site_to_subpop_map
-        self.ww_log_lod_ = ww_log_lod
         self.right_truncation_offset = right_truncation_offset
 
         if (
@@ -248,7 +236,6 @@ class PyrenewHEWData:
                 .get_column("ind_rel_to_observed_times")
                 .to_numpy()
             )
-        return self.ww_censored_
 
     @property
     def ww_uncensored(self):
@@ -258,13 +245,11 @@ class PyrenewHEWData:
                 .get_column("ind_rel_to_observed_times")
                 .to_numpy()
             )
-        return self.ww_uncensored_
 
     @property
     def model_t_obs_wastewater(self):
         if self.nwss_training_data is not None:
             return self.wastewater_data_extended.get_column("t").to_numpy()
-        return self.model_t_obs_wastewater_
 
     @property
     def model_t_obs_ed_visits(self):
@@ -300,7 +285,6 @@ class PyrenewHEWData:
             return self.wastewater_data_extended.get_column(
                 "subpop_index"
             ).to_numpy()
-        return self.ww_observed_subpops_
 
     @property
     def ww_observed_lab_sites(self):
@@ -308,7 +292,6 @@ class PyrenewHEWData:
             return self.wastewater_data_extended.get_column(
                 "lab_site_index"
             ).to_numpy()
-        return self.ww_observed_lab_sites_
 
     @property
     def ww_log_lod(self):
@@ -316,7 +299,6 @@ class PyrenewHEWData:
             return self.wastewater_data_extended.get_column(
                 "log_lod"
             ).to_numpy()
-        return self.ww_log_lod_
 
     @property
     def n_ww_lab_sites(self):
@@ -405,12 +387,6 @@ class PyrenewHEWData:
             first_wastewater_date=self.first_data_date_overall,
             right_truncation_offset=None,  # by default, want forecasts of complete reports
             n_ww_lab_sites=self.n_ww_lab_sites,
-            ww_uncensored=self.ww_uncensored,
-            ww_censored=self.ww_censored,
-            ww_observed_lab_sites=self.ww_observed_lab_sites,
-            ww_observed_subpops=self.ww_observed_subpops,
-            model_t_obs_wastewater=self.model_t_obs_wastewater,
             lab_site_to_subpop_map=self.lab_site_to_subpop_map,
-            ww_log_lod=self.ww_log_lod,
             pop_fraction=self.pop_fraction,
         )
