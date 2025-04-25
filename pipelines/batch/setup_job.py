@@ -298,9 +298,9 @@ if __name__ == "__main__":
         help=(
             "Two-letter USPS location abbreviations to "
             "include in the job, as a whitespace-separated "
-            "string. If not set, include all ",
+            "string. If not set, include all "
             "available locations except any explicitly excluded "
-            "via --locations-exclude.",
+            "via --locations-exclude."
         ),
         default=None,
     )
