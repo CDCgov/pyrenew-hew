@@ -165,7 +165,7 @@ def main(
 
     base_call = (
         "/bin/bash -c '"
-        "python pipelines/forecast_state.py "
+        "uv run python pipelines/forecast_state.py "
         "--disease {disease} "
         "--state {state} "
         f"--n-training-days {n_training_days} "
