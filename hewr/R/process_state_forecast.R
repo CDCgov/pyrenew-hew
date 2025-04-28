@@ -288,7 +288,7 @@ process_pyrenew_model <- function(model_run_dir,
     stringr::str_replace_all("-Infinity", "null") |>
     jsonlite::fromJSON()
 
-  first_data_dates <- c(
+  data_dates <- c(
     if (pyrenew_model_components["e"]) {
       data_for_model_fit$nssp_training_data$date
     },
@@ -300,7 +300,7 @@ process_pyrenew_model <- function(model_run_dir,
     }
   )
 
-  first_data_date_overall <- as.Date(min(first_data_dates))
+  first_data_date_overall <- as.Date(min(data_dates))
   first_dow <- lubridate::wday(first_data_date_overall, week_start = 7)
   to_first_sat <- (7 - first_dow) %% 7
   first_nssp_date <- first_data_date_overall
