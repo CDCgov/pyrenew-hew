@@ -364,7 +364,7 @@ class EDVisitObservationProcess(RandomVariable):
         population_size: int,
         data_observed: ArrayLike,
         model_t_observed: ArrayLike,
-        n_init_days: int,
+        model_t_first_latent_infection: int,
         right_truncation_offset: int = None,
     ) -> tuple[ArrayLike]:
         """
@@ -379,14 +379,14 @@ class EDVisitObservationProcess(RandomVariable):
             )
         )
 
-        model_t_first_latent_ed_visit = ed_visit_offset - n_init_days
+        model_t_first_latent_ed_visit = (
+            ed_visit_offset + model_t_first_latent_infection
+        )
 
         if (
             model_t_observed is None
         ):  # True for forecasting/posterior prediction
-            which_obs_ed_visits = jnp.arange(
-                -model_t_first_latent_ed_visit, potential_latent_ed_visits.size
-            )
+            which_obs_ed_visits = jnp.arange(potential_latent_ed_visits.size)
         else:
             which_obs_ed_visits = (
                 model_t_observed - model_t_first_latent_ed_visit
@@ -529,7 +529,7 @@ class HospAdmitObservationProcess(RandomVariable):
         latent_infections: ArrayLike,
         first_latent_infection_dow: int,
         population_size: int,
-        n_init_days: int,
+        model_t_first_latent_infection: int,
         n_datapoints: int,  # This is actually n_weeks
         data_observed: ArrayLike = None,
         model_t_observed: ArrayLike = None,
@@ -579,14 +579,12 @@ class HospAdmitObservationProcess(RandomVariable):
         )
 
         model_t_first_latent_admissions = (
-            hospital_admissions_offset - n_init_days
+            hospital_admissions_offset + model_t_first_latent_infection
         )
 
         first_latent_admission_dow = (
             first_latent_infection_dow + hospital_admissions_offset
         ) % 7
-
-        truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
 
         predicted_weekly_admissions = daily_to_mmwr_epiweekly(
             latent_hospital_admissions,
@@ -734,7 +732,7 @@ class WastewaterObservationProcess(RandomVariable):
         self,
         latent_infections_subpop: ArrayLike,
         data_observed: ArrayLike,
-        n_init_days: int,
+        model_t_first_latent_infection: int,
         ww_uncensored: ArrayLike,
         ww_censored: ArrayLike,
         ww_observed_lab_sites: ArrayLike,
@@ -794,7 +792,9 @@ class WastewaterObservationProcess(RandomVariable):
         viral_genome_offset = (
             viral_kinetics.shape[0] - 1
         )  # max_shed_interval-2
-        model_t_first_latent_viral_genome = viral_genome_offset - n_init_days
+        model_t_first_latent_viral_genome = (
+            viral_genome_offset + model_t_first_latent_infection
+        )
 
         if data_observed is not None:
             which_obs_t_viral_genome = (
@@ -893,7 +893,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
                 model_t_observed=data.model_t_obs_ed_visits,
-                n_init_days=n_init_days,
+                model_t_first_latent_infection=-n_init_days,
                 right_truncation_offset=data.right_truncation_offset,
             )
 
@@ -902,7 +902,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 latent_infections=latent_infections,
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
-                n_init_days=n_init_days,
+                model_t_first_latent_infection=-n_init_days,
                 n_datapoints=data.n_hospital_admissions_data_days,
                 data_observed=data.data_observed_disease_hospital_admissions,
                 model_t_observed=data.model_t_obs_hospital_admissions,
@@ -915,7 +915,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             ) = self.wastewater_obs_process_rv(
                 latent_infections_subpop=latent_infections_subpop,
                 data_observed=data.data_observed_disease_wastewater_conc,
-                n_init_days=n_init_days,
+                model_t_first_latent_infection=-n_init_days,
                 ww_uncensored=data.ww_uncensored,
                 ww_censored=data.ww_censored,
                 ww_observed_lab_sites=data.ww_observed_lab_sites,

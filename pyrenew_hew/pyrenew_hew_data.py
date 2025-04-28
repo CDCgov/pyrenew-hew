@@ -218,7 +218,7 @@ class PyrenewHEWData:
                     how="left",
                     coalesce=True,
                 )
-                .with_row_index("ind_rel_to_observed_times")
+                .with_row_index("wastewater_observation_index")
             )
 
     @property
@@ -233,7 +233,7 @@ class PyrenewHEWData:
         if self.nwss_training_data is not None:
             return (
                 self.wastewater_data_extended.filter(pl.col("below_lod") == 1)
-                .get_column("ind_rel_to_observed_times")
+                .get_column("wastewater_observation_index")
                 .to_numpy()
             )
 
@@ -242,7 +242,7 @@ class PyrenewHEWData:
         if self.nwss_training_data is not None:
             return (
                 self.wastewater_data_extended.filter(pl.col("below_lod") == 0)
-                .get_column("ind_rel_to_observed_times")
+                .get_column("wastewater_observation_index")
                 .to_numpy()
             )
 
