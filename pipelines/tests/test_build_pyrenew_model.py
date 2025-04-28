@@ -96,7 +96,7 @@ offset_ref_log_rt_rv=None
 """
 
 
-def test_build_model_from_dir(tmp_path, mock_data, mock_priors, capsys):
+def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
     model_dir = tmp_path / "model_dir"
     data_dir = model_dir / "data"
     data_dir.mkdir(parents=True)
