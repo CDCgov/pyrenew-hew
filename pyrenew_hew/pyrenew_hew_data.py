@@ -24,10 +24,10 @@ class PyrenewHEWData:
         first_hospital_admissions_date: datetime.date = None,
         first_wastewater_date: datetime.date = None,
         right_truncation_offset: int = None,
-        site_subpop_spine: pl.DataFrame = None,
         pop_fraction: ArrayLike = None,
         n_ww_lab_sites: int = None,
         lab_site_to_subpop_map: ArrayLike = None,
+        population_size: int = None,
     ) -> None:
         self.n_ed_visits_data_days_ = n_ed_visits_data_days
         self.n_hospital_admissions_data_days_ = n_hospital_admissions_data_days
@@ -38,6 +38,7 @@ class PyrenewHEWData:
         self.n_ww_lab_sites_ = n_ww_lab_sites
         self.lab_site_to_subpop_map_ = lab_site_to_subpop_map
         self.right_truncation_offset = right_truncation_offset
+        self.population_size = population_size
 
         if (
             first_hospital_admissions_date is not None
@@ -53,7 +54,6 @@ class PyrenewHEWData:
         self.first_hospital_admissions_date_ = first_hospital_admissions_date
         self.first_wastewater_date_ = first_wastewater_date
         self.pop_fraction = pop_fraction
-        self.site_subpop_spine = site_subpop_spine
 
     @property
     def n_ed_visits_data_days(self):
@@ -186,6 +186,50 @@ class PyrenewHEWData:
             return self.nhsn_training_data.get_column(
                 "hospital_admissions"
             ).to_numpy()
+
+    @property
+    def site_subpop_spine(self):
+        if self.nwss_training_data is not None:
+            site_indices = (
+                self.nwss_training_data.select(
+                    ["site_index", "site", "site_pop"]
+                )
+                .unique()
+                .sort("site_index", descending=False)
+            )
+
+            total_pop_ww = (
+                self.nwss_training_data.unique(["site_pop", "site"])
+                .get_column("site_pop")
+                .sum()
+            )
+
+            total_pop_no_ww = self.population_size - total_pop_ww
+            add_auxiliary_subpop = total_pop_no_ww > 0
+
+            if add_auxiliary_subpop:
+                aux_subpop = pl.DataFrame(
+                    {
+                        "site_index": [None],
+                        "site": [None],
+                        "site_pop": [total_pop_no_ww],
+                    }
+                )
+            else:
+                aux_subpop = pl.DataFrame()
+            site_subpop_spine = (
+                pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
+                .with_columns(
+                    subpop_index=pl.col("site_index")
+                    .cum_count()
+                    .alias("subpop_index"),
+                    subpop_name=pl.format(
+                        "Site: {}", pl.col("site")
+                    ).fill_null("remainder of population"),
+                )
+                .rename({"site_pop": "subpop_pop"})
+            )
+            return site_subpop_spine
 
     @property
     def date_time_spine(self):

@@ -15,7 +15,6 @@ from pyrenew_hew.pyrenew_hew_model import (
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
-from pyrenew_hew.pyrenew_wastewater_data import PyrenewWastewaterData
 
 
 def build_model_from_dir(
@@ -214,18 +213,13 @@ def build_model_from_dir(
         wastewater_obs_process_rv=wastewater_obs_rv,
     )
 
-    wastewater_data = PyrenewWastewaterData(
-        nwss_training_data=nwss_training_data,
-        population_size=population_size,
-    )
-
     dat = PyrenewHEWData(
         nssp_training_data=nssp_training_data,
         nhsn_training_data=nhsn_training_data,
         nwss_training_data=nwss_training_data,
         right_truncation_offset=right_truncation_offset,
         pop_fraction=pop_fraction,
-        **wastewater_data.to_pyrenew_hew_data_args(),
+        population_size=population_size,
     )
 
     return (mod, dat)
