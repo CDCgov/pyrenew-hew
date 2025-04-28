@@ -63,9 +63,6 @@ jobs:
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
 
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
-
       - name: Set up R with hewr package
         uses: ./.github/actions/setup-hewr
 

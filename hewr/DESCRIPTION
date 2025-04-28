@@ -31,7 +31,6 @@ Imports:
     latex2exp,
     lubridate,
     purrr,
-    quarto,
     readr,
     reticulate,
     rlang,
