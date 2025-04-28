@@ -494,7 +494,6 @@ class HospAdmitObservationProcess(RandomVariable):
     def calculate_weekly_hosp_indices(
         first_latent_admission_dow: int,
         model_t_first_latent_admissions: int,
-        n_datapoints: int,
         model_t_observed: ArrayLike,
     ):
         truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
@@ -510,17 +509,15 @@ class HospAdmitObservationProcess(RandomVariable):
         # Check the first predicted admissions day is a Saturday (MMWR epiweek end)
         assert model_dow_first_pred_admissions == 5
 
-        if model_t_observed is not None:
-            offset_first_obs_days = (
-                model_t_observed[0] - model_t_first_pred_admissions
-            )
-            assert offset_first_obs_days >= 0
-            assert offset_first_obs_days % 7 == 0
-            which_obs_weekly_hosp_admissions = (
-                model_t_observed - model_t_first_pred_admissions
-            ) // 7
-        else:
-            which_obs_weekly_hosp_admissions = jnp.arange(n_datapoints)
+        offset_first_obs_days = (
+            model_t_observed[0] - model_t_first_pred_admissions
+        )
+        assert offset_first_obs_days >= 0
+        assert offset_first_obs_days % 7 == 0
+
+        which_obs_weekly_hosp_admissions = (
+            model_t_observed - model_t_first_pred_admissions
+        ) // 7
 
         return which_obs_weekly_hosp_admissions
 
@@ -530,7 +527,6 @@ class HospAdmitObservationProcess(RandomVariable):
         first_latent_infection_dow: int,
         population_size: int,
         model_t_first_latent_infection: int,
-        n_datapoints: int,  # This is actually n_weeks
         data_observed: ArrayLike = None,
         model_t_observed: ArrayLike = None,
         iedr: ArrayLike = None,
@@ -538,11 +534,6 @@ class HospAdmitObservationProcess(RandomVariable):
         """
         Observe and/or predict incident hospital admissions.
         """
-        if n_datapoints is None and model_t_observed is None:
-            raise ValueError(
-                "Must provide at least one of n_datapoints "
-                "or model_t_observed."
-            )
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
         if self.ihr_rel_iedr_rv is not None and self.ihr_rv is not None:
@@ -591,12 +582,18 @@ class HospAdmitObservationProcess(RandomVariable):
             input_data_first_dow=first_latent_admission_dow,
         )
 
-        which_obs_weekly_hosp_admissions = self.calculate_weekly_hosp_indices(
-            first_latent_admission_dow,
-            model_t_first_latent_admissions,
-            n_datapoints,
-            model_t_observed,
-        )
+        if model_t_observed is not None:
+            which_obs_weekly_hosp_admissions = (
+                self.calculate_weekly_hosp_indices(
+                    first_latent_admission_dow,
+                    model_t_first_latent_admissions,
+                    model_t_observed,
+                )
+            )
+        else:
+            which_obs_weekly_hosp_admissions = jnp.arange(
+                predicted_weekly_admissions.size
+            )
 
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
@@ -903,7 +900,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
                 model_t_first_latent_infection=-n_init_days,
-                n_datapoints=data.n_hospital_admissions_data_days,
                 data_observed=data.data_observed_disease_hospital_admissions,
                 model_t_observed=data.model_t_obs_hospital_admissions,
                 iedr=iedr,
