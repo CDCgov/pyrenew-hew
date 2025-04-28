@@ -2,6 +2,11 @@ name: Delete branch tag from container registry
 
 on:
   delete:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The name of the tag to delete. Usually the branch name.
+        type: string
 
 env:
   IMAGE_NAME: pyrenew-hew
@@ -10,10 +15,8 @@ jobs:
   delete-container:
     permissions:
       contents: read
-      id-token: write
-      packages: read
+      packages: write
     environment: production
-    if: github.event.ref_type == 'branch'
     runs-on: ubuntu-latest
     name: Delete tag
 
@@ -24,21 +27,21 @@ jobs:
       - name: Figure out tag (either latest if it is main or the branch name)
         id: image-tag
         run: |
-          if [ "${{ github.event.ref }}" = "main" ]; then
+          if [ "${{ inputs.tag }}" = "latest" ]; then
             echo "The image associated with the main branch cannot be deleted."
             exit 1
           else
             echo "tag=${{ github.event.ref }}" >> $GITHUB_OUTPUT
           fi
 
-      # From: https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers#requesting-the-jwt-using-the-actions-core-toolkit
-      - name: Install OIDC Client from Core Package
-        run: npm install @actions/core@1.6.0 @actions/http-client
-      - name: Get Id Token
-        uses: actions/github-script@v7
-        id: idtoken
+      # Deleting a package from GHCR by tag name is surprising complex
+      # This action has been approved for use on cdcent/cdcgov by the CDC Github Team
+      # https://github.com/snok/container-retention-policy
+      - name: Delete image tag
+        uses: snok/container-retention-policy@v3.0.0
         with:
-          script: |
-            const coredemo = require('@actions/core')
-            const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
-            coredemo.setOutput('id_token', id_token)
+          account: ${{ github.repository_owner }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          image-names: ${{ env.IMAGE_NAME }}
+          image-tags: ${{ inputs.tag || steps.image-tag.outputs.tag }}
+          cut-off: 1s # required, minimum package age to be a candidate for deletion
