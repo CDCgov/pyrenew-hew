@@ -46,4 +46,3 @@ jobs:
           image-names: ${{ env.IMAGE_NAME }}
           image-tags: ${{ inputs.tag || steps.image-tag.outputs.tag }}
           cut-off: 1s # required, minimum package age to be a candidate for deletion
-
