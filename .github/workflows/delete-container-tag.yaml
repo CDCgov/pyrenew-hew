@@ -17,7 +17,6 @@ jobs:
       contents: read
       packages: write
     environment: production
-    if: github.event.ref_type == 'branch'
     runs-on: ubuntu-latest
     name: Delete tag
 
@@ -28,7 +27,7 @@ jobs:
       - name: Figure out tag (either latest if it is main or the branch name)
         id: image-tag
         run: |
-          if [ "${{ github.event.ref }}" = "main" ]; then
+          if [ "${{ inputs.tag }}" = "latest" ]; then
             echo "The image associated with the main branch cannot be deleted."
             exit 1
           else
