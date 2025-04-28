@@ -517,7 +517,8 @@ class HospAdmitObservationProcess(RandomVariable):
             assert offset_first_obs_days >= 0
             assert offset_first_obs_days % 7 == 0
             which_obs_weekly_hosp_admissions = (
-                model_t_observed - model_t_first_pred_admissions) // 7
+                model_t_observed - model_t_first_pred_admissions
+            ) // 7
         else:
             which_obs_weekly_hosp_admissions = jnp.arange(n_datapoints)
 
