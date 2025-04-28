@@ -55,37 +55,6 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     return None
 
 
-def create_pointinterval_plot(model_batch_dir_path: Path | str) -> None:
-    model_batch_dir_path = Path(model_batch_dir_path)
-    f_info = parse_model_batch_dir_name(model_batch_dir_path.name)
-    disease = f_info["disease"]
-    report_date = f_info["report_date"]
-    output_file_name = "disease_category_pointintervals.pdf"
-
-    hubverse_table_path = Path(
-        model_batch_dir_path, _hubverse_table_filename(report_date, disease)
-    )
-
-    figures_dir = Path(model_batch_dir_path, "figures")
-    os.makedirs(figures_dir, exist_ok=True)
-    output_path = Path(figures_dir, output_file_name)
-
-    result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/plot_category_pointintervals.R",
-            f"{hubverse_table_path}",
-            f"{output_path}",
-        ],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"create_pointinterval_plot: {result.stderr.decode('utf-8')}"
-        )
-    return None
-
-
 def process_model_batch_dir(
     model_batch_dir_path: Path, plot_ext: str = "pdf"
 ) -> None:
@@ -94,8 +63,6 @@ def process_model_batch_dir(
     cp.merge_and_save_pdfs(model_batch_dir_path)
     logger.info("Creating hubverse table...")
     create_hubverse_table(model_batch_dir_path)
-    logger.info("Creating pointinterval plot...")
-    create_pointinterval_plot(model_batch_dir_path)
 
 
 def main(
