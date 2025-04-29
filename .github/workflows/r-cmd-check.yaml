@@ -13,7 +13,6 @@ jobs:
   check-hewr:
     strategy:
       matrix:
-        r-version: ["4.4.0", "release"]
         os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on:  ${{matrix.os}}
     steps:
