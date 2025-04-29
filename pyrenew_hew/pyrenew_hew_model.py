@@ -517,7 +517,7 @@ class HospAdmitObservationProcess(RandomVariable):
             (model_t_observed - model_t_first_pred_admissions) % 7 == 0
         ):
             raise ValueError(
-                "Not all observed or predicted hospital admissions is on Saturdays."
+                "Not all observed or predicted hospital admissions are on Saturdays."
             )
 
         which_obs_weekly_hosp_admissions = (
