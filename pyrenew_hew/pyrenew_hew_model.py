@@ -496,8 +496,35 @@ class HospAdmitObservationProcess(RandomVariable):
         model_t_first_latent_admissions: int,
         model_t_observed: ArrayLike,
     ):
+        """
+        Calculates indices of the predicted weekly
+        hospital admissions vector corresponding to
+        observed hospital admission date.
+
+        Parameters
+        ----------
+        first_latent_admission_dow : int
+            Day of the week (0=Monday, ..., 6=Sunday)
+            of the first latent hospital admission.
+        model_t_first_latent_admissions : int
+            Time index in model time of the
+            first latent hospital admission.
+            Model time `t0` is the first overall data date.
+        model_t_observed : ArrayLike
+            Time indices in model time of observed hospital
+            admissions (must be end of MMWR epiweek).
+
+        Returns
+        -------
+        ArrayLike
+            Vector of indices corresponding to the observed hospital admission.
+
+        """
+        # Days to truncate to get full epiweek of predicted admissions
         truncated_latent_admit_days = (6 - first_latent_admission_dow) % 7
 
+        # First prediction is made for the week ending day (Saturday)
+        # of the first full epiweek
         model_t_first_pred_admissions = (
             model_t_first_latent_admissions + truncated_latent_admit_days + 6
         )
