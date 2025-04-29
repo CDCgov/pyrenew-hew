@@ -509,13 +509,11 @@ class HospAdmitObservationProcess(RandomVariable):
         # Check the first predicted admissions day is a Saturday (MMWR epiweek end)
         assert model_dow_first_pred_admissions == 5
 
-        if not jnp.all(
-            (model_t_observed - model_t_first_pred_admissions) >= 0
-        ):
+        if not all((model_t_observed - model_t_first_pred_admissions) >= 0):
             raise ValueError(
                 "Observed hospital admissions date is before predicted hospital admissions."
             )
-        if not jnp.all(
+        if not all(
             (model_t_observed - model_t_first_pred_admissions) % 7 == 0
         ):
             raise ValueError(
