@@ -51,7 +51,7 @@ def test_calculate_weekly_hosp_valid_indices(
             2,
             10,
             jnp.array([26, 34]),
-            "Not all observed or predicted hospital admissions is on Saturdays.",
+            "Not all observed or predicted hospital admissions are on Saturdays.",
         ],
         [
             2,
