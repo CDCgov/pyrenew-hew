@@ -164,7 +164,7 @@ class PyrenewHEWData:
     def n_days_post_init(self):
         return (
             self.last_data_date_overall - self.first_data_date_overall
-        ).days
+        ).days + 1
 
     @property
     def data_observed_disease_ed_visits(self):
