@@ -387,7 +387,7 @@ class PyrenewHEWData:
             result = None
         else:
             result = first_date + datetime.timedelta(
-                days=n_datapoints * timestep_days
+                days=(n_datapoints - 1) * timestep_days
             )
         return result
 

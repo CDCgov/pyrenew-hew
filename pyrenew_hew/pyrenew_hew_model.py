@@ -386,7 +386,9 @@ class EDVisitObservationProcess(RandomVariable):
         if (
             model_t_observed is None
         ):  # True for forecasting/posterior prediction
-            which_obs_ed_visits = jnp.arange(potential_latent_ed_visits.size)
+            which_obs_ed_visits = jnp.arange(
+                -model_t_first_latent_ed_visit, potential_latent_ed_visits.size
+            )
         else:
             which_obs_ed_visits = (
                 model_t_observed - model_t_first_latent_ed_visit
@@ -623,6 +625,8 @@ class HospAdmitObservationProcess(RandomVariable):
                 )
             )
         else:
+            # This array can start from 0 because
+            # n_initialization_points = hospital_admissions_offset + 6
             which_obs_weekly_hosp_admissions = jnp.arange(
                 predicted_weekly_admissions.size
             )
@@ -856,7 +860,9 @@ class WastewaterObservationProcess(RandomVariable):
         site_log_ww_conc = DistributionalVariable(
             "site_log_ww_conc",
             dist.Normal(
-                loc=expected_obs_viral_genomes[:, lab_site_to_subpop_map]
+                loc=expected_obs_viral_genomes[
+                    -model_t_first_latent_viral_genome:, lab_site_to_subpop_map
+                ]
                 + mode_ww_site,
                 scale=sigma_ww_site,
             ),
