@@ -48,21 +48,22 @@ disease_short_names <- list(
 #' @return A tibble containing the generated test data with columns for
 #' reference date, report date, geo type, geo value, as of date, run ID,
 #' facility, disease, and value.
-create_facility_test_data <- function(facility,
-                                      start_reference,
-                                      end_reference,
-                                      geo_value = "CA",
-                                      initial = 10.0,
-                                      mean_other = 200.0,
-                                      target_disease = "COVID-19/Omicron") {
-  reference_dates <- seq(start_reference,
-    end_reference,
-    by = "day"
-  )
-  rt <- 0.25 * cos(2 * pi * as.numeric(difftime(reference_dates,
+create_facility_test_data <- function(
+    facility,
     start_reference,
-    units = "days"
-  )) / 180)
+    end_reference,
+    geo_value = "CA",
+    initial = 10.0,
+    mean_other = 200.0,
+    target_disease = "COVID-19/Omicron") {
+  reference_dates <- seq(start_reference, end_reference, by = "day")
+  rt <- 0.25 *
+    cos(
+      2 *
+        pi *
+        as.numeric(difftime(reference_dates, start_reference, units = "days")) /
+        180
+    )
   yt <- generate_exp_growth_pois(rt, initial)
   others <- generate_exp_growth_pois(0.0 * rt, mean_other)
   target_fac_data <- tibble(
@@ -76,10 +77,12 @@ create_facility_test_data <- function(facility,
     facility = facility,
     !!target_disease := yt,
     Total = yt + others,
-  ) |> pivot_longer(
-    cols = c(all_of(target_disease), "Total"),
-    names_to = "disease", values_to = "value"
-  )
+  ) |>
+    pivot_longer(
+      cols = c(all_of(target_disease), "Total"),
+      names_to = "disease",
+      values_to = "value"
+    )
   return(target_fac_data)
 }
 
@@ -130,10 +133,7 @@ generate_fake_facility_data <-
       }
     ) |>
       bind_rows() |>
-      write_parquet(path(nssp_etl_gold_dir,
-        end_reference,
-        ext = "parquet"
-      ))
+      write_parquet(path(nssp_etl_gold_dir, end_reference, ext = "parquet"))
   }
 
 #' Generate State Level Data
@@ -203,10 +203,7 @@ generate_fake_state_level_data <-
 
     # Write out-of-sample state-level data to comparison directory
     state_data |>
-      filter(reference_date > end_reference) |>
-      write_parquet(path(comp_dir, "latest_comprehensive",
-        ext = "parquet"
-      ))
+      write_parquet(path(comp_dir, "latest_comprehensive", ext = "parquet"))
   }
 
 #' Generate Fake Parameter Data
@@ -320,12 +317,16 @@ copy_test_nwss_data <- function(
     private_data_dir = fs::path_wd(),
     end_reference = "2024-12-21",
     test_data_dir = fs::path(
-      "pipelines/tests/test_data/nwss_vintages", paste0(
-        "NWSS-ETL-covid-", end_reference
+      "pipelines/tests/test_data/nwss_vintages",
+      paste0(
+        "NWSS-ETL-covid-",
+        end_reference
       )
     )) {
   ww_dir <- fs::path(
-    private_data_dir, "nwss_vintages", paste0("NWSS-ETL-covid-", end_reference)
+    private_data_dir,
+    "nwss_vintages",
+    paste0("NWSS-ETL-covid-", end_reference)
   )
   fs::dir_create(ww_dir, recurse = TRUE)
   ww_data <- arrow::read_parquet(
@@ -334,9 +335,7 @@ copy_test_nwss_data <- function(
   arrow::write_parquet(ww_data, fs::path(ww_dir, "bronze", ext = "parquet"))
 }
 
-main <- function(private_data_dir,
-                 target_diseases,
-                 n_forecast_days) {
+main <- function(private_data_dir, target_diseases, n_forecast_days) {
   short_target_diseases <- disease_short_names[target_diseases]
   facilities <- tibble::tibble(
     facility_id = 1:5,
@@ -401,7 +400,8 @@ p <- arg_parser("Create simulated epiweekly data.") |>
 argv <- parse_args(p)
 
 withr::with_seed(argv$seed, {
-  main(argv$model_run_dir,
+  main(
+    argv$model_run_dir,
     target_diseases = stringr::str_split_1(argv$target_diseases, " "),
     n_forecast_days = argv$n_forecast_days
   )
