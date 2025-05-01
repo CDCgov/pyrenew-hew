@@ -79,7 +79,7 @@ prop_from_timeseries <- function(e_denominator_samples,
                                  daily_training_dat,
                                  epiweekly_training_dat) {
   prop_disease_ed_visits_tbl <-
-    dplyr::left_join(e_denominator_samples, e_numerator_samples,
+    dplyr::inner_join(e_denominator_samples, e_numerator_samples,
       by = c("resolution", ".draw", "date", "geo_value", "disease")
     ) |>
     dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
