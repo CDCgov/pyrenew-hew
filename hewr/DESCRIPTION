@@ -20,7 +20,7 @@ Imports:
     forcats,
     forecasttools (>= 0.1.6),
     fs,
-    ggdist (>= 3.3.3),
+    ggdist,
     ggnewscale,
     ggplot2,
     glue,
@@ -47,7 +47,8 @@ Imports:
 Remotes:
     github::cdcgov/forecasttools,
     github::cmu-delphi/epipredict,
-    github::cmu-delphi/epiprocess
+    github::cmu-delphi/epiprocess,
+    github::mjskay/ggdist@dev
 Suggests:
     checkmate,
     rcmdcheck,
