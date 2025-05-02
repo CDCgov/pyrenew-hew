@@ -16,9 +16,6 @@ from pathlib import Path
 
 import collate_plots as cp
 
-from pipelines.hubverse_create_observed_data_tables import (
-    save_observed_data_tables,
-)
 from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
 
@@ -78,13 +75,6 @@ def main(
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)
         process_model_batch_dir(model_batch_dir_path)
         logger.info(f"Finished processing {batch_dir}")
-    logger.info("Created observed data tables for visualization...")
-    save_observed_data_tables(
-        path_to_latest_data,
-        base_forecast_dir,
-        daily_filename="daily.tsv",
-        epiweekly_filename="epiweekly.tsv",
-    )
     logger.info(f"Finished processing {base_forecast_dir}.")
 
 
