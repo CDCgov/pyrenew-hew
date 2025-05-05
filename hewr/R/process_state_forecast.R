@@ -384,7 +384,7 @@ process_pyrenew_model <- function(model_run_dir,
         stringr::str_ends(.variable, "hospital_admissions") ~
           forecasttools::ceiling_mmwr_epiweek(last_data_date_overall + 1) +
           lubridate::ddays(
-            (floor(n_forecast_days / nhsn_step_size) - 1) * nhsn_step_size
+            (n_forecast_days %/% nhsn_step_size - 1) * nhsn_step_size
           ),
         TRUE ~ NA
       )
