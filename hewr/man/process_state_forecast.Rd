@@ -6,6 +6,7 @@
 \usage{
 process_state_forecast(
   model_run_dir,
+  n_forecast_days,
   pyrenew_model_name = NA,
   timeseries_model_name = NA,
   ci_widths = c(0.5, 0.8, 0.95),
@@ -14,6 +15,8 @@ process_state_forecast(
 }
 \arguments{
 \item{model_run_dir}{Model run directory}
+
+\item{n_forecast_days}{An integer specifying the number of days to forecast.}
 
 \item{pyrenew_model_name}{Name of directory containing pyrenew
 model outputs}
