@@ -11,9 +11,11 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-save_forecast_figures <- function(model_run_dir,
-                                  pyrenew_model_name = NA,
-                                  timeseries_model_name = NA) {
+save_forecast_figures <- function(
+    model_run_dir,
+    n_forecast_days,
+    pyrenew_model_name = NA,
+    timeseries_model_name = NA) {
   if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
     stop(
       "Either `pyrenew_model_name` or `timeseries_model_name`",
@@ -51,6 +53,7 @@ save_forecast_figures <- function(model_run_dir,
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
   processed_forecast <- process_state_forecast(
     model_run_dir,
+    n_forecast_days,
     pyrenew_model_name,
     timeseries_model_name,
     save = TRUE
@@ -136,12 +139,19 @@ p <- arg_parser("Generate forecast figures") |>
   add_argument(
     "--timeseries-model-name",
     help = "Name of directory containing timeseries model outputs"
+  ) |>
+  add_argument(
+    "--n-forecast-days",
+    help = "Number of days to forecast"
   )
 
 argv <- parse_args(p)
 
 model_run_dir <- path(argv$model_run_dir)
+n_forecast_days <- as.numeric(argv$n_forecast_days)
 pyrenew_model_name <- argv$pyrenew_model_name
 timeseries_model_name <- argv$timeseries_model_name
 
-save_forecast_figures(model_run_dir, pyrenew_model_name, timeseries_model_name)
+save_forecast_figures(
+  model_run_dir, n_forecast_days, pyrenew_model_name, timeseries_model_name
+)

@@ -269,7 +269,8 @@ process_pyrenew_model <- function(model_run_dir,
                                   ts_samples,
                                   required_columns_e,
                                   daily_training_dat,
-                                  epiweekly_training_dat) {
+                                  epiweekly_training_dat,
+                                  n_forecast_days) {
   model_info <- parse_model_run_dir_path(model_run_dir)
 
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
@@ -301,7 +302,7 @@ process_pyrenew_model <- function(model_run_dir,
   )
 
   first_data_date_overall <- as.Date(min(data_dates))
-  first_dow <- lubridate::wday(first_data_date_overall, week_start = 7)
+  last_data_date_overall <- as.Date(max(data_dates))
   first_nssp_date <- first_data_date_overall
   first_nwss_date <- first_data_date_overall
   first_nhsn_date <- forecasttools::ceiling_mmwr_epiweek(
@@ -372,6 +373,25 @@ process_pyrenew_model <- function(model_run_dir,
     ) |>
     dplyr::select(tidyselect::all_of(required_columns))
 
+  mismatch <- model_samples_tidy |>
+    dplyr::group_by(.variable) |>
+    dplyr::summarise(predicted_last_date = max(date)) |>
+    dplyr::mutate(
+      expected_last_date = dplyr::case_when(
+        stringr::str_ends(.variable, "ed_visits") ~
+          last_data_date_overall + n_forecast_days,
+        .variable == "site_level_log_ww_conc" ~ last_data_date_overall,
+        stringr::str_ends(.variable, "hospital_admissions") ~
+          lubridate::floor_date(
+            last_data_date_overall + lubridate::days(n_forecast_days),
+            unit = "week", week_start = forecasttools::epiweek_end("MMWR")
+          ),
+        TRUE ~ NA
+      )
+    ) |>
+    dplyr::filter(predicted_last_date != expected_last_date)
+  stopifnot("Date mismatch for variables" = nrow(mismatch) == 0)
+
   # For the E model, do epiweekly and process denominator
   if (pyrenew_model_components["e"]) {
     epiweekly_e_numerator_samples <- epiweekly_samples_from_daily(
@@ -432,6 +452,7 @@ process_pyrenew_model <- function(model_run_dir,
 #' model outputs
 #' @param timeseries_model_name Name of directory containing timeseries
 #' model outputs
+#' @param n_forecast_days An integer specifying the number of days to forecast.
 #' @param ci_widths Vector of probabilities indicating one or more
 #' central credible intervals to compute. Passed as the `.width`
 #' argument to [ggdist::median_qi()]. Default `c(0.5, 0.8, 0.95)`.
@@ -447,11 +468,13 @@ process_pyrenew_model <- function(model_run_dir,
 #' `epiweekly_ci`,
 #' `epiweekly_with_epiweekly_other_ci`
 #' @export
-process_state_forecast <- function(model_run_dir,
-                                   pyrenew_model_name = NA,
-                                   timeseries_model_name = NA,
-                                   ci_widths = c(0.5, 0.8, 0.95),
-                                   save = TRUE) {
+process_state_forecast <- function(
+    model_run_dir,
+    n_forecast_days,
+    pyrenew_model_name = NA,
+    timeseries_model_name = NA,
+    ci_widths = c(0.5, 0.8, 0.95),
+    save = TRUE) {
   if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
     stop(
       "Either `pyrenew_model_name` or `timeseries_model_name`",
@@ -506,7 +529,8 @@ process_state_forecast <- function(model_run_dir,
       ts_samples,
       required_columns_e,
       daily_training_dat,
-      epiweekly_training_dat
+      epiweekly_training_dat,
+      n_forecast_days
     )
   }
 
