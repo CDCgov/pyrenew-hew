@@ -382,9 +382,9 @@ process_pyrenew_model <- function(model_run_dir,
           last_data_date_overall + n_forecast_days,
         .variable == "site_level_log_ww_conc" ~ last_data_date_overall,
         stringr::str_ends(.variable, "hospital_admissions") ~
-          forecasttools::ceiling_mmwr_epiweek(last_data_date_overall + 1) +
-          lubridate::ddays(
-            (n_forecast_days %/% nhsn_step_size - 1) * nhsn_step_size
+          lubridate::floor_date(
+            last_data_date_overall + lubridate::days(n_forecast_days),
+            unit = "week", week_start = forecasttools::epiweek_end("MMWR")
           ),
         TRUE ~ NA
       )

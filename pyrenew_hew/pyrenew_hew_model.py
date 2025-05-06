@@ -4,6 +4,7 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
@@ -386,9 +387,10 @@ class EDVisitObservationProcess(RandomVariable):
         if (
             model_t_observed is None
         ):  # True for forecasting/posterior prediction
-            which_obs_ed_visits = jnp.arange(
-                -model_t_first_latent_ed_visit, potential_latent_ed_visits.size
-            )
+            # slice the latent ed visits from model t0 to the end of the vector
+            which_obs_ed_visits = np.s_[
+                -model_t_first_latent_ed_visit : potential_latent_ed_visits.size
+            ]
         else:
             which_obs_ed_visits = (
                 model_t_observed - model_t_first_latent_ed_visit
