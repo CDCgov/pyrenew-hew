@@ -29,6 +29,7 @@ def test_calculate_weekly_hosp_valid_indices(
         first_latent_admission_dow,
         model_t_first_latent_admissions,
         model_t_observed,
+        n_datapoints=None,
     )
     expected_result = (
         model_t_observed
@@ -75,4 +76,5 @@ def test_calculate_weekly_hosp_invalid_indices(
             first_latent_admission_dow,
             model_t_first_latent_admissions,
             model_t_observed,
+            n_datapoints=None,
         )

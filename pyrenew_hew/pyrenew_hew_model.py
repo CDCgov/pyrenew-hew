@@ -497,6 +497,7 @@ class HospAdmitObservationProcess(RandomVariable):
         first_latent_admission_dow: int,
         model_t_first_latent_admissions: int,
         model_t_observed: ArrayLike,
+        n_datapoints: int,
     ):
         """
         Calculates indices of the predicted weekly
@@ -515,6 +516,8 @@ class HospAdmitObservationProcess(RandomVariable):
         model_t_observed : ArrayLike
             Time indices in model time of observed hospital
             admissions (must be end of MMWR epiweek).
+        n_datapoints : int
+            Number of data points to sample
 
         Returns
         -------
@@ -538,20 +541,30 @@ class HospAdmitObservationProcess(RandomVariable):
         # Check the first predicted admissions day is a Saturday (MMWR epiweek end)
         assert model_dow_first_pred_admissions == 5
 
-        if not all((model_t_observed - model_t_first_pred_admissions) >= 0):
-            raise ValueError(
-                "Observed hospital admissions date is before predicted hospital admissions."
-            )
-        if not all(
-            (model_t_observed - model_t_first_pred_admissions) % 7 == 0
-        ):
-            raise ValueError(
-                "Not all observed or predicted hospital admissions are on Saturdays."
-            )
-
-        which_obs_weekly_hosp_admissions = (
-            model_t_observed - model_t_first_pred_admissions
-        ) // 7
+        if model_t_observed is not None:
+            if not all(
+                (model_t_observed - model_t_first_pred_admissions) >= 0
+            ):
+                raise ValueError(
+                    "Observed hospital admissions date is before predicted hospital admissions."
+                )
+            if not all(
+                (model_t_observed - model_t_first_pred_admissions) % 7 == 0
+            ):
+                raise ValueError(
+                    "Not all observed or predicted hospital admissions are on Saturdays."
+                )
+            which_obs_weekly_hosp_admissions = (
+                model_t_observed - model_t_first_pred_admissions
+            ) // 7
+        else:
+            which_obs_weekly_hosp_admissions = jnp.arange(n_datapoints)
+            if model_t_first_pred_admissions < 0:
+                which_obs_weekly_hosp_admissions = (
+                    which_obs_weekly_hosp_admissions[
+                        (-model_t_first_pred_admissions - 1) // 7 + 1 :
+                    ]
+                )
 
         return which_obs_weekly_hosp_admissions
 
@@ -616,21 +629,12 @@ class HospAdmitObservationProcess(RandomVariable):
             input_data_first_dow=first_latent_admission_dow,
         )
 
-        if model_t_observed is not None:
-            which_obs_weekly_hosp_admissions = (
-                self.calculate_weekly_hosp_indices(
-                    first_latent_admission_dow,
-                    model_t_first_latent_admissions,
-                    model_t_observed,
-                )
-            )
-        else:
-            # This array can start from 0 because
-            # n_initialization_points = hospital_admissions_offset + 6
-            which_obs_weekly_hosp_admissions = jnp.arange(
-                predicted_weekly_admissions.size
-            )
-
+        which_obs_weekly_hosp_admissions = self.calculate_weekly_hosp_indices(
+            first_latent_admission_dow,
+            model_t_first_latent_admissions,
+            model_t_observed,
+            n_datapoints=predicted_weekly_admissions.size,
+        )
         hospital_admissions_obs_rv = NegativeBinomialObservation(
             "observed_hospital_admissions",
             concentration_rv=self.hosp_admit_neg_bin_concentration_rv,
