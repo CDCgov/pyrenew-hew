@@ -325,7 +325,7 @@ if __name__ == "__main__":
             "Forecast the following signals even if they were not fit. "
             "Fit signals are always forecast."
         ),
-        default="he",
+        default=None,
     )
 
     args = parser.parse_args()
@@ -333,4 +333,6 @@ if __name__ == "__main__":
     if args.locations_include is not None:
         args.locations_include = args.locations_include.split()
     args.locations_exclude = args.locations_exclude.split()
+    if args.additional_forecast_letters is None:
+        args.additional_forecast_letters = args.model_letters
     main(**vars(args))
