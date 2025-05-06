@@ -138,12 +138,17 @@ def convert_inferencedata_to_parquet(
 
 
 def plot_and_save_state_forecast(
-    model_run_dir: Path, pyrenew_model_name: str, timeseries_model_name: str
+    model_run_dir: Path,
+    n_forecast_days: int,
+    pyrenew_model_name: str,
+    timeseries_model_name: str,
 ) -> None:
     command = [
         "Rscript",
         "pipelines/plot_and_save_state_forecast.R",
         f"{model_run_dir}",
+        "--n-forecast-days",
+        f"{n_forecast_days}",
         "--timeseries-model-name",
         f"{timeseries_model_name}",
     ]
@@ -467,10 +472,15 @@ def main(
 
     logger.info("Postprocessing forecast...")
     plot_and_save_state_forecast(
-        model_run_dir, pyrenew_model_name, "timeseries_e"
+        model_run_dir,
+        n_days_past_last_training,
+        pyrenew_model_name,
+        "timeseries_e",
     )
     # Timeseries models get processed, even if they aren't used.
-    plot_and_save_state_forecast(model_run_dir, None, "timeseries_e")
+    plot_and_save_state_forecast(
+        model_run_dir, n_days_past_last_training, None, "timeseries_e"
+    )
     logger.info("Postprocessing complete.")
 
     # if score:

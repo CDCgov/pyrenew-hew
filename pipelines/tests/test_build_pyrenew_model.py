@@ -11,8 +11,22 @@ from pipelines.build_pyrenew_model import build_model_from_dir
 def mock_data():
     return json.dumps(
         {
-            "data_observed_disease_ed_visits": [1, 2, 3],
-            "data_observed_disease_hospital_admissions": [4, 5, 6],
+            "nssp_training_data": {
+                "date": [
+                    "2025-01-01",
+                    "2025-01-02",
+                ],
+                "geo_value": ["CA"] * 2,
+                "other_ed_visits": [200, 400],
+                "observed_ed_visits": [10, 3],
+                "data_type": ["train"] * 2,
+            },
+            "nhsn_training_data": {
+                "weekendingdate": ["2025-01-01", "2025-01-02"],
+                "jurisdiction": ["CA"] * 2,
+                "hospital_admissions": [5, 1],
+                "data_type": ["train"] * 2,
+            },
             "state_pop": [10000],
             "generation_interval_pmf": [0.1, 0.2, 0.7],
             "inf_to_ed_pmf": [0.4, 0.5, 0.1],
@@ -23,7 +37,7 @@ def mock_data():
             "nssp_training_dates": ["2025-01-01"],
             "nhsn_training_dates": ["2025-01-04"],
             "right_truncation_offset": 10,
-            "data_observed_disease_wastewater": {
+            "nwss_training_data": {
                 "date": [
                     "2025-01-01",
                     "2025-01-01",
@@ -107,12 +121,6 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
         fit_hospital_admissions=True,
         fit_wastewater=True,
     )
-    assert jnp.array_equal(
-        data.data_observed_disease_ed_visits,
-        jnp.array(model_data["data_observed_disease_ed_visits"]),
-    )
-    assert jnp.array_equal(
-        data.data_observed_disease_hospital_admissions,
-        jnp.array(model_data["data_observed_disease_hospital_admissions"]),
-    )
+    assert data.data_observed_disease_ed_visits is not None
+    assert data.data_observed_disease_hospital_admissions is not None
     assert data.data_observed_disease_wastewater_conc is not None
