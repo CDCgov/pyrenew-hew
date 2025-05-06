@@ -567,6 +567,8 @@ class HospAdmitObservationProcess(RandomVariable):
                         (-model_t_first_pred_admissions - 1) // 7 + 1 :
                     ]
                 )
+                # Truncate to include only the epiweek ending after
+                # model t0 for posterior prediction
 
         return which_obs_weekly_hosp_admissions
 
@@ -868,7 +870,7 @@ class WastewaterObservationProcess(RandomVariable):
             dist.Normal(
                 loc=expected_obs_viral_genomes[
                     -model_t_first_latent_viral_genome:, lab_site_to_subpop_map
-                ]
+                ]  # Get the time (first) dimension from model t0 to end
                 + mode_ww_site,
                 scale=sigma_ww_site,
             ),
