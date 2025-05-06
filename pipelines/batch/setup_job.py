@@ -26,7 +26,7 @@ def main(
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
-    n_training_days: int = 90,
+    n_training_days: int = 150,
     exclude_last_n_days: int = 1,
     locations_include: list[str] = None,
     locations_exclude: list[str] = [
@@ -71,7 +71,7 @@ def main(
 
     n_training_days
         Number of training days of data to use for model fitting.
-        Default 90.
+        Default 150.
 
     exclude_last_n_days
         Number of days of available data to exclude from fitting.
@@ -279,7 +279,7 @@ if __name__ == "__main__":
             "Number of 'training days' of observed data "
             "to use for model fitting."
         ),
-        default=90,
+        default=150,
     )
 
     parser.add_argument(
