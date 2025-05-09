@@ -80,6 +80,13 @@ def clean_nwss_data(nwss_data):
         ]
     )
 
+    # If pcr_target_avg_conc is zero, replace with 0.5*LOD
+    nwss_subset_clean = nwss_subset_clean.with_columns(
+        pcr_target_avg_conc=pl.when(pl.col("pcr_target_avg_conc") <= 0)
+        .then(0.5 * pl.col("lod_sewage"))
+        .otherwise(pl.col("pcr_target_avg_conc"))
+    )
+
     # replaces time-varying population if present in the NWSS dataset.
     # Model does not allow time varying population
     nwss_subset_clean_pop = (
