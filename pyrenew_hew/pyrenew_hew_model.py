@@ -848,8 +848,8 @@ class WastewaterObservationProcess(RandomVariable):
                 ]
                 + mode_ww_site[ww_observed_lab_sites]
             )
-            site_log_ww_conc = DistributionalVariable(
-                "log_conc_obs",
+            site_level_log_ww_conc = DistributionalVariable(
+                "site_level_log_ww_conc",
                 dist.Normal(
                     loc=expected_obs_log_v_site[ww_uncensored],
                     scale=sigma_ww_site[ww_observed_lab_sites[ww_uncensored]],
@@ -866,8 +866,8 @@ class WastewaterObservationProcess(RandomVariable):
         else:
             which_obs_t_viral_genome = np.s_[
                 -model_t_first_latent_viral_genome:
-            ]  # Get the time (first) dimension from model t0 to end of the vector
-            site_log_ww_conc = DistributionalVariable(
+            ]  # Slice time (first) dimension from model t0 to end of the vector
+            site_level_log_ww_conc = DistributionalVariable(
                 "site_level_log_ww_conc",
                 dist.Normal(
                     loc=expected_obs_viral_genomes[
@@ -882,7 +882,7 @@ class WastewaterObservationProcess(RandomVariable):
             expected_obs_viral_genomes, axis=1, b=pop_fraction
         )
 
-        return site_log_ww_conc, pop_log_latent_viral_genome_conc
+        return site_level_log_ww_conc, pop_log_latent_viral_genome_conc
 
 
 class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
