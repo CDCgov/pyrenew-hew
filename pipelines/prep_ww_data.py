@@ -64,7 +64,8 @@ def clean_nwss_data(nwss_data):
                     ]
                 )
             )
-            | (pl.col("quality_flag").is_null())
+            | (pl.col("quality_flag").is_null()),
+            pl.col("pcr_target_avg_conc") >= 0,
         )
     ).drop(["quality_flag", "pcr_target_units"])
 
@@ -80,9 +81,11 @@ def clean_nwss_data(nwss_data):
         ]
     )
 
-    # If pcr_target_avg_conc is zero, replace with 0.5*LOD
+    # If pcr_target_avg_conc is less than LOD, replace with 0.5*LOD
     nwss_subset_clean = nwss_subset_clean.with_columns(
-        pcr_target_avg_conc=pl.when(pl.col("pcr_target_avg_conc") <= 0)
+        pcr_target_avg_conc=pl.when(
+            pl.col("pcr_target_avg_conc") < pl.col("lod_sewage")
+        )
         .then(0.5 * pl.col("lod_sewage"))
         .otherwise(pl.col("pcr_target_avg_conc"))
     )
