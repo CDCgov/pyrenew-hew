@@ -282,12 +282,10 @@ process_pyrenew_model <- function(model_run_dir,
     required_columns <- required_columns_e
   }
 
-  ## Process data
-  data_for_model_fit <-
-    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json") |>
-    readr::read_lines() |>
-    stringr::str_replace_all("-Infinity", "null") |>
-    jsonlite::fromJSON()
+  data_for_model_fit <- jsonlite::read_json(
+    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json"),
+    simplifyVector = TRUE
+  )
 
   data_dates <- c(
     if (pyrenew_model_components["e"]) {
