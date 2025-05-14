@@ -848,8 +848,8 @@ class WastewaterObservationProcess(RandomVariable):
                 ]
                 + mode_ww_site[ww_observed_lab_sites]
             )
-            DistributionalVariable(
-                "log_conc_obs",
+            site_level_log_ww_conc = DistributionalVariable(
+                "site_level_log_ww_conc",
                 dist.Normal(
                     loc=expected_obs_log_v_site[ww_uncensored],
                     scale=sigma_ww_site[ww_observed_lab_sites[ww_uncensored]],
@@ -863,29 +863,26 @@ class WastewaterObservationProcess(RandomVariable):
                     scale=sigma_ww_site[ww_observed_lab_sites[ww_censored]],
                 ).log_cdf(ww_log_lod[ww_censored])
                 numpyro.factor("log_prob_censored", log_cdf_values.sum())
-
-        # Predict site and population level wastewater concentrations
-        site_log_ww_conc = DistributionalVariable(
-            "site_log_ww_conc",
-            dist.Normal(
-                loc=expected_obs_viral_genomes[
-                    -model_t_first_latent_viral_genome:, lab_site_to_subpop_map
-                ]  # Get the time (first) dimension from model t0 to end
-                + mode_ww_site,
-                scale=sigma_ww_site,
-            ),
-        )()
-        numpyro.deterministic("site_level_log_ww_conc", site_log_ww_conc)
+        else:
+            which_obs_t_viral_genome = np.s_[
+                -model_t_first_latent_viral_genome:
+            ]  # Slice time (first) dimension from model t0 to end of the vector
+            site_level_log_ww_conc = DistributionalVariable(
+                "site_level_log_ww_conc",
+                dist.Normal(
+                    loc=expected_obs_viral_genomes[
+                        which_obs_t_viral_genome, lab_site_to_subpop_map
+                    ]
+                    + mode_ww_site,
+                    scale=sigma_ww_site,
+                ),
+            )()
 
         pop_log_latent_viral_genome_conc = jax.scipy.special.logsumexp(
             expected_obs_viral_genomes, axis=1, b=pop_fraction
         )
-        numpyro.deterministic(
-            "pop_log_latent_viral_genome_conc",
-            pop_log_latent_viral_genome_conc,
-        )
 
-        return site_log_ww_conc, pop_log_latent_viral_genome_conc
+        return site_level_log_ww_conc, pop_log_latent_viral_genome_conc
 
 
 class PyrenewHEWModel(Model):  # numpydoc ignore=GL08

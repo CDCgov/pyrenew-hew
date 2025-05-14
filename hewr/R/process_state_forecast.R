@@ -378,7 +378,8 @@ process_pyrenew_model <- function(model_run_dir,
       expected_last_date = dplyr::case_when(
         stringr::str_ends(.variable, "ed_visits") ~
           last_data_date_overall + n_forecast_days,
-        .variable == "site_level_log_ww_conc" ~ last_data_date_overall,
+        .variable == "site_level_log_ww_conc" ~
+          last_data_date_overall + n_forecast_days,
         stringr::str_ends(.variable, "hospital_admissions") ~
           lubridate::floor_date(
             last_data_date_overall + lubridate::days(n_forecast_days),
