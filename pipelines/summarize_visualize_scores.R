@@ -3,7 +3,8 @@ script_packages <- c(
   "scoringutils",
   "lubridate",
   "ggplot2",
-  "argparser"
+  "argparser",
+  "forecasttools"
 )
 
 ## load in packages without messages
@@ -90,10 +91,6 @@ plot_scores_by_date <- function(scores_by_date,
                                 plot_title = "Scores by model over time",
                                 xlabel = "Date",
                                 ylabel = "Relative WIS") {
-  min_score <- min(scores_by_date[[score_column]])
-  max_score <- max(scores_by_date[[score_column]])
-  max_overall <- max(c(1 / min_score, max_score))
-  sym_ylim <- c(1 / max_overall, max_overall)
 
   score_fig <- scores_by_date |>
     ggplot(aes(
@@ -115,7 +112,7 @@ plot_scores_by_date <- function(scores_by_date,
     ) +
     scale_y_continuous(trans = "log10") +
     theme_minimal() +
-    coord_cartesian(ylim = sym_ylim) +
+    coord_cartesian(ylim = sym_limits(scores_by_date[[score_column]], transform = "log10")) +
     facet_wrap(~horizon)
 
   return(score_fig)
@@ -136,12 +133,6 @@ relative_wis_by_location <- function(summarised_scores,
                                      model = "pyrenew-hew") {
   summarised_scores <- summarised_scores |>
     filter(.data$model == !!model)
-
-  ## compute x limits
-  min_wis <- min(summarised_scores$relative_wis)
-  max_wis <- max(summarised_scores$relative_wis)
-  max_overall <- max(c(1 / min_wis, max_wis))
-  sym_xlim <- c(1 / max_overall, max_overall)
 
   ## compute location order (by 0-week horizon
   ## rel wis
@@ -173,7 +164,7 @@ relative_wis_by_location <- function(summarised_scores,
       linetype = "dashed"
     ) +
     scale_x_continuous(trans = "log10") +
-    coord_cartesian(xlim = sym_xlim) +
+    coord_cartesian(xlim = sym_limits(summarised_scores$relative_wis, transform = "log10")) +
     theme_minimal() +
     facet_wrap(~horizon,
       nrow = 1
@@ -298,7 +289,7 @@ main <- function(path_to_scores,
         )
       }
     )
-  forecasttools::plots_to_pdf(
+  plots_to_pdf(
     coverage_plots,
     get_save_path(
       "coverage_by_date_and_horizon"
@@ -337,7 +328,7 @@ main <- function(path_to_scores,
       }
     )
 
-  forecasttools::plots_to_pdf(
+  plots_to_pdf(
     rel_wis_by_dhl,
     get_save_path(
       "relative_wis_by_date_horizon_location"
