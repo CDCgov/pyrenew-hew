@@ -91,7 +91,6 @@ plot_scores_by_date <- function(scores_by_date,
                                 plot_title = "Scores by model over time",
                                 xlabel = "Date",
                                 ylabel = "Relative WIS") {
-
   score_fig <- scores_by_date |>
     ggplot(aes(
       x = .data[[date_column]],
