@@ -39,14 +39,14 @@ purrr::walk(script_packages, \(pkg) {
 #'   scale = "natural"
 #' )
 #' print(summarised_scores)
-summarised_scoring_table <- function(quantile_scores,
-                                     scale = "natural",
-                                     baseline = "cdc_baseline",
-                                     by = NULL) {
+summarised_scoring_table <- function(
+    quantile_scores,
+    scale = "natural",
+    baseline = "cdc_baseline",
+    by = NULL) {
   filtered_scores <- quantile_scores |>
     filter(scale == !!scale) |>
     with_horizons()
-
 
   summarised_rel <- filtered_scores |>
     get_pairwise_comparisons(
@@ -54,15 +54,12 @@ summarised_scoring_table <- function(quantile_scores,
       by = by
     ) |>
     filter(.data$compare_against == !!baseline) |>
-    select(model,
-      all_of(by),
-      relative_wis =
-        "wis_scaled_relative_skill"
-    )
+    select(model, all_of(by), relative_wis = "wis_scaled_relative_skill")
 
   summarised <- filtered_scores |>
     summarise_scores(by = c("model", by)) |>
-    select(model,
+    select(
+      model,
       all_of(by),
       abs_wis = wis,
       mae = ae_median,
@@ -70,27 +67,35 @@ summarised_scoring_table <- function(quantile_scores,
       interval_coverage_90,
       interval_coverage_95
     ) |>
-    inner_join(summarised_rel,
-      by = c("model", by)
-    )
+    inner_join(summarised_rel, by = c("model", by))
   return(summarised)
 }
 
 
 with_horizons <- function(df) {
-  return(df |>
-    mutate(horizon = floor(as.numeric(.data$date -
-      .data$report_date) / 7)))
+  return(
+    df |>
+      mutate(
+        horizon = floor(
+          as.numeric(
+            .data$date -
+              .data$report_date
+          ) /
+            7
+        )
+      )
+  )
 }
 
 
-plot_scores_by_date <- function(scores_by_date,
-                                date_column = "date",
-                                score_column = "relative_wis",
-                                model_column = "model",
-                                plot_title = "Scores by model over time",
-                                xlabel = "Date",
-                                ylabel = "Relative WIS") {
+plot_scores_by_date <- function(
+    scores_by_date,
+    date_column = "date",
+    score_column = "relative_wis",
+    model_column = "model",
+    plot_title = "Scores by model over time",
+    xlabel = "Date",
+    ylabel = "Relative WIS") {
   score_fig <- scores_by_date |>
     ggplot(aes(
       x = .data[[date_column]],
@@ -111,25 +116,31 @@ plot_scores_by_date <- function(scores_by_date,
     ) +
     scale_y_continuous(trans = "log10") +
     theme_minimal() +
-    coord_cartesian(ylim = sym_limits(scores_by_date[[score_column]], transform = "log10")) +
+    coord_cartesian(
+      ylim = sym_limits(scores_by_date[[score_column]],
+        transform = "log10"
+      )
+    ) +
     facet_wrap(~horizon)
 
   return(score_fig)
 }
 
 location_rel_wis_plot <- function(location, scores, ...) {
-  return(plot_scores_by_date(
-    scores |>
-      dplyr::filter(location == !!location),
-    ...
-  ) + ggtitle(
-    glue::glue("Relative WIS over time for {location}")
-  ))
+  return(
+    plot_scores_by_date(
+      scores |>
+        dplyr::filter(location == !!location),
+      ...
+    ) +
+      ggtitle(
+        glue::glue("Relative WIS over time for {location}")
+      )
+  )
 }
 
 
-relative_wis_by_location <- function(summarised_scores,
-                                     model = "pyrenew-hew") {
+relative_wis_by_location <- function(summarised_scores, model = "pyrenew-hew") {
   summarised_scores <- summarised_scores |>
     filter(.data$model == !!model)
 
@@ -141,10 +152,9 @@ relative_wis_by_location <- function(summarised_scores,
     pull("location")
 
   fig <- summarised_scores |>
-    mutate(location = factor(.data$location,
-      ordered = TRUE,
-      levels = !!ordered_locs
-    )) |>
+    mutate(
+      location = factor(.data$location, ordered = TRUE, levels = !!ordered_locs)
+    ) |>
     ggplot(
       aes(
         y = location,
@@ -163,18 +173,18 @@ relative_wis_by_location <- function(summarised_scores,
       linetype = "dashed"
     ) +
     scale_x_continuous(trans = "log10") +
-    coord_cartesian(xlim = sym_limits(summarised_scores$relative_wis, transform = "log10")) +
+    coord_cartesian(
+      xlim = sym_limits(summarised_scores$relative_wis,
+        transform = "log10"
+      )
+    ) +
     theme_minimal() +
-    facet_wrap(~horizon,
-      nrow = 1
-    )
+    facet_wrap(~horizon, nrow = 1)
 
   return(fig)
 }
 
-coverage_plot <- function(data,
-                          coverage_level,
-                          date_column = "date") {
+coverage_plot <- function(data, coverage_level, date_column = "date") {
   coverage_column <-
     glue::glue("interval_coverage_{100 * coverage_level}")
   return(
@@ -201,11 +211,10 @@ coverage_plot <- function(data,
 }
 
 
-main <- function(path_to_scores,
-                 output_directory,
-                 output_prefix = "") {
+main <- function(path_to_scores, output_directory, output_prefix = "") {
   get_save_path <- function(filename, ext = "pdf") {
-    fs::path(output_directory,
+    fs::path(
+      output_directory,
       glue::glue("{output_prefix}{filename}"),
       ext = ext
     )
@@ -217,7 +226,6 @@ main <- function(path_to_scores,
 
   locations <- unique(quantile_scores$location) |>
     purrr::set_names()
-
 
   message("Making tables...")
   desired_tables <- c(
@@ -268,7 +276,6 @@ main <- function(path_to_scores,
     make_and_save_table
   )
 
-
   message("Making plots...")
   message("Making coverage plots...")
 
@@ -282,10 +289,7 @@ main <- function(path_to_scores,
     purrr::map(
       c(0.5, 0.9, 0.95),
       \(x) {
-        coverage_plot(for_coverage_plots,
-          x,
-          date_column = "report_date"
-        )
+        coverage_plot(for_coverage_plots, x, date_column = "report_date")
       }
     )
   plots_to_pdf(
@@ -307,11 +311,7 @@ main <- function(path_to_scores,
   rel_wis_by_date_save_path <- get_save_path("relative_wis_by_date")
 
   message(glue::glue("Saving figure to {rel_wis_by_date_save_path}..."))
-  ggsave(rel_wis_by_date_save_path,
-    rel_wis_by_date,
-    width = 10,
-    height = 8
-  )
+  ggsave(rel_wis_by_date_save_path, rel_wis_by_date, width = 10, height = 8)
 
   message("Plotting relative WIS by horizon, forecast date, location...")
   rel_wis_by_dhl <-
@@ -320,8 +320,7 @@ main <- function(path_to_scores,
       \(x) {
         location_rel_wis_plot(
           x,
-          scores =
-            score_tables$report_date__horizon__location,
+          scores = score_tables$report_date__horizon__location,
           date_column = "report_date"
         )
       }
@@ -352,9 +351,7 @@ main <- function(path_to_scores,
   )
 
   wis_components_by_model <-
-    scoringutils::plot_wis(quantile_scores,
-      x = "model"
-    )
+    scoringutils::plot_wis(quantile_scores, x = "model")
 
   ggsave(
     get_save_path(
@@ -405,7 +402,8 @@ p <- arg_parser(paste0(
       "format of collate_score_tables.R"
     )
   ) |>
-  add_argument("--output-directory",
+  add_argument(
+    "--output-directory",
     help = paste0(
       "Output directory in which to save the ",
       "generated score plots and tables. ",
@@ -414,7 +412,8 @@ p <- arg_parser(paste0(
     ),
     default = "."
   ) |>
-  add_argument("--output-prefix",
+  add_argument(
+    "--output-prefix",
     help = paste0(
       "Prefix to append to output file names, e.g. ",
       "the name(s) of the target disease(s) ",
