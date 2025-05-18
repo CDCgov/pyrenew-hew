@@ -49,4 +49,4 @@ line-length = 79
 select = ["I"]
 
 [tool.uv.sources]
-azuretools = { git = "https://github.com/cdcgov/cfa-azuretools", rev = "dhm-persist-logs" }
+azuretools = { git = "https://github.com/cdcgov/cfa-azuretools" }
