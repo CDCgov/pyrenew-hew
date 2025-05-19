@@ -5,7 +5,9 @@ state_params <- tibble::tibble(
 )
 
 get_nwss_data_from_posterior <- function(
-    state_abb, state_offset) {
+  state_abb,
+  state_offset
+) {
   model_run_dir <- fs::path(base_dir, state_abb)
   model_info <- hewr::parse_model_run_dir_path(model_run_dir)
   pyrenew_model_name <- "pyrenew_hew"
@@ -26,7 +28,9 @@ get_nwss_data_from_posterior <- function(
   pyrenew_posterior <-
     arrow::read_parquet(
       fs::path(
-        model_run_dir, pyrenew_model_name, "mcmc_tidy",
+        model_run_dir,
+        pyrenew_model_name,
+        "mcmc_tidy",
         "pyrenew_posterior",
         ext = "parquet"
       )
@@ -36,7 +40,8 @@ get_nwss_data_from_posterior <- function(
   site_info <- tibble::tibble(
     wwtp_id = unique(
       data_for_model_fit$data_observed_disease_wastewater$lab_site_index
-    ) + state_offset,
+    ) +
+      state_offset,
     population_served = unique(
       data_for_model_fit$data_observed_disease_wastewater$site_pop
     ),
@@ -61,7 +66,8 @@ get_nwss_data_from_posterior <- function(
     ) |>
     dplyr::group_by(.variable, lab_site_index, date) |>
     dplyr::summarise(
-      .value = mean(.value, na.rm = TRUE), .groups = "drop"
+      .value = mean(.value, na.rm = TRUE),
+      .groups = "drop"
     ) |>
     dplyr::filter(date <= model_info$last_training_date) |>
     dplyr::sample_n(100) |>
@@ -89,5 +95,6 @@ ww_dir <- fs::path(
 
 fs::dir_create(ww_dir, recurse = TRUE)
 arrow::write_parquet(
-  ww_data, fs::path(ww_dir, "bronze", ext = "parquet")
+  ww_data,
+  fs::path(ww_dir, "bronze", ext = "parquet")
 )

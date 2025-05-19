@@ -43,30 +43,27 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @return A data frame with scored forecasts and relative skill metrics.
 #' @export
-score_single_run <- function(samples_scorable,
-                             quantiles_scorable,
-                             ...) {
+score_single_run <- function(samples_scorable, quantiles_scorable, ...) {
   quants <- unique(quantiles_scorable$quantile_level)
 
   forecast_sample_df <- as_forecast_sample(samples_scorable)
   forecast_quantile_df <- bind_rows(
     as_forecast_quantile(quantiles_scorable),
-    as_forecast_quantile(forecast_sample_df,
-      probs = quants
-    )
+    as_forecast_quantile(forecast_sample_df, probs = quants)
   ) |>
     as_forecast_quantile()
-
 
   sample_scores <- forecast_sample_df |>
     scoringutils::transform_forecasts(...) |>
     scoringutils::score()
 
-  interval_coverage_95 <- purrr::partial(scoringutils::interval_coverage,
+  interval_coverage_95 <- purrr::partial(
+    scoringutils::interval_coverage,
     interval_range = 95
   )
 
-  quantile_metrics <- c(get_metrics(forecast_quantile_df),
+  quantile_metrics <- c(
+    get_metrics(forecast_quantile_df),
     interval_coverage_95 = interval_coverage_95
   )
 
@@ -88,17 +85,19 @@ score_single_run <- function(samples_scorable,
   ))
 }
 
-read_and_score_location <- function(model_run_dir,
-                                    strict = TRUE) {
+read_and_score_location <- function(model_run_dir, strict = TRUE) {
   first_forecast_date <- parse_model_run_dir_path(
     model_run_dir
-  )$last_training_date + lubridate::days(1)
+  )$last_training_date +
+    lubridate::days(1)
 
-  samples_paths <- dir_ls(model_run_dir,
+  samples_paths <- dir_ls(
+    model_run_dir,
     recurse = TRUE,
     glob = "*_samples.parquet"
   )
-  quantiles_paths <- dir_ls(model_run_dir,
+  quantiles_paths <- dir_ls(
+    model_run_dir,
     recurse = TRUE,
     glob = "*_quantiles.parquet"
   )
@@ -123,11 +122,13 @@ read_and_score_location <- function(model_run_dir,
         path_file()
     ) |>
     unite("model", model_name, forecast_name, sep = "_") |>
-    mutate(forecast_data = map(file_path, \(x) {
-      read_parquet(x) |>
-        rename(predicted = .value) |>
-        filter(date > !!first_forecast_date)
-    })) |>
+    mutate(
+      forecast_data = map(file_path, \(x) {
+        read_parquet(x) |>
+          rename(predicted = .value) |>
+          filter(date > !!first_forecast_date)
+      })
+    ) |>
     select(-file_path)
 
   eval_data <-
@@ -138,7 +139,8 @@ read_and_score_location <- function(model_run_dir,
       ),
       resolution = c("daily", "epiweekly"),
       eval_data = map(file_path, \(x) {
-        read_tsv(x,
+        read_tsv(
+          x,
           col_types = cols(
             date = col_date(),
             geo_value = col_character(),
@@ -167,9 +169,14 @@ read_and_score_location <- function(model_run_dir,
     scorable_datasets |>
     filter(forecast_type == "samples") |>
     unnest(forecast_data) |>
-    inner_join(eval_data,
+    inner_join(
+      eval_data,
       by = join_by(
-        resolution, date, geo_value, disease, .variable
+        resolution,
+        date,
+        geo_value,
+        disease,
+        .variable
       )
     ) |>
     rename(sample_id = .draw) |>
@@ -179,7 +186,8 @@ read_and_score_location <- function(model_run_dir,
     scorable_datasets |>
     filter(forecast_type == "quantiles") |>
     unnest(forecast_data) |>
-    inner_join(eval_data,
+    inner_join(
+      eval_data,
       by = join_by(resolution, date, geo_value, disease, .variable)
     ) |>
     select(-c(forecast_type, lab_site_index))
@@ -189,7 +197,6 @@ read_and_score_location <- function(model_run_dir,
     samples_scorable = samples_scorable,
     offset = 1
   )
-
 
   write_rds(scored, path(model_run_dir, "scored", ext = "rds"))
 }

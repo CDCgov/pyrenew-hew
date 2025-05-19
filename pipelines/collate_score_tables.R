@@ -12,13 +12,12 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-process_loc_date_score_table <- function(model_run_dir,
-                                         score_file_name,
-                                         score_file_ext) {
-  table_path <- fs::path(model_run_dir,
-    score_file_name,
-    ext = score_file_ext
-  )
+process_loc_date_score_table <- function(
+  model_run_dir,
+  score_file_name,
+  score_file_ext
+) {
+  table_path <- fs::path(model_run_dir, score_file_name, ext = score_file_ext)
   parsed <- hewr::parse_model_run_dir_path(model_run_dir)
   location <- parsed$location
 
@@ -42,7 +41,6 @@ process_loc_date_score_table <- function(model_run_dir,
 }
 
 
-
 bind_tables <- function(list_of_table_pairs) {
   sample_metrics <- purrr::map(
     list_of_table_pairs,
@@ -62,18 +60,19 @@ bind_tables <- function(list_of_table_pairs) {
     unique()
 
   sample_scores <- purrr::map(
-    list_of_table_pairs, "sample_scores"
+    list_of_table_pairs,
+    "sample_scores"
   ) |>
     data.table::rbindlist(fill = TRUE)
 
   quantile_scores <- purrr::map(
-    list_of_table_pairs, "quantile_scores"
+    list_of_table_pairs,
+    "quantile_scores"
   ) |>
     data.table::rbindlist(fill = TRUE)
 
   attr(sample_scores, "metrics") <- sample_metrics
   attr(quantile_scores, "metrics") <- quantile_metrics
-
 
   return(list(
     sample_scores = sample_scores,
@@ -82,20 +81,21 @@ bind_tables <- function(list_of_table_pairs) {
 }
 
 
-collate_scores_for_date <- function(model_run_dir,
-                                    score_file_name = "score_table",
-                                    score_file_ext = "rds",
-                                    save = FALSE) {
+collate_scores_for_date <- function(
+  model_run_dir,
+  score_file_name = "score_table",
+  score_file_ext = "rds",
+  save = FALSE
+) {
   message(glue::glue("Processing scores from {model_run_dir}..."))
   locations_to_process <-
-    fs::dir_ls(fs::path(model_run_dir, "model_runs"),
-      type = "directory"
-    )
+    fs::dir_ls(fs::path(model_run_dir, "model_runs"), type = "directory")
 
   date_score_table <- purrr::map(
     locations_to_process,
     \(x) {
-      process_loc_date_score_table(x,
+      process_loc_date_score_table(
+        x,
         score_file_name = score_file_name,
         score_file_ext = score_file_ext
       )
@@ -103,12 +103,8 @@ collate_scores_for_date <- function(model_run_dir,
   ) |>
     bind_tables()
 
-
   if (save) {
-    save_path <- fs::path(model_run_dir,
-      score_file_name,
-      ext = score_file_ext
-    )
+    save_path <- fs::path(model_run_dir, score_file_name, ext = score_file_ext)
     message(
       glue::glue("Saving score table to {save_path}...")
     )
@@ -116,18 +112,19 @@ collate_scores_for_date <- function(model_run_dir,
     readr::write_rds(date_score_table, save_path)
   }
 
-
   message(glue::glue("Done processing scores for {model_run_dir}."))
   return(date_score_table)
 }
 
 
-collate_all_score_tables <- function(model_base_dir,
-                                     disease,
-                                     score_file_name = "score_table",
-                                     score_file_ext = "rds",
-                                     score_file_save_path = NULL,
-                                     save_batch_scores = FALSE) {
+collate_all_score_tables <- function(
+  model_base_dir,
+  disease,
+  score_file_name = "score_table",
+  score_file_ext = "rds",
+  score_file_save_path = NULL,
+  save_batch_scores = FALSE
+) {
   date_dirs_to_process <- hewr::get_all_model_batch_dirs(
     model_base_dir,
     diseases = disease
@@ -161,17 +158,17 @@ collate_all_score_tables <- function(model_base_dir,
   return(full_score_table)
 }
 
-main <- function(dir_of_forecast_dirs,
-                 diseases = c("COVID-19", "Influenza"),
-                 score_file_names = c(
-                   "score_table",
-                   "epiweekly_score_table"
-                 ),
-                 score_file_ext = "rds",
-                 save_batch_scores = FALSE) {
-  forecast_dirs <- fs::dir_ls(dir_of_forecast_dirs,
-    type = "directory"
-  )
+main <- function(
+  dir_of_forecast_dirs,
+  diseases = c("COVID-19", "Influenza"),
+  score_file_names = c(
+    "score_table",
+    "epiweekly_score_table"
+  ),
+  score_file_ext = "rds",
+  save_batch_scores = FALSE
+) {
+  forecast_dirs <- fs::dir_ls(dir_of_forecast_dirs, type = "directory")
   collate <- function(dir, filename, disease) {
     savename <- glue::glue("{disease}_{filename}")
     savepath <- fs::path(dir, savename, ext = score_file_ext)

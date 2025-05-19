@@ -20,15 +20,15 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-tidy_and_save_mcmc <- function(model_run_dir,
-                               model_name,
-                               file_name_prefix = "",
-                               filter_bad_chains,
-                               good_chain_tol) {
+tidy_and_save_mcmc <- function(
+  model_run_dir,
+  model_name,
+  file_name_prefix = "",
+  filter_bad_chains,
+  good_chain_tol
+) {
   model_dir <- path(model_run_dir, model_name)
-  inference_data_path <- path(model_dir, "inference_data",
-    ext = "csv"
-  )
+  inference_data_path <- path(model_dir, "inference_data", ext = "csv")
 
   tidy_inference_data <- inference_data_path |>
     read_csv(show_col_types = FALSE) |>
@@ -59,10 +59,10 @@ tidy_and_save_mcmc <- function(model_run_dir,
   dir_create(save_dir)
 
   purrr::pwalk(tidy_inference_data, .f = function(group_name, data) {
-    write_parquet(data, path(save_dir,
-      str_c(file_name_prefix, group_name),
-      ext = "parquet"
-    ))
+    write_parquet(
+      data,
+      path(save_dir, str_c(file_name_prefix, group_name), ext = "parquet")
+    )
   })
 }
 
@@ -97,7 +97,8 @@ model_name <- argv$model_name
 filter_bad_chains <- !argv$no_filter_bad_chains
 good_chain_tol <- argv$good_chain_tol
 
-tidy_and_save_mcmc(model_run_dir,
+tidy_and_save_mcmc(
+  model_run_dir,
   model_name,
   file_name_prefix = "pyrenew_",
   filter_bad_chains,

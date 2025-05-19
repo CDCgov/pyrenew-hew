@@ -1,6 +1,14 @@
 script_packages <- c(
-  "argparser", "cowplot", "dplyr", "fs", "glue", "hewr", "purrr",
-  "tidyr", "stringr", "lubridate"
+  "argparser",
+  "cowplot",
+  "dplyr",
+  "fs",
+  "glue",
+  "hewr",
+  "purrr",
+  "tidyr",
+  "stringr",
+  "lubridate"
 )
 
 ## load in packages without messages
@@ -12,10 +20,11 @@ purrr::walk(script_packages, \(pkg) {
 
 
 save_forecast_figures <- function(
-    model_run_dir,
-    n_forecast_days,
-    pyrenew_model_name = NA,
-    timeseries_model_name = NA) {
+  model_run_dir,
+  n_forecast_days,
+  pyrenew_model_name = NA,
+  timeseries_model_name = NA
+) {
   if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
     stop(
       "Either `pyrenew_model_name` or `timeseries_model_name`",
@@ -23,12 +32,14 @@ save_forecast_figures <- function(
     )
   }
 
-  create_file_name <- function(model_name,
-                               .variable,
-                               resolution,
-                               aggregated_numerator,
-                               aggregated_denominator,
-                               y_transform) {
+  create_file_name <- function(
+    model_name,
+    .variable,
+    resolution,
+    aggregated_numerator,
+    aggregated_denominator,
+    y_transform
+  ) {
     glue(
       "{model_name}_",
       "{.variable}_{resolution}",
@@ -41,11 +52,11 @@ save_forecast_figures <- function(
       str_replace_all("_+", "_")
   }
 
-  model_name <- dplyr::if_else(is.na(pyrenew_model_name),
+  model_name <- dplyr::if_else(
+    is.na(pyrenew_model_name),
     timeseries_model_name,
     pyrenew_model_name
   )
-
 
   figure_dir <- fs::path(model_run_dir, model_name, "figures")
   dir_create(figure_dir)
@@ -66,7 +77,11 @@ save_forecast_figures <- function(
   distinct_fig_type_tbl <-
     processed_forecast$ci |>
     distinct(
-      geo_value, disease, .variable, resolution, aggregated_numerator,
+      geo_value,
+      disease,
+      .variable,
+      resolution,
+      aggregated_numerator,
       aggregated_denominator
     ) |>
     expand_grid(y_transform = names(y_transforms)) |>
@@ -74,54 +89,62 @@ save_forecast_figures <- function(
 
   figure_save_tbl <-
     distinct_fig_type_tbl |>
-    mutate(figure = pmap(
-      list(
-        geo_value,
-        disease,
-        .variable,
-        resolution,
-        aggregated_numerator,
-        aggregated_denominator,
-        y_transform
-      ),
-      \(geo_value,
-        disease,
-        .variable,
-        resolution,
-        aggregated_numerator,
-        aggregated_denominator,
-        y_transform) {
-        make_forecast_figure(
-          processed_forecast$data,
+    mutate(
+      figure = pmap(
+        list(
           geo_value,
           disease,
           .variable,
           resolution,
           aggregated_numerator,
           aggregated_denominator,
-          y_transform,
-          processed_forecast$ci,
-          parsed_model_run_dir$report_date
-        )
-      }
-    )) |>
-    mutate(file_name = create_file_name(
-      model_name,
-      .data$.variable,
-      .data$resolution,
-      .data$aggregated_numerator,
-      .data$aggregated_denominator,
-      .data$y_transform
-    )) |>
+          y_transform
+        ),
+        \(
+          geo_value,
+          disease,
+          .variable,
+          resolution,
+          aggregated_numerator,
+          aggregated_denominator,
+          y_transform
+        ) {
+          make_forecast_figure(
+            processed_forecast$data,
+            geo_value,
+            disease,
+            .variable,
+            resolution,
+            aggregated_numerator,
+            aggregated_denominator,
+            y_transform,
+            processed_forecast$ci,
+            parsed_model_run_dir$report_date
+          )
+        }
+      )
+    ) |>
+    mutate(
+      file_name = create_file_name(
+        model_name,
+        .data$.variable,
+        .data$resolution,
+        .data$aggregated_numerator,
+        .data$aggregated_denominator,
+        .data$y_transform
+      )
+    ) |>
     mutate(figure_path = path(figure_dir, file_name, ext = "pdf"))
 
   walk2(
-    figure_save_tbl$figure, figure_save_tbl$figure_path,
+    figure_save_tbl$figure,
+    figure_save_tbl$figure_path,
     \(figure, figure_path) {
       save_plot(
         filename = figure_path,
         plot = figure,
-        device = cairo_pdf, base_height = 6
+        device = cairo_pdf,
+        base_height = 6
       )
     }
   )
@@ -153,5 +176,8 @@ pyrenew_model_name <- argv$pyrenew_model_name
 timeseries_model_name <- argv$timeseries_model_name
 
 save_forecast_figures(
-  model_run_dir, n_forecast_days, pyrenew_model_name, timeseries_model_name
+  model_run_dir,
+  n_forecast_days,
+  pyrenew_model_name,
+  timeseries_model_name
 )

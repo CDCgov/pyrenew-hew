@@ -29,7 +29,6 @@ valid_model_run <- valid_model_batch |>
   )
 
 
-
 test_that("parse_model_batch_dir_path() works as expected.", {
   ## should work with base dirnames that are valid
   expect_equal(
@@ -79,7 +78,6 @@ test_that("parse_model_run_dir_path() works as expected.", {
       parse_model_run_dir_path(),
     dplyr::select(valid_model_run, -dirname)
   )
-
 
   ## should fail if there is additional terminal pathing
   expect_error(

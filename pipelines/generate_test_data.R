@@ -49,13 +49,14 @@ disease_short_names <- list(
 #' reference date, report date, geo type, geo value, as of date, run ID,
 #' facility, disease, and value.
 create_facility_test_data <- function(
-    facility,
-    start_reference,
-    end_reference,
-    geo_value = "CA",
-    initial = 10.0,
-    mean_other = 200.0,
-    target_disease = "COVID-19/Omicron") {
+  facility,
+  start_reference,
+  end_reference,
+  geo_value = "CA",
+  initial = 10.0,
+  mean_other = 200.0,
+  target_disease = "COVID-19/Omicron"
+) {
   reference_dates <- seq(start_reference, end_reference, by = "day")
   rt <- 0.25 *
     cos(
@@ -109,12 +110,14 @@ create_facility_test_data <- function(
 #' @return This function does not return a value. It writes the
 #' generated data to a parquet file as a side effect.
 generate_fake_facility_data <-
-  function(facilities_to_simulate,
-           private_data_dir = path(getwd()),
-           start_reference = as.Date("2024-06-01"),
-           end_reference = as.Date("2024-12-21"),
-           initial = 10,
-           mean_other = 200) {
+  function(
+    facilities_to_simulate,
+    private_data_dir = path(getwd()),
+    start_reference = as.Date("2024-06-01"),
+    end_reference = as.Date("2024-12-21"),
+    initial = 10,
+    mean_other = 200
+  ) {
     nssp_etl_gold_dir <- path(private_data_dir, "nssp_etl_gold")
     dir_create(nssp_etl_gold_dir, recurse = TRUE)
 
@@ -157,13 +160,15 @@ generate_fake_facility_data <-
 #' @return This function does not return a value. It writes the generated data
 #' to parquet files in the specified directory as a side effect.
 generate_fake_state_level_data <-
-  function(facilities_to_simulate,
-           private_data_dir = path(getwd()),
-           start_reference = as.Date("2024-06-01"),
-           end_reference = as.Date("2024-12-21"),
-           initial = 10,
-           mean_other = 200,
-           n_forecast_days = 28) {
+  function(
+    facilities_to_simulate,
+    private_data_dir = path(getwd()),
+    start_reference = as.Date("2024-06-01"),
+    end_reference = as.Date("2024-12-21"),
+    initial = 10,
+    mean_other = 200,
+    n_forecast_days = 28
+  ) {
     gold_dir <- path(private_data_dir, "nssp_state_level_gold")
     dir_create(gold_dir, recurse = TRUE)
 
@@ -229,10 +234,12 @@ generate_fake_state_level_data <-
 #' target disease(s) for the data. Default is
 #' `c("COVID-19", "Influenza")`.
 generate_fake_param_data <-
-  function(private_data_dir = path(getwd()),
-           states_to_generate = "CA",
-           end_reference = as.Date("2024-12-21"),
-           target_diseases = c("COVID-19", "Influenza")) {
+  function(
+    private_data_dir = path(getwd()),
+    states_to_generate = "CA",
+    end_reference = as.Date("2024-12-21"),
+    target_diseases = c("COVID-19", "Influenza")
+  ) {
     prod_param_estimates_dir <- path(
       private_data_dir,
       "prod_param_estimates"
@@ -314,15 +321,16 @@ generate_fake_param_data <-
 #' @param end_reference A string to specify the
 #' end reference date (e.g., "2024-12-21").
 copy_test_nwss_data <- function(
-    private_data_dir = fs::path_wd(),
-    end_reference = "2024-12-21",
-    test_data_dir = fs::path(
-      "pipelines/tests/test_data/nwss_vintages",
-      paste0(
-        "NWSS-ETL-covid-",
-        end_reference
-      )
-    )) {
+  private_data_dir = fs::path_wd(),
+  end_reference = "2024-12-21",
+  test_data_dir = fs::path(
+    "pipelines/tests/test_data/nwss_vintages",
+    paste0(
+      "NWSS-ETL-covid-",
+      end_reference
+    )
+  )
+) {
   ww_dir <- fs::path(
     private_data_dir,
     "nwss_vintages",

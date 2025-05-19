@@ -6,11 +6,13 @@ variable_resolution_key <-
     "site_level_log_ww_conc" = "daily"
   )
 
-load_and_aggregate_ts <- function(model_run_dir,
-                                  timeseries_model_name = "timeseries_e",
-                                  daily_training_dat,
-                                  epiweekly_training_dat,
-                                  required_columns) {
+load_and_aggregate_ts <- function(
+  model_run_dir,
+  timeseries_model_name = "timeseries_e",
+  daily_training_dat,
+  epiweekly_training_dat,
+  required_columns
+) {
   timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
 
   samples_file_names <- c(
@@ -19,7 +21,8 @@ load_and_aggregate_ts <- function(model_run_dir,
   )
 
   unaggregated_ts_samples <- tibble::tibble(
-    samples = fs::path(timeseries_model_dir,
+    samples = fs::path(
+      timeseries_model_dir,
       samples_file_names,
       ext = "parquet"
     ) |>
@@ -29,23 +32,27 @@ load_and_aggregate_ts <- function(model_run_dir,
       purrr::map(\(x) dplyr::select(x, -"data_type", -"lab_site_index")),
     aggregated_numerator = FALSE
   ) |>
-    dplyr::mutate(data = purrr::pmap(
-      list(.data$samples, .data$observed, .data$resolution == "epiweekly"),
-      function(samples, observed, epiweekly) {
-        to_tidy_draws_timeseries(
-          tidy_forecast = samples,
-          observed = observed,
-          epiweekly = epiweekly
-        )
-      }
-    )) |>
+    dplyr::mutate(
+      data = purrr::pmap(
+        list(.data$samples, .data$observed, .data$resolution == "epiweekly"),
+        function(samples, observed, epiweekly) {
+          to_tidy_draws_timeseries(
+            tidy_forecast = samples,
+            observed = observed,
+            epiweekly = epiweekly
+          )
+        }
+      )
+    ) |>
     dplyr::select("resolution", "aggregated_numerator", "data") |>
     tidyr::unnest("data") |>
-    dplyr::mutate(aggregated_denominator = dplyr::if_else(
-      stringr::str_starts(.data$.variable, "prop_"),
-      FALSE,
-      NA
-    ))
+    dplyr::mutate(
+      aggregated_denominator = dplyr::if_else(
+        stringr::str_starts(.data$.variable, "prop_"),
+        FALSE,
+        NA
+      )
+    )
 
   aggregated_ts_samples_non_prop <-
     unaggregated_ts_samples |>
@@ -65,25 +72,29 @@ load_and_aggregate_ts <- function(model_run_dir,
     ) |>
     dplyr::select(tidyselect::any_of(required_columns))
 
-
-
   dplyr::bind_rows(
     unaggregated_ts_samples,
     aggregated_ts_samples_non_prop
   )
 }
 
-prop_from_timeseries <- function(e_denominator_samples,
-                                 e_numerator_samples,
-                                 required_columns,
-                                 daily_training_dat,
-                                 epiweekly_training_dat) {
+prop_from_timeseries <- function(
+  e_denominator_samples,
+  e_numerator_samples,
+  required_columns,
+  daily_training_dat,
+  epiweekly_training_dat
+) {
   prop_disease_ed_visits_tbl <-
-    dplyr::left_join(e_denominator_samples, e_numerator_samples,
+    dplyr::left_join(
+      e_denominator_samples,
+      e_numerator_samples,
       by = c("resolution", ".draw", "date", "geo_value", "disease")
     ) |>
-    dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
-      (.data$observed_ed_visits + .data$other_ed_visits)) |>
+    dplyr::mutate(
+      prop_disease_ed_visits = .data$observed_ed_visits /
+        (.data$observed_ed_visits + .data$other_ed_visits)
+    ) |>
     dplyr::rename(.value = "prop_disease_ed_visits") |>
     dplyr::mutate(.variable = "prop_disease_ed_visits") |>
     dplyr::select(tidyselect::any_of(required_columns))
@@ -91,10 +102,11 @@ prop_from_timeseries <- function(e_denominator_samples,
   return(prop_disease_ed_visits_tbl)
 }
 
-epiweekly_samples_from_daily <- function(daily_samples,
-                                         variables_to_aggregate =
-                                           "observed_ed_visits",
-                                         required_columns) {
+epiweekly_samples_from_daily <- function(
+  daily_samples,
+  variables_to_aggregate = "observed_ed_visits",
+  required_columns
+) {
   aggregated_samples <-
     daily_samples |>
     dplyr::filter(.data$.variable %in% variables_to_aggregate) |>
@@ -141,34 +153,45 @@ read_and_combine_data <- function(model_run_dir) {
       aggregated = .data$epiweekly
     ) |>
     tidyr::unite("file_name", "prefix", "root", sep = "") |>
-    dplyr::mutate(file_path = fs::path(model_run_dir, "data",
-      .data$file_name,
-      ext = "tsv"
-    )) |>
-    dplyr::mutate(data = purrr::map(
-      .data$file_path,
-      \(x) readr::read_tsv(x, col_types = data_cols)
-    )) |>
+    dplyr::mutate(
+      file_path = fs::path(model_run_dir, "data", .data$file_name, ext = "tsv")
+    ) |>
+    dplyr::mutate(
+      data = purrr::map(
+        .data$file_path,
+        \(x) readr::read_tsv(x, col_types = data_cols)
+      )
+    ) |>
     dplyr::select("data", "aggregated") |>
     tidyr::unnest("data") |>
-    dplyr::mutate(resolution = dplyr::if_else(.data$aggregated, "epiweekly",
-      variable_resolution_key[.data$.variable]
-    )) |>
+    dplyr::mutate(
+      resolution = dplyr::if_else(
+        .data$aggregated,
+        "epiweekly",
+        variable_resolution_key[.data$.variable]
+      )
+    ) |>
     dplyr::select(-"aggregated") |>
     dplyr::distinct() |>
     # suggest reforms to prep_data to prevent duplicate data being in each table
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
-    dplyr::mutate(prop_disease_ed_visits = .data$observed_ed_visits /
-      (.data$observed_ed_visits + .data$other_ed_visits)) |>
+    dplyr::mutate(
+      prop_disease_ed_visits = .data$observed_ed_visits /
+        (.data$observed_ed_visits + .data$other_ed_visits)
+    ) |>
     tidyr::pivot_longer(
       cols = -c(
-        "date", "geo_value", "disease", "data_type", "lab_site_index",
+        "date",
+        "geo_value",
+        "disease",
+        "data_type",
+        "lab_site_index",
         "resolution"
       ),
-      names_to = ".variable", values_to = ".value"
+      names_to = ".variable",
+      values_to = ".value"
     ) |>
     tidyr::drop_na(".value")
-
 
   return(combined_dat)
 }
@@ -194,12 +217,14 @@ read_and_combine_data <- function(model_run_dir) {
 #' Default `".value"`.
 #' @param epiweekly Is the timeseries epiweekly (as opposed
 #' to daily)? Boolean, default `FALSE` (i.e. daily timeseries).
-to_tidy_draws_timeseries <- function(tidy_forecast,
-                                     observed,
-                                     date_colname = "date",
-                                     sample_id_colname = ".draw",
-                                     value_colname = ".value",
-                                     epiweekly = FALSE) {
+to_tidy_draws_timeseries <- function(
+  tidy_forecast,
+  observed,
+  date_colname = "date",
+  sample_id_colname = ".draw",
+  value_colname = ".value",
+  epiweekly = FALSE
+) {
   first_forecast_date <- min(tidy_forecast[[date_colname]])
   day_count <- ifelse(epiweekly, 7, 1)
   n_draws <- max(tidy_forecast[[sample_id_colname]])
@@ -214,7 +239,8 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 
   stopifnot(
     max(as.Date(transformed_obs[[date_colname]])) +
-      lubridate::ddays(day_count) == first_forecast_date
+      lubridate::ddays(day_count) ==
+      first_forecast_date
   )
 
   dplyr::bind_rows(
@@ -241,12 +267,14 @@ to_tidy_draws_timeseries <- function(tidy_forecast,
 #'   3, "observed_hospital_admissions",
 #'   "2024-01-01", "2024-01-01", "2024-01-01", 7
 #' )
-group_time_index_to_date <- function(group_time_index,
-                                     variable,
-                                     first_nssp_date,
-                                     first_nhsn_date,
-                                     first_nwss_date,
-                                     nhsn_step_size) {
+group_time_index_to_date <- function(
+  group_time_index,
+  variable,
+  first_nssp_date,
+  first_nhsn_date,
+  first_nwss_date,
+  nhsn_step_size
+) {
   first_date_key <- c(
     observed_hospital_admissions = first_nhsn_date,
     observed_ed_visits = first_nssp_date,
@@ -260,21 +288,23 @@ group_time_index_to_date <- function(group_time_index,
     site_level_log_ww_conc = 1
   )
 
-  first_date_key[variable] + lubridate::days(step_size_key[variable]) *
-    group_time_index
+  first_date_key[variable] +
+    lubridate::days(step_size_key[variable]) *
+      group_time_index
 }
 
-process_pyrenew_model <- function(model_run_dir,
-                                  pyrenew_model_name,
-                                  ts_samples,
-                                  required_columns_e,
-                                  daily_training_dat,
-                                  epiweekly_training_dat,
-                                  n_forecast_days) {
+process_pyrenew_model <- function(
+  model_run_dir,
+  pyrenew_model_name,
+  ts_samples,
+  required_columns_e,
+  daily_training_dat,
+  epiweekly_training_dat,
+  n_forecast_days
+) {
   model_info <- parse_model_run_dir_path(model_run_dir)
 
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
-
 
   if (pyrenew_model_components["w"]) {
     required_columns <- c(required_columns_e, "lab_site_index")
@@ -309,7 +339,6 @@ process_pyrenew_model <- function(model_run_dir,
 
   nhsn_step_size <- data_for_model_fit$nhsn_step_size
 
-
   ## Process PyRenew posterior
   pyrenew_model_dir <- fs::path(
     model_run_dir,
@@ -318,7 +347,8 @@ process_pyrenew_model <- function(model_run_dir,
 
   pyrenew_posterior_predictive <-
     arrow::read_parquet(
-      fs::path(pyrenew_model_dir,
+      fs::path(
+        pyrenew_model_dir,
         "mcmc_tidy",
         "pyrenew_posterior_predictive",
         ext = "parquet"
@@ -342,7 +372,8 @@ process_pyrenew_model <- function(model_run_dir,
         stringr::str_c(post_pred_var_prefix, "[group_time_index]"),
       stringr::str_starts(post_pred_var_prefix, "site_") ~
         stringr::str_c(
-          post_pred_var_prefix, "[group_time_index,lab_site_index]"
+          post_pred_var_prefix,
+          "[group_time_index,lab_site_index]"
         )
     ) |>
     purrr::map(rlang::parse_expr)
@@ -353,14 +384,16 @@ process_pyrenew_model <- function(model_run_dir,
     pyrenew_posterior_predictive |>
     tidybayes::gather_draws(!!!post_pred_vars_exp) |>
     dplyr::ungroup() |>
-    dplyr::mutate(date = group_time_index_to_date(
-      group_time_index = .data$group_time_index,
-      variable = .data$.variable,
-      first_nssp_date = first_nssp_date,
-      first_nhsn_date = first_nhsn_date,
-      first_nwss_date = first_nwss_date,
-      nhsn_step_size = nhsn_step_size
-    )) |>
+    dplyr::mutate(
+      date = group_time_index_to_date(
+        group_time_index = .data$group_time_index,
+        variable = .data$.variable,
+        first_nssp_date = first_nssp_date,
+        first_nhsn_date = first_nhsn_date,
+        first_nwss_date = first_nwss_date,
+        nhsn_step_size = nhsn_step_size
+      )
+    ) |>
     dplyr::select(-"group_time_index") |>
     dplyr::mutate(
       geo_value = model_info$location,
@@ -383,7 +416,8 @@ process_pyrenew_model <- function(model_run_dir,
         stringr::str_ends(.variable, "hospital_admissions") ~
           lubridate::floor_date(
             last_data_date_overall + lubridate::days(n_forecast_days),
-            unit = "week", week_start = forecasttools::epiweek_end("MMWR")
+            unit = "week",
+            week_start = forecasttools::epiweek_end("MMWR")
           ),
         TRUE ~ NA
       )
@@ -408,13 +442,11 @@ process_pyrenew_model <- function(model_run_dir,
       dplyr::rename("observed_ed_visits" = ".value") |>
       dplyr::select(-c(".variable", "aggregated_denominator"))
 
-
     model_samples_tidy <- dplyr::bind_rows(
       model_samples_tidy,
       epiweekly_e_numerator_samples
     ) |>
       dplyr::distinct()
-
 
     ## Process timeseries posterior
     if (!is.null(ts_samples)) {
@@ -468,12 +500,13 @@ process_pyrenew_model <- function(model_run_dir,
 #' `epiweekly_with_epiweekly_other_ci`
 #' @export
 process_state_forecast <- function(
-    model_run_dir,
-    n_forecast_days,
-    pyrenew_model_name = NA,
-    timeseries_model_name = NA,
-    ci_widths = c(0.5, 0.8, 0.95),
-    save = TRUE) {
+  model_run_dir,
+  n_forecast_days,
+  pyrenew_model_name = NA,
+  timeseries_model_name = NA,
+  ci_widths = c(0.5, 0.8, 0.95),
+  save = TRUE
+) {
   if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
     stop(
       "Either `pyrenew_model_name` or `timeseries_model_name`",
@@ -491,27 +524,44 @@ process_state_forecast <- function(
   )
 
   # Used for augmenting denominator forecasts with training period denominator
-  daily_training_dat <- readr::read_tsv(fs::path(
-    model_run_dir, "data", "combined_training_data",
-    ext = "tsv"
-  ), col_types = data_col_types)
-
+  daily_training_dat <- readr::read_tsv(
+    fs::path(
+      model_run_dir,
+      "data",
+      "combined_training_data",
+      ext = "tsv"
+    ),
+    col_types = data_col_types
+  )
 
   # Used for augmenting denominator forecasts with training period denominator
-  epiweekly_training_dat <- readr::read_tsv(fs::path(
-    model_run_dir, "data", "epiweekly_combined_training_data",
-    ext = "tsv"
-  ), col_types = data_col_types)
-
+  epiweekly_training_dat <- readr::read_tsv(
+    fs::path(
+      model_run_dir,
+      "data",
+      "epiweekly_combined_training_data",
+      ext = "tsv"
+    ),
+    col_types = data_col_types
+  )
 
   required_columns_e <- c(
-    ".chain", ".iteration", ".draw", "date", "geo_value", "disease",
-    ".variable", ".value", "resolution", "aggregated_numerator",
+    ".chain",
+    ".iteration",
+    ".draw",
+    "date",
+    "geo_value",
+    "disease",
+    ".variable",
+    ".value",
+    "resolution",
+    "aggregated_numerator",
     "aggregated_denominator"
   )
 
   if (!is.na(timeseries_model_name)) {
-    ts_samples <- load_and_aggregate_ts(model_run_dir,
+    ts_samples <- load_and_aggregate_ts(
+      model_run_dir,
       timeseries_model_name = "timeseries_e",
       daily_training_dat,
       epiweekly_training_dat,
@@ -544,13 +594,13 @@ process_state_forecast <- function(
   )
 
   if (save) {
-    model_name <- dplyr::if_else(is.na(pyrenew_model_name),
+    model_name <- dplyr::if_else(
+      is.na(pyrenew_model_name),
       timeseries_model_name,
       pyrenew_model_name
     )
 
     save_dir <- fs::path(model_run_dir, model_name)
-
 
     purrr::iwalk(result, \(tab, name) {
       arrow::write_parquet(

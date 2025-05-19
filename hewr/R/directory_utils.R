@@ -90,7 +90,6 @@ parse_model_run_dir_path <- function(model_run_dir_path) {
     fs::path_dir() |>
     fs::path_file()
 
-
   batch_dir |>
     parse_model_batch_dir_path() |>
     dplyr::mutate(location = fs::path_file(model_run_dir_path))
@@ -110,13 +109,9 @@ parse_model_run_dir_path <- function(model_run_dir_path) {
 #' or a single disease as a string.
 #' @return A vector of paths to the forecast subdirectories.
 #' @export
-get_all_model_batch_dirs <- function(dir_of_batch_dirs,
-                                     diseases) {
+get_all_model_batch_dirs <- function(dir_of_batch_dirs, diseases) {
   # disease names are lowercase by convention
-  match_patterns <- stringr::str_c(tolower(diseases),
-    "_r",
-    collapse = "|"
-  )
+  match_patterns <- stringr::str_c(tolower(diseases), "_r", collapse = "|")
 
   dirs <- tibble::tibble(
     dir_path = fs::dir_ls(
@@ -176,7 +171,8 @@ parse_variable_name <- function(variable_name) {
     TRUE ~ ""
   )
 
-  full_name <- dplyr::if_else(proportion,
+  full_name <- dplyr::if_else(
+    proportion,
     glue::glue("Proportion of {core_name}"),
     core_name
   )

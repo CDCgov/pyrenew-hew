@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 
-
 #' Create a hubverse table from model output, using
 #' utilities from `hewr`.
 #'
@@ -8,8 +7,7 @@
 #' to create a hubverse table
 #' @param output_path path to save the table as a tsv
 #' @return Nothing, saving the table as a side effect.
-main <- function(model_batch_dir,
-                 output_path) {
+main <- function(model_batch_dir, output_path) {
   hewr::to_hub_quantile_table(model_batch_dir) |>
     arrow::write_parquet(output_path)
 }

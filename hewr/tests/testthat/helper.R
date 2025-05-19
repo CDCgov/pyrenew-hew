@@ -1,12 +1,14 @@
-create_model_results <- function(file,
-                                 model_name,
-                                 date_options,
-                                 geo_value_options,
-                                 disease_options,
-                                 resolution_options,
-                                 aggregated_numerator_options,
-                                 aggregated_denominator_options,
-                                 n_draw) {
+create_model_results <- function(
+  file,
+  model_name,
+  date_options,
+  geo_value_options,
+  disease_options,
+  resolution_options,
+  aggregated_numerator_options,
+  aggregated_denominator_options,
+  n_draw
+) {
   model_components <- hewr::parse_pyrenew_model_name(model_name)
 
   components_to_variables <-
@@ -19,7 +21,6 @@ create_model_results <- function(file,
       ),
       "w" = NULL
     )
-
 
   variable_options <-
     components_to_variables |>
@@ -43,7 +44,10 @@ create_model_results <- function(file,
 }
 
 create_observation_data <- function(
-    date_range, locations, target = "wk inc covid prop ed visits") {
+  date_range,
+  locations,
+  target = "wk inc covid prop ed visits"
+) {
   data <- tidyr::expand_grid(
     reference_date = date_range,
     location = locations,
@@ -54,7 +58,12 @@ create_observation_data <- function(
 }
 
 create_hubverse_table <- function(
-    date_range, horizons, locations, output_type, output_type_id) {
+  date_range,
+  horizons,
+  locations,
+  output_type,
+  output_type_id
+) {
   data <- tidyr::expand_grid(
     reference_date = date_range,
     horizon = horizons,
@@ -66,9 +75,7 @@ create_hubverse_table <- function(
       horizon,
       location
     ) |>
-    dplyr::arrange(output_type_id,
-      .by_group = TRUE
-    ) |>
+    dplyr::arrange(output_type_id, .by_group = TRUE) |>
     dplyr::mutate(
       value = sort(
         sample(1:1000, dplyr::n(), replace = TRUE),
