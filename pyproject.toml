@@ -24,7 +24,7 @@ dependencies = [
     "pyarrow>=18.0.0",
     "pygit2>=1.17.0",
     "tomli-w>=1.1.0",
-    "azuretools",
+    "azuretools @ git+https://github.com/cdcgov/cfa-azuretools",
 ]
 
 [build-system]
@@ -47,6 +47,3 @@ line-length = 79
 
 [tool.ruff.lint]
 select = ["I"]
-
-[tool.uv.sources]
-azuretools = { git = "https://github.com/cdcgov/cfa-azuretools" }
