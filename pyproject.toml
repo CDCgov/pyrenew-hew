@@ -13,7 +13,6 @@ authors = [
 
 dependencies = [
     "pyrenew @ git+https://github.com/cdcgov/PyRenew/",
-    "azuretools @ git+https://github.com/cdcgov/cfa-azuretools",
     "forecasttools @ git+https://github.com/cdcgov/forecasttools-py",
     "ipywidgets>=8.1.5",
     "arviz>=0.20.0",
@@ -25,6 +24,7 @@ dependencies = [
     "pyarrow>=18.0.0",
     "pygit2>=1.17.0",
     "tomli-w>=1.1.0",
+    "azuretools @ git+https://github.com/cdcgov/cfa-azuretools",
 ]
 
 [build-system]

@@ -181,7 +181,6 @@ def main(
         "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
-        "--no-score "
         f"--model-letters {model_letters} "
         f"--additional-forecast-letters {additional_forecast_letters} "
         "--eval-data-path "
@@ -211,6 +210,12 @@ def main(
                 output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
+            log_blob_container="pyrenew-hew-logs",
+            log_blob_account=creds.azure_blob_storage_account,
+            log_subdir=job_id,
+            log_compute_node_identity_reference=(
+                creds.compute_node_identity_reference
+            ),
         )
         client.task.add(job_id, task)
 

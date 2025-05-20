@@ -23,20 +23,22 @@
 #'
 #' @return a ggplot object
 #' @export
-make_forecast_figure <- function(dat,
-                                 geo_value,
-                                 disease,
-                                 .variable,
-                                 resolution,
-                                 aggregated_numerator,
-                                 aggregated_denominator,
-                                 y_transform,
-                                 ci,
-                                 data_vintage_date,
-                                 highlight_dates = NULL,
-                                 highlight_labels = NULL,
-                                 display_cutpoints = TRUE,
-                                 max_lab_site_index = 5) {
+make_forecast_figure <- function(
+  dat,
+  geo_value,
+  disease,
+  .variable,
+  resolution,
+  aggregated_numerator,
+  aggregated_denominator,
+  y_transform,
+  ci,
+  data_vintage_date,
+  highlight_dates = NULL,
+  highlight_labels = NULL,
+  display_cutpoints = TRUE,
+  max_lab_site_index = 5
+) {
   tbl_for_join <- tibble::tibble(
     geo_value = geo_value,
     disease = disease,
@@ -47,19 +49,25 @@ make_forecast_figure <- function(dat,
   )
   # Join is used because NA == NA evaluates to NA
 
-  fig_ci <- dplyr::left_join(tbl_for_join, ci,
+  fig_ci <- dplyr::left_join(
+    tbl_for_join,
+    ci,
     by = c(
-      "geo_value", "disease", ".variable", "resolution",
-      "aggregated_numerator", "aggregated_denominator"
+      "geo_value",
+      "disease",
+      ".variable",
+      "resolution",
+      "aggregated_numerator",
+      "aggregated_denominator"
     )
   )
 
   fig_dat <- dplyr::left_join(
     tbl_for_join |>
-      dplyr::select(-tidyselect::starts_with("agg")), dat,
+      dplyr::select(-tidyselect::starts_with("agg")),
+    dat,
     by = c("geo_value", "disease", ".variable", "resolution")
   )
-
 
   disease_name_pretty <- c(
     "COVID-19" = "COVID-19",
@@ -106,8 +114,10 @@ make_forecast_figure <- function(dat,
   }
 
   ## Processing for proportion plots
-  if (display_cutpoints &&
-    .variable == "prop_disease_ed_visits") {
+  if (
+    display_cutpoints &&
+      .variable == "prop_disease_ed_visits"
+  ) {
     max_y <- max(lineribbon_dat$.upper, point_dat$.value)
 
     full_prism_cutpoints <- forecasttools::get_prism_cutpoints(
@@ -118,17 +128,18 @@ make_forecast_figure <- function(dat,
       utils::head(-1) |>
       utils::tail(-1)
 
-
     prism_df <-
       full_prism_cutpoints |>
       tibble::enframe(
         name = "category",
         value = "cutpoint"
       ) |>
-      dplyr::mutate("category" = .data$category |>
-        stringr::str_remove("^prop_") |>
-        stringr::str_replace_all("_", " ") |>
-        stringr::str_to_title()) |>
+      dplyr::mutate(
+        "category" = .data$category |>
+          stringr::str_remove("^prop_") |>
+          stringr::str_replace_all("_", " ") |>
+          stringr::str_to_title()
+      ) |>
       dplyr::filter(.data$cutpoint <= max_y)
 
     cutpoint_plot_components <- list(
@@ -138,7 +149,8 @@ make_forecast_figure <- function(dat,
           yintercept = .data$cutpoint,
           color = .data$category
         ),
-        linetype = "solid", linewidth = 1
+        linetype = "solid",
+        linewidth = 1
       ),
       forecasttools::scale_color_prism("PRISM Category"),
       ggnewscale::new_scale_color()
@@ -184,7 +196,8 @@ make_forecast_figure <- function(dat,
       ggplot2::annotate(
         geom = "text",
         x = last_training_date,
-        y = -Inf, label = "\u2192 Forecast Period\n",
+        y = -Inf,
+        label = "\u2192 Forecast Period\n",
         hjust = "left",
         vjust = "bottom",
       )
@@ -204,7 +217,8 @@ make_forecast_figure <- function(dat,
       labels = ~ scales::label_percent()(as.numeric(.))
     ) +
     ggplot2::geom_point(
-      mapping = ggplot2::aes(color = .data$data_type), size = 1.5,
+      mapping = ggplot2::aes(color = .data$data_type),
+      size = 1.5,
       data = point_dat
     ) +
     ggplot2::scale_color_manual(
@@ -214,10 +228,12 @@ make_forecast_figure <- function(dat,
     ) +
     forcast_highlight_components +
     highlight_components +
-    ggplot2::ggtitle(title,
+    ggplot2::ggtitle(
+      title,
       subtitle = glue::glue("as of {data_vintage_date}")
     ) +
-    ggplot2::scale_y_continuous(y_axis_label,
+    ggplot2::scale_y_continuous(
+      y_axis_label,
       labels = y_axis_labels,
       transform = y_transform
     ) +

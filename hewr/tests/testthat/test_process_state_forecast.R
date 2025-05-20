@@ -3,8 +3,10 @@ example_train_dat <- tibble::tibble(
   disease = "COVID-19",
   data_type = "train",
   .variable = c(
-    "observed_ed_visits", "other_ed_visits",
-    "observed_hospital_admissions", "site_level_log_ww_conc"
+    "observed_ed_visits",
+    "other_ed_visits",
+    "observed_hospital_admissions",
+    "site_level_log_ww_conc"
   ),
   lab_site_index = c(NA, NA, NA, 1)
 ) |>
@@ -18,8 +20,10 @@ example_eval_dat <- tibble::tibble(
   disease = "COVID-19",
   data_type = "eval",
   .variable = c(
-    "observed_ed_visits", "other_ed_visits",
-    "observed_hospital_admissions", "site_level_log_ww_conc"
+    "observed_ed_visits",
+    "other_ed_visits",
+    "observed_hospital_admissions",
+    "site_level_log_ww_conc"
   ),
   lab_site_index = c(NA, NA, NA, 1)
 ) |>
@@ -53,14 +57,22 @@ test_that("to_tidy_draws_timeseries() works as expected", {
   expected <- tibble::tibble(
     .draw = rep(1L, 6L),
     date = as.Date(c(
-      "2024-12-17", "2024-12-18", "2024-12-19", "2024-12-20",
-      "2024-12-21", "2024-12-22"
+      "2024-12-17",
+      "2024-12-18",
+      "2024-12-19",
+      "2024-12-20",
+      "2024-12-21",
+      "2024-12-22"
     )),
     geo_value = rep("CA", 6L),
     disease = rep("COVID-19", 6L),
     .variable = rep("other_ed_visits", 6L),
     .value = c(
-      11037, 12898, 15172, 17716, 20641.1242073179819,
+      11037,
+      12898,
+      15172,
+      17716,
+      20641.1242073179819,
       25812.84128089781
     ),
   )

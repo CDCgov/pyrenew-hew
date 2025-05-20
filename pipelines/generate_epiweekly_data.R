@@ -33,11 +33,15 @@ purrr::walk(script_packages, \(pkg) {
 #' @return None. The function writes the epiweekly data to a CSV file in the
 #'  specified directory.
 convert_daily_to_epiweekly <- function(
-    model_run_dir, data_name,
-    strict = TRUE, day_of_week = 7) {
+  model_run_dir,
+  data_name,
+  strict = TRUE,
+  day_of_week = 7
+) {
   data_path <- path(model_run_dir, "data", data_name)
 
-  daily_data <- read_tsv(data_path,
+  daily_data <- read_tsv(
+    data_path,
     col_types = cols(
       date = col_date(),
       geo_value = col_character(),
@@ -54,7 +58,6 @@ convert_daily_to_epiweekly <- function(
   epiweekly_hosp_data <- daily_data |>
     filter(.variable == "observed_hospital_admissions")
 
-
   epiweekly_ed_data <- daily_ed_data |>
     forecasttools::daily_to_epiweekly(
       value_col = ".value",
@@ -62,17 +65,17 @@ convert_daily_to_epiweekly <- function(
       id_cols = c("geo_value", "disease", "data_type", ".variable"),
       strict = strict
     ) |>
-    mutate(date = epiweek_to_date(epiweek,
-      epiyear,
-      day_of_week = day_of_week
-    )) |>
+    mutate(
+      date = epiweek_to_date(epiweek, epiyear, day_of_week = day_of_week)
+    ) |>
     select(date, geo_value, disease, data_type, .variable, .value)
 
   epiweekly_data <- bind_rows(epiweekly_ed_data, epiweekly_hosp_data) |>
     arrange(date, .variable)
 
   output_file <- path(
-    model_run_dir, "data",
+    model_run_dir,
+    "data",
     glue::glue("epiweekly_{data_name}")
   )
 
@@ -80,10 +83,12 @@ convert_daily_to_epiweekly <- function(
 }
 
 main <- function(model_run_dir) {
-  convert_daily_to_epiweekly(model_run_dir,
+  convert_daily_to_epiweekly(
+    model_run_dir,
     data_name = "combined_training_data.tsv"
   )
-  convert_daily_to_epiweekly(model_run_dir,
+  convert_daily_to_epiweekly(
+    model_run_dir,
     data_name = "combined_eval_data.tsv"
   )
 }
