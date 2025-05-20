@@ -181,7 +181,6 @@ def main(
         "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
-        "--no-score "
         f"--model-letters {model_letters} "
         f"--additional-forecast-letters {additional_forecast_letters} "
         "--eval-data-path "
