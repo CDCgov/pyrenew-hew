@@ -31,7 +31,7 @@ def main(pool_name: str) -> None:
         pool_name=pool_name,
         subnet_id=creds.azure_subnet_id,
         user_assigned_identity=creds.azure_user_assigned_identity,
-        vm_size="standard_d8_v3",
+        vm_size="standard_d8s_v3",
     )
 
     pool_config.mount_configuration = blob.get_node_mount_config(
