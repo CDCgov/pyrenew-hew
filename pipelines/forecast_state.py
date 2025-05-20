@@ -163,20 +163,6 @@ def plot_and_save_state_forecast(
     return None
 
 
-def score_forecast(model_run_dir: Path) -> None:
-    result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/score_forecast.R",
-            f"{model_run_dir}",
-        ],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"score_forecast: {result.stderr.decode('utf-8')}")
-    return None
-
-
 def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
@@ -202,7 +188,6 @@ def main(
     n_warmup: int,
     n_samples: int,
     exclude_last_n_days: int = 0,
-    score: bool = False,
     eval_data_path: Path = None,
     credentials_path: Path = None,
     fit_ed_visits: bool = False,
@@ -483,10 +468,6 @@ def main(
     )
     logger.info("Postprocessing complete.")
 
-    # if score:
-    #     logger.info("Scoring forecast...")
-    #     score_forecast(model_run_dir)
-
     logger.info(
         "Single-location pipeline complete "
         f"for model {pyrenew_model_name}, "
@@ -643,13 +624,6 @@ if __name__ == "__main__":
             "Optionally exclude the final n days of available training "
             "data (Default: 0, i.e. exclude no available data"
         ),
-    )
-
-    parser.add_argument(
-        "--score",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help=("If this flag is provided, will attempt to score the forecast."),
     )
 
     parser.add_argument(
