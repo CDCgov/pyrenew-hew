@@ -50,7 +50,9 @@ def generate_and_save_predictions(
         my_model.mcmc, posterior_predictive=posterior_predictive
     )
 
-    idata.to_dataframe().to_csv(model_dir / "inference_data.csv", index=False)
+    idata.to_dataframe().to_parquet(
+        model_dir / "inference_data.parquet", index=False
+    )
 
     # Save one netcdf for reloading
     idata.to_netcdf(model_dir / "inference_data.nc")
