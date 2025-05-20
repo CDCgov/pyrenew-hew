@@ -37,9 +37,7 @@ get_hubverse_table_paths <- function(dir) {
 
 
 disease_shortname_from_target <- function(target) {
-  return(str_extract(target, paste(disease_shortnames,
-    collapse = "|"
-  )))
+  return(str_extract(target, paste(disease_shortnames, collapse = "|")))
 }
 
 disease_from_target <- function(target) {
@@ -48,8 +46,7 @@ disease_from_target <- function(target) {
 }
 
 
-plot_pred_act_by_horizon <- function(scorable_table,
-                                     location) {
+plot_pred_act_by_horizon <- function(scorable_table, location) {
   to_plot <- scorable_table |>
     dplyr::filter(
       .data$location == !!location,
@@ -98,10 +95,9 @@ plot_pred_act_by_horizon <- function(scorable_table,
       point_size = 4,
       shape = 23
     ) +
-    geom_line(aes(y = .data$observed),
-      size = 1
-    ) +
-    geom_point(aes(y = .data$observed),
+    geom_line(aes(y = .data$observed), size = 1) +
+    geom_point(
+      aes(y = .data$observed),
       size = 4,
       shape = 21,
       fill = "darkred",
@@ -111,12 +107,9 @@ plot_pred_act_by_horizon <- function(scorable_table,
       labels = scales::label_percent(),
       transform = "log10"
     ) +
-    facet_grid(disease ~ horizon,
-      scales = "free_y"
-    ) +
+    facet_grid(disease ~ horizon, scales = "free_y") +
     labs(
-      title =
-        glue::glue("Predictions and observations for {location}"),
+      title = glue::glue("Predictions and observations for {location}"),
       x = "Target date",
       y = "%ED visits"
     ) +
@@ -126,11 +119,13 @@ plot_pred_act_by_horizon <- function(scorable_table,
 }
 
 
-score_and_save <- function(observed_data_path,
-                           table_dir,
-                           output_dir,
-                           last_target_date = NULL,
-                           horizons = c(0, 1)) {
+score_and_save <- function(
+  observed_data_path,
+  table_dir,
+  output_dir,
+  last_target_date = NULL,
+  horizons = c(0, 1)
+) {
   scoring_date <- lubridate::today()
 
   all_paths <- get_hubverse_table_paths(table_dir)
@@ -162,9 +157,11 @@ score_and_save <- function(observed_data_path,
       path
     ) |>
       suppressMessages() |>
-      dplyr::mutate(disease = disease_from_target(
-        .data$target
-      )) |>
+      dplyr::mutate(
+        disease = disease_from_target(
+          .data$target
+        )
+      ) |>
       dplyr::filter(.data$target_end_date <= !!last_target_date)
 
     scorable_table <- NULL
@@ -173,14 +170,15 @@ score_and_save <- function(observed_data_path,
       scorable_table <- to_score |>
         dplyr::filter(.data$output_type == "quantile") |>
         dplyr::group_by(.data$target) |>
-        dplyr::group_modify(~ quantile_table_to_scorable(
-          .x,
-          observation_table = observed_data,
-          obs_value_column =
-            obs_col_from_target(.y$target[1]),
-          obs_date_column = "reference_date",
-          id_cols = "location"
-        )) |>
+        dplyr::group_modify(
+          ~ quantile_table_to_scorable(
+            .x,
+            observation_table = observed_data,
+            obs_value_column = obs_col_from_target(.y$target[1]),
+            obs_date_column = "reference_date",
+            id_cols = "location"
+          )
+        ) |>
         dplyr::ungroup() |>
         dplyr::select(
           "target",
@@ -232,18 +230,17 @@ score_and_save <- function(observed_data_path,
   summaries <- desired_summaries |>
     purrr::map(\(x) scoringutils::summarise_scores(full_scores, by = x))
 
-
   coverage_figs <- purrr::map(
     c(0.5, 0.95),
     \(x) {
       plot_coverage_by_date(
-        full_scores, x,
+        full_scores,
+        x,
         date_col = "target_end_date"
       ) +
         theme_forecasttools()
     }
   )
-
 
   pred_actual_by_horizon <- purrr::map(
     locations,
@@ -276,7 +273,8 @@ score_and_save <- function(observed_data_path,
         target_end_date = reference_date +
           lubridate::dweeks(.data$horizon)
       ) |>
-      dplyr::anti_join(loc_table,
+      dplyr::anti_join(
+        loc_table,
         by = c(
           "reference_date",
           "horizon",
@@ -287,7 +285,8 @@ score_and_save <- function(observed_data_path,
     ## use the observed value as a synthetic -1
     ## horizon "forecast" to create a visual
     ## comparable to Hub dashboards
-    synth_minus_one <- dplyr::inner_join(needed,
+    synth_minus_one <- dplyr::inner_join(
+      needed,
       obs,
       by = c(
         "target_end_date",
@@ -306,19 +305,21 @@ score_and_save <- function(observed_data_path,
     ) |>
       suppressMessages()
 
-    return(suppressMessages(plot +
-      labs(
-        title = glue::glue(
-          "Predicted and observed ",
-          "{disease} %ED visits in ",
-          "{location}."
-        ),
-        y = "%ED visits"
-      ) +
-      scale_y_continuous(
-        transform = "identity",
-        labels = scales::label_percent()
-      )))
+    return(suppressMessages(
+      plot +
+        labs(
+          title = glue::glue(
+            "Predicted and observed ",
+            "{disease} %ED visits in ",
+            "{location}."
+          ),
+          y = "%ED visits"
+        ) +
+        scale_y_continuous(
+          transform = "identity",
+          labels = scales::label_percent()
+        )
+    ))
     ## plot the -1 horizon for pred/obs by forecast date
   }
 
@@ -336,21 +337,22 @@ score_and_save <- function(observed_data_path,
   wis_by_loc <- scoringutils::plot_wis(
     summaries$summary_by_location |>
       dplyr::arrange(horizon, target, wis) |>
-      dplyr::mutate(location = factor(
-        location,
-        levels = unique(
-          location
-        ),
-        ordered = TRUE
-      )),
+      dplyr::mutate(
+        location = factor(
+          location,
+          levels = unique(
+            location
+          ),
+          ordered = TRUE
+        )
+      ),
     x = "location"
   ) +
     facet_grid(horizon ~ target)
 
-
-  make_output_path <- function(output_name,
-                               extension) {
-    return(fs::path(output_dir,
+  make_output_path <- function(output_name, extension) {
+    return(fs::path(
+      output_dir,
       glue::glue("{scoring_date}_{output_name}"),
       ext = extension
     ))
@@ -393,10 +395,10 @@ score_and_save <- function(observed_data_path,
     height = 8.5
   )
 
-
   message("Saving summary tables...")
   purrr::walk2(
-    summaries, names(summaries),
+    summaries,
+    names(summaries),
     \(x, y) {
       readr::write_tsv(x, make_output_path(y, "tsv"))
     }

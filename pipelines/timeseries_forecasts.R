@@ -26,23 +26,22 @@ purrr::walk(script_packages, \(pkg) {
 })
 
 
-to_prop_forecast <- function(forecast_disease_count,
-                             forecast_other_count,
-                             disease_count_col =
-                               "observed_ed_visits",
-                             other_count_col =
-                               "other_ed_visits",
-                             output_col = "prop_disease_ed_visits") {
+to_prop_forecast <- function(
+  forecast_disease_count,
+  forecast_other_count,
+  disease_count_col = "observed_ed_visits",
+  other_count_col = "other_ed_visits",
+  output_col = "prop_disease_ed_visits"
+) {
   result <- inner_join(
     forecast_disease_count,
     forecast_other_count,
     by = join_by(date, .draw)
   ) |>
     mutate(
-      !!output_col :=
-        .data[[disease_count_col]] /
-          (.data[[disease_count_col]] +
-            .data[[other_count_col]])
+      !!output_col := .data[[disease_count_col]] /
+        (.data[[disease_count_col]] +
+          .data[[other_count_col]])
     )
 
   return(result)
@@ -67,11 +66,13 @@ to_prop_forecast <- function(forecast_disease_count,
 #
 #' @return A tibble containing the forecast samples with columns for date,
 #' draw number, and forecasted values.
-fit_and_forecast <- function(data,
-                             n_forecast_days = 28,
-                             n_samples = 2000,
-                             target_col = "ed_visits",
-                             output_col = "other_ed_visits") {
+fit_and_forecast <- function(
+  data,
+  n_forecast_days = 28,
+  n_samples = 2000,
+  target_col = "ed_visits",
+  output_col = "other_ed_visits"
+) {
   forecast_horizon <- glue("{n_forecast_days} days")
   target_sym <- sym(target_col)
   output_sym <- sym(output_col)
@@ -83,9 +84,12 @@ fit_and_forecast <- function(data,
     filter(data_type == "train") |>
     model(
       comb_model = combination_ensemble(
-        ETS(log(!!target_sym + !!offset) ~ trend(
-          method = c("N", "M", "A")
-        )),
+        ETS(
+          log(!!target_sym + !!offset) ~
+            trend(
+              method = c("N", "M", "A")
+            )
+        ),
         ARIMA(log(!!target_sym + !!offset))
       )
     )
@@ -93,7 +97,8 @@ fit_and_forecast <- function(data,
   forecast_samples <- fit |>
     generate(h = forecast_horizon, times = n_samples) |>
     as_tibble() |>
-    mutate(!!output_col := pmax(.data$.sim, 0), # clip values
+    mutate(
+      !!output_col := pmax(.data$.sim, 0), # clip values
       .draw = as.integer(.data$.rep)
     ) |>
     select("date", ".draw", all_of(output_col))
@@ -121,10 +126,12 @@ fit_and_forecast <- function(data,
 #' `epipredict::cdc_baseline_args_list` function.
 #' @return A data frame containing the forecasted values with columns for
 #' quantile levels, (forecast) dates, and target values
-cdc_flat_forecast <- function(data,
-                              target_col = "ed_visits_target",
-                              output_col = "cdc_flat_ed_visits",
-                              ...) {
+cdc_flat_forecast <- function(
+  data,
+  target_col = "ed_visits_target",
+  output_col = "cdc_flat_ed_visits",
+  ...
+) {
   opts <- cdc_baseline_args_list(...)
   # coerce data to epiprocess::epi_df format
   epi_data <- data |>
@@ -148,11 +155,17 @@ cdc_flat_forecast <- function(data,
 }
 
 main <- function(
-    model_run_dir, model_name, n_forecast_days = 28, n_samples = 2000,
-    epiweekly = FALSE) {
+  model_run_dir,
+  model_name,
+  n_forecast_days = 28,
+  n_samples = 2000,
+  epiweekly = FALSE
+) {
   resolution <- if_else(epiweekly, "epiweekly", "daily")
   prefix <- str_c(resolution, "_")
-  aheads_cdc_baseline <- if_else(epiweekly, ceiling(n_forecast_days / 7),
+  aheads_cdc_baseline <- if_else(
+    epiweekly,
+    ceiling(n_forecast_days / 7),
     n_forecast_days
   )
   base_data_name <- "combined_training_data"
@@ -214,8 +227,10 @@ main <- function(
 
   baseline_cdc_prop <- cdc_flat_forecast(
     target_and_other_data |>
-      mutate(prop_disease_ed_visits = observed_ed_visits /
-        (observed_ed_visits + other_ed_visits)),
+      mutate(
+        prop_disease_ed_visits = observed_ed_visits /
+          (observed_ed_visits + other_ed_visits)
+      ),
     target_col = "prop_disease_ed_visits",
     output_col = "prop_disease_ed_visits",
     data_frequency = data_frequency,
@@ -227,45 +242,70 @@ main <- function(
 
   baseline_ts_forecast <-
     baseline_ts_prop |>
-    pivot_longer(-c("date", ".draw"),
+    pivot_longer(
+      -c("date", ".draw"),
       names_to = ".variable",
       values_to = ".value"
     ) |>
     mutate(geo_value = geo_value, disease = disease) |>
     select(
-      "date", ".draw", "geo_value", "disease", ".variable", ".value"
+      "date",
+      ".draw",
+      "geo_value",
+      "disease",
+      ".variable",
+      ".value"
     )
 
   baseline_cdc_forecast <-
-    dplyr::full_join(baseline_cdc_count, baseline_cdc_prop,
+    dplyr::full_join(
+      baseline_cdc_count,
+      baseline_cdc_prop,
       by = c("date", "quantile_level")
     ) |>
-    pivot_longer(-c("date", "quantile_level"),
-      names_to = ".variable", values_to = ".value"
+    pivot_longer(
+      -c("date", "quantile_level"),
+      names_to = ".variable",
+      values_to = ".value"
     ) |>
     mutate(
-      geo_value = geo_value, disease = disease, resolution = resolution,
+      geo_value = geo_value,
+      disease = disease,
+      resolution = resolution,
       aggregated_numerator = FALSE,
-      aggregated_denominator = if_else(str_starts(.variable, "prop_"),
-        FALSE, NA
+      aggregated_denominator = if_else(
+        str_starts(.variable, "prop_"),
+        FALSE,
+        NA
       )
     ) |>
     select(
-      "date", "geo_value", "disease", "resolution", "aggregated_numerator",
-      "aggregated_denominator", ".variable", "quantile_level", ".value"
+      "date",
+      "geo_value",
+      "disease",
+      "resolution",
+      "aggregated_numerator",
+      "aggregated_denominator",
+      ".variable",
+      "quantile_level",
+      ".value"
     )
 
-
   to_save <- tribble(
-    ~base_name, ~value,
-    "baseline_cdc_forecast_quantiles", baseline_cdc_forecast,
-    "baseline_ts_forecast_samples", baseline_ts_forecast
+    ~base_name,
+    ~value,
+    "baseline_cdc_forecast_quantiles",
+    baseline_cdc_forecast,
+    "baseline_ts_forecast_samples",
+    baseline_ts_forecast
   ) |>
-    mutate(save_path = path(
-      !!model_dir, glue::glue("{prefix}{base_name}"),
-      ext = "parquet"
-    ))
-
+    mutate(
+      save_path = path(
+        !!model_dir,
+        glue::glue("{prefix}{base_name}"),
+        ext = "parquet"
+      )
+    )
 
   walk2(
     to_save$value,
@@ -311,11 +351,17 @@ disease_name_nssp_map <- c(
 disease_name_nssp <- parse_model_run_dir_path(model_run_dir)$disease
 
 # Baseline forecasts on 1 day resolution
-main(model_run_dir, model_name,
-  n_forecast_days = n_forecast_days, n_samples = n_samples
+main(
+  model_run_dir,
+  model_name,
+  n_forecast_days = n_forecast_days,
+  n_samples = n_samples
 )
 # Baseline forecasts on 1 (epi)week resolution
-main(model_run_dir, model_name,
-  n_forecast_days = n_forecast_days, n_samples = n_samples,
+main(
+  model_run_dir,
+  model_name,
+  n_forecast_days = n_forecast_days,
+  n_samples = n_samples,
   epiweekly = TRUE
 )

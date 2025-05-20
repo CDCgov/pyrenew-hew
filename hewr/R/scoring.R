@@ -23,11 +23,13 @@
 #' [scoringutils::score()], filtered to include only the
 #' transformed_scale.
 #' @export
-score_hewr <- function(scorable_table,
-                       transform = scoringutils::log_shift,
-                       append_transformed = FALSE,
-                       offset = 1,
-                       ...) {
+score_hewr <- function(
+  scorable_table,
+  transform = scoringutils::log_shift,
+  append_transformed = FALSE,
+  offset = 1,
+  ...
+) {
   to_score <- scorable_table |>
     scoringutils::transform_forecasts(
       fun = transform,
