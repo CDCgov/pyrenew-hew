@@ -31,6 +31,7 @@ def main(pool_name: str) -> None:
         pool_name=pool_name,
         subnet_id=creds.azure_subnet_id,
         user_assigned_identity=creds.azure_user_assigned_identity,
+        vm_size="standard_d8_v3",
     )
 
     pool_config.mount_configuration = blob.get_node_mount_config(
@@ -65,9 +66,7 @@ def main(pool_name: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=(
-            "Set up an Azure batch pool using the azuretools defaults"
-        )
+        description=("Set up an Azure batch pool using the azuretools defaults")
     )
     parser.add_argument(
         "pool_name",
