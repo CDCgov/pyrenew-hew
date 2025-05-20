@@ -31,7 +31,7 @@ tidy_and_save_mcmc <- function(
   inference_data_path <- path(model_dir, "inference_data", ext = "parquet")
 
   tidy_inference_data <- inference_data_path |>
-    read_parquet(show_col_types = FALSE) |>
+    read_parquet() |>
     inferencedata_to_tidy_draws()
 
   if (filter_bad_chains) {
