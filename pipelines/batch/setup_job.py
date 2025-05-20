@@ -165,14 +165,14 @@ def main(
 
     base_call = (
         "/bin/bash -c '"
-        "uv run python pipelines/forecast_state.py "
+        "uv run python pipelines/forecast_loc.py "
         "--disease {disease} "
-        "--state {state} "
+        "--loc {loc} "
         f"--n-training-days {n_training_days} "
         f"--n-warmup {n_warmup} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--state-level-nssp-data-dir "
+        "--loc-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
         "--nwss-data-dir nwss-vintages "
@@ -181,7 +181,6 @@ def main(
         "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
-        "--no-score "
         f"--model-letters {model_letters} "
         f"--additional-forecast-letters {additional_forecast_letters} "
         "--eval-data-path "
@@ -201,11 +200,11 @@ def main(
         if loc not in locations_exclude and loc in locations_include
     ]
 
-    for disease, state in itertools.product(disease_list, all_locations):
+    for disease, loc in itertools.product(disease_list, all_locations):
         task = get_task_config(
-            f"{job_id}-{state}-{disease}-prod",
+            f"{job_id}-{loc}-{disease}-prod",
             base_call=base_call.format(
-                state=state,
+                loc=loc,
                 disease=disease,
                 report_date="latest",
                 output_dir=str(Path("output", output_subdir)),

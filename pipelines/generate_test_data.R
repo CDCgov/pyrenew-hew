@@ -70,7 +70,7 @@ create_facility_test_data <- function(
   target_fac_data <- tibble(
     reference_date = reference_dates,
     report_date = end_reference,
-    geo_type = "state",
+    geo_type = "loc",
     geo_value = geo_value,
     asof = end_reference,
     metric = "count_ed_visits",
@@ -139,9 +139,9 @@ generate_fake_facility_data <-
       write_parquet(path(nssp_etl_gold_dir, end_reference, ext = "parquet"))
   }
 
-#' Generate State Level Data
+#' Generate loc Level Data
 #'
-#' This function generates state-level test data for a
+#' This function generates loc-level test data for a
 #' specified disease over a given time period.
 #' @param facilities_to_simulate a tibble of facility/disease
 #' pairs to simulate with columns `facility_id`, `geo_value`, and
@@ -159,7 +159,7 @@ generate_fake_facility_data <-
 #'
 #' @return This function does not return a value. It writes the generated data
 #' to parquet files in the specified directory as a side effect.
-generate_fake_state_level_data <-
+generate_fake_loc_level_data <-
   function(
     facilities_to_simulate,
     private_data_dir = path(getwd()),
@@ -175,7 +175,7 @@ generate_fake_state_level_data <-
     comp_dir <- path(private_data_dir, "nssp-etl")
     dir_create(comp_dir, recurse = TRUE)
 
-    state_data <-
+    loc_data <-
       purrr::pmap(
         facilities_to_simulate,
         \(facility_id, geo_value, target_disease) {
@@ -197,8 +197,8 @@ generate_fake_state_level_data <-
       ungroup() |>
       select(-run_id, -asof)
 
-    # Write in-sample state-level data to gold directory
-    state_data |>
+    # Write in-sample loc-level data to gold directory
+    loc_data |>
       filter(reference_date <= end_reference) |>
       mutate(
         any_update_this_day = TRUE,
@@ -206,8 +206,8 @@ generate_fake_state_level_data <-
       ) |>
       write_parquet(path(gold_dir, end_reference, ext = "parquet"))
 
-    # Write out-of-sample state-level data to comparison directory
-    state_data |>
+    # Write out-of-sample loc-level data to comparison directory
+    loc_data |>
       write_parquet(path(comp_dir, "latest_comprehensive", ext = "parquet"))
   }
 
@@ -225,8 +225,8 @@ generate_fake_state_level_data <-
 #'
 #' @param private_data_dir A string specifying the directory
 #' where the data will be saved.
-#' @param states_to_generate A vector of strings representing
-#' individual states for which to generate simulated right truncation
+#' @param locs_to_generate A vector of strings representing
+#' individual locs for which to generate simulated right truncation
 #' PMFs. Default is `"CA"` (create a PMF only for California).
 #' @param end_reference A Date object specifying the end
 #' reference date for the data. Default is "2024-12-25".
@@ -236,7 +236,7 @@ generate_fake_state_level_data <-
 generate_fake_param_data <-
   function(
     private_data_dir = path(getwd()),
-    states_to_generate = "CA",
+    locs_to_generate = "CA",
     end_reference = as.Date("2024-12-21"),
     target_diseases = c("COVID-19", "Influenza")
   ) {
@@ -279,7 +279,7 @@ generate_fake_param_data <-
       )
 
       rt_trunc_data <- purrr::imap(
-        states_to_generate,
+        locs_to_generate,
         \(x, i) {
           tibble(
             id = i,
@@ -362,14 +362,14 @@ main <- function(private_data_dir, target_diseases, n_forecast_days) {
     private_data_dir
   )
 
-  generate_fake_state_level_data(
+  generate_fake_loc_level_data(
     to_generate,
     private_data_dir,
     n_forecast_days = n_forecast_days
   )
   generate_fake_param_data(
     private_data_dir,
-    states_to_generate = c("MT", "CA", "US"),
+    locs_to_generate = c("MT", "CA", "US"),
     target_diseases = short_target_diseases
   )
   copy_test_nwss_data(

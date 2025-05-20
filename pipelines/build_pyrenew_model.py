@@ -135,7 +135,7 @@ def build_model_from_dir(
         else None
     )
 
-    population_size = jnp.array(model_data["state_pop"]).item()
+    population_size = jnp.array(model_data["loc_pop"]).item()
 
     pop_fraction = jnp.array(model_data["pop_fraction"])
 
