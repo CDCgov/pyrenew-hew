@@ -216,7 +216,7 @@ class PyrenewHEWData:
                     }
                 )
             else:
-                aux_subpop = pl.DataFrame()
+                aux_subpop = pl.DataFrame(schema=site_indices.schema)
             site_subpop_spine = (
                 pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
                 .with_columns(
