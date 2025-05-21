@@ -27,6 +27,8 @@ def main(pool_name: str) -> None:
     creds = EnvCredentialHandler()
     client = get_batch_management_client(creds)
     node_id_ref = creds.compute_node_identity_reference
+    # To run models with wastewater signal (which require more resources),
+    # pass `vm_size="standard_d8s_v3"` to override the default size.
     pool_config = d.get_default_pool_config(
         pool_name=pool_name,
         subnet_id=creds.azure_subnet_id,
