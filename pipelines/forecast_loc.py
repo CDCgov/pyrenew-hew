@@ -278,7 +278,7 @@ def main(
 
     logger.info(f"Report date: {report_date}")
     if loc_report_date is not None:
-        logger.info(f"Using state-level data as of: {loc_report_date}")
+        logger.info(f"Using location-level data as of: {loc_report_date}")
 
     # + 1 because max date in dataset is report_date - 1
     last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
@@ -307,7 +307,7 @@ def main(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
     if loc_report_date in available_loc_level_reports:
-        logger.info("state-level data available for the given report date.")
+        logger.info("location-level data available for the given report date.")
         loc_datafile = f"{loc_report_date}.parquet"
         loc_level_nssp_data = pl.scan_parquet(
             Path(state_level_nssp_data_dir, loc_datafile)
@@ -493,7 +493,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help=(
-            "Two letter abbreviation for the loc to fit"
+            "Two-letter USPS abbreviation for the location to fit"
             "(e.g. 'AK', 'AL', 'AZ', etc.)."
         ),
     )

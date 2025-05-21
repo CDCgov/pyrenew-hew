@@ -70,7 +70,7 @@ create_facility_test_data <- function(
   target_fac_data <- tibble(
     reference_date = reference_dates,
     report_date = end_reference,
-    geo_type = "loc",
+    geo_type = "state",
     geo_value = geo_value,
     asof = end_reference,
     metric = "count_ed_visits",
@@ -139,7 +139,7 @@ generate_fake_facility_data <-
       write_parquet(path(nssp_etl_gold_dir, end_reference, ext = "parquet"))
   }
 
-#' Generate loc Level Data
+#' Generate Location Level Data
 #'
 #' This function generates state-level test data for a
 #' specified disease over a given time period.
@@ -226,7 +226,7 @@ generate_fake_loc_level_data <-
 #' @param private_data_dir A string specifying the directory
 #' where the data will be saved.
 #' @param locs_to_generate A vector of strings representing
-#' individual locs for which to generate simulated right truncation
+#' individual locations for which to generate simulated right truncation
 #' PMFs. Default is `"CA"` (create a PMF only for California).
 #' @param end_reference A Date object specifying the end
 #' reference date for the data. Default is "2024-12-25".

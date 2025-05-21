@@ -234,7 +234,7 @@ def process_loc_level_data(
             pl.col("disease").is_in([disease_key, "Total"]),
             pl.col("metric") == "count_ed_visits",
             pl.col("geo_value") == loc_abb,
-            pl.col("geo_type") == "loc",
+            pl.col("geo_type") == "state",
             pl.col("reference_date") >= first_training_date,
         )
         .select(
