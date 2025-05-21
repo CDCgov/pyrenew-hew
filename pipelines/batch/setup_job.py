@@ -172,7 +172,7 @@ def main(
         f"--n-warmup {n_warmup} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--loc-level-nssp-data-dir "
+        "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
         "--nwss-data-dir nwss-vintages "

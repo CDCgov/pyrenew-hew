@@ -141,7 +141,7 @@ generate_fake_facility_data <-
 
 #' Generate loc Level Data
 #'
-#' This function generates loc-level test data for a
+#' This function generates state-level test data for a
 #' specified disease over a given time period.
 #' @param facilities_to_simulate a tibble of facility/disease
 #' pairs to simulate with columns `facility_id`, `geo_value`, and
@@ -197,7 +197,7 @@ generate_fake_loc_level_data <-
       ungroup() |>
       select(-run_id, -asof)
 
-    # Write in-sample loc-level data to gold directory
+    # Write in-sample state-level data to gold directory
     loc_data |>
       filter(reference_date <= end_reference) |>
       mutate(
@@ -206,7 +206,7 @@ generate_fake_loc_level_data <-
       ) |>
       write_parquet(path(gold_dir, end_reference, ext = "parquet"))
 
-    # Write out-of-sample loc-level data to comparison directory
+    # Write out-of-sample state-level data to comparison directory
     loc_data |>
       write_parquet(path(comp_dir, "latest_comprehensive", ext = "parquet"))
   }
