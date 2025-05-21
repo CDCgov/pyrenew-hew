@@ -177,7 +177,7 @@ def main(
     report_date: str,
     loc: str,
     facility_level_nssp_data_dir: Path | str,
-    loc_level_nssp_data_dir: Path | str,
+    state_level_nssp_data_dir: Path | str,
     nwss_data_dir: Path | str,
     param_data_dir: Path | str,
     priors_path: Path | str,
@@ -249,7 +249,7 @@ def main(
     )
 
     available_loc_level_reports = get_available_reports(
-        loc_level_nssp_data_dir
+        state_level_nssp_data_dir
     )
     first_available_loc_report = min(available_loc_level_reports)
     last_available_loc_report = max(available_loc_level_reports)
@@ -310,7 +310,7 @@ def main(
         logger.info("state-level data available for the given report date.")
         loc_datafile = f"{loc_report_date}.parquet"
         loc_level_nssp_data = pl.scan_parquet(
-            Path(loc_level_nssp_data_dir, loc_datafile)
+            Path(state_level_nssp_data_dir, loc_datafile)
         )
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
