@@ -10,7 +10,7 @@ from pathlib import Path
 from azure.batch import models
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
-from azuretools.job import create_job_if_not_exists
+from azuretools.job import create_job
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
 
@@ -127,7 +127,7 @@ def main(
         id=job_id,
         pool_info=models.PoolInformation(pool_id=pool_id),
     )
-    create_job_if_not_exists(client, job, verbose=True)
+    create_job(client, job)
 
     container_image = (
         f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
