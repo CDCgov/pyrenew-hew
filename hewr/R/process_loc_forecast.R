@@ -405,11 +405,11 @@ process_pyrenew_model <- function(
     dplyr::select(tidyselect::all_of(required_columns))
 
   mismatch <- model_samples_tidy |>
-    dplyr::group_by(.variable) |>
-    dplyr::summarise(predicted_last_date = max(date)) |>
+    dplyr::group_by(.data$.variable) |>
+    dplyr::summarise(predicted_last_date = max(.data$date)) |>
     dplyr::mutate(
       expected_last_date = dplyr::case_when(
-        stringr::str_ends(.variable, "ed_visits") ~
+        stringr::str_ends(.data$.variable, "ed_visits") ~
           last_data_date_overall + n_forecast_days,
         .variable == "site_level_log_ww_conc" ~
           last_data_date_overall + n_forecast_days,
@@ -422,7 +422,7 @@ process_pyrenew_model <- function(
         TRUE ~ NA
       )
     ) |>
-    dplyr::filter(predicted_last_date != expected_last_date)
+    dplyr::filter(.data$predicted_last_date != .data$expected_last_date)
   stopifnot("Date mismatch for variables" = nrow(mismatch) == 0)
 
   # For the E model, do epiweekly and process denominator
