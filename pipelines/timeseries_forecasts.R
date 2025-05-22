@@ -27,11 +27,12 @@ purrr::walk(script_packages, \(pkg) {
 
 
 to_prop_forecast <- function(
-    forecast_disease_count,
-    forecast_other_count,
-    disease_count_col = "observed_ed_visits",
-    other_count_col = "other_ed_visits",
-    output_col = "prop_disease_ed_visits") {
+  forecast_disease_count,
+  forecast_other_count,
+  disease_count_col = "observed_ed_visits",
+  other_count_col = "other_ed_visits",
+  output_col = "prop_disease_ed_visits"
+) {
   result <- inner_join(
     forecast_disease_count,
     forecast_other_count,
@@ -66,11 +67,12 @@ to_prop_forecast <- function(
 #' @return A tibble containing the forecast samples with columns for date,
 #' draw number, and forecasted values.
 fit_and_forecast <- function(
-    data,
-    n_forecast_days = 28,
-    n_samples = 2000,
-    target_col = "ed_visits",
-    output_col = "other_ed_visits") {
+  data,
+  n_forecast_days = 28,
+  n_samples = 2000,
+  target_col = "ed_visits",
+  output_col = "other_ed_visits"
+) {
   forecast_horizon <- glue("{n_forecast_days} days")
   target_sym <- sym(target_col)
   output_sym <- sym(output_col)
@@ -125,10 +127,11 @@ fit_and_forecast <- function(
 #' @return A data frame containing the forecasted values with columns for
 #' quantile levels, (forecast) dates, and target values
 cdc_flat_forecast <- function(
-    data,
-    target_col = "ed_visits_target",
-    output_col = "cdc_flat_ed_visits",
-    ...) {
+  data,
+  target_col = "ed_visits_target",
+  output_col = "cdc_flat_ed_visits",
+  ...
+) {
   opts <- cdc_baseline_args_list(...)
   # coerce data to epiprocess::epi_df format
   epi_data <- data |>
@@ -152,11 +155,12 @@ cdc_flat_forecast <- function(
 }
 
 main <- function(
-    model_run_dir,
-    model_name,
-    n_forecast_days = 28,
-    n_samples = 2000,
-    epiweekly = FALSE) {
+  model_run_dir,
+  model_name,
+  n_forecast_days = 28,
+  n_samples = 2000,
+  epiweekly = FALSE
+) {
   resolution <- if_else(epiweekly, "epiweekly", "daily")
   prefix <- str_c(resolution, "_")
   aheads_cdc_baseline <- if_else(
@@ -208,7 +212,8 @@ main <- function(
     output_col = "observed_ed_visits"
   )
   baseline_ensemble_prop <- to_prop_forecast(
-    baseline_ensemble_count, baseline_ensemble_other
+    baseline_ensemble_count,
+    baseline_ensemble_other
   )
 
   ## Generate CDC flat forecast for the target disease number of ED visits
