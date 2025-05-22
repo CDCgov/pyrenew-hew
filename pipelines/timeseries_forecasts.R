@@ -66,7 +66,7 @@ to_prop_forecast <- function(
 #
 #' @return A tibble containing the forecast samples with columns for date,
 #' draw number, and forecasted values.
-fit_and_forecast <- function(
+fit_and_forecast_ensemble <- function(
   data,
   n_forecast_days = 28,
   n_samples = 2000,
@@ -197,7 +197,7 @@ main <- function(
   ## Time series forecasting
   ## Fit and forecast other (non-target-disease) ED visits using a combination
   ## ensemble model
-  forecast_other <- fit_and_forecast(
+  ts_ensemble_other_e <- fit_and_forecast_ensemble(
     target_and_other_data,
     n_forecast_days,
     n_samples,
@@ -205,7 +205,7 @@ main <- function(
     output_col = "other_ed_visits"
   )
 
-  baseline_ts_count <- fit_and_forecast(
+  ts_ensemble_count_e <- fit_and_forecast_ensemble(
     target_and_other_data,
     n_forecast_days,
     n_samples,
@@ -213,8 +213,11 @@ main <- function(
     output_col = "observed_ed_visits"
   )
 
+  ts_ensemble_prop_e <- ts_ensemble_count_e |>
+    to_prop_forecast(ts_ensemble_other_e)
+
   ## Generate CDC flat forecast for the target disease number of ED visits
-  baseline_cdc_count <- cdc_flat_forecast(
+  baseline_cdc_count_e <- cdc_flat_forecast(
     target_and_other_data,
     target_col = "observed_ed_visits",
     output_col = "observed_ed_visits",
@@ -222,10 +225,7 @@ main <- function(
     aheads = 1:aheads_cdc_baseline
   )
 
-  baseline_ts_prop <- baseline_ts_count |>
-    to_prop_forecast(forecast_other)
-
-  baseline_cdc_prop <- cdc_flat_forecast(
+  baseline_cdc_prop_e <- cdc_flat_forecast(
     target_and_other_data |>
       mutate(
         prop_disease_ed_visits = observed_ed_visits /
@@ -240,8 +240,8 @@ main <- function(
   model_dir <- path(model_run_dir, model_name)
   dir_create(model_dir)
 
-  baseline_ts_forecast <-
-    baseline_ts_prop |>
+  ts_ensemble_forecast_e <-
+    ts_ensemble_prop_e |>
     pivot_longer(
       -c("date", ".draw"),
       names_to = ".variable",
@@ -257,10 +257,10 @@ main <- function(
       ".value"
     )
 
-  baseline_cdc_forecast <-
+  baseline_cdc_forecast_e <-
     dplyr::full_join(
-      baseline_cdc_count,
-      baseline_cdc_prop,
+      baseline_cdc_count_e,
+      baseline_cdc_prop_e,
       by = c("date", "quantile_level")
     ) |>
     pivot_longer(
@@ -294,10 +294,10 @@ main <- function(
   to_save <- tribble(
     ~base_name,
     ~value,
-    "baseline_cdc_forecast_quantiles",
-    baseline_cdc_forecast,
-    "baseline_ts_forecast_samples",
-    baseline_ts_forecast
+    "baseline_cdc_quantiles_e",
+    baseline_cdc_forecast_e,
+    "ts_ensemble_samples_e",
+    ts_ensemble_forecast_e
   ) |>
     mutate(
       save_path = path(
