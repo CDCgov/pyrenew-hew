@@ -5,14 +5,14 @@ from pathlib import Path
 import polars as pl
 from prep_data import (
     combine_surveillance_data,
+    get_loc_pop_df,
     get_nhsn,
-    get_state_pop_df,
-    process_state_level_data,
+    process_loc_level_data,
 )
 
 
 def save_eval_data(
-    state: str,
+    loc: str,
     disease: str,
     first_training_date,
     last_training_date,
@@ -26,20 +26,20 @@ def save_eval_data(
     logger = logging.getLogger(__name__)
 
     logger.info("Reading in truth data...")
-    state_level_nssp_data = pl.scan_parquet(latest_comprehensive_path)
+    loc_level_nssp_data = pl.scan_parquet(latest_comprehensive_path)
 
     if last_eval_date is not None:
-        state_level_nssp_data = state_level_nssp_data.filter(
+        loc_level_nssp_data = loc_level_nssp_data.filter(
             pl.col("reference_date") <= last_eval_date
         )
 
     nssp_data = (
-        process_state_level_data(
-            state_level_nssp_data=state_level_nssp_data,
-            state_abb=state,
+        process_loc_level_data(
+            loc_level_nssp_data=loc_level_nssp_data,
+            loc_abb=loc,
             disease=disease,
             first_training_date=first_training_date,
-            state_pop_df=get_state_pop_df(),
+            loc_pop_df=get_loc_pop_df(),
         )
         .with_columns(data_type=pl.lit("eval"))
         .pivot(
@@ -54,7 +54,7 @@ def save_eval_data(
         start_date=first_training_date,
         end_date=None,
         disease=disease,
-        state_abb=state,
+        loc_abb=loc,
         credentials_dict=credentials_dict,
     ).with_columns(data_type=pl.lit("eval"))
 

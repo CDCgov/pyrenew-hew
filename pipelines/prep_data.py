@@ -28,7 +28,7 @@ def get_nhsn(
     start_date: datetime.date,
     end_date: datetime.date,
     disease: str,
-    state_abb: str,
+    loc_abb: str,
     temp_dir: Path = None,
     credentials_dict: dict = None,
 ) -> None:
@@ -49,7 +49,7 @@ def get_nhsn(
 
     columns = disease_nhsn_key[disease]
 
-    state_abb_for_query = state_abb if state_abb != "US" else "USA"
+    loc_abb_for_query = loc_abb if loc_abb != "US" else "USA"
 
     temp_file = Path(temp_dir, "nhsn_temp.parquet")
     api_key_id = credentials_dict.get(
@@ -69,7 +69,7 @@ def get_nhsn(
             start_date = {py_scalar_to_r_scalar(start_date)},
             end_date = {py_scalar_to_r_scalar(end_date)},
             columns = {py_scalar_to_r_scalar(columns)},
-            jurisdictions = {py_scalar_to_r_scalar(state_abb_for_query)}
+            jurisdictions = {py_scalar_to_r_scalar(loc_abb_for_query)}
         ) |>
         dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
         dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
@@ -195,17 +195,17 @@ def aggregate_to_national(
     )
 
 
-def process_state_level_data(
-    state_level_nssp_data: pl.LazyFrame,
-    state_abb: str,
+def process_loc_level_data(
+    loc_level_nssp_data: pl.LazyFrame,
+    loc_abb: str,
     disease: str,
     first_training_date: datetime.date,
-    state_pop_df: pl.DataFrame,
+    loc_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    if state_level_nssp_data is None:
+    if loc_level_nssp_data is None:
         return pl.DataFrame(
             schema={
                 "date": pl.Date,
@@ -217,25 +217,23 @@ def process_state_level_data(
 
     disease_key = _disease_map.get(disease, disease)
 
-    if state_abb == "US":
+    if loc_abb == "US":
         locations_to_aggregate = (
-            state_pop_df.filter(pl.col("abb") != "US")
-            .get_column("abb")
-            .unique()
+            loc_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
         logger.info("Aggregating state-level data to national")
-        state_level_nssp_data = aggregate_to_national(
-            state_level_nssp_data,
+        loc_level_nssp_data = aggregate_to_national(
+            loc_level_nssp_data,
             locations_to_aggregate,
             first_training_date,
             national_geo_value="US",
         )
 
     return (
-        state_level_nssp_data.filter(
+        loc_level_nssp_data.filter(
             pl.col("disease").is_in([disease_key, "Total"]),
             pl.col("metric") == "count_ed_visits",
-            pl.col("geo_value") == state_abb,
+            pl.col("geo_value") == loc_abb,
             pl.col("geo_type") == "state",
             pl.col("reference_date") >= first_training_date,
         )
@@ -257,12 +255,12 @@ def process_state_level_data(
     )
 
 
-def aggregate_facility_level_nssp_to_state(
+def aggregate_facility_level_nssp_to_loc(
     facility_level_nssp_data: pl.LazyFrame,
-    state_abb: str,
+    loc_abb: str,
     disease: str,
     first_training_date: str,
-    state_pop_df: pl.DataFrame,
+    loc_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -279,12 +277,10 @@ def aggregate_facility_level_nssp_to_state(
 
     disease_key = _disease_map.get(disease, disease)
 
-    if state_abb == "US":
+    if loc_abb == "US":
         logger.info("Aggregating facility-level data to national")
         locations_to_aggregate = (
-            state_pop_df.filter(pl.col("abb") != "US")
-            .get_column("abb")
-            .unique()
+            loc_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
         facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
@@ -297,7 +293,7 @@ def aggregate_facility_level_nssp_to_state(
         facility_level_nssp_data.filter(
             pl.col("disease").is_in([disease_key, "Total"]),
             pl.col("metric") == "count_ed_visits",
-            pl.col("geo_value") == state_abb,
+            pl.col("geo_value") == loc_abb,
             pl.col("reference_date") >= first_training_date,
         )
         .group_by(["reference_date", "disease"])
@@ -306,7 +302,7 @@ def aggregate_facility_level_nssp_to_state(
             disease=pl.col("disease")
             .cast(pl.Utf8)
             .replace(_inverse_disease_map),
-            geo_value=pl.lit(state_abb).cast(pl.Utf8),
+            geo_value=pl.lit(loc_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
@@ -319,7 +315,7 @@ def aggregate_facility_level_nssp_to_state(
     )
 
 
-def get_state_pop_df():
+def get_loc_pop_df():
     return forecasttools.location_table.select(
         pl.col("short_name").alias("abb"),
         pl.col("long_name").alias("name"),
@@ -327,7 +323,7 @@ def get_state_pop_df():
     )
 
 
-def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
+def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
     generation_interval_pmf = (
         param_estimates.filter(
             (pl.col("geo_value").is_null())
@@ -363,7 +359,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, state_abb: str, disease: str):
 
     right_truncation_pmf = (
         param_estimates.filter(
-            (pl.col("geo_value") == state_abb)
+            (pl.col("geo_value") == loc_abb)
             & (pl.col("disease") == disease)
             & (pl.col("parameter") == "right_truncation")
             & (pl.col("end_date").is_null())
@@ -438,8 +434,8 @@ def approx_lognorm(
         return (float(res[0]), float(res[1]))
 
 
-def process_and_save_state(
-    state_abb: str,
+def process_and_save_loc(
+    loc_abb: str,
     disease: str,
     report_date: datetime.date,
     first_training_date: datetime.date,
@@ -448,28 +444,26 @@ def process_and_save_state(
     model_run_dir: Path,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
-    state_level_nssp_data: pl.LazyFrame = None,
-    state_level_nwss_data: pl.LazyFrame = None,
+    loc_level_nssp_data: pl.LazyFrame = None,
+    loc_level_nwss_data: pl.LazyFrame = None,
     credentials_dict: dict = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    if facility_level_nssp_data is None and state_level_nssp_data is None:
+    if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
             "Must provide at least one "
             "of facility-level and state-level"
             "NSSP data"
         )
 
-    state_pop_df = get_state_pop_df()
+    loc_pop_df = get_loc_pop_df()
 
-    state_pop = state_pop_df.filter(pl.col("abb") == state_abb).item(
-        0, "population"
-    )
+    loc_pop = loc_pop_df.filter(pl.col("abb") == loc_abb).item(0, "population")
 
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
-        param_estimates=param_estimates, state_abb=state_abb, disease=disease
+        param_estimates=param_estimates, loc_abb=loc_abb, disease=disease
     )
 
     inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
@@ -482,32 +476,32 @@ def process_and_save_state(
 
     right_truncation_offset = (report_date - last_training_date).days
 
-    aggregated_facility_data = aggregate_facility_level_nssp_to_state(
+    aggregated_facility_data = aggregate_facility_level_nssp_to_loc(
         facility_level_nssp_data=facility_level_nssp_data,
-        state_abb=state_abb,
+        loc_abb=loc_abb,
         disease=disease,
         first_training_date=first_training_date,
-        state_pop_df=state_pop_df,
+        loc_pop_df=loc_pop_df,
     )
 
-    state_level_data = process_state_level_data(
-        state_level_nssp_data=state_level_nssp_data,
-        state_abb=state_abb,
+    loc_level_data = process_loc_level_data(
+        loc_level_nssp_data=loc_level_nssp_data,
+        loc_abb=loc_abb,
         disease=disease,
         first_training_date=first_training_date,
-        state_pop_df=state_pop_df,
+        loc_pop_df=loc_pop_df,
     )
 
     if aggregated_facility_data.height > 0:
         first_facility_level_data_date = aggregated_facility_data.get_column(
             "date"
         ).min()
-        state_level_data = state_level_data.filter(
+        loc_level_data = loc_level_data.filter(
             pl.col("date") < first_facility_level_data_date
         )
 
     nssp_training_data = (
-        pl.concat([state_level_data, aggregated_facility_data])
+        pl.concat([loc_level_data, aggregated_facility_data])
         .filter(pl.col("date") <= last_training_date)
         .with_columns(pl.lit("train").alias("data_type"))
         .pivot(
@@ -522,37 +516,37 @@ def process_and_save_state(
         start_date=first_training_date,
         end_date=last_training_date,
         disease=disease,
-        state_abb=state_abb,
+        loc_abb=loc_abb,
         credentials_dict=credentials_dict,
     ).with_columns(pl.lit("train").alias("data_type"))
 
     nhsn_step_size = 7
 
     nwss_training_data = (
-        state_level_nwss_data.to_dict(as_series=False)
-        if state_level_nwss_data is not None
+        loc_level_nwss_data.to_dict(as_series=False)
+        if loc_level_nwss_data is not None
         else None
     )
 
-    if state_level_nwss_data is None:
+    if loc_level_nwss_data is None:
         pop_fraction = jnp.array([1])
     else:
         subpop_sizes = (
-            state_level_nwss_data.select(["site_index", "site", "site_pop"])
+            loc_level_nwss_data.select(["site_index", "site", "site_pop"])
             .unique()
             .sort("site_pop", descending=True)
             .get_column("site_pop")
             .to_numpy()
         )
-        if state_pop > sum(subpop_sizes):
+        if loc_pop > sum(subpop_sizes):
             pop_fraction = (
                 jnp.concatenate(
-                    (jnp.array([state_pop - sum(subpop_sizes)]), subpop_sizes)
+                    (jnp.array([loc_pop - sum(subpop_sizes)]), subpop_sizes)
                 )
-                / state_pop
+                / loc_pop
             )
         else:
-            pop_fraction = subpop_sizes / state_pop
+            pop_fraction = subpop_sizes / loc_pop
 
     data_for_model_fit = {
         "inf_to_hosp_admit_pmf": delay_pmf,
@@ -560,7 +554,7 @@ def process_and_save_state(
         "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
         "generation_interval_pmf": generation_interval_pmf,
         "right_truncation_pmf": right_truncation_pmf,
-        "state_pop": state_pop,
+        "loc_pop": loc_pop,
         "right_truncation_offset": right_truncation_offset,
         "nwss_training_data": nwss_training_data,
         "nssp_training_data": nssp_training_data.to_dict(as_series=False),
@@ -578,12 +572,12 @@ def process_and_save_state(
     combined_training_dat = combine_surveillance_data(
         nssp_data=nssp_training_data,
         nhsn_data=nhsn_training_data,
-        nwss_data=state_level_nwss_data,
+        nwss_data=loc_level_nwss_data,
         disease=disease,
     )
 
     if logger is not None:
-        logger.info(f"Saving {state_abb} to {data_dir}")
+        logger.info(f"Saving {loc_abb} to {data_dir}")
 
     combined_training_dat.write_csv(
         Path(data_dir, "combined_training_data.tsv"), separator="\t"

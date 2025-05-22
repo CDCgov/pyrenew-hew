@@ -165,9 +165,9 @@ def main(
 
     base_call = (
         "/bin/bash -c '"
-        "uv run python pipelines/forecast_state.py "
+        "uv run python pipelines/forecast_loc.py "
         "--disease {disease} "
-        "--state {state} "
+        "--loc {loc} "
         f"--n-training-days {n_training_days} "
         f"--n-warmup {n_warmup} "
         f"--n-samples {n_samples} "
@@ -200,11 +200,11 @@ def main(
         if loc not in locations_exclude and loc in locations_include
     ]
 
-    for disease, state in itertools.product(disease_list, all_locations):
+    for disease, loc in itertools.product(disease_list, all_locations):
         task = get_task_config(
-            f"{job_id}-{state}-{disease}-prod",
+            f"{job_id}-{loc}-{disease}-prod",
             base_call=base_call.format(
-                state=state,
+                loc=loc,
                 disease=disease,
                 report_date="latest",
                 output_dir=str(Path("output", output_subdir)),

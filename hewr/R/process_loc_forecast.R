@@ -476,7 +476,7 @@ process_pyrenew_model <- function(
   return(model_samples_tidy)
 }
 
-#' Process state forecast
+#' Process loc forecast
 #'
 #' @param model_run_dir Model run directory
 #' @param pyrenew_model_name Name of directory containing pyrenew
@@ -499,7 +499,7 @@ process_pyrenew_model <- function(
 #' `epiweekly_ci`,
 #' `epiweekly_with_epiweekly_other_ci`
 #' @export
-process_state_forecast <- function(
+process_loc_forecast <- function(
   model_run_dir,
   n_forecast_days,
   pyrenew_model_name = NA,

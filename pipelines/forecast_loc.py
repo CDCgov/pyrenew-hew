@@ -10,7 +10,7 @@ from pathlib import Path
 import numpyro
 import polars as pl
 import tomli_w
-from prep_data import process_and_save_state
+from prep_data import process_and_save_loc
 from prep_eval_data import save_eval_data
 from pygit2 import Repository
 
@@ -137,7 +137,7 @@ def convert_inferencedata_to_parquet(
     return None
 
 
-def plot_and_save_state_forecast(
+def plot_and_save_loc_forecast(
     model_run_dir: Path,
     n_forecast_days: int,
     pyrenew_model_name: str,
@@ -145,7 +145,7 @@ def plot_and_save_state_forecast(
 ) -> None:
     command = [
         "Rscript",
-        "pipelines/plot_and_save_state_forecast.R",
+        "pipelines/plot_and_save_loc_forecast.R",
         f"{model_run_dir}",
         "--n-forecast-days",
         f"{n_forecast_days}",
@@ -158,7 +158,7 @@ def plot_and_save_state_forecast(
     result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(
-            f"plot_and_save_state_forecast: {result.stderr.decode('utf-8')}"
+            f"plot_and_save_loc_forecast: {result.stderr.decode('utf-8')}"
         )
     return None
 
@@ -175,7 +175,7 @@ def get_available_reports(
 def main(
     disease: str,
     report_date: str,
-    state: str,
+    loc: str,
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     nwss_data_dir: Path | str,
@@ -208,7 +208,7 @@ def main(
 
     logger.info(
         "Starting single-location forecasting pipeline for "
-        f"model {pyrenew_model_name}, location {state}, "
+        f"model {pyrenew_model_name}, location {loc}, "
         f"and report date {report_date}"
     )
     signals = ["ed_visits", "hospital_admissions", "wastewater"]
@@ -248,26 +248,26 @@ def main(
         facility_level_nssp_data_dir
     )
 
-    available_state_level_reports = get_available_reports(
+    available_loc_level_reports = get_available_reports(
         state_level_nssp_data_dir
     )
-    first_available_state_report = min(available_state_level_reports)
-    last_available_state_report = max(available_state_level_reports)
+    first_available_loc_report = min(available_loc_level_reports)
+    last_available_loc_report = max(available_loc_level_reports)
 
     if report_date == "latest":
         report_date = max(available_facility_level_reports)
     else:
         report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
 
-    if report_date in available_state_level_reports:
-        state_report_date = report_date
-    elif report_date > last_available_state_report:
-        state_report_date = last_available_state_report
-    elif report_date > first_available_state_report:
+    if report_date in available_loc_level_reports:
+        loc_report_date = report_date
+    elif report_date > last_available_loc_report:
+        loc_report_date = last_available_loc_report
+    elif report_date > first_available_loc_report:
         raise ValueError(
             "Dataset appear to be missing some state-level "
-            f"reports. First entry is {first_available_state_report}, "
-            f"last is {last_available_state_report}, but no entry "
+            f"reports. First entry is {first_available_loc_report}, "
+            f"last is {last_available_loc_report}, but no entry "
             f"for {report_date}"
         )
     else:
@@ -277,8 +277,8 @@ def main(
         )
 
     logger.info(f"Report date: {report_date}")
-    if state_report_date is not None:
-        logger.info(f"Using state-level data as of: {state_report_date}")
+    if loc_report_date is not None:
+        logger.info(f"Using location-level data as of: {loc_report_date}")
 
     # + 1 because max date in dataset is report_date - 1
     last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
@@ -298,7 +298,7 @@ def main(
 
     logger.info(f"First training date {first_training_date}")
 
-    facility_level_nssp_data, state_level_nssp_data = None, None
+    facility_level_nssp_data, loc_level_nssp_data = None, None
 
     if report_date in available_facility_level_reports:
         logger.info("Facility level data available for the given report date")
@@ -306,13 +306,13 @@ def main(
         facility_level_nssp_data = pl.scan_parquet(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
-    if state_report_date in available_state_level_reports:
-        logger.info("State-level data available for the given report date.")
-        state_datafile = f"{state_report_date}.parquet"
-        state_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, state_datafile)
+    if loc_report_date in available_loc_level_reports:
+        logger.info("location-level data available for the given report date.")
+        loc_datafile = f"{loc_report_date}.parquet"
+        loc_level_nssp_data = pl.scan_parquet(
+            Path(state_level_nssp_data_dir, loc_datafile)
         )
-    if facility_level_nssp_data is None and state_level_nssp_data is None:
+    if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
             f"No data available for the requested report date {report_date}"
         )
@@ -344,10 +344,10 @@ def main(
                 )
             )
             nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
-                (pl.col("location") == state)
+                (pl.col("location") == loc)
                 & (pl.col("date") >= first_training_date)
             )
-            state_level_nwss_data = preprocess_ww_data(
+            loc_level_nwss_data = preprocess_ww_data(
                 nwss_data_cleaned.collect()
             )
         else:
@@ -356,7 +356,7 @@ def main(
                 f"{report_date}"
             )
     else:
-        state_level_nwss_data = None
+        loc_level_nwss_data = None
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
@@ -366,7 +366,7 @@ def main(
 
     model_batch_dir = Path(output_dir, model_batch_dir_name)
 
-    model_run_dir = Path(model_batch_dir, "model_runs", state)
+    model_run_dir = Path(model_batch_dir, "model_runs", loc)
 
     os.makedirs(model_run_dir, exist_ok=True)
 
@@ -376,13 +376,13 @@ def main(
     logger.info(f"Copying and recording priors from {priors_path}...")
     copy_and_record_priors(priors_path, model_run_dir)
 
-    logger.info(f"Processing {state}")
-    process_and_save_state(
-        state_abb=state,
+    logger.info(f"Processing {loc}")
+    process_and_save_loc(
+        loc_abb=loc,
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
-        state_level_nssp_data=state_level_nssp_data,
-        state_level_nwss_data=state_level_nwss_data,
+        loc_level_nssp_data=loc_level_nssp_data,
+        loc_level_nwss_data=loc_level_nwss_data,
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
@@ -395,7 +395,7 @@ def main(
     if eval_data_path is None:
         raise ValueError("No path to an evaluation dataset provided.")
     save_eval_data(
-        state=state,
+        loc=loc,
         disease=disease,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
@@ -456,14 +456,14 @@ def main(
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    plot_and_save_state_forecast(
+    plot_and_save_loc_forecast(
         model_run_dir,
         n_days_past_last_training,
         pyrenew_model_name,
         "timeseries_e",
     )
     # Timeseries models get processed, even if they aren't used.
-    plot_and_save_state_forecast(
+    plot_and_save_loc_forecast(
         model_run_dir, n_days_past_last_training, None, "timeseries_e"
     )
     logger.info("Postprocessing complete.")
@@ -471,7 +471,7 @@ def main(
     logger.info(
         "Single-location pipeline complete "
         f"for model {pyrenew_model_name}, "
-        f"location {state}, and "
+        f"location {loc}, and "
         f"report date {report_date}."
     )
     return None
@@ -489,11 +489,11 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--state",
+        "--loc",
         type=str,
         required=True,
         help=(
-            "Two letter abbreviation for the state to fit"
+            "Two-letter USPS abbreviation for the location to fit"
             "(e.g. 'AK', 'AL', 'AZ', etc.)."
         ),
     )

@@ -27,7 +27,7 @@ def mock_data():
                 "hospital_admissions": [5, 1],
                 "data_type": ["train"] * 2,
             },
-            "state_pop": [10000],
+            "loc_pop": [10000],
             "generation_interval_pmf": [0.1, 0.2, 0.7],
             "inf_to_ed_pmf": [0.4, 0.5, 0.1],
             "inf_to_hosp_admit_pmf": [0.0, 0.7, 0.1, 0.1, 0.1],

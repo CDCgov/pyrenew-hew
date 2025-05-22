@@ -1,14 +1,14 @@
 base_dir <- "pipelines/tests/end_to_end_test_output/private_data/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/" # nolint
-state_params <- tibble::tibble(
-  state_abb = c("CA", "MT"),
-  state_offset = c(10, 0), # add to lab_site_index for uniqueness
+loc_params <- tibble::tibble(
+  loc_abb = c("CA", "MT"),
+  loc_offset = c(10, 0), # add to lab_site_index for uniqueness
 )
 
 get_nwss_data_from_posterior <- function(
-  state_abb,
-  state_offset
+  loc_abb,
+  loc_offset
 ) {
-  model_run_dir <- fs::path(base_dir, state_abb)
+  model_run_dir <- fs::path(base_dir, loc_abb)
   model_info <- hewr::parse_model_run_dir_path(model_run_dir)
   pyrenew_model_name <- "pyrenew_hew"
   dat_path <- fs::path(model_run_dir, "data", "data_for_model_fit.json")
@@ -41,7 +41,7 @@ get_nwss_data_from_posterior <- function(
     wwtp_id = unique(
       data_for_model_fit$data_observed_disease_wastewater$lab_site_index
     ) +
-      state_offset,
+      loc_offset,
     population_served = unique(
       data_for_model_fit$data_observed_disease_wastewater$site_pop
     ),
@@ -51,7 +51,7 @@ get_nwss_data_from_posterior <- function(
       lod_sewage = abs(rnorm(dplyr::n(), mean = 5, sd = 1))
     )
 
-  state_ww_conc_data <- pyrenew_posterior |>
+  loc_ww_conc_data <- pyrenew_posterior |>
     tidybayes::gather_draws(!!rlang::parse_expr(var_name)) |>
     dplyr::ungroup() |>
     dplyr::mutate(
@@ -73,8 +73,8 @@ get_nwss_data_from_posterior <- function(
     dplyr::sample_n(100) |>
     dplyr::mutate(
       sample_collect_date = date,
-      lab_id = lab_site_index + state_offset,
-      wwtp_id = lab_site_index + state_offset,
+      lab_id = lab_site_index + loc_offset,
+      wwtp_id = lab_site_index + loc_offset,
       pcr_target_avg_conc = exp(.value),
       sample_location = "wwtp",
       sample_matrix = "raw wastewater",
@@ -86,7 +86,7 @@ get_nwss_data_from_posterior <- function(
     dplyr::left_join(site_info, by = "wwtp_id")
 }
 
-ww_data <- purrr::pmap_dfr(state_params, get_nwss_data_from_posterior)
+ww_data <- purrr::pmap_dfr(loc_params, get_nwss_data_from_posterior)
 report_date <- "2024-12-21"
 ww_dir <- fs::path(
   "pipelines/tests/test_data/nwss_vintages",
