@@ -221,7 +221,7 @@ def process_loc_level_data(
         locations_to_aggregate = (
             loc_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
-        logger.info("Aggregating loc-level data to national")
+        logger.info("Aggregating state-level data to national")
         loc_level_nssp_data = aggregate_to_national(
             loc_level_nssp_data,
             locations_to_aggregate,
@@ -234,7 +234,7 @@ def process_loc_level_data(
             pl.col("disease").is_in([disease_key, "Total"]),
             pl.col("metric") == "count_ed_visits",
             pl.col("geo_value") == loc_abb,
-            pl.col("geo_type") == "loc",
+            pl.col("geo_type") == "state",
             pl.col("reference_date") >= first_training_date,
         )
         .select(
@@ -454,7 +454,7 @@ def process_and_save_loc(
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
             "Must provide at least one "
-            "of facility-level and loc-level"
+            "of facility-level and state-level"
             "NSSP data"
         )
 

@@ -11,9 +11,9 @@ disease="$2"
 location="$3"
 model_letters="$4"
 
-python pipelines/forecast_state.py \
+python pipelines/forecast_loc.py \
 	--disease $disease \
-	--state $location \
+	--loc $location \
 	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
 	--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
 	--priors-path pipelines/priors/prod_priors.py \

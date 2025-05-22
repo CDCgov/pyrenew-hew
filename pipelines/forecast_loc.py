@@ -177,7 +177,7 @@ def main(
     report_date: str,
     loc: str,
     facility_level_nssp_data_dir: Path | str,
-    loc_level_nssp_data_dir: Path | str,
+    state_level_nssp_data_dir: Path | str,
     nwss_data_dir: Path | str,
     param_data_dir: Path | str,
     priors_path: Path | str,
@@ -249,7 +249,7 @@ def main(
     )
 
     available_loc_level_reports = get_available_reports(
-        loc_level_nssp_data_dir
+        state_level_nssp_data_dir
     )
     first_available_loc_report = min(available_loc_level_reports)
     last_available_loc_report = max(available_loc_level_reports)
@@ -265,7 +265,7 @@ def main(
         loc_report_date = last_available_loc_report
     elif report_date > first_available_loc_report:
         raise ValueError(
-            "Dataset appear to be missing some loc-level "
+            "Dataset appear to be missing some state-level "
             f"reports. First entry is {first_available_loc_report}, "
             f"last is {last_available_loc_report}, but no entry "
             f"for {report_date}"
@@ -273,12 +273,12 @@ def main(
     else:
         raise ValueError(
             "Requested report date is earlier than the first "
-            "loc-level vintage. This is not currently supported"
+            "state-level vintage. This is not currently supported"
         )
 
     logger.info(f"Report date: {report_date}")
     if loc_report_date is not None:
-        logger.info(f"Using loc-level data as of: {loc_report_date}")
+        logger.info(f"Using location-level data as of: {loc_report_date}")
 
     # + 1 because max date in dataset is report_date - 1
     last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
@@ -307,10 +307,10 @@ def main(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
     if loc_report_date in available_loc_level_reports:
-        logger.info("loc-level data available for the given report date.")
+        logger.info("location-level data available for the given report date.")
         loc_datafile = f"{loc_report_date}.parquet"
         loc_level_nssp_data = pl.scan_parquet(
-            Path(loc_level_nssp_data_dir, loc_datafile)
+            Path(state_level_nssp_data_dir, loc_datafile)
         )
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
@@ -493,7 +493,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help=(
-            "Two letter abbreviation for the loc to fit"
+            "Two-letter USPS abbreviation for the location to fit"
             "(e.g. 'AK', 'AL', 'AZ', etc.)."
         ),
     )
@@ -524,10 +524,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--loc-level-nssp-data-dir",
+        "--state-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_state_level_gold"),
-        help=("Directory in which to look for loc-level NSSP ED visit data."),
+        help=(
+            "Directory in which to look for state-level NSSP ED visit data."
+        ),
     )
 
     parser.add_argument(
