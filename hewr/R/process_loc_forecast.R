@@ -16,8 +16,8 @@ load_and_aggregate_ts <- function(
   timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
 
   samples_file_names <- c(
-    "daily_baseline_ts_forecast_samples",
-    "epiweekly_baseline_ts_forecast_samples"
+    "daily_ts_ensemble_samples_e",
+    "epiweekly_ts_ensemble_samples_e"
   )
 
   unaggregated_ts_samples <- tibble::tibble(
