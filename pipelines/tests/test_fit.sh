@@ -19,7 +19,7 @@ python pipelines/forecast_loc.py \
 	--priors-path pipelines/priors/prod_priors.py \
 	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
 	--nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
-	--output-dir "$BASE_DIR/private_data" \
+	--output-dir "$BASE_DIR/2024-12-21_forecasts" \
 	--n-training-days 60 \
 	--n-chains 2 \
 	--n-samples 250 \
