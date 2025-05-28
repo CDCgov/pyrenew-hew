@@ -4,10 +4,10 @@ library(fs)
 private_data_dir <- path("pipelines/tests/end_to_end_test_output/private_data")
 
 dir_ls(private_data_dir, recurse = TRUE, type = "file") |> path_split() |> map_chr(5)
-dat <- tibble(file_path = dir_ls(private_data_dir, recurse = TRUE, type = "file")) |> 
+dat <- tibble(file_path = dir_ls(private_data_dir, recurse = TRUE, type = "file")) |>
   mutate(name = file_path |> path_split() |> map_chr(5),
-         value = map(file_path, read_parquet)) |> 
-  select(name, value) |> 
+         value = map(file_path, read_parquet)) |>
+  select(name, value) |>
   deframe()
 
 
@@ -39,13 +39,13 @@ dat <- tibble(file_path = dir_ls(private_data_dir, recurse = TRUE, type = "file"
 # nssp_state_level_gold ---------------------------------------------------
 # # A tibble: 6 × 8
 # reference_date report_date geo_type geo_value metric          disease          value any_update_this_day
-# <date>         <date>      <chr>    <chr>     <chr>           <chr>            <int> <lgl>              
-# 1 2024-06-01     2025-01-18  state    CA        count_ed_visits COVID-19/Omicron    37 TRUE               
-# 2 2024-06-01     2025-01-18  state    CA        count_ed_visits Influenza           35 TRUE               
-# 3 2024-06-01     2025-01-18  state    CA        count_ed_visits RSV                 41 TRUE               
-# 4 2024-06-01     2025-01-18  state    CA        count_ed_visits Total             1927 TRUE               
-# 5 2024-06-01     2025-01-18  state    MT        count_ed_visits COVID-19/Omicron    19 TRUE               
-# 6 2024-06-01     2025-01-18  state    MT        count_ed_visits Influenza           28 TRUE               
+# <date>         <date>      <chr>    <chr>     <chr>           <chr>            <int> <lgl>
+# 1 2024-06-01     2025-01-18  state    CA        count_ed_visits COVID-19/Omicron    37 TRUE
+# 2 2024-06-01     2025-01-18  state    CA        count_ed_visits Influenza           35 TRUE
+# 3 2024-06-01     2025-01-18  state    CA        count_ed_visits RSV                 41 TRUE
+# 4 2024-06-01     2025-01-18  state    CA        count_ed_visits Total             1927 TRUE
+# 5 2024-06-01     2025-01-18  state    MT        count_ed_visits COVID-19/Omicron    19 TRUE
+# 6 2024-06-01     2025-01-18  state    MT        count_ed_visits Influenza           28 TRUE
 
 
 # nwss_vintages -----------------------------------------------------------
