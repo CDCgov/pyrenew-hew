@@ -3,6 +3,7 @@ model_run_dir = "tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_20
 model_name = "pyrenew_hew"
 
 states_to_simulate = ["MT", "CA"]
+n_states = len(states_to_simulate)
 
 import argparse
 import pickle
@@ -12,6 +13,7 @@ import arviz as az
 import jax.random as jr
 import numpy as np
 import polars as pl
+import polars.selectors as cs
 from build_pyrenew_model import (
     build_model_from_dir,
 )
@@ -36,7 +38,7 @@ with open(
 
 prior_predictive_samples = my_model.prior_predictive(
     rng_key=jr.key(20),
-    numpyro_predictive_args={"num_samples": len(states_to_simulate)},
+    numpyro_predictive_args={"num_samples": n_states},
     data=my_data.to_forecast_data(n_forecast_points=0),
     sample_ed_visits=True,
     sample_hospital_admissions=True,
@@ -52,37 +54,34 @@ posterior_predictive_samples = posterior_predictive = (
     )
 )
 
-
-idata = az.from_numpyro(
-    prior=prior_predictive_samples,
-    posterior_predictive=posterior_predictive_samples,
-)
-
 predictive_var_names = [
     "observed_ed_visits",
     "observed_hospital_admissions",
     "site_level_log_ww_conc",
 ]
 
+idata = az.from_numpyro(
+    prior=prior_predictive_samples,
+    posterior_predictive=posterior_predictive_samples,
+)
 
-target_samples = {
-    k: np.asarray(prior_predictive_samples[k]) for k in predictive_var_names
-}
+original_df = pl.from_pandas(
+    idata.posterior_predictive[predictive_var_names].to_dataframe(),
+    include_index=True,
+)
 
-# doesn't work for multidimensional
+original_df.unpivot(index=["chain", "draw", cs.contains("_dim_")])
 
-original_df = (
-    pl.from_dict(target_samples)
-    .insert_column(0, pl.Series("state", states_to_simulate))
-    .unpivot(
-        index="state",
-        variable_name=".variable",
-        value_name="data",
-    )
-    .explode("data")
-    .with_columns(
-        pl.int_ranges(0, pl.len()).over(".variable").alias("array_index")
-    )
+original_df = pl.from_pandas(
+    idata.sel(draw=slice(0, n_states - 1))
+    .posterior_predictive[predictive_var_names]
+    .to_dataframe(),
+    include_index=True,
+).insert_column(
+    2,
+    pl.col("draw")
+    .replace_strict(np.arange(n_states), states_to_simulate)
+    .alias("state"),
 )
 
 
