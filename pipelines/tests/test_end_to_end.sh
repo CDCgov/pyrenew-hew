@@ -52,7 +52,7 @@ echo "TEST-MODE: All pipeline runs complete."
 echo "TEST-MODE: Running batch postprocess..."
 
 python pipelines/postprocess_forecast_batches.py \
-	$BASE_DIR/private_data/2024-12-21_forecasts \
+	$BASE_DIR/2024-12-21_forecasts \
 	$BASE_DIR/private_data/nssp-etl/latest_comprehensive.parquet
 
 if [ $? -ne 0 ]; then
