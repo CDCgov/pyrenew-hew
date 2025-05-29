@@ -1,11 +1,5 @@
-# %% Use an existing model
-model_run_dir = "tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
-model_name = "pyrenew_hew"
-
-states_to_simulate = ["MT", "CA"]
-n_states = len(states_to_simulate)
-
 import argparse
+import itertools
 import pickle
 from pathlib import Path
 
@@ -20,7 +14,23 @@ from build_pyrenew_model import (
 
 from pyrenew_hew.util import flags_from_pyrenew_model_name
 
+# %% Use an existing model
+model_run_dir = "tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
+model_name = "pyrenew_hew"
+
+
+states_to_simulate = ["MT", "CA"]
+diseases_to_simulate = ["COVID-19", "Influenza", "RSV"]
+
+state_disease_key = pl.DataFrame(
+    itertools.product(states_to_simulate, diseases_to_simulate),
+    schema=["state", "disease"],
+).with_row_index("draw")
+
+max_draw = state_disease_key.height
+
 model_run_dir = Path(model_run_dir)
+
 model_dir = Path(model_run_dir, model_name)
 if not model_dir.exists():
     raise FileNotFoundError(f"The directory {model_dir} does not exist.")
@@ -38,20 +48,18 @@ with open(
 
 prior_predictive_samples = my_model.prior_predictive(
     rng_key=jr.key(20),
-    numpyro_predictive_args={"num_samples": n_states},
+    numpyro_predictive_args={"num_samples": max_draw},
     data=my_data.to_forecast_data(n_forecast_points=0),
     sample_ed_visits=True,
     sample_hospital_admissions=True,
     sample_wastewater=True,
 )
 
-posterior_predictive_samples = posterior_predictive = (
-    my_model.posterior_predictive(
-        data=my_data.to_forecast_data(n_forecast_points=0),
-        sample_ed_visits=True,
-        sample_hospital_admissions=True,
-        sample_wastewater=True,
-    )
+posterior_predictive_samples = my_model.posterior_predictive(
+    data=my_data.to_forecast_data(n_forecast_points=0),
+    sample_ed_visits=True,
+    sample_hospital_admissions=True,
+    sample_wastewater=True,
 )
 
 predictive_var_names = [
@@ -63,26 +71,40 @@ predictive_var_names = [
 idata = az.from_numpyro(
     prior=prior_predictive_samples,
     posterior_predictive=posterior_predictive_samples,
+).sel(draw=slice(0, max_draw - 1))
+
+
+# Not quite right. Way too many duplicates
+original_df = (
+    pl.from_pandas(
+        idata.posterior_predictive[predictive_var_names].to_dataframe(),
+        include_index=True,
+    )
+    .join(state_disease_key, on="draw")
+    .select(cs.exclude("draw", "chain"))
 )
 
-original_df = pl.from_pandas(
-    idata.posterior_predictive[predictive_var_names].to_dataframe(),
-    include_index=True,
-)
 
-original_df.unpivot(index=["chain", "draw", cs.contains("_dim_")])
+def create_var_df(df: pl.DataFrame, var: str):
+    var_cols = [c for c in df.columns if var in c]
+    dim_0_col = [c for c in var_cols if c.endswith("_dim_0")]
+    dim_1_col = [c for c in var_cols if c.endswith("_dim_1")]
 
-original_df = pl.from_pandas(
-    idata.sel(draw=slice(0, n_states - 1))
-    .posterior_predictive[predictive_var_names]
-    .to_dataframe(),
-    include_index=True,
-).insert_column(
-    2,
-    pl.col("draw")
-    .replace_strict(np.arange(n_states), states_to_simulate)
-    .alias("state"),
-)
+    rename_dict = {}
+
+    if dim_0_col:
+        rename_dict[dim_0_col[0]] = "time"
+    if dim_1_col:
+        rename_dict[dim_1_col[0]] = "site"
+
+    renamed_df = df.select("state", "disease", cs.by_name(var_cols)).rename(
+        rename_dict
+    )
+    return
+
+
+# Create individual dataframes for each variable
+dfs = {var: create_var_df(original_df, var) for var in predictive_var_names}
 
 
 def dirichlet_integer_split(n, k, alpha=1.0):
