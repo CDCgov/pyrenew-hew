@@ -10,6 +10,9 @@ library(fs)
 library(here)
 private_data_dir <- here("pipelines/tests/end_to_end_test_output/private_data")
 
+private_data_dir |>
+  dir_ls(recurse = TRUE, type = "file") |>
+  path_rel(private_data_dir)
 
 dat <- tibble(
   file_path = dir_ls(private_data_dir, recurse = TRUE, type = "file")

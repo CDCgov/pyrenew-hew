@@ -41,7 +41,18 @@ library(here)
 ``` r
 private_data_dir <- here("pipelines/tests/end_to_end_test_output/private_data")
 
+private_data_dir |>
+  dir_ls(recurse = TRUE, type = "file") |>
+  path_rel(private_data_dir)
+```
 
+    nssp-etl/latest_comprehensive.parquet
+    nssp_etl_gold/2024-12-21.parquet
+    nssp_state_level_gold/2024-12-21.parquet
+    nwss_vintages/NWSS-ETL-covid-2024-12-21/bronze.parquet
+    prod_param_estimates/prod.parquet
+
+``` r
 dat <- tibble(
   file_path = dir_ls(private_data_dir, recurse = TRUE, type = "file")
 ) |>
