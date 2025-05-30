@@ -251,7 +251,7 @@ def process_loc_level_data(
             .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
-        .collect(streaming=True)
+        .collect(engine="streaming")
     )
 
 
@@ -307,8 +307,8 @@ def aggregate_facility_level_nssp_to_loc(
         .rename({"reference_date": "date"})
         .sort(["date", "disease"])
         .select(["date", "geo_value", "disease", "ed_visits"])
-        .collect(streaming=True)
-        # setting streaming = True explicitly
+        .collect(engine="streaming")
+        # setting engine = "streaming" explicitly
         # avoids an `Option::unwrap()` on a `None` value
         # error. Cause of error not known but presumably
         # related to how parquets are processed.
@@ -331,7 +331,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
             & (pl.col("parameter") == "generation_interval")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect(streaming=True)
+        .collect(engine="streaming")
         .get_column("value")
         .item(0)
         .to_list()
@@ -344,7 +344,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
             & (pl.col("parameter") == "delay")
             & (pl.col("end_date").is_null())  # most recent estimate
         )
-        .collect(streaming=True)
+        .collect(engine="streaming")
         .get_column("value")
         .item(0)
         .to_list()
@@ -365,7 +365,7 @@ def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
             & (pl.col("end_date").is_null())
         )
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect(streaming=True)
+        .collect(engine="streaming")
         .get_column("value")
         .item(0)
         .to_list()
