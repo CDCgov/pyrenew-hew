@@ -55,7 +55,7 @@ to_hub_quantile_table <- function(model_batch_dir) {
     quantiles_paths <- fs::dir_ls(
       model_run_dir,
       recurse = TRUE,
-      glob = "*_quantiles.parquet"
+      glob = "*_quantiles_*.parquet"
     )
 
     quantilized_samples_forecast <- samples_paths |>
@@ -86,7 +86,7 @@ to_hub_quantile_table <- function(model_batch_dir) {
       dplyr::mutate(
         model = dplyr::if_else(
           .data$model == "timeseries_e",
-          "baseline_ts",
+          "ts_ensemble",
           .data$model
         )
       ) |>
