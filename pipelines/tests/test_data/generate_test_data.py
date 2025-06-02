@@ -16,7 +16,8 @@ from pipelines.build_pyrenew_model import (
 )
 from pyrenew_hew.util import flags_from_pyrenew_model_name
 
-max_date = "2024-12-21"
+max_train_date = "2024-12-21"
+n_forecast_days = 28
 n_nssp_sites = 5
 
 
@@ -141,16 +142,18 @@ nssp_etl_gold_no_total = (
     dfs["observed_ed_visits"]
     .with_columns(
         (
-            pl.lit(max_date).str.to_date()
-            - pl.duration(days=pl.col("time").max() - pl.col("time"))
+            pl.lit(max_train_date).str.to_date()
+            - pl.duration(
+                days=pl.col("time").max() - pl.col("time") - n_forecast_days
+            )
         ).alias("reference_date"),
-        pl.lit(max_date).str.to_date().alias("report_date"),
+        pl.lit(max_train_date).str.to_date().alias("report_date"),
         pl.lit("state").alias("geo_type"),
         pl.lit("count_ed_visits").alias("metric"),
         pl.col("disease").replace(nssp_disease_key),
         pl.lit(True).alias("any_update_this_day"),
         pl.lit(np.arange(1, n_nssp_sites + 1).tolist()).alias("facility"),
-        pl.lit(max_date).alias("asof"),
+        pl.lit(max_train_date).alias("asof"),
         pl.lit(0).alias("run_id"),
         pl.col("observed_ed_visits").map_elements(
             lambda x: dirichlet_integer_split(x, k=n_nssp_sites).tolist(),
@@ -192,7 +195,9 @@ nssp_etl_gold = pl.concat([nssp_etl_gold_no_total, nssp_etl_gold_total]).sort(
 
 nssp_etl_gold_dir = Path(private_data_dir, "nssp_etl_gold")
 nssp_etl_gold_dir.mkdir(parents=True, exist_ok=True)
-nssp_etl_gold.write_parquet(Path(nssp_etl_gold_dir, f"{max_date}.parquet"))
+nssp_etl_gold.filter(
+    pl.col("reference_date") <= pl.lit(max_train_date).str.to_date()
+).write_parquet(Path(nssp_etl_gold_dir, f"{max_train_date}.parquet"))
 
 
 # %% nssp_state_level_gold/2024-12-21.parquet
@@ -220,19 +225,18 @@ nssp_state_level_gold = (
 
 nssp_state_level_gold_dir = Path(private_data_dir, "nssp_state_level_gold")
 nssp_state_level_gold_dir.mkdir(parents=True, exist_ok=True)
-nssp_state_level_gold.write_parquet(
-    Path(nssp_state_level_gold_dir, f"{max_date}.parquet")
-)
+nssp_state_level_gold.filter(
+    pl.col("reference_date") <= pl.lit(max_train_date).str.to_date()
+).write_parquet(Path(nssp_state_level_gold_dir, f"{max_train_date}.parquet"))
+
 
 # %% nssp-etl/latest_comprehensive.parquet
-nssp_state_level_gold.select(cs.exclude("any_update_this_day"))
-
 nssp_etl_dir = Path(private_data_dir, "nssp-etl")
 nssp_etl_dir.mkdir(parents=True, exist_ok=True)
 nssp_state_level_gold.select(cs.exclude("any_update_this_day")).write_parquet(
     Path(nssp_etl_dir, "latest_comprehensive.parquet")
 )
+
 # nwss_vintages/NWSS-ETL-covid-2024-12-21/bronze.parquet
-# nssp-etl/latest_comprehensive.parquet
 # prod_param_estimates/prod.parquet
 # don't forget to also make NHSN like data
