@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Required Data"
 format: md
 ---
 
@@ -28,7 +28,6 @@ dat$latest_comprehensive <- dat$`nssp-etl`
 dat$`nssp-etl` <- NULL
 ```
 
-dat$latest_comprehensive
 
 ```{r}
 head(dat$nssp_etl_gold)

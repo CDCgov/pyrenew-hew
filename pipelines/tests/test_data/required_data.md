@@ -1,4 +1,4 @@
-# Untitled
+# Required Data
 
 
 ``` r
@@ -66,8 +66,6 @@ dat <- tibble(
 dat$latest_comprehensive <- dat$`nssp-etl`
 dat$`nssp-etl` <- NULL
 ```
-
-dat$latest_comprehensive
 
 ``` r
 head(dat$nssp_etl_gold)
