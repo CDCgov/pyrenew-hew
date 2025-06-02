@@ -1,4 +1,4 @@
-base_dir <- "pipelines/tests/end_to_end_test_output/private_data/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/" # nolint
+base_dir <- "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/" # nolint
 loc_params <- tibble::tibble(
   loc_abb = c("CA", "MT"),
   loc_offset = c(10, 0), # add to lab_site_index for uniqueness
