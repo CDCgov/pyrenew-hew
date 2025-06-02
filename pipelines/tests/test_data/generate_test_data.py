@@ -8,14 +8,14 @@ import jax.random as jr
 import numpy as np
 import polars as pl
 import polars.selectors as cs
-from build_pyrenew_model import (
+
+from pipelines.build_pyrenew_model import (
     build_model_from_dir,
 )
-
 from pyrenew_hew.util import flags_from_pyrenew_model_name
 
 # %% Use an existing model
-model_run_dir = "tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
+model_run_dir = "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
 model_name = "pyrenew_hew"
 
 
@@ -74,37 +74,37 @@ idata = az.from_numpyro(
 ).sel(draw=slice(0, max_draw - 1))
 
 
-# Not quite right. Way too many duplicates
-original_df = (
-    pl.from_pandas(
-        idata.posterior_predictive[predictive_var_names].to_dataframe(),
-        include_index=True,
+def create_var_df(idata: az.InferenceData, var: str):
+    df = (
+        pl.from_pandas(
+            idata.posterior_predictive[var].to_dataframe(),
+            include_index=True,
+        )
+        .join(state_disease_key, on="draw")
+        .select(cs.exclude("draw", "chain"))
     )
-    .join(state_disease_key, on="draw")
-    .select(cs.exclude("draw", "chain"))
-)
 
-
-def create_var_df(df: pl.DataFrame, var: str):
-    var_cols = [c for c in df.columns if var in c]
-    dim_0_col = [c for c in var_cols if c.endswith("_dim_0")]
-    dim_1_col = [c for c in var_cols if c.endswith("_dim_1")]
+    dim_0_col = f"{var}_dim_0"
+    dim_1_col = f"{var}_dim_1"
 
     rename_dict = {}
 
-    if dim_0_col:
-        rename_dict[dim_0_col[0]] = "time"
-    if dim_1_col:
-        rename_dict[dim_1_col[0]] = "site"
+    if dim_0_col in df.columns:
+        rename_dict[dim_0_col] = "time"
+    if dim_1_col in df.columns:
+        rename_dict[dim_1_col] = "site"
 
-    renamed_df = df.select("state", "disease", cs.by_name(var_cols)).rename(
-        rename_dict
-    )
-    return
+    renamed_df = df.select(
+        "state",
+        "disease",
+        var,
+        cs.by_name([dim_0_col, dim_1_col], require_all=False),
+    ).rename(rename_dict)
+    return renamed_df
 
 
 # Create individual dataframes for each variable
-dfs = {var: create_var_df(original_df, var) for var in predictive_var_names}
+dfs = {var: create_var_df(idata, var) for var in predictive_var_names}
 
 
 def dirichlet_integer_split(n, k, alpha=1.0):
