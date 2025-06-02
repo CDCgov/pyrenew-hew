@@ -17,6 +17,7 @@ from pipelines.build_pyrenew_model import (
 from pyrenew_hew.util import flags_from_pyrenew_model_name
 
 max_date = "2024-12-21"
+n_nssp_sites = 5
 
 
 def dirichlet_integer_split(n, k, alpha=1.0):
@@ -135,22 +136,9 @@ private_data_dir.mkdir(parents=True, exist_ok=True)
 
 nssp_disease_key = {"COVID-19": "COVID-19/Omicron"}
 
-# %% nssp_state_level_gold/2024-12-21.parquet
-
-observed_ed_visits_total = (
-    (
-        dfs["observed_ed_visits"]
-        .group_by(["state", "time"])
-        .agg(pl.col("observed_ed_visits").sum())
-        .with_columns(pl.lit("Total").alias("disease"))
-    )
-    .select(dfs["observed_ed_visits"].columns)
-    .sort(["state", "disease", "time"])
-)
-
-nssp_state_level_gold = (
-    pl.concat([dfs["observed_ed_visits"], observed_ed_visits_total])
-    .filter(pl.col("time") != 0)
+# %% nssp_etl_gold/2024-12-21.parquet
+nssp_etl_gold_no_total = (
+    dfs["observed_ed_visits"]
     .with_columns(
         (
             pl.lit(max_date).str.to_date()
@@ -161,8 +149,61 @@ nssp_state_level_gold = (
         pl.lit("count_ed_visits").alias("metric"),
         pl.col("disease").replace(nssp_disease_key),
         pl.lit(True).alias("any_update_this_day"),
+        pl.lit(np.arange(1, n_nssp_sites + 1).tolist()).alias("facility"),
+        pl.lit(max_date).alias("asof"),
+        pl.lit(0).alias("run_id"),
+        pl.col("observed_ed_visits").map_elements(
+            lambda x: dirichlet_integer_split(x, k=n_nssp_sites).tolist(),
+            # return_dtype=pl.Array(pl.Int64, n_nssp_sites),
+            # Seems like this should work if you omit the .tolist, but it doesn't
+            pl.List(pl.Int64),
+        ),
     )
     .rename({"state": "geo_value", "observed_ed_visits": "value"})
+    .explode(["value", "facility"])
+    .select(
+        [
+            "reference_date",
+            "report_date",
+            "geo_type",
+            "geo_value",
+            "asof",
+            "metric",
+            "run_id",
+            "facility",
+            "disease",
+            "value",
+        ]
+    )
+)
+
+nssp_etl_gold_total = (
+    nssp_etl_gold_no_total.group_by(cs.exclude("disease", "value"))
+    .agg(pl.col("value").sum())
+    .with_columns(pl.lit("Total").alias("disease"))
+    .select(nssp_etl_gold_no_total.columns)
+    .sort(["reference_date", "geo_value", "facility", "disease"])
+)
+
+
+nssp_etl_gold = pl.concat([nssp_etl_gold_no_total, nssp_etl_gold_total]).sort(
+    ["reference_date", "geo_value", "facility", "disease"]
+)
+
+nssp_etl_gold_dir = Path(private_data_dir, "nssp_etl_gold")
+nssp_etl_gold_dir.mkdir(parents=True, exist_ok=True)
+nssp_etl_gold.write_parquet(Path(nssp_etl_gold_dir, f"{max_date}.parquet"))
+
+
+# %% nssp_state_level_gold/2024-12-21.parquet
+# I think this should have somewhat different dates available compared to
+# nssp_etl_gold, but I'm not sure
+
+nssp_state_level_gold = (
+    nssp_etl_gold.group_by(cs.exclude("facility", "value"))
+    .agg(pl.col("value").sum())
+    .with_columns(pl.lit(True).alias("any_update_this_day"))
+    .sort(["reference_date", "geo_value", "disease"])
     .select(
         [
             "reference_date",
@@ -176,14 +217,21 @@ nssp_state_level_gold = (
         ]
     )
 )
+
 nssp_state_level_gold_dir = Path(private_data_dir, "nssp_state_level_gold")
 nssp_state_level_gold_dir.mkdir(parents=True, exist_ok=True)
 nssp_state_level_gold.write_parquet(
     Path(nssp_state_level_gold_dir, f"{max_date}.parquet")
 )
 
-# nssp_etl_gold/2024-12-21.parquet
+# %% nssp-etl/latest_comprehensive.parquet
+nssp_state_level_gold.select(cs.exclude("any_update_this_day"))
 
+nssp_etl_dir = Path(private_data_dir, "nssp-etl")
+nssp_etl_dir.mkdir(parents=True, exist_ok=True)
+nssp_state_level_gold.select(cs.exclude("any_update_this_day")).write_parquet(
+    Path(nssp_etl_dir, "latest_comprehensive.parquet")
+)
 # nwss_vintages/NWSS-ETL-covid-2024-12-21/bronze.parquet
 # nssp-etl/latest_comprehensive.parquet
 # prod_param_estimates/prod.parquet
