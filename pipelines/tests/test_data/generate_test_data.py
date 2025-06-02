@@ -1,4 +1,6 @@
+# %% Setup
 import argparse
+import datetime as dt
 import itertools
 import pickle
 from pathlib import Path
@@ -14,7 +16,24 @@ from pipelines.build_pyrenew_model import (
 )
 from pyrenew_hew.util import flags_from_pyrenew_model_name
 
-# %% Use an existing model
+max_date = "2024-12-21"
+
+
+def dirichlet_integer_split(n, k, alpha=1.0):
+    proportions = np.random.dirichlet(np.full(k, alpha))
+    scaled = proportions * n
+    counts = np.floor(scaled).astype(int)
+
+    remainder = n - counts.sum()
+    if remainder > 0:
+        frac_parts = scaled - counts
+        indices = np.argpartition(-frac_parts, remainder)[:remainder]
+        counts[indices] += 1
+
+    return counts
+
+
+# %% Use an existing model to simulate data
 model_run_dir = "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
 model_name = "pyrenew_hew"
 
@@ -74,6 +93,7 @@ idata = az.from_numpyro(
 ).sel(draw=slice(0, max_draw - 1))
 
 
+# %% Get dfs per var
 def create_var_df(idata: az.InferenceData, var: str):
     df = (
         pl.from_pandas(
@@ -107,19 +127,64 @@ def create_var_df(idata: az.InferenceData, var: str):
 dfs = {var: create_var_df(idata, var) for var in predictive_var_names}
 
 
-def dirichlet_integer_split(n, k, alpha=1.0):
-    proportions = np.random.dirichlet(np.full(k, alpha))
-    scaled = proportions * n
-    counts = np.floor(scaled).astype(int)
+# %% Save data
+private_data_dir = Path(
+    "pipelines/tests/end_to_end_test_output/private_data_sim"
+)
+private_data_dir.mkdir(parents=True, exist_ok=True)
 
-    remainder = n - counts.sum()
-    if remainder > 0:
-        frac_parts = scaled - counts
-        indices = np.argpartition(-frac_parts, remainder)[:remainder]
-        counts[indices] += 1
+nssp_disease_key = {"COVID-19": "COVID-19/Omicron"}
 
-    return counts
+# %% nssp_state_level_gold/2024-12-21.parquet
 
+observed_ed_visits_total = (
+    (
+        dfs["observed_ed_visits"]
+        .group_by(["state", "time"])
+        .agg(pl.col("observed_ed_visits").sum())
+        .with_columns(pl.lit("Total").alias("disease"))
+    )
+    .select(dfs["observed_ed_visits"].columns)
+    .sort(["state", "disease", "time"])
+)
 
-len(prior_predictive_samples["site_level_log_ww_conc"][0])
-len(prior_predictive_samples["observed_ed_visits"][0])
+nssp_state_level_gold = (
+    pl.concat([dfs["observed_ed_visits"], observed_ed_visits_total])
+    .filter(pl.col("time") != 0)
+    .with_columns(
+        (
+            pl.lit(max_date).str.to_date()
+            - pl.duration(days=pl.col("time").max() - pl.col("time"))
+        ).alias("reference_date"),
+        pl.lit(max_date).str.to_date().alias("report_date"),
+        pl.lit("state").alias("geo_type"),
+        pl.lit("count_ed_visits").alias("metric"),
+        pl.col("disease").replace(nssp_disease_key),
+        pl.lit(True).alias("any_update_this_day"),
+    )
+    .rename({"state": "geo_value", "observed_ed_visits": "value"})
+    .select(
+        [
+            "reference_date",
+            "report_date",
+            "geo_type",
+            "geo_value",
+            "metric",
+            "disease",
+            "value",
+            "any_update_this_day",
+        ]
+    )
+)
+nssp_state_level_gold_dir = Path(private_data_dir, "nssp_state_level_gold")
+nssp_state_level_gold_dir.mkdir(parents=True, exist_ok=True)
+nssp_state_level_gold.write_parquet(
+    Path(nssp_state_level_gold_dir, f"{max_date}.parquet")
+)
+
+# nssp_etl_gold/2024-12-21.parquet
+
+# nwss_vintages/NWSS-ETL-covid-2024-12-21/bronze.parquet
+# nssp-etl/latest_comprehensive.parquet
+# prod_param_estimates/prod.parquet
+# don't forget to also make NHSN like data
