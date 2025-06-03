@@ -93,30 +93,6 @@ def generate_epiweekly_data(model_run_dir: Path) -> None:
     return None
 
 
-def timeseries_forecasts(
-    model_run_dir: Path, model_name: str, n_forecast_days: int, n_samples: int
-) -> None:
-    result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/timeseries_forecasts.R",
-            f"{model_run_dir}",
-            "--model-name",
-            f"{model_name}",
-            "--n-forecast-days",
-            f"{n_forecast_days}",
-            "--n-samples",
-            f"{n_samples}",
-        ],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"timeseries_forecasts: {result.stderr.decode('utf-8')}"
-        )
-    return None
-
-
 def convert_inferencedata_to_parquet(
     model_run_dir: Path, model_name: str
 ) -> None:
@@ -227,6 +203,15 @@ def main(
         raise ValueError(
             "pyrenew_null (fitting to no signals) "
             "is not supported by this pipeline"
+        )
+
+    if forecast_ed_visits and not os.path.exists(
+        Path(model_run_dir, "timeseries_e")
+    ):
+        raise ValueError(
+            "timeseries_e model run not found. "
+            "Please ensure that the timeseries forecasts "
+            "are generated before fitting Pyrenew models."
         )
 
     if credentials_path is not None:
@@ -435,20 +420,6 @@ def main(
         predict_hospital_admissions=forecast_hospital_admissions,
         predict_wastewater=forecast_wastewater,
     )
-
-    logger.info(
-        "Performing baseline forecasting and non-target pathogen "
-        "forecasting..."
-    )
-    # Timeseries models get run, even if they aren't used.
-    # Surprised this doesn't create race condition problems.
-    n_denominator_samples = n_samples * n_chains
-    timeseries_forecasts(
-        model_run_dir,
-        "timeseries_e",
-        n_days_past_last_training,
-        n_denominator_samples,
-    )
     logger.info("All forecasting complete.")
 
     logger.info("Converting inferencedata to parquet...")
@@ -461,10 +432,6 @@ def main(
         n_days_past_last_training,
         pyrenew_model_name,
         "timeseries_e",
-    )
-    # Timeseries models get processed, even if they aren't used.
-    plot_and_save_loc_forecast(
-        model_run_dir, n_days_past_last_training, None, "timeseries_e"
     )
     logger.info("Postprocessing complete.")
 
