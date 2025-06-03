@@ -6,6 +6,7 @@ import pickle
 from pathlib import Path
 
 import arviz as az
+import forecasttools
 import jax.random as jr
 import numpy as np
 import polars as pl
@@ -19,6 +20,7 @@ from pyrenew_hew.util import flags_from_pyrenew_model_name
 max_train_date = "2024-12-21"
 n_forecast_days = 28
 n_nssp_sites = 5
+ww_flag_prob = 0.1
 
 
 def dirichlet_integer_split(n, k, alpha=1.0):
@@ -239,9 +241,26 @@ nssp_state_level_gold.select(cs.exclude("any_update_this_day")).write_parquet(
 
 
 # %% nwss_vintages/NWSS-ETL-covid-2024-12-21/bronze.parquet
-nwss_etl = (
+nwss_cols = [
+    "sample_collect_date",
+    "lab_id",
+    "wwtp_id",
+    "pcr_target_avg_conc",
+    "sample_location",
+    "sample_matrix",
+    "pcr_target_units",
+    "pcr_target",
+    "wwtp_jurisdiction",
+    "population_served",
+    "quality_flag",
+    "lod_sewage",
+]
+
+
+nwss_etl_base = (
     dfs["site_level_log_ww_conc"]
     .filter(pl.col("disease") == "COVID-19")
+    .with_row_index()
     .with_columns(
         (
             pl.lit(max_train_date).str.to_date()
@@ -249,79 +268,67 @@ nwss_etl = (
                 days=pl.col("time").max() - pl.col("time") - n_forecast_days
             )
         ).alias("sample_collect_date"),
-        pl.col("site").alias(
-            "lab_id"
-        ),  # might have to do something so that site ids are not repeated between states
-        pl.col("site").alias(
-            "wwtp_id"
-        ),  # might have to do something so that site ids are not repeated between states
+        pl.first("index").over("state", "site").rank("dense").alias("site"),
         pl.lit("wwtp").alias("sample_location"),
         pl.lit("raw wastewater").alias("sample_matrix"),
         pl.lit("copies/l wastewater").alias("pcr_target_units"),
         pl.lit("sars-cov-2").alias("pcr_target"),
+        pl.col("site_level_log_ww_conc").exp().alias("pcr_target_avg_conc"),
+    )
+    .with_columns(
+        pl.col("site").alias("lab_id"),
+        pl.col("site").alias("wwtp_id"),
+    )
+    .with_columns(
+        pl.quantile("pcr_target_avg_conc", 0.05)
+        .over("state", "site")
+        .alias("lod_sewage")
     )
     .rename({"state": "wwtp_jurisdiction"})
-    .with_columns(
-        pl.lit(0.2).alias("pcr_target_avg_conc"),
-        pl.lit(1000).alias("population_served"),
-        pl.lit("n").alias("quality_flag"),
-        pl.lit(10).alias("lod_sewage"),
+    .pipe(
+        lambda df: df.with_columns(
+            quality_flag=np.random.choice(
+                ["n", "y"], size=df.height, p=[1 - ww_flag_prob, ww_flag_prob]
+            )
+        )
     )
-    .select(
-        [
-            "sample_collect_date",
-            "lab_id",
-            "wwtp_id",
-            "pcr_target_avg_conc",
-            "sample_location",
-            "sample_matrix",
-            "pcr_target_units",
-            "pcr_target",
-            "wwtp_jurisdiction",
-            "population_served",
-            "quality_flag",
-            "lod_sewage",
-        ]
-    )
+    .select(cs.by_name(nwss_cols, require_all=False))
 )
 
-
+nwss_site_pop = (
+    nwss_etl_base.select(["wwtp_jurisdiction", "wwtp_id"])
+    .unique(["wwtp_jurisdiction", "wwtp_id"])
+    .group_by("wwtp_jurisdiction")
+    .agg("wwtp_id")
+    .join(
+        forecasttools.location_table.rename(
+            {"short_name": "wwtp_jurisdiction"}
+        ).select("wwtp_jurisdiction", "population"),
+        on="wwtp_jurisdiction",
+    )
+    .with_columns(
+        pl.struct(["population", "wwtp_id"])
+        .map_elements(
+            lambda x: dirichlet_integer_split(
+                x["population"], len(x["wwtp_id"]) + 1
+            )[1:],
+            pl.List(pl.Int64),
+        )
+        .alias("population_served")
+    )
+    .explode("wwtp_id", "population_served")
+)
+nwss_etl = nwss_etl_base.join(nwss_site_pop, on="wwtp_id").select(
+    cs.by_name(nwss_cols)
+)
 nwss_etl_dir = Path(
     private_data_dir, "nwss_vintages", f"NWSS-ETL-covid-{max_train_date}"
 )
 nwss_etl_dir.mkdir(parents=True, exist_ok=True)
 nwss_etl.filter(
     pl.col("sample_collect_date") <= pl.lit(max_train_date).str.to_date()
-).select(cs.exclude("any_update_this_day")).write_parquet(
-    Path(nwss_etl_dir, "bronze.parquet")
-)
+).write_parquet(Path(nwss_etl_dir, "bronze.parquet"))
 
 
 # prod_param_estimates/prod.parquet
 # don't forget to also make NHSN like data
-
-
-import forecasttools
-
-site_pop = (
-    dfs["site_level_log_ww_conc"]
-    .unique(["state", "site"])
-    .group_by("state")
-    .agg("site")
-    .join(
-        forecasttools.location_table.rename({"short_name": "state"}).select(
-            "state", "population"
-        ),
-        on="state",
-    )
-    .with_columns(
-        pl.struct(["population", "site"])
-        .map_elements(
-            lambda x: dirichlet_integer_split(
-                x["population"], len(x["site"]) + 1
-            )[1:],
-            pl.List(pl.Int64),
-        )
-        .alias("population_served")
-    )
-).explode("site", "population_served")
