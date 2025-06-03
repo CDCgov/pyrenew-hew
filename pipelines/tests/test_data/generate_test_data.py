@@ -11,6 +11,7 @@ import jax.random as jr
 import numpy as np
 import polars as pl
 import polars.selectors as cs
+from scipy.stats import expon, norm
 
 from pipelines.build_pyrenew_model import (
     build_model_from_dir,
@@ -44,7 +45,6 @@ def dirichlet_integer_split(n, k, alpha=1.0):
 # %% Use an existing model to simulate data
 model_run_dir = "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
 model_name = "pyrenew_hew"
-
 
 states_to_simulate = ["MT", "CA"]
 diseases_to_simulate = ["COVID-19", "Influenza", "RSV"]
@@ -378,3 +378,69 @@ for name, data in nhsn_data_combined.group_by("disease", "jurisdiction"):
     )
 
 # %% prod_param_estimates/prod.parquet
+param_estimates_cols = [
+    "id",
+    "start_date",
+    "end_date",
+    "reference_date",
+    "disease",
+    "format",
+    "parameter",
+    "geo_value",
+    "value",
+]
+
+# GI PMF: Exponential on discrete times from 0.5 to 6.5
+gi_support = np.arange(0.5, 7.0)  # Equivalent to seq(0.5, 6.5)
+gi_pmf = expon.pdf(gi_support)
+gi_pmf = gi_pmf / gi_pmf.sum()
+
+# Delay PMF: Normal on log-transformed support, normalized and prepended with 0
+delay_support = np.log(np.arange(1, 12))
+delay_pmf = norm.pdf(delay_support, loc=np.log(3), scale=0.5)
+delay_pmf = delay_pmf / delay_pmf.sum()
+delay_pmf = np.insert(delay_pmf, 0, 0)
+
+# RT Truncation PMF
+rt_truncation_pmf = np.array([1.0, 0, 0, 0])
+
+prod_param_estimates = (
+    (
+        pl.DataFrame(
+            {
+                "parameter": [
+                    "generation_interval",
+                    "right_truncation",
+                    "delay",
+                ],
+                "value": [rt_truncation_pmf, gi_pmf, delay_pmf],
+            }
+        )
+        .join(
+            pl.DataFrame(
+                {
+                    "geo_value": states_to_simulate + ["US"],
+                    "parameter": "right_truncation",
+                }
+            ),
+            on="parameter",
+            how="left",
+        )
+        .join(pl.DataFrame({"disease": diseases_to_simulate}), how="cross")
+    )
+    .with_columns(
+        pl.lit("PMF").alias("format"),
+        pl.lit(max_train_date).alias("reference_date"),
+        pl.lit(None).alias("end_date"),
+        pl.lit(max_train_date).str.to_date().alias("start_date")
+        - pl.duration(days=180),
+    )
+    .with_row_index("id")
+    .select(cs.by_name(param_estimates_cols))
+)
+
+prod_param_estimates_dir = Path(private_data_dir, "prod_param_estimates")
+prod_param_estimates_dir.mkdir(parents=True, exist_ok=True)
+prod_param_estimates.write_parquet(
+    Path(prod_param_estimates_dir, "prod.parquet")
+)
