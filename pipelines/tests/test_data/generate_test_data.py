@@ -18,7 +18,11 @@ from pipelines.build_pyrenew_model import (
 from pyrenew_hew.util import flags_from_pyrenew_model_name
 
 max_train_date = "2024-12-21"
-n_forecast_days = 28
+# Verify this is a Saturday
+assert dt.datetime.strptime(max_train_date, "%Y-%m-%d").weekday() == 5
+n_forecast_weeks = 4
+n_forecast_days = 7 * n_forecast_weeks
+
 n_nssp_sites = 5
 ww_flag_prob = 0.1
 
@@ -145,9 +149,7 @@ nssp_etl_gold_no_total = (
     .with_columns(
         (
             pl.lit(max_train_date).str.to_date()
-            - pl.duration(
-                days=pl.col("time").max() - pl.col("time") - n_forecast_days
-            )
+            + pl.duration(days=(pl.col("time") - n_forecast_days + 1))
         ).alias("reference_date"),
         pl.lit(max_train_date).str.to_date().alias("report_date"),
         pl.lit("state").alias("geo_type"),
@@ -330,5 +332,49 @@ nwss_etl.filter(
 ).write_parquet(Path(nwss_etl_dir, "bronze.parquet"))
 
 
-# prod_param_estimates/prod.parquet
-# don't forget to also make NHSN like data
+# %% nhsn_test_data/nhsn_test_data.parquet
+nhsn_cols = ["jurisdiction", "weekendingdate", "hospital_admissions"]
+
+
+nhsn_data_sates = (
+    dfs["observed_hospital_admissions"]
+    .with_columns(
+        (
+            pl.lit(max_train_date).str.to_date()
+            + pl.duration(weeks=(pl.col("time") - n_forecast_weeks + 1))
+        ).alias("weekendingdate")
+    )
+    .rename(
+        {
+            "state": "jurisdiction",
+            "observed_hospital_admissions": "hospital_admissions",
+        }
+    )
+    .select("disease", cs.by_name(nhsn_cols))
+)
+
+# Create us data by summing across jurisdictions
+nhsn_data_us = (
+    nhsn_data_sates.group_by(["disease", "weekendingdate"])
+    .agg(pl.col("hospital_admissions").sum())
+    .with_columns(pl.lit("US").alias("jurisdiction"))
+    .select("disease", cs.by_name(nhsn_cols))
+)
+
+# Combine with state data
+nhsn_data_combined = pl.concat([nhsn_data_sates, nhsn_data_us]).sort(
+    "disease", "jurisdiction", "weekendingdate"
+)
+
+# Create directory for NHSN data
+nhsn_dir = Path(private_data_dir, "nhsn_test_data")
+nhsn_dir.mkdir(parents=True, exist_ok=True)
+
+for name, data in nhsn_data_combined.group_by("disease", "jurisdiction"):
+    print(f"{name[0]}_{name[1]}")
+    print(data.select(cs.by_name(nhsn_cols)))
+    data.select(cs.by_name(nhsn_cols)).write_parquet(
+        Path(nhsn_dir, f"{name[0]}_{name[1]}.parquet")
+    )
+
+# %% prod_param_estimates/prod.parquet

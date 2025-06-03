@@ -73,3 +73,22 @@ head(dat$latest_comprehensive)
 
 dat$latest_comprehensive |> distinct(geo_type, metric, geo_value, disease)
 ```
+
+```{r}
+dat$nhsn_data <- forecasttools::pull_nhsn(
+  start_date = "2025-01-01",
+  columns = "totalconfc19newadm",
+  jurisdictions = c("CA", "MN")
+) |>
+  dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
+  dplyr::mutate(
+    jurisdiction = dplyr::if_else(jurisdiction == "USA", "US", jurisdiction)
+  ) |>
+  dplyr::rename(hospital_admissions = "totalconfc19newadm") |>
+  dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions))
+```
+
+
+```{r}
+dat$nhsn_data
+```
