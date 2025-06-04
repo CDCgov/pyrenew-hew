@@ -182,7 +182,7 @@ def combine_surveillance_data(
 
 def aggregate_to_national(
     data: pl.LazyFrame,
-    geo_values_to_include,
+    geo_values_to_include: list[str],
     first_date_to_include: datetime.date,
     national_geo_value="US",
 ):
@@ -221,7 +221,10 @@ def process_loc_level_data(
 
     if loc_abb == "US":
         locations_to_aggregate = (
-            loc_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
+            loc_pop_df.filter(pl.col("abb") != "US")
+            .get_column("abb")
+            .unique()
+            .to_list()
         )
         logger.info("Aggregating state-level data to national")
         loc_level_nssp_data = aggregate_to_national(
