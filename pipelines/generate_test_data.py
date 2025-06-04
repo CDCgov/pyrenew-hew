@@ -369,8 +369,6 @@ nhsn_dir = Path(private_data_dir, "nhsn_test_data")
 nhsn_dir.mkdir(parents=True, exist_ok=True)
 
 for name, data in nhsn_data_combined.group_by("disease", "jurisdiction"):
-    print(f"{name[0]}_{name[1]}")
-    print(data.select(cs.by_name(nhsn_cols)))
     data.select(cs.by_name(nhsn_cols)).write_parquet(
         Path(nhsn_dir, f"{name[0]}_{name[1]}.parquet")
     )
