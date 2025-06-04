@@ -43,7 +43,7 @@ def dirichlet_integer_split(n, k, alpha=1.0):
 
 
 # %% Use an existing model to simulate data
-model_run_dir = "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
+model_run_dir = "/Users/damon/Downloads/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
 model_name = "pyrenew_hew"
 
 states_to_simulate = ["MT", "CA"]
@@ -136,9 +136,7 @@ dfs = {var: create_var_df(idata, var) for var in predictive_var_names}
 
 
 # %% Save data
-private_data_dir = Path(
-    "pipelines/tests/end_to_end_test_output/private_data_sim"
-)
+private_data_dir = Path("pipelines/tests/end_to_end_test_output/private_data")
 private_data_dir.mkdir(parents=True, exist_ok=True)
 
 nssp_disease_key = {"COVID-19": "COVID-19/Omicron"}
