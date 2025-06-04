@@ -147,7 +147,9 @@ nssp_etl_gold_no_total = (
     .with_columns(
         (
             pl.lit(max_train_date).str.to_date()
-            + pl.duration(days=(pl.col("time") - n_forecast_days + 1))
+            + pl.duration(
+                days=(pl.col("time") - pl.col("time").max() + n_forecast_days)
+            )
         ).alias("reference_date"),
         pl.lit(max_train_date).str.to_date().alias("report_date"),
         pl.lit("state").alias("geo_type"),
@@ -264,8 +266,8 @@ nwss_etl_base = (
     .with_columns(
         (
             pl.lit(max_train_date).str.to_date()
-            - pl.duration(
-                days=pl.col("time").max() - pl.col("time") - n_forecast_days
+            + pl.duration(
+                days=(pl.col("time") - pl.col("time").max() + n_forecast_days)
             )
         ).alias("sample_collect_date"),
         pl.first("index").over("state", "site").rank("dense").alias("site"),
@@ -339,7 +341,11 @@ nhsn_data_sates = (
     .with_columns(
         (
             pl.lit(max_train_date).str.to_date()
-            + pl.duration(weeks=(pl.col("time") - n_forecast_weeks + 1))
+            + pl.duration(
+                weeks=(
+                    pl.col("time") - pl.col("time").max() + n_forecast_weeks
+                )
+            )
         ).alias("weekendingdate")
     )
     .rename(
