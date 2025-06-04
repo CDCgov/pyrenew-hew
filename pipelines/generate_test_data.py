@@ -429,7 +429,7 @@ prod_param_estimates = (
     .with_columns(
         pl.lit("PMF").alias("format"),
         pl.lit(max_train_date).alias("reference_date"),
-        pl.lit(None).alias("end_date"),
+        pl.lit(None).cast(pl.Date).alias("end_date"),
         pl.lit(max_train_date).str.to_date().alias("start_date")
         - pl.duration(days=180),
     )
