@@ -311,10 +311,6 @@ def aggregate_facility_level_nssp_to_loc(
         .sort(["date", "disease"])
         .select(["date", "geo_value", "disease", "ed_visits"])
         .collect()
-        # setting engine = "streaming" explicitly
-        # avoids an `Option::unwrap()` on a `None` value
-        # error. Cause of error not known but presumably
-        # related to how parquets are processed.
     )
 
 
