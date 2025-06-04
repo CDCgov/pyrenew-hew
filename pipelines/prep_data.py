@@ -219,7 +219,10 @@ def process_loc_level_data(
 
     if loc_abb == "US":
         locations_to_aggregate = (
-            loc_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique().to_list()
+            loc_pop_df.filter(pl.col("abb") != "US")
+            .get_column("abb")
+            .unique()
+            .to_list()
         )
         logger.info("Aggregating state-level data to national")
         loc_level_nssp_data = aggregate_to_national(
