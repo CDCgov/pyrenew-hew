@@ -76,14 +76,14 @@ with open(
 prior_predictive_samples = my_model.prior_predictive(
     rng_key=jr.key(20),
     numpyro_predictive_args={"num_samples": max_draw},
-    data=my_data.to_forecast_data(n_forecast_points=0),
+    data=my_data.to_forecast_data(n_forecast_points=n_forecast_days),
     sample_ed_visits=True,
     sample_hospital_admissions=True,
     sample_wastewater=True,
 )
 
 posterior_predictive_samples = my_model.posterior_predictive(
-    data=my_data.to_forecast_data(n_forecast_points=0),
+    data=my_data.to_forecast_data(n_forecast_points=n_forecast_days),
     sample_ed_visits=True,
     sample_hospital_admissions=True,
     sample_wastewater=True,
