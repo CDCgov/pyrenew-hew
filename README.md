@@ -7,7 +7,7 @@ The PyRenew-HEW project aims to create short-term forecasts of respiratory disea
 
 - [x] **H**ospital Admissions from the [National Healthcare Safety Network](https://www.cdc.gov/nhsn/index.html)
 - [x] **E**mergency Department Visits from the [National Syndromic Surveillance Program](https://www.cdc.gov/nssp/index.html)
-- [ ] **W**astewater virus concentration from the [National Wastewater Surveillance System](https://www.cdc.gov/nwss/index.html)
+- [x] **W**astewater virus concentration from the [National Wastewater Surveillance System](https://www.cdc.gov/nwss/index.html)
 
 This is a work in progress, and not all data sources are currently integrated into the model.
 
