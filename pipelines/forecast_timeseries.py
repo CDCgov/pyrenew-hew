@@ -63,8 +63,7 @@ def main(
 
     if model_letters != "e":
         raise ValueError(
-            "For the 'timeseries' model family, "
-            "the only supported model letter is 'e'."
+            "Only model_letters 'e' is supported for 'timeseries' model_family."
         )
     timeseries_model_name = f"timeseries_{model_letters}"
 

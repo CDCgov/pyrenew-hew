@@ -357,7 +357,9 @@ def main(
         raise ValueError(
             "timeseries_e model run not found. "
             "Please ensure that the timeseries forecasts "
-            "are generated before fitting Pyrenew models."
+            "are generated before fitting Pyrenew models. "
+            "If running a batch job, set the flag --model-family "
+            "'timeseries' to fit timeseries model."
         )
 
     logger.info("Recording git info...")
