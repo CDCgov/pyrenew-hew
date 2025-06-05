@@ -51,38 +51,30 @@ def main(
     output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
-    n_chains: int,
-    n_samples: int,
+    n_denominator_samples: int,
+    model_letters: str,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
-    fit_ed_visits: bool = False,
-    fit_hospital_admissions: bool = False,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    hew_letters = hew_letters_from_flags(
-        fit_ed_visits=fit_ed_visits,
-        fit_hospital_admissions=fit_hospital_admissions,
-    )
-    timeseries_model_name = f"timeseries_{hew_letters}"
+    if model_letters != "e":
+        raise ValueError(
+            "For the 'timeseries' model family, "
+            "the only supported model letter is 'e'."
+        )
+    timeseries_model_name = f"timeseries_{model_letters}"
 
     logger.info(
-        "Starting single-location forecasting pipeline for "
+        "Starting single-location timeseries forecasting pipeline for "
         f"model {timeseries_model_name}, location {loc}, "
         f"and report date {report_date}"
     )
 
-    if not (fit_ed_visits ^ fit_hospital_admissions):
-        raise ValueError(
-            "Multi-signal timeseries models are not yet supported. "
-            "Exactly one of `fit_ed_visits` or `fit_hospital_admissions` must be True."
-        )
-
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
-
     available_loc_level_reports = get_available_reports(
         state_level_nssp_data_dir
     )
@@ -202,7 +194,6 @@ def main(
     )
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
-    n_denominator_samples = n_samples * n_chains
     timeseries_forecasts(
         model_run_dir,
         timeseries_model_name,
@@ -349,12 +340,5 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    fit_flags = flags_from_hew_letters(args.model_letters)
-    delattr(args, "model_letters")
-    main(
-        **vars(args),
-        **{
-            k: fit_flags[k]
-            for k in ["fit_ed_visits", "fit_hospital_admissions"]
-        },
-    )
+    n_denominator_samples = args.n_samples * args.n_chains
+    main(**vars(args), n_denominator_samples=n_denominator_samples)
