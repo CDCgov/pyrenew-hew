@@ -72,16 +72,18 @@ jobs:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
-      - name: Fit model
+      - name: Fit models
         run: |
-          uv run bash pipelines/tests/test_fit.sh ${{ env.BASE_DIR }} \
+          uv run bash pipelines/tests/test_ts_fit.sh ${{ env.BASE_DIR }} \
+          ${{ matrix.disease }} ${{ matrix.location }}
+          uv run bash pipelines/tests/test_pyrenew_fit.sh ${{ env.BASE_DIR }} \
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
 
       - name: Upload model fitting output
         uses: actions/upload-artifact@v4
         with:
           name: |
-            test-fit-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
+            test-fit-${{ matrix.disease }}-${{ matrix.location }}
           path: ${{ env.BASE_DIR }}
 
   postprocess-models:
