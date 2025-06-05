@@ -12,6 +12,7 @@ from forecast_loc import (
     plot_and_save_loc_forecast,
 )
 from prep_data import process_and_save_loc
+from prep_eval_data import save_eval_data
 
 from pyrenew_hew.util import flags_from_hew_letters, hew_letters_from_flags
 
@@ -53,6 +54,7 @@ def main(
     n_chains: int,
     n_samples: int,
     exclude_last_n_days: int = 0,
+    eval_data_path: Path = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
 ) -> None:
@@ -151,14 +153,11 @@ def main(
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
-
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
     )
-
     model_batch_dir = Path(output_dir, model_batch_dir_name)
-
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
 
     os.makedirs(model_run_dir, exist_ok=True)
@@ -177,6 +176,21 @@ def main(
         model_run_dir=model_run_dir,
         logger=logger,
     )
+
+    logger.info("Getting eval data...")
+    if eval_data_path is None:
+        raise ValueError("No path to an evaluation dataset provided.")
+    save_eval_data(
+        loc=loc,
+        disease=disease,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+        latest_comprehensive_path=eval_data_path,
+        output_data_dir=Path(model_run_dir, "data"),
+        last_eval_date=report_date + timedelta(days=n_forecast_days),
+    )
+    logger.info("Done getting eval data.")
+
     logger.info("Generating epiweekly datasets from daily datasets...")
     generate_epiweekly_data(model_run_dir)
 
@@ -328,7 +342,19 @@ if __name__ == "__main__":
         ),
     )
 
+    parser.add_argument(
+        "--eval-data-path",
+        type=Path,
+        help=("Path to a parquet file containing compehensive truth data."),
+    )
+
     args = parser.parse_args()
     fit_flags = flags_from_hew_letters(args.model_letters)
     delattr(args, "model_letters")
-    main(**vars(args), **fit_flags)
+    main(
+        **vars(args),
+        **{
+            k: fit_flags[k]
+            for k in ["fit_ed_visits", "fit_hospital_admissions"]
+        },
+    )

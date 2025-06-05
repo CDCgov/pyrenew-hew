@@ -77,13 +77,19 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly_data(model_run_dir: Path) -> None:
+def generate_epiweekly_data(
+    model_run_dir: Path, data_names: str = None
+) -> None:
+    command = [
+        "Rscript",
+        "pipelines/generate_epiweekly_data.R",
+        f"{model_run_dir}",
+    ]
+    if data_names is not None:
+        command.extend(["--data-names", f"{data_names}"])
+
     result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/generate_epiweekly_data.R",
-            f"{model_run_dir}",
-        ],
+        command,
         capture_output=True,
     )
     if result.returncode != 0:
@@ -203,15 +209,6 @@ def main(
         raise ValueError(
             "pyrenew_null (fitting to no signals) "
             "is not supported by this pipeline"
-        )
-
-    if forecast_ed_visits and not os.path.exists(
-        Path(model_run_dir, "timeseries_e")
-    ):
-        raise ValueError(
-            "timeseries_e model run not found. "
-            "Please ensure that the timeseries forecasts "
-            "are generated before fitting Pyrenew models."
         )
 
     if credentials_path is not None:
@@ -352,8 +349,16 @@ def main(
     model_batch_dir = Path(output_dir, model_batch_dir_name)
 
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
-
     os.makedirs(model_run_dir, exist_ok=True)
+
+    if forecast_ed_visits and not os.path.exists(
+        Path(model_run_dir, "timeseries_e")
+    ):
+        raise ValueError(
+            "timeseries_e model run not found. "
+            "Please ensure that the timeseries forecasts "
+            "are generated before fitting Pyrenew models."
+        )
 
     logger.info("Recording git info...")
     record_git_info(model_run_dir)
