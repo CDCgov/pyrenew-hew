@@ -341,4 +341,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     n_denominator_samples = args.n_samples * args.n_chains
+    delattr(args, "n_samples")
+    delattr(args, "n_chains")
     main(**vars(args), n_denominator_samples=n_denominator_samples)
