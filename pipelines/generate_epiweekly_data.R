@@ -33,10 +33,11 @@ purrr::walk(script_packages, \(pkg) {
 #' @return None. The function writes the epiweekly data to a CSV file in the
 #'  specified directory.
 convert_daily_to_epiweekly <- function(
-    model_run_dir,
-    data_name,
-    strict = TRUE,
-    day_of_week = 7) {
+  model_run_dir,
+  data_name,
+  strict = TRUE,
+  day_of_week = 7
+) {
   data_path <- path(model_run_dir, "data", data_name)
 
   daily_data <- read_tsv(
