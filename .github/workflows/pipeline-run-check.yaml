@@ -108,11 +108,12 @@ jobs:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
-      - name: Download timeseries fitting output
+      - name: Download timeseries output
         uses: actions/download-artifact@v4
         with:
           pattern: test-fit-*
           path: ${{ env.BASE_DIR }}
+          merge-multiple: true
 
       - name: Fit model
         run: |
