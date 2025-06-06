@@ -15,8 +15,6 @@ from forecast_loc import (
 from prep_data import process_and_save_loc
 from prep_eval_data import save_eval_data
 
-from pyrenew_hew.util import flags_from_hew_letters, hew_letters_from_flags
-
 
 def timeseries_forecasts(
     model_run_dir: Path, model_name: str, n_forecast_days: int, n_samples: int
