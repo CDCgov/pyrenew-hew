@@ -81,9 +81,7 @@ load_and_aggregate_ts <- function(
 prop_from_timeseries <- function(
   e_denominator_samples,
   e_numerator_samples,
-  required_columns,
-  daily_training_dat,
-  epiweekly_training_dat
+  required_columns
 ) {
   prop_disease_ed_visits_tbl <-
     dplyr::left_join(
@@ -298,8 +296,6 @@ process_pyrenew_model <- function(
   pyrenew_model_name,
   ts_samples,
   required_columns_e,
-  daily_training_dat,
-  epiweekly_training_dat,
   n_forecast_days
 ) {
   model_info <- parse_model_run_dir_path(model_run_dir)
@@ -461,9 +457,7 @@ process_pyrenew_model <- function(
       prop_e_samples <- prop_from_timeseries(
         e_denominator_samples,
         e_numerator_samples,
-        required_columns,
-        daily_training_dat,
-        epiweekly_training_dat
+        required_columns
       )
 
       model_samples_tidy <- dplyr::bind_rows(
@@ -577,8 +571,6 @@ process_loc_forecast <- function(
       pyrenew_model_name,
       ts_samples,
       required_columns_e,
-      daily_training_dat,
-      epiweekly_training_dat,
       n_forecast_days
     )
   }
