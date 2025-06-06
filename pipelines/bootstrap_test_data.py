@@ -9,13 +9,14 @@ import polars.selectors as cs
 from scipy.stats import expon, norm
 
 from pipelines.prep_data import process_and_save_loc
+from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 
 states_to_simulate = ["MT", "CA"]
 diseases_to_simulate = ["COVID-19", "Influenza", "RSV"]
 loc = states_to_simulate[1]
 disease = diseases_to_simulate[1]
 max_train_date_str = "2024-12-21"
-max_train_date = dt.datetime.strptime(max_train_date_str, "%Y-%m-%d")
+max_train_date = dt.datetime.strptime(max_train_date_str, "%Y-%m-%d").date()
 # Verify this is a Saturday
 assert max_train_date.weekday() == 5
 n_training_weeks = 16
@@ -118,7 +119,6 @@ loc_level_nwss_data_columns = [
     "population_served",
     "quality_flag",
     "lod_sewage",
-    "site_index",
 ]
 
 
@@ -181,7 +181,6 @@ nwss_site_pop = (
         .alias("population_served")
     )
     .explode("wwtp_id", "population_served")
-    .with_row_index("site_index")
 )
 
 loc_level_nwss_data = nwss_etl_base.join(nwss_site_pop, on="wwtp_id").select(
@@ -277,6 +276,13 @@ nhsn_data = (
 nhsn_data.write_parquet(nhsn_data_path)
 
 # %% Run it
+
+nwss_data_raw = loc_level_nwss_data.lazy()
+nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
+    (pl.col("location") == loc) & (pl.col("date") >= first_training_date)
+)
+loc_level_nwss_data = preprocess_ww_data(nwss_data_cleaned.collect())
+
 process_and_save_loc(
     loc_abb=loc,
     disease=disease,
