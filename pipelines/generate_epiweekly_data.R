@@ -82,15 +82,13 @@ convert_daily_to_epiweekly <- function(
   write_tsv(epiweekly_data, output_file)
 }
 
-main <- function(model_run_dir) {
-  convert_daily_to_epiweekly(
-    model_run_dir,
-    data_name = "combined_training_data.tsv"
-  )
-  convert_daily_to_epiweekly(
-    model_run_dir,
-    data_name = "combined_eval_data.tsv"
-  )
+main <- function(model_run_dir, data_names) {
+  purrr::walk(data_names, \(data_name) {
+    convert_daily_to_epiweekly(
+      model_run_dir,
+      data_name = data_name
+    )
+  })
 }
 
 # Create a parser
@@ -98,8 +96,13 @@ p <- arg_parser("Create epiweekly data") |>
   add_argument(
     "model_run_dir",
     help = "Directory containing the model data and output."
+  ) |>
+  add_argument(
+    "--data-names",
+    help = "Comma-separated list of data file names to process.",
+    default = "combined_training_data.tsv combined_eval_data.tsv"
   )
 
 argv <- parse_args(p)
-
-main(argv$model_run_dir)
+data_names <- strsplit(argv$data_names, "\\s+")[[1]]
+main(argv$model_run_dir, data_names)
