@@ -21,7 +21,7 @@ from pyrenew_hew.util import flags_from_pyrenew_model_name
 max_train_date = "2024-12-21"
 # Verify this is a Saturday
 assert dt.datetime.strptime(max_train_date, "%Y-%m-%d").weekday() == 5
-n_forecast_weeks = 4
+n_forecast_weeks = 0
 n_forecast_days = 7 * n_forecast_weeks
 
 n_nssp_sites = 5
@@ -407,7 +407,7 @@ prod_param_estimates = (
                     "right_truncation",
                     "delay",
                 ],
-                "value": [rt_truncation_pmf, gi_pmf, delay_pmf],
+                "value": [gi_pmf, rt_truncation_pmf, delay_pmf],
             }
         )
         .join(

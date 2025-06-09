@@ -21,8 +21,6 @@ max_train_date = dt.datetime.strptime(max_train_date_str, "%Y-%m-%d").date()
 assert max_train_date.weekday() == 5
 n_training_weeks = 16
 n_training_days = n_training_weeks * 7
-n_forecast_weeks = 4
-n_forecast_days = 7 * n_forecast_weeks
 
 n_nssp_sites = 5
 n_ww_sites = 5
@@ -132,9 +130,7 @@ nwss_etl_base = (
     .with_columns(
         (
             pl.lit(max_train_date)
-            + pl.duration(
-                days=(pl.col("time") - pl.col("time").max() + n_forecast_days)
-            )
+            + pl.duration(days=(pl.col("time") - pl.col("time").max()))
         ).alias("sample_collect_date"),
         pl.lit(loc).alias("state"),
         pl.lit("wwtp").alias("sample_location"),
@@ -223,7 +219,7 @@ param_estimates = (
                     "right_truncation",
                     "delay",
                 ],
-                "value": [rt_truncation_pmf, gi_pmf, delay_pmf],
+                "value": [gi_pmf, rt_truncation_pmf, delay_pmf],
             }
         )
         .join(
