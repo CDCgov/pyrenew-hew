@@ -42,9 +42,23 @@ def dirichlet_integer_split(n, k, alpha=1.0):
     return counts
 
 
+import shutil
+
+shutil.copy(
+    Path("pipelines/priors/prod_priors.py"),
+    Path(
+        "pipelines/tests/end_to_end_test_output/bootstrap_private_data/priors.py"
+    ),
+)
+
 # %% Use an existing model to simulate data
-model_run_dir = "/Users/damon/Downloads/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-10-22_t_2024-12-20/model_runs/CA"
-model_name = "pyrenew_hew"
+model_run_dir = "/Users/damon/Documents/GitHub/pyrenew-hew/pipelines/tests/end_to_end_test_output/bootstrap_private_data"
+(my_model, my_data) = build_model_from_dir(
+    model_run_dir,
+    fit_ed_visits=True,
+    fit_hospital_admissions=True,
+    fit_wastewater=True,
+)
 
 states_to_simulate = ["MT", "CA"]
 diseases_to_simulate = ["COVID-19", "Influenza", "RSV"]
@@ -56,33 +70,10 @@ state_disease_key = pl.DataFrame(
 
 max_draw = state_disease_key.height
 
-model_run_dir = Path(model_run_dir)
-
-model_dir = Path(model_run_dir, model_name)
-if not model_dir.exists():
-    raise FileNotFoundError(f"The directory {model_dir} does not exist.")
-
-(my_model, my_data) = build_model_from_dir(
-    model_run_dir, **flags_from_pyrenew_model_name(model_name)
-)
-
-
-with open(
-    model_dir / "posterior_samples.pickle",
-    "rb",
-) as file:
-    my_model.mcmc = pickle.load(file)
 
 prior_predictive_samples = my_model.prior_predictive(
     rng_key=jr.key(20),
     numpyro_predictive_args={"num_samples": max_draw},
-    data=my_data.to_forecast_data(n_forecast_points=n_forecast_days),
-    sample_ed_visits=True,
-    sample_hospital_admissions=True,
-    sample_wastewater=True,
-)
-
-posterior_predictive_samples = my_model.posterior_predictive(
     data=my_data.to_forecast_data(n_forecast_points=n_forecast_days),
     sample_ed_visits=True,
     sample_hospital_admissions=True,
@@ -97,7 +88,6 @@ predictive_var_names = [
 
 idata = az.from_numpyro(
     prior=prior_predictive_samples,
-    posterior_predictive=posterior_predictive_samples,
 ).sel(draw=slice(0, max_draw - 1))
 
 
@@ -105,7 +95,7 @@ idata = az.from_numpyro(
 def create_var_df(idata: az.InferenceData, var: str):
     df = (
         pl.from_pandas(
-            idata.posterior_predictive[var].to_dataframe(),
+            idata.prior[var].to_dataframe(),
             include_index=True,
         )
         .join(state_disease_key, on="draw")
