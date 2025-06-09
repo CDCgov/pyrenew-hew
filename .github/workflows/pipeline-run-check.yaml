@@ -23,6 +23,9 @@ jobs:
       - name: Set up R with hewr package
         uses: ./.github/actions/setup-hewr
 
+      - name: Bootstrap test data
+        run: uv run python pipelines/bootstrap_test_data.py ${{ env.DATA_DIR }}
+
       - name: Generate test data
         run: uv run python pipelines/generate_test_data.py ${{ env.DATA_DIR }}
 

@@ -44,11 +44,13 @@ def dirichlet_integer_split(n, k, alpha=1.0):
 
 import shutil
 
+bootstrap_data_dir = Path(
+    "pipelines/tests/end_to_end_test_output/bootstrap_private_data"
+)
+bootstrap_data_dir.mkdir(parents=True, exist_ok=True)
 shutil.copy(
     Path("pipelines/priors/prod_priors.py"),
-    Path(
-        "pipelines/tests/end_to_end_test_output/bootstrap_private_data/priors.py"
-    ),
+    Path(bootstrap_data_dir, "priors.py"),
 )
 
 # %% Use an existing model to simulate data

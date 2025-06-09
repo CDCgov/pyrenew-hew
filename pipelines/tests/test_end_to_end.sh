@@ -15,6 +15,7 @@ if [ -d $BASE_DIR ]; then
 	fi
 fi
 
+uv run python pipelines/bootstrap_test_data.py
 uv run python pipelines/generate_test_data.py $BASE_DIR/private_data
 
 if [ $? -ne 0 ]; then
