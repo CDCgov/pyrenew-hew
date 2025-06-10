@@ -127,8 +127,8 @@ def main(
     if last_training_date >= report_date:
         raise ValueError(
             "Last training date must be before the report date. "
-            "Got a last training date of {last_training_date} "
-            "with a report date of {report_date}."
+            f"Got a last training date of {last_training_date} "
+            f"with a report date of {report_date}."
         )
 
     logger.info(f"last training date: {last_training_date}")
