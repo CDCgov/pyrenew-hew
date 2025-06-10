@@ -524,7 +524,8 @@ def process_and_save_loc(
             temp_file=nhsn_data_path,
         )
         .filter(
-            pl.col("weekendingdate") <= last_training_date
+            (pl.col("weekendingdate") <= last_training_date)
+            & (pl.col("weekendingdate") >= first_training_date)
         )  # in testing mode, this isn't guaranteed
         .with_columns(pl.lit("train").alias("data_type"))
     )
