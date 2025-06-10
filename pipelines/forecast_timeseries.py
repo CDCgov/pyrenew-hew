@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
-from forecast_loc import (
+from forecast_pyrenew import (
     generate_epiweekly_data,
     get_available_reports,
     plot_and_save_loc_forecast,

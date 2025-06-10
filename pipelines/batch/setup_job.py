@@ -175,7 +175,7 @@ def main(
     if model_family == "pyrenew":
         base_call = (
             "/bin/bash -c '"
-            "uv run python pipelines/forecast_loc.py "
+            "uv run python pipelines/forecast_pyrenew.py "
             "--disease {disease} "
             "--loc {loc} "
             f"--n-training-days {n_training_days} "
