@@ -10,10 +10,31 @@ import polars as pl
 from forecast_pyrenew import (
     generate_epiweekly_data,
     get_available_reports,
-    plot_and_save_loc_forecast,
 )
 from prep_data import process_and_save_loc
 from prep_eval_data import save_eval_data
+
+
+def plot_and_save_loc_forecast(
+    model_run_dir: Path,
+    n_forecast_days: int,
+    timeseries_model_name: str,
+) -> None:
+    command = [
+        "Rscript",
+        "pipelines/plot_and_save_loc_forecast.R",
+        f"{model_run_dir}",
+        "--n-forecast-days",
+        f"{n_forecast_days}",
+        "--timeseries-model-name",
+        f"{timeseries_model_name}",
+    ]
+    result = subprocess.run(command, capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"plot_and_save_loc_forecast: {result.stderr.decode('utf-8')}"
+        )
+    return None
 
 
 def timeseries_forecasts(
@@ -217,9 +238,8 @@ def main(
         n_denominator_samples,
     )
     logger.info("Postprocessing forecast...")
-    plot_and_save_loc_forecast(
-        model_run_dir, n_days_past_last_training, None, timeseries_model_name
-    )
+    plot_and_save_loc_forecast
+    (model_run_dir, n_days_past_last_training, None, timeseries_model_name)
     logger.info("Postprocessing complete.")
 
     logger.info(

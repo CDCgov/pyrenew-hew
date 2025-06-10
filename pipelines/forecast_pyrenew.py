@@ -131,11 +131,16 @@ def plot_and_save_loc_forecast(
         f"{model_run_dir}",
         "--n-forecast-days",
         f"{n_forecast_days}",
-        "--timeseries-model-name",
-        f"{timeseries_model_name}",
+        "--pyrenew-model-name",
+        f"{pyrenew_model_name}",
     ]
-    if pyrenew_model_name is not None:
-        command.extend(["--pyrenew-model-name", f"{pyrenew_model_name}"])
+    if timeseries_model_name is not None:
+        command.extend(
+            [
+                "--timeseries-model-name",
+                f"{timeseries_model_name}",
+            ]
+        )
 
     result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
@@ -351,7 +356,7 @@ def main(
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
     os.makedirs(model_run_dir, exist_ok=True)
 
-    if forecast_ed_visits and not os.path.exists(
+    if fit_ed_visits and not os.path.exists(
         Path(model_run_dir, "timeseries_e")
     ):
         raise ValueError(
@@ -435,12 +440,17 @@ def main(
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    plot_and_save_loc_forecast(
-        model_run_dir,
-        n_days_past_last_training,
-        pyrenew_model_name,
-        "timeseries_e",
-    )
+    if fit_ed_visits:
+        plot_and_save_loc_forecast(
+            model_run_dir,
+            n_days_past_last_training,
+            pyrenew_model_name,
+            "timeseries_e",
+        )
+    else:
+        plot_and_save_loc_forecast(
+            model_run_dir, n_days_past_last_training, pyrenew_model_name
+        )
     logger.info("Postprocessing complete.")
 
     logger.info(
