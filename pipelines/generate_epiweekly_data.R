@@ -99,10 +99,10 @@ p <- arg_parser("Create epiweekly data") |>
   ) |>
   add_argument(
     "--data-names",
-    help = "Comma-separated list of data file names to process.",
+    help = "Whitespace-separated list of data file names to process.",
     default = "combined_training_data.tsv combined_eval_data.tsv"
   )
 
 argv <- parse_args(p)
-data_names <- strsplit(argv$data_names, "\\s+")[[1]]
+data_names <- stringr::str_split_1(argv$data_names, "\\s+")
 main(argv$model_run_dir, data_names)

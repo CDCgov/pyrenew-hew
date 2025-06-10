@@ -356,8 +356,8 @@ def main(
     ):
         raise ValueError(
             "timeseries_e model run not found. "
-            "Please ensure that the timeseries forecasts "
-            "are generated before fitting Pyrenew models. "
+            "Please ensure that the timeseries forecasts for the ED visit (E) signal "
+            "are generated before fitting Pyrenew models with the E signal. "
             "If running a batch job, set the flag --model-family "
             "'timeseries' to fit timeseries model."
         )

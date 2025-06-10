@@ -121,7 +121,7 @@ def main(
 
     if model_family == "timeseries" and model_letters != "e":
         raise ValueError(
-            "Only model_letters 'e' is supported for 'timeseries' model_family."
+            "Only model_letters 'e' is supported for the 'timeseries' model_family."
         )
 
     pyrenew_hew_output_container = (
