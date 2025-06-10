@@ -441,16 +441,17 @@ def main(
 
     logger.info("Postprocessing forecast...")
     if fit_ed_visits:
-        plot_and_save_loc_forecast(
-            model_run_dir,
-            n_days_past_last_training,
-            pyrenew_model_name,
-            "timeseries_e",
-        )
+        timeseries_model_name = "timeseries_e"
     else:
-        plot_and_save_loc_forecast(
-            model_run_dir, n_days_past_last_training, pyrenew_model_name
-        )
+        timeseries_model_name = None
+
+    plot_and_save_loc_forecast(
+        model_run_dir,
+        n_days_past_last_training,
+        pyrenew_model_name,
+        timeseries_model_name,
+    )
+
     logger.info("Postprocessing complete.")
 
     logger.info(
