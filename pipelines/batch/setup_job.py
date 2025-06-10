@@ -173,56 +173,39 @@ def main(
     )
 
     if model_family == "pyrenew":
-        base_call = (
-            "/bin/bash -c '"
-            "uv run python pipelines/forecast_pyrenew.py "
-            "--disease {disease} "
-            "--loc {loc} "
-            f"--n-training-days {n_training_days} "
-            f"--n-warmup {n_warmup} "
-            f"--n-samples {n_samples} "
-            "--facility-level-nssp-data-dir nssp-etl/gold "
-            "--state-level-nssp-data-dir "
-            "nssp-archival-vintages/gold "
-            "--param-data-dir params "
-            "--nwss-data-dir nwss-vintages "
-            "--output-dir {output_dir} "
-            "--priors-path pipelines/priors/prod_priors.py "
-            "--credentials-path config/creds.toml "
-            "--report-date {report_date} "
-            f"--exclude-last-n-days {exclude_last_n_days} "
-            f"--model-letters {model_letters} "
-            f"--additional-forecast-letters {additional_forecast_letters} "
-            "--eval-data-path "
-            "nssp-etl/latest_comprehensive.parquet"
-            "'"
-        )
+        run_script = "forecast_pyrenew.py"
     elif model_family == "timeseries":
-        base_call = (
-            "/bin/bash -c '"
-            "uv run python pipelines/forecast_timeseries.py "
-            "--disease {disease} "
-            "--report-date {report_date} "
-            "--loc {loc} "
-            "--facility-level-nssp-data-dir nssp-etl/gold "
-            "--state-level-nssp-data-dir "
-            "nssp-archival-vintages/gold "
-            "--param-data-dir params "
-            "--output-dir {output_dir} "
-            f"--n-training-days {n_training_days} "
-            f"--n-samples {n_samples} "
-            "--credentials-path config/creds.toml "
-            f"--exclude-last-n-days {exclude_last_n_days} "
-            f"--model-letters {model_letters} "
-            "--eval-data-path "
-            "nssp-etl/latest_comprehensive.parquet"
-            "'"
-        )
+        run_script = "forecast_timeseries.py"
     else:
         raise ValueError(
             f"Unsupported model family: {model_family}. "
             "Supported values are 'pyrenew' and 'timeseries'."
         )
+
+    base_call = (
+        "/bin/bash -c '"
+        f"uv run python pipelines/{run_script} "
+        "--disease {disease} "
+        "--loc {loc} "
+        f"--n-training-days {n_training_days} "
+        f"--n-warmup {n_warmup} "
+        f"--n-samples {n_samples} "
+        "--facility-level-nssp-data-dir nssp-etl/gold "
+        "--state-level-nssp-data-dir "
+        "nssp-archival-vintages/gold "
+        "--param-data-dir params "
+        "--nwss-data-dir nwss-vintages "
+        "--output-dir {output_dir} "
+        "--priors-path pipelines/priors/prod_priors.py "
+        "--credentials-path config/creds.toml "
+        "--report-date {report_date} "
+        f"--exclude-last-n-days {exclude_last_n_days} "
+        f"--model-letters {model_letters} "
+        f"--additional-forecast-letters {additional_forecast_letters} "
+        "--eval-data-path "
+        "nssp-etl/latest_comprehensive.parquet"
+        "'"
+    )
 
     loc_abbrs = location_table.get_column("short_name").to_list()
     if locations_include is None:
