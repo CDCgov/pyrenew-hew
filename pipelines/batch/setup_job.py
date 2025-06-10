@@ -174,8 +174,15 @@ def main(
 
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
+        additional_args = (
+            f"--n-warmup {n_warmup} "
+            "--nwss-data-dir nwss-vintages "
+            "--priors-path pipelines/priors/prod_priors.py "
+            f"--additional-forecast-letters {additional_forecast_letters} "
+        )
     elif model_family == "timeseries":
         run_script = "forecast_timeseries.py"
+        additional_args = ""
     else:
         raise ValueError(
             f"Unsupported model family: {model_family}. "
@@ -188,22 +195,19 @@ def main(
         "--disease {disease} "
         "--loc {loc} "
         f"--n-training-days {n_training_days} "
-        f"--n-warmup {n_warmup} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--nwss-data-dir nwss-vintages "
         "--output-dir {output_dir} "
-        "--priors-path pipelines/priors/prod_priors.py "
         "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
-        f"--additional-forecast-letters {additional_forecast_letters} "
         "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet"
+        "nssp-etl/latest_comprehensive.parquet "
+        f"{additional_args}"
         "'"
     )
 
