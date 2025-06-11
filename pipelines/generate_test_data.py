@@ -1,3 +1,4 @@
+import argparse
 import datetime as dt
 import itertools
 import shutil
@@ -17,11 +18,22 @@ from pipelines.build_pyrenew_model import (
 from pipelines.prep_data import process_and_save_loc
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 
-# Read these from CLI
-base_dir = Path("pipelines", "end_to_end_test_output")
+parser = argparse.ArgumentParser(
+    description="Create fit data for disease modeling."
+)
+
+parser.add_argument(
+    "base_dir",
+    type=Path,
+    help="Base directory for output data.",
+)
+
+args = parser.parse_args()
+base_dir = args.base_dir
+
+
 bootstrap_dir_name = "bootstrap_private_data"
 private_data_dir_name = "private_data"
-
 bootstrap_private_data_dir = Path(base_dir, bootstrap_dir_name)
 bootstrap_private_data_dir.mkdir(parents=True, exist_ok=True)
 

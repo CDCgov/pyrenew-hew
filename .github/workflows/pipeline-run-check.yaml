@@ -24,7 +24,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Generate test data
-        run: uv run python pipelines/generate_test_data.py
+        run: uv run python pipelines/generate_test_data.py ${{ BASE_DIR }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
