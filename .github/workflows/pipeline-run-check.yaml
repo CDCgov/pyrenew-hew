@@ -20,8 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up R with hewr package
-        uses: ./.github/actions/setup-hewr
+      - name: Set up Pyrenew-HEW via UV
+        uses: ./.github/actions/setup-pyrenew-hew
 
       - name: Generate test data
         run: uv run python pipelines/generate_test_data.py ${{ env.BASE_DIR }}
