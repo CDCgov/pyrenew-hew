@@ -174,6 +174,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
+    nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
     credentials_path: Path = None,
@@ -388,6 +389,7 @@ def main(
         model_run_dir=model_run_dir,
         logger=logger,
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
     logger.info("Getting eval data...")
     if eval_data_path is None:
@@ -401,6 +403,7 @@ def main(
         output_data_dir=Path(model_run_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
     logger.info("Done getting eval data.")
 
@@ -625,6 +628,12 @@ if __name__ == "__main__":
             "Fit signals are always forecast."
         ),
         default="he",
+    )
+    parser.add_argument(
+        "--nhsn-data-path",
+        type=Path,
+        help=("Path to local NHSN data (for local testing)"),
+        default=None,
     )
 
     args = parser.parse_args()

@@ -15,7 +15,7 @@ if [ -d $BASE_DIR ]; then
 	fi
 fi
 
-Rscript pipelines/generate_test_data.R $BASE_DIR/private_data
+uv run python pipelines/generate_test_data.py $BASE_DIR
 
 if [ $? -ne 0 ]; then
 	echo "TEST-MODE FAIL: Generating test data failed"

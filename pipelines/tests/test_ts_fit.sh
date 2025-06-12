@@ -18,7 +18,7 @@ python pipelines/forecast_timeseries.py \
 	--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
 	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
 	--output-dir "$BASE_DIR/2024-12-21_forecasts" \
-	--n-training-days 60 \
+	--n-training-days 90 \
 	--n-chains 2 \
 	--n-samples 250 \
 	--model-letters $model_letters \

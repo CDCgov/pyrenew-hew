@@ -21,6 +21,7 @@ def save_eval_data(
     last_eval_date: datetime.date = None,
     output_file_name: str = "eval_data.tsv",
     credentials_dict: dict = None,
+    nhsn_data_path: Path | str = None,
 ):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -50,13 +51,20 @@ def save_eval_data(
         .sort("date")
     )
 
-    nhsn_data = get_nhsn(
-        start_date=first_training_date,
-        end_date=None,
-        disease=disease,
-        loc_abb=loc,
-        credentials_dict=credentials_dict,
-    ).with_columns(data_type=pl.lit("eval"))
+    nhsn_data = (
+        get_nhsn(
+            start_date=first_training_date,
+            end_date=None,
+            disease=disease,
+            loc_abb=loc,
+            credentials_dict=credentials_dict,
+            local_data_file=nhsn_data_path,
+        )
+        .filter(
+            pl.col("weekendingdate") >= first_training_date
+        )  # in testing mode, this isn't guaranteed
+        .with_columns(data_type=pl.lit("eval"))
+    )
 
     combined_eval_dat = combine_surveillance_data(
         nssp_data=nssp_data,

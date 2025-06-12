@@ -31,63 +31,65 @@ def get_nhsn(
     loc_abb: str,
     temp_dir: Path = None,
     credentials_dict: dict = None,
-) -> None:
-    if temp_dir is None:
-        temp_dir = tempfile.mkdtemp()
-    if credentials_dict is None:
-        credentials_dict = dict()
+    local_data_file: Path = None,
+) -> pl.DataFrame:
+    if local_data_file is None:
+        if temp_dir is None:
+            temp_dir = tempfile.mkdtemp()
+        if credentials_dict is None:
+            credentials_dict = dict()
 
-    def py_scalar_to_r_scalar(py_scalar):
-        if py_scalar is None:
-            return "NULL"
-        return f"'{str(py_scalar)}'"
+        def py_scalar_to_r_scalar(py_scalar):
+            if py_scalar is None:
+                return "NULL"
+            return f"'{str(py_scalar)}'"
 
-    disease_nhsn_key = {
-        "COVID-19": "totalconfc19newadm",
-        "Influenza": "totalconfflunewadm",
-    }
+        disease_nhsn_key = {
+            "COVID-19": "totalconfc19newadm",
+            "Influenza": "totalconfflunewadm",
+        }
 
-    columns = disease_nhsn_key[disease]
+        columns = disease_nhsn_key[disease]
 
-    loc_abb_for_query = loc_abb if loc_abb != "US" else "USA"
+        loc_abb_for_query = loc_abb if loc_abb != "US" else "USA"
 
-    temp_file = Path(temp_dir, "nhsn_temp.parquet")
-    api_key_id = credentials_dict.get(
-        "nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID")
-    )
-    api_key_secret = credentials_dict.get(
-        "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
-    )
-
-    r_command = [
-        "Rscript",
-        "-e",
-        f"""
-        forecasttools::pull_nhsn(
-            api_key_id = {py_scalar_to_r_scalar(api_key_id)},
-            api_key_secret = {py_scalar_to_r_scalar(api_key_secret)},
-            start_date = {py_scalar_to_r_scalar(start_date)},
-            end_date = {py_scalar_to_r_scalar(end_date)},
-            columns = {py_scalar_to_r_scalar(columns)},
-            jurisdictions = {py_scalar_to_r_scalar(loc_abb_for_query)}
-        ) |>
-        dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
-        dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
-          jurisdiction
-        )) |>
-        dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
-        dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
-        arrow::write_parquet("{str(temp_file)}")
-        """,
-    ]
-
-    result = subprocess.run(r_command)
-
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
+        local_data_file = Path(temp_dir, "nhsn_temp.parquet")
+        api_key_id = credentials_dict.get(
+            "nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID")
         )
-    raw_dat = pl.read_parquet(temp_file)
+        api_key_secret = credentials_dict.get(
+            "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
+        )
+
+        r_command = [
+            "Rscript",
+            "-e",
+            f"""
+            forecasttools::pull_nhsn(
+                api_key_id = {py_scalar_to_r_scalar(api_key_id)},
+                api_key_secret = {py_scalar_to_r_scalar(api_key_secret)},
+                start_date = {py_scalar_to_r_scalar(start_date)},
+                end_date = {py_scalar_to_r_scalar(end_date)},
+                columns = {py_scalar_to_r_scalar(columns)},
+                jurisdictions = {py_scalar_to_r_scalar(loc_abb_for_query)}
+            ) |>
+            dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
+            dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
+            jurisdiction
+            )) |>
+            dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
+            dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
+            arrow::write_parquet("{str(local_data_file)}")
+            """,
+        ]
+
+        result = subprocess.run(r_command)
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
+            )
+    raw_dat = pl.read_parquet(local_data_file)
     dat = raw_dat.with_columns(
         weekendingdate=pl.col("weekendingdate").cast(pl.Date)
     )
@@ -446,6 +448,7 @@ def process_and_save_loc(
     loc_level_nssp_data: pl.LazyFrame = None,
     loc_level_nwss_data: pl.LazyFrame = None,
     credentials_dict: dict = None,
+    nhsn_data_path: Path | str = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -511,13 +514,21 @@ def process_and_save_loc(
         .sort("date")
     )
 
-    nhsn_training_data = get_nhsn(
-        start_date=first_training_date,
-        end_date=last_training_date,
-        disease=disease,
-        loc_abb=loc_abb,
-        credentials_dict=credentials_dict,
-    ).with_columns(pl.lit("train").alias("data_type"))
+    nhsn_training_data = (
+        get_nhsn(
+            start_date=first_training_date,
+            end_date=last_training_date,
+            disease=disease,
+            loc_abb=loc_abb,
+            credentials_dict=credentials_dict,
+            local_data_file=nhsn_data_path,
+        )
+        .filter(
+            (pl.col("weekendingdate") <= last_training_date)
+            & (pl.col("weekendingdate") >= first_training_date)
+        )  # in testing mode, this isn't guaranteed
+        .with_columns(pl.lit("train").alias("data_type"))
+    )
 
     nhsn_step_size = 7
 
