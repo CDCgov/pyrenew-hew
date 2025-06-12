@@ -58,7 +58,7 @@ def save_eval_data(
             disease=disease,
             loc_abb=loc,
             credentials_dict=credentials_dict,
-            temp_file=nhsn_data_path,
+            local_data_file=nhsn_data_path,
         )
         .filter(
             pl.col("weekendingdate") >= first_training_date

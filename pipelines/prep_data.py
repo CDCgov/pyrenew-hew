@@ -31,9 +31,9 @@ def get_nhsn(
     loc_abb: str,
     temp_dir: Path = None,
     credentials_dict: dict = None,
-    temp_file: Path = None,
+    local_data_file: Path = None,
 ) -> pl.DataFrame:
-    if temp_file is None:
+    if local_data_file is None:
         if temp_dir is None:
             temp_dir = tempfile.mkdtemp()
         if credentials_dict is None:
@@ -53,7 +53,7 @@ def get_nhsn(
 
         loc_abb_for_query = loc_abb if loc_abb != "US" else "USA"
 
-        temp_file = Path(temp_dir, "nhsn_temp.parquet")
+        local_data_file = Path(temp_dir, "nhsn_temp.parquet")
         api_key_id = credentials_dict.get(
             "nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID")
         )
@@ -79,7 +79,7 @@ def get_nhsn(
             )) |>
             dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
             dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
-            arrow::write_parquet("{str(temp_file)}")
+            arrow::write_parquet("{str(local_data_file)}")
             """,
         ]
 
@@ -89,7 +89,7 @@ def get_nhsn(
             raise RuntimeError(
                 f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
             )
-    raw_dat = pl.read_parquet(temp_file)
+    raw_dat = pl.read_parquet(local_data_file)
     dat = raw_dat.with_columns(
         weekendingdate=pl.col("weekendingdate").cast(pl.Date)
     )
@@ -521,7 +521,7 @@ def process_and_save_loc(
             disease=disease,
             loc_abb=loc_abb,
             credentials_dict=credentials_dict,
-            temp_file=nhsn_data_path,
+            local_data_file=nhsn_data_path,
         )
         .filter(
             (pl.col("weekendingdate") <= last_training_date)
