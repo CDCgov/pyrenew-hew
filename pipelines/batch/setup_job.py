@@ -21,6 +21,7 @@ def main(
     model_letters: str,
     job_id: str,
     pool_id: str,
+    model_family: str,
     diseases: str | list[str],
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
@@ -96,6 +97,10 @@ def main(
     test
         Is this a testing run? Default ``False``.
 
+    model_family
+        The model family to use for the job. Default 'pyrenew'.
+        Supported values are 'pyrenew' and 'timeseries'.
+
     Returns
     -------
     None
@@ -113,6 +118,11 @@ def main(
 
     validate_hew_letters(model_letters)
     validate_hew_letters(additional_forecast_letters)
+
+    if model_family == "timeseries" and model_letters != "e":
+        raise ValueError(
+            "Only model_letters 'e' is supported for the 'timeseries' model_family."
+        )
 
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
@@ -162,28 +172,42 @@ def main(
         ],
     )
 
+    if model_family == "pyrenew":
+        run_script = "forecast_pyrenew.py"
+        additional_args = (
+            f"--n-warmup {n_warmup} "
+            "--nwss-data-dir nwss-vintages "
+            "--priors-path pipelines/priors/prod_priors.py "
+            f"--additional-forecast-letters {additional_forecast_letters} "
+        )
+    elif model_family == "timeseries":
+        run_script = "forecast_timeseries.py"
+        additional_args = ""
+    else:
+        raise ValueError(
+            f"Unsupported model family: {model_family}. "
+            "Supported values are 'pyrenew' and 'timeseries'."
+        )
+
     base_call = (
         "/bin/bash -c '"
-        "uv run python pipelines/forecast_loc.py "
+        f"uv run python pipelines/{run_script} "
         "--disease {disease} "
         "--loc {loc} "
         f"--n-training-days {n_training_days} "
-        f"--n-warmup {n_warmup} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--nwss-data-dir nwss-vintages "
         "--output-dir {output_dir} "
-        "--priors-path pipelines/priors/prod_priors.py "
         "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
-        f"--additional-forecast-letters {additional_forecast_letters} "
         "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet"
+        "nssp-etl/latest_comprehensive.parquet "
+        f"{additional_args}"
         "'"
     )
 
@@ -223,7 +247,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
+    parser.add_argument("--test", action="store_true", help="Run in test mode")
     parser.add_argument(
         "model_letters",
         type=str,
@@ -330,6 +354,17 @@ if __name__ == "__main__":
             "Fit signals are always forecast."
         ),
         default=None,
+    )
+
+    parser.add_argument(
+        "--model-family",
+        type=str,
+        help=(
+            "Model family to use for the job. "
+            "Supported values are 'pyrenew' and 'timeseries'. "
+            "Default 'pyrenew'."
+        ),
+        default="pyrenew",
     )
 
     args = parser.parse_args()
