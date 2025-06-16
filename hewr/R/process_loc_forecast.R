@@ -27,26 +27,24 @@ load_and_aggregate_ts <- function(
       ext = "parquet"
     ) |>
       purrr::map(arrow::read_parquet),
-    resolution = c("daily", "epiweekly"),
     observed = list(daily_training_dat, epiweekly_training_dat) |>
-      purrr::map(\(x) dplyr::select(x, -"data_type", -"lab_site_index")),
-    aggregated_numerator = FALSE
+      purrr::map(\(x) dplyr::select(x, -"data_type", -"lab_site_index"))
   ) |>
     dplyr::mutate(
       data = purrr::pmap(
-        list(.data$samples, .data$observed, .data$resolution == "epiweekly"),
+        list(.data$samples, .data$observed),
         function(samples, observed, epiweekly) {
           to_tidy_draws_timeseries(
             tidy_forecast = samples,
-            observed = observed,
-            epiweekly = epiweekly
+            observed = observed
           )
         }
       )
     ) |>
-    dplyr::select("resolution", "aggregated_numerator", "data") |>
+    dplyr::select("data") |>
     tidyr::unnest("data") |>
     dplyr::mutate(
+      aggregated_numerator = FALSE,
       aggregated_denominator = dplyr::if_else(
         stringr::str_starts(.data$.variable, "prop_"),
         FALSE,
@@ -224,7 +222,8 @@ to_tidy_draws_timeseries <- function(
   epiweekly = FALSE
 ) {
   first_forecast_date <- min(tidy_forecast[[date_colname]])
-  day_count <- ifelse(epiweekly, 7, 1)
+  resolution <- unique(tidy_forecast$resolution)
+  day_count <- ifelse(resolution == "epiweekly", 7, 1)
   n_draws <- max(tidy_forecast[[sample_id_colname]])
 
   target_variables <- unique(tidy_forecast$.variable)
@@ -233,7 +232,8 @@ to_tidy_draws_timeseries <- function(
       .data[[date_colname]] < !!first_forecast_date,
       .data$.variable %in% target_variables
     ) |>
-    tidyr::expand_grid(!!sample_id_colname := 1:n_draws)
+    tidyr::expand_grid(!!sample_id_colname := 1:n_draws) |>
+    dplyr::mutate(resolution = !!resolution)
 
   stopifnot(
     max(as.Date(transformed_obs[[date_colname]])) +
