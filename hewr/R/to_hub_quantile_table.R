@@ -1,3 +1,33 @@
+create_model_id <- function(
+  model,
+  resolution,
+  aggregated_numerator,
+  aggregated_denominator
+) {
+  glue::glue(
+    "{model}_{resolution}",
+    "{dplyr::if_else(vctrs::vec_equal(",
+    "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
+    "{dplyr::if_else(vctrs::vec_equal(",
+    "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
+  )
+}
+
+model_run_dir_to_hub_q_tbl <- function(
+  model_output_dir,
+  output_path
+) {}
+
+model_loc_dir_to_hub_q_tbl <- function(
+  model_loc_dir,
+  output_path
+) {}
+
+model_fit_dir_to_hub_q_tbl <- function(
+  model_loc_dir,
+  output_path
+) {}
+
 #' Create a hubverse-format forecast quantile table
 #' from a model batch directory containing forecasts
 #' for multiple locations as daily MCMC draws.
@@ -9,21 +39,6 @@
 #' @return The complete hubverse-format [`tibble`][tibble::tibble()].
 #' @export
 to_hub_quantile_table <- function(model_batch_dir) {
-  create_model_id <- function(
-    model,
-    resolution,
-    aggregated_numerator,
-    aggregated_denominator
-  ) {
-    glue::glue(
-      "{model}_{resolution}",
-      "{dplyr::if_else(vctrs::vec_equal(",
-      "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
-      "{dplyr::if_else(vctrs::vec_equal(",
-      "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
-    )
-  }
-
   model_runs_path <- fs::path(model_batch_dir, "model_runs")
 
   batch_params <- parse_model_batch_dir_path(
@@ -50,7 +65,7 @@ to_hub_quantile_table <- function(model_batch_dir) {
     samples_paths <- fs::dir_ls(
       model_run_dir,
       recurse = TRUE,
-      glob = "*/samples.parquet"
+      glob = "*/*samples*.parquet"
     )
     quantiles_paths <- fs::dir_ls(
       model_run_dir,
