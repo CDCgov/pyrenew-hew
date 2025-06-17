@@ -13,16 +13,6 @@ create_model_id <- function(
   )
 }
 
-path_up_to <- function(path, up_to) {
-  path_parts <- fs::path_split(path)
-  up_to_index <- purrr::map(path_parts, \(x) which(x == up_to))
-  stopifnot(lengths(up_to_index) == 1)
-  purrr::map2_vec(path_parts, up_to_index, \(parts, index) {
-    fs::path_join(head(parts, index))
-  })
-}
-
-
 var_to_target <- function(variable, disease) {
   disease_abbr <- dplyr::case_match(
     disease,
@@ -41,6 +31,13 @@ var_to_target <- function(variable, disease) {
 }
 
 
+#' Create a hubverse-format forecast quantile table
+#'
+#' @param model_fit_dir Model fit directory containing samples and/or quantiles
+#'
+#' @returns A hubverse quantile table
+#' @export
+#' @name to_hub_quantile_table
 model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
   model_runs_path <- path_up_to(model_fit_dir, "model_runs")
   model_batch_dir <- fs::path_dir(model_runs_path)
@@ -164,24 +161,20 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
   forecast_data
 }
 
+#' @export
+#' @rdname to_hub_quantile_table
+model_loc_dir_to_hub_q_tbl <- function(model_loc_dir) {
+  fs::dir_ls(model_loc_dir, type = "directory") |>
+    fs::path_filter(regexp = "data$", invert = TRUE) |>
+    purrr::map(model_fit_dir_to_hub_q_tbl) |>
+    dplyr::bind_rows()
+}
 
-model_loc_dir_to_hub_q_tbl <- function(
-  model_loc_dir,
-  output_path
-) {}
-
-
-model_run_dir_to_hub_q_tbl <- function(
-  model_output_dir,
-  output_path
-) {}
-
-#' Create a hubverse-format forecast quantile table
-#' from a model batch directory containing forecasts
-#' for multiple locations as daily MCMC draws.
-#'
-#' @param model_batch_dir Model batch directory containing
-#' the individual location forecast directories
-#' ("model run directories") to process. Name should be in the format
-#' `{disease}_r_{reference_date}_f_{first_data_date}_t_{last_data_date}`.
-#' @return The complete hubverse-format [`tibble`][tibble::tibble()].
+#' @export
+#' @rdname to_hub_quantile_table
+model_runs_dir_to_hub_q_tbl <- function(model_runs_dir) {
+  model_runs_dir |>
+    fs::dir_ls(type = "directory") |>
+    purrr::map(model_loc_dir_to_hub_q_tbl) |>
+    dplyr::bind_rows()
+}

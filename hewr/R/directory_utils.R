@@ -196,3 +196,20 @@ parse_variable_name <- function(variable_name) {
     y_axis_labels = y_axis_labels
   )
 }
+
+
+#' Get path up to a specific directory.
+#'
+#' @param path A character vector of paths.
+#' @param up_to A character string specifying the directory name
+#'
+#' @returns A character vector of paths that go up to the specified directory.
+#' @export
+path_up_to <- function(path, up_to) {
+  path_parts <- fs::path_split(path)
+  up_to_index <- purrr::map(path_parts, \(x) which(x == up_to))
+  stopifnot(lengths(up_to_index) == 1)
+  purrr::map2_vec(path_parts, up_to_index, \(parts, index) {
+    fs::path_join(head(parts, index))
+  })
+}
