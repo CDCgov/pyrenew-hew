@@ -161,7 +161,8 @@ p <- arg_parser("Generate forecast figures") |>
   ) |>
   add_argument(
     "--timeseries-model-name",
-    help = "Name of directory containing timeseries model outputs"
+    help = "Name of directory containing timeseries model outputs",
+    default = NA_character_
   ) |>
   add_argument(
     "--n-forecast-days",
@@ -181,3 +182,22 @@ save_forecast_figures(
   pyrenew_model_name,
   timeseries_model_name
 )
+
+pyrenew_dir <- fs::path(model_run_dir, pyrenew_model_name)
+model_fit_dir_to_hub_q_tbl(pyrenew_dir) |>
+  nanoparquet::write_parquet(fs::path(
+    pyrenew_dir,
+    "hubverse_table",
+    ext = "parquet"
+  ))
+
+
+if (!is.na(timeseries_model_name)) {
+  timeseries_dir <- fs::path(model_run_dir, timeseries_model_name)
+  model_fit_dir_to_hub_q_tbl(timeseries_dir) |>
+    nanoparquet::write_parquet(fs::path(
+      timeseries_dir,
+      "hubverse_table",
+      ext = "parquet"
+    ))
+}
