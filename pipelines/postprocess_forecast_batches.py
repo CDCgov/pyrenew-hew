@@ -8,9 +8,7 @@ and .tsv-format hubverse tables.
 
 import argparse
 import datetime
-import itertools
 import logging
-import os
 import subprocess
 from pathlib import Path
 
@@ -25,7 +23,7 @@ def _hubverse_table_filename(
     return f"{report_date}-{disease.lower()}-hubverse-table.parquet"
 
 
-def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
+def combine_hubverse_tables(model_batch_dir_path: str | Path) -> None:
     model_batch_dir_path = Path(model_batch_dir_path)
     model_batch_dir_name = model_batch_dir_path.name
     batch_info = parse_model_batch_dir_name(model_batch_dir_name)
@@ -39,7 +37,7 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/hubverse_create_table.R",
+            "pipelines/combine_hubverse_tables.R",
             f"{model_batch_dir_path}",
             f"{output_path}",
         ],
@@ -47,7 +45,7 @@ def create_hubverse_table(model_batch_dir_path: str | Path) -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"create_hubverse_table: {result.stdout}\n{result.stderr.decode('utf-8')}"
+            f"combine_hubverse_tables: {result.stdout}\n{result.stderr.decode('utf-8')}"
         )
     return None
 
@@ -59,7 +57,7 @@ def process_model_batch_dir(
     logger.info("Collating plots...")
     cp.merge_and_save_pdfs(model_batch_dir_path)
     logger.info("Creating hubverse table...")
-    create_hubverse_table(model_batch_dir_path)
+    combine_hubverse_tables(model_batch_dir_path)
 
 
 def main(
