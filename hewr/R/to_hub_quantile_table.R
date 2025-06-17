@@ -65,7 +65,7 @@ to_hub_quantile_table <- function(model_batch_dir) {
     samples_paths <- fs::dir_ls(
       model_run_dir,
       recurse = TRUE,
-      glob = "*/*samples*.parquet"
+      glob = "*samples*.parquet"
     )
     quantiles_paths <- fs::dir_ls(
       model_run_dir,
