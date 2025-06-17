@@ -10,8 +10,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BASE_DIR: "pipelines/end_to_end_test_output"
-  DATA_DIR: "pipelines/end_to_end_test_output/private_data"
+  BASE_DIR: "pipelines/tests/end_to_end_test_output"
+  DATA_DIR: "pipelines/tests/end_to_end_test_output/private_data"
+  FORECAST_DIR: "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts"
 
 jobs:
 
@@ -150,5 +151,5 @@ jobs:
       - name: Run postprocessing
         run: |
           uv run python pipelines/postprocess_forecast_batches.py \
-          ${{ env.DATA_DIR }} \
+          ${{ env.FORECAST_DIR }} \
           ${{ env.DATA_DIR }}/nssp-etl/latest_comprehensive.parquet
