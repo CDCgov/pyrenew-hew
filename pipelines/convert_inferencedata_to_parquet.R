@@ -1,6 +1,6 @@
 script_packages <- c(
   "argparser",
-  "arrow",
+  "nanoparquet",
   "dplyr",
   "forecasttools",
   "fs",

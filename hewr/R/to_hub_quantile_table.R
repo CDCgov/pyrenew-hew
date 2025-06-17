@@ -161,6 +161,7 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
   forecast_data
 }
 
+#' @param model_loc_dir Model location directory containing model fits
 #' @export
 #' @rdname to_hub_quantile_table
 model_loc_dir_to_hub_q_tbl <- function(model_loc_dir) {
@@ -170,6 +171,7 @@ model_loc_dir_to_hub_q_tbl <- function(model_loc_dir) {
     dplyr::bind_rows()
 }
 
+#' @param model_runs_dir Model runs directory containing model locations
 #' @export
 #' @rdname to_hub_quantile_table
 model_runs_dir_to_hub_q_tbl <- function(model_runs_dir) {

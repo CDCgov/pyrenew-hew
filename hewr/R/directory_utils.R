@@ -210,6 +210,6 @@ path_up_to <- function(path, up_to) {
   up_to_index <- purrr::map(path_parts, \(x) which(x == up_to))
   stopifnot(lengths(up_to_index) == 1)
   purrr::map2_vec(path_parts, up_to_index, \(parts, index) {
-    fs::path_join(head(parts, index))
+    fs::path_join(utils::head(parts, index))
   })
 }

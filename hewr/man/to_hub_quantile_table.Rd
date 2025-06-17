@@ -15,6 +15,10 @@ model_runs_dir_to_hub_q_tbl(model_runs_dir)
 }
 \arguments{
 \item{model_fit_dir}{Model fit directory containing samples and/or quantiles}
+
+\item{model_loc_dir}{Model location directory containing model fits}
+
+\item{model_runs_dir}{Model runs directory containing model locations}
 }
 \value{
 A hubverse quantile table
