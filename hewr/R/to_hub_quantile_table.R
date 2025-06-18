@@ -151,8 +151,8 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
       "horizon",
       "horizon_timescale",
       "resolution",
-      "target_end_date" = "date",
-      "location" = "geo_value",
+      target_end_date = "date",
+      location = "geo_value",
       "disease",
       "aggregated_numerator",
       "aggregated_denominator"
