@@ -159,6 +159,26 @@ def get_available_reports(
     ]
 
 
+def create_hubverse_table(model_fit_path):
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            f"""
+            nanoparquet::write_parquet(
+            hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
+            fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
+            )
+            """,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"create_hubverse_table: {result.stderr}")
+    return None
+
+
 def main(
     disease: str,
     report_date: str,
@@ -174,6 +194,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
+    nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
     credentials_path: Path = None,
@@ -388,6 +409,7 @@ def main(
         model_run_dir=model_run_dir,
         logger=logger,
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
     logger.info("Getting eval data...")
     if eval_data_path is None:
@@ -401,6 +423,7 @@ def main(
         output_data_dir=Path(model_run_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
     logger.info("Done getting eval data.")
 
@@ -451,6 +474,8 @@ def main(
         pyrenew_model_name,
         timeseries_model_name,
     )
+
+    create_hubverse_table(Path(model_run_dir, pyrenew_model_name))
 
     logger.info("Postprocessing complete.")
 
@@ -625,6 +650,12 @@ if __name__ == "__main__":
             "Fit signals are always forecast."
         ),
         default="he",
+    )
+    parser.add_argument(
+        "--nhsn-data-path",
+        type=Path,
+        help=("Path to local NHSN data (for local testing)"),
+        default=None,
     )
 
     args = parser.parse_args()

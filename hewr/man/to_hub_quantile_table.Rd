@@ -2,23 +2,27 @@
 % Please edit documentation in R/to_hub_quantile_table.R
 \name{to_hub_quantile_table}
 \alias{to_hub_quantile_table}
-\title{Create a hubverse-format forecast quantile table
-from a model batch directory containing forecasts
-for multiple locations as daily MCMC draws.}
+\alias{model_fit_dir_to_hub_q_tbl}
+\alias{model_loc_dir_to_hub_q_tbl}
+\alias{model_runs_dir_to_hub_q_tbl}
+\title{Create a hubverse-format forecast quantile table}
 \usage{
-to_hub_quantile_table(model_batch_dir)
+model_fit_dir_to_hub_q_tbl(model_fit_dir)
+
+model_loc_dir_to_hub_q_tbl(model_loc_dir)
+
+model_runs_dir_to_hub_q_tbl(model_runs_dir)
 }
 \arguments{
-\item{model_batch_dir}{Model batch directory containing
-the individual location forecast directories
-("model run directories") to process. Name should be in the format
-\verb{\{disease\}_r_\{reference_date\}_f_\{first_data_date\}_t_\{last_data_date\}}.}
+\item{model_fit_dir}{Model fit directory containing samples and/or quantiles}
+
+\item{model_loc_dir}{Model location directory containing model fits}
+
+\item{model_runs_dir}{Model runs directory containing model locations}
 }
 \value{
-The complete hubverse-format \code{\link[tibble:tibble]{tibble}}.
+A hubverse quantile table
 }
 \description{
 Create a hubverse-format forecast quantile table
-from a model batch directory containing forecasts
-for multiple locations as daily MCMC draws.
 }

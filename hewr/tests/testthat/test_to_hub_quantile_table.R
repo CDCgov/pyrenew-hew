@@ -38,7 +38,7 @@ test_that(
     })
 
     result <-
-      to_hub_quantile_table(temp_batch_dir) |>
+      model_runs_dir_to_hub_q_tbl(temp_batch_dir) |>
       suppressMessages()
 
     expect_gt(nrow(result), 0)

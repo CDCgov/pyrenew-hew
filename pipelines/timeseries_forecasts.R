@@ -8,7 +8,7 @@ script_packages <- c(
   "fable",
   "jsonlite",
   "argparser",
-  "arrow",
+  "nanoparquet",
   "glue",
   "epipredict",
   "epiprocess",
@@ -247,12 +247,25 @@ main <- function(
       names_to = ".variable",
       values_to = ".value"
     ) |>
-    mutate(geo_value = geo_value, disease = disease) |>
+    mutate(
+      geo_value = geo_value,
+      disease = disease,
+      resolution = resolution,
+      aggregated_numerator = FALSE,
+      aggregated_denominator = if_else(
+        str_starts(.variable, "prop_"),
+        FALSE,
+        NA
+      )
+    ) |>
     select(
       "date",
       ".draw",
       "geo_value",
       "disease",
+      "resolution",
+      "aggregated_numerator",
+      "aggregated_denominator",
       ".variable",
       ".value"
     )
