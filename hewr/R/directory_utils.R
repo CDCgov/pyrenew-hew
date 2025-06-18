@@ -47,10 +47,16 @@ parse_model_batch_dir_path <- function(model_batch_dir_path) {
       )
     }) |>
     dplyr::mutate(
-      disease = unname(disease_map_lower[disease]),
-      report_date = lubridate::ymd(report_date, quiet = TRUE),
-      first_training_date = lubridate::ymd(first_training_date, quiet = TRUE),
-      last_training_date = lubridate::ymd(last_training_date, quiet = TRUE)
+      disease = unname(disease_map_lower[.data$disease]),
+      report_date = lubridate::ymd(.data$report_date, quiet = TRUE),
+      first_training_date = lubridate::ymd(
+        .data$first_training_date,
+        quiet = TRUE
+      ),
+      last_training_date = lubridate::ymd(
+        .data$last_training_date,
+        quiet = TRUE
+      )
     )
 
   if (any(is.na(result))) {

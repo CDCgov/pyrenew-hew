@@ -10,7 +10,7 @@ from pathlib import Path
 from azure.batch import models
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
-from azuretools.job import create_job_if_not_exists
+from azuretools.job import create_job
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
 
@@ -21,6 +21,7 @@ def main(
     model_letters: str,
     job_id: str,
     pool_id: str,
+    model_family: str,
     diseases: str | list[str],
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
@@ -32,7 +33,6 @@ def main(
     locations_exclude: list[str] = [
         "AS",
         "GU",
-        "MO",
         "MP",
         "PR",
         "UM",
@@ -92,10 +92,14 @@ def main(
         exclude from the job. If ``None``, do not exclude any
         locations. Defaults to a list of locations for which
         we typically do not have available NSSP ED visit data:
-        ``["AS", "GU", "MO", "MP", "PR", "UM", "VI", "WY"]``.
+        ``["AS", "GU", "MP", "PR", "UM", "VI", "WY"]``.
 
     test
         Is this a testing run? Default ``False``.
+
+    model_family
+        The model family to use for the job. Default 'pyrenew'.
+        Supported values are 'pyrenew' and 'timeseries'.
 
     Returns
     -------
@@ -115,6 +119,11 @@ def main(
     validate_hew_letters(model_letters)
     validate_hew_letters(additional_forecast_letters)
 
+    if model_family == "timeseries" and model_letters != "e":
+        raise ValueError(
+            "Only model_letters 'e' is supported for the 'timeseries' model_family."
+        )
+
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
     )
@@ -127,7 +136,7 @@ def main(
         id=job_id,
         pool_info=models.PoolInformation(pool_id=pool_id),
     )
-    create_job_if_not_exists(client, job, verbose=True)
+    create_job(client, job)
 
     container_image = (
         f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
@@ -163,28 +172,42 @@ def main(
         ],
     )
 
+    if model_family == "pyrenew":
+        run_script = "forecast_pyrenew.py"
+        additional_args = (
+            f"--n-warmup {n_warmup} "
+            "--nwss-data-dir nwss-vintages "
+            "--priors-path pipelines/priors/prod_priors.py "
+            f"--additional-forecast-letters {additional_forecast_letters} "
+        )
+    elif model_family == "timeseries":
+        run_script = "forecast_timeseries.py"
+        additional_args = ""
+    else:
+        raise ValueError(
+            f"Unsupported model family: {model_family}. "
+            "Supported values are 'pyrenew' and 'timeseries'."
+        )
+
     base_call = (
         "/bin/bash -c '"
-        "uv run python pipelines/forecast_state.py "
+        f"uv run python pipelines/{run_script} "
         "--disease {disease} "
-        "--state {state} "
+        "--loc {loc} "
         f"--n-training-days {n_training_days} "
-        f"--n-warmup {n_warmup} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--nwss-data-dir nwss-vintages "
         "--output-dir {output_dir} "
-        "--priors-path pipelines/priors/prod_priors.py "
         "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
-        f"--additional-forecast-letters {additional_forecast_letters} "
         "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet"
+        "nssp-etl/latest_comprehensive.parquet "
+        f"{additional_args}"
         "'"
     )
 
@@ -200,11 +223,11 @@ def main(
         if loc not in locations_exclude and loc in locations_include
     ]
 
-    for disease, state in itertools.product(disease_list, all_locations):
+    for disease, loc in itertools.product(disease_list, all_locations):
         task = get_task_config(
-            f"{job_id}-{state}-{disease}-prod",
+            f"{job_id}-{loc}-{disease}-prod",
             base_call=base_call.format(
-                state=state,
+                loc=loc,
                 disease=disease,
                 report_date="latest",
                 output_dir=str(Path("output", output_subdir)),
@@ -224,7 +247,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
+    parser.add_argument("--test", action="store_true", help="Run in test mode")
     parser.add_argument(
         "model_letters",
         type=str,
@@ -318,9 +341,9 @@ if __name__ == "__main__":
             "exclude from the job, as a whitespace-separated "
             "string. Defaults to a set of locations for which "
             "we typically do not have available NSSP ED visit "
-            "data: 'AS GU MO MP PR UM VI WY'."
+            "data: 'AS GU MP PR UM VI WY'."
         ),
-        default="AS GU MO MP PR UM VI WY",
+        default="AS GU MP PR UM VI WY",
     )
 
     parser.add_argument(
@@ -331,6 +354,17 @@ if __name__ == "__main__":
             "Fit signals are always forecast."
         ),
         default=None,
+    )
+
+    parser.add_argument(
+        "--model-family",
+        type=str,
+        help=(
+            "Model family to use for the job. "
+            "Supported values are 'pyrenew' and 'timeseries'. "
+            "Default 'pyrenew'."
+        ),
+        default="pyrenew",
     )
 
     args = parser.parse_args()

@@ -62,7 +62,7 @@ save_forecast_figures <- function(
   dir_create(figure_dir)
 
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
-  processed_forecast <- process_state_forecast(
+  processed_forecast <- process_loc_forecast(
     model_run_dir,
     n_forecast_days,
     pyrenew_model_name,

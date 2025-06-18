@@ -101,5 +101,4 @@ p <- arg_parser("Create epiweekly data") |>
   )
 
 argv <- parse_args(p)
-
 main(argv$model_run_dir)

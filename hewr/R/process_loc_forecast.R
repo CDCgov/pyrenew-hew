@@ -16,8 +16,8 @@ load_and_aggregate_ts <- function(
   timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
 
   samples_file_names <- c(
-    "daily_baseline_ts_forecast_samples",
-    "epiweekly_baseline_ts_forecast_samples"
+    "daily_ts_ensemble_samples_e",
+    "epiweekly_ts_ensemble_samples_e"
   )
 
   unaggregated_ts_samples <- tibble::tibble(
@@ -81,9 +81,7 @@ load_and_aggregate_ts <- function(
 prop_from_timeseries <- function(
   e_denominator_samples,
   e_numerator_samples,
-  required_columns,
-  daily_training_dat,
-  epiweekly_training_dat
+  required_columns
 ) {
   prop_disease_ed_visits_tbl <-
     dplyr::left_join(
@@ -298,8 +296,6 @@ process_pyrenew_model <- function(
   pyrenew_model_name,
   ts_samples,
   required_columns_e,
-  daily_training_dat,
-  epiweekly_training_dat,
   n_forecast_days
 ) {
   model_info <- parse_model_run_dir_path(model_run_dir)
@@ -405,11 +401,11 @@ process_pyrenew_model <- function(
     dplyr::select(tidyselect::all_of(required_columns))
 
   mismatch <- model_samples_tidy |>
-    dplyr::group_by(.variable) |>
-    dplyr::summarise(predicted_last_date = max(date)) |>
+    dplyr::group_by(.data$.variable) |>
+    dplyr::summarise(predicted_last_date = max(.data$date)) |>
     dplyr::mutate(
       expected_last_date = dplyr::case_when(
-        stringr::str_ends(.variable, "ed_visits") ~
+        stringr::str_ends(.data$.variable, "ed_visits") ~
           last_data_date_overall + n_forecast_days,
         .variable == "site_level_log_ww_conc" ~
           last_data_date_overall + n_forecast_days,
@@ -422,7 +418,7 @@ process_pyrenew_model <- function(
         TRUE ~ NA
       )
     ) |>
-    dplyr::filter(predicted_last_date != expected_last_date)
+    dplyr::filter(.data$predicted_last_date != .data$expected_last_date)
   stopifnot("Date mismatch for variables" = nrow(mismatch) == 0)
 
   # For the E model, do epiweekly and process denominator
@@ -461,9 +457,7 @@ process_pyrenew_model <- function(
       prop_e_samples <- prop_from_timeseries(
         e_denominator_samples,
         e_numerator_samples,
-        required_columns,
-        daily_training_dat,
-        epiweekly_training_dat
+        required_columns
       )
 
       model_samples_tidy <- dplyr::bind_rows(
@@ -476,7 +470,7 @@ process_pyrenew_model <- function(
   return(model_samples_tidy)
 }
 
-#' Process state forecast
+#' Process loc forecast
 #'
 #' @param model_run_dir Model run directory
 #' @param pyrenew_model_name Name of directory containing pyrenew
@@ -499,7 +493,7 @@ process_pyrenew_model <- function(
 #' `epiweekly_ci`,
 #' `epiweekly_with_epiweekly_other_ci`
 #' @export
-process_state_forecast <- function(
+process_loc_forecast <- function(
   model_run_dir,
   n_forecast_days,
   pyrenew_model_name = NA,
@@ -577,8 +571,6 @@ process_state_forecast <- function(
       pyrenew_model_name,
       ts_samples,
       required_columns_e,
-      daily_training_dat,
-      epiweekly_training_dat,
       n_forecast_days
     )
   }

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASE_DIR=pipelines/tests/end_to_end_test_output
-echo "TEST-MODE: Running forecast_state.py in test mode with base directory $BASE_DIR"
+echo "TEST-MODE: Running forecast_pyrenew.py in test mode with base directory $BASE_DIR"
 
 if [ -d $BASE_DIR ]; then
 	if [ $1 = "--force" ]; then
@@ -23,7 +23,24 @@ if [ $? -ne 0 ]; then
 else
 	echo "TEST-MODE: Finished generating test data"
 fi
-echo "TEST-MODE: Running forecasting pipelines for various signals, locations, and diseases"
+
+echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and diseases"
+for location in US CA MT; do
+	for disease in Influenza COVID-19; do
+		echo "TEST-MODE: Running Timeseries forecasting pipeline for $disease, $location"
+		bash pipelines/tests/test_ts_fit.sh $BASE_DIR $disease $location "e"
+		if [ $? -ne 0 ]; then
+			echo "TEST-MODE FAIL: Timeseries forecasting pipeline failed"
+			echo "TEST-MODE: Cleanup: removing temporary directories"
+			exit 1
+		else
+			echo "TEST-MODE: Finished Timeseries forecasting pipeline for location $location, disease $disease."
+		fi
+	done
+done
+echo "TEST-MODE: Finished Timeseries forecasting pipeline for all locations and diseases."
+
+echo "TEST-MODE: Running Pyrenew forecasting pipelines for various signals, locations, and diseases"
 for location in US CA MT; do
 	for model in {,h}{,e}{,w}; do
 		for disease in Influenza COVID-19; do
@@ -34,7 +51,7 @@ for location in US CA MT; do
 					"are not yet supported."
 			else
 				echo "TEST-MODE: Running forecasting pipeline for $model, $disease, $location"
-				bash pipelines/tests/test_fit.sh $BASE_DIR $disease $location $model
+				bash pipelines/tests/test_pyrenew_fit.sh $BASE_DIR $disease $location $model
 			fi
 			if [ $? -ne 0 ]; then
 				echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
@@ -52,7 +69,7 @@ echo "TEST-MODE: All pipeline runs complete."
 echo "TEST-MODE: Running batch postprocess..."
 
 python pipelines/postprocess_forecast_batches.py \
-	$BASE_DIR/private_data \
+	$BASE_DIR/2024-12-21_forecasts \
 	$BASE_DIR/private_data/nssp-etl/latest_comprehensive.parquet
 
 if [ $? -ne 0 ]; then
