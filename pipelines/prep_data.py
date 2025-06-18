@@ -52,7 +52,9 @@ def get_nhsn(
     loc_abb_for_query = loc_abb if loc_abb != "US" else "USA"
 
     temp_file = Path(temp_dir, "nhsn_temp.parquet")
-    api_key_id = credentials_dict.get("nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID"))
+    api_key_id = credentials_dict.get(
+        "nhsn_api_key_id", os.getenv("NHSN_API_KEY_ID")
+    )
     api_key_secret = credentials_dict.get(
         "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
     )
@@ -82,9 +84,13 @@ def get_nhsn(
     result = subprocess.run(r_command)
 
     if result.returncode != 0:
-        raise RuntimeError(f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}")
+        raise RuntimeError(
+            f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
+        )
     raw_dat = pl.read_parquet(temp_file)
-    dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
+    dat = raw_dat.with_columns(
+        weekendingdate=pl.col("weekendingdate").cast(pl.Date)
+    )
     return dat
 
 
@@ -243,7 +249,9 @@ def process_loc_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect(engine="streaming")
@@ -294,7 +302,9 @@ def aggregate_facility_level_nssp_to_loc(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
             geo_value=pl.lit(loc_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -412,7 +422,9 @@ def approx_lognorm(
         normed_lp = lp - logsumexp(lp)
         return jnp.sum((log_pmf - normed_lp) ** 2)
 
-    result = minimize(err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead")
+    result = minimize(
+        err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead"
+    )
     if not result.success:
         print(result)
         raise ValueError("Discretized lognormal approximation to PMF failed")
@@ -440,7 +452,9 @@ def process_and_save_loc(
 
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one " "of facility-level and state-level" "NSSP data"
+            "Must provide at least one "
+            "of facility-level and state-level"
+            "NSSP data"
         )
 
     loc_pop_df = get_loc_pop_df()
@@ -451,10 +465,12 @@ def process_and_save_loc(
         param_estimates=param_estimates, loc_abb=loc_abb, disease=disease
     )
 
-    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = approx_lognorm(
-        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
-        loc_guess=0,
-        scale_guess=0.5,
+    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
+        approx_lognorm(
+            jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+            loc_guess=0,
+            scale_guess=0.5,
+        )
     )
 
     right_truncation_offset = (report_date - last_training_date).days
