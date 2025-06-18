@@ -61,6 +61,26 @@ def timeseries_forecasts(
     return None
 
 
+def create_hubverse_table(model_fit_path):
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            f"""
+            nanoparquet::write_parquet(
+            hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
+            fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
+            )
+            """,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"create_hubverse_table: {result.stderr}")
+    return None
+
+
 def main(
     disease: str,
     report_date: str,
@@ -238,8 +258,13 @@ def main(
         n_denominator_samples,
     )
     logger.info("Postprocessing forecast...")
-    plot_and_save_loc_forecast
-    (model_run_dir, n_days_past_last_training, None, timeseries_model_name)
+
+    plot_and_save_loc_forecast(
+        model_run_dir, n_days_past_last_training, timeseries_model_name
+    )
+
+    create_hubverse_table(Path(model_run_dir, timeseries_model_name))
+
     logger.info("Postprocessing complete.")
 
     logger.info(

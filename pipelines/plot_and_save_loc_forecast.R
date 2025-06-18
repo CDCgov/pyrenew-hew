@@ -161,7 +161,7 @@ p <- arg_parser("Generate forecast figures") |>
   ) |>
   add_argument(
     "--timeseries-model-name",
-    help = "Name of directory containing timeseries model outputs"
+    help = "Name of directory containing timeseries model outputs",
   ) |>
   add_argument(
     "--n-forecast-days",

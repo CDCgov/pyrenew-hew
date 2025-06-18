@@ -159,6 +159,26 @@ def get_available_reports(
     ]
 
 
+def create_hubverse_table(model_fit_path):
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            f"""
+            nanoparquet::write_parquet(
+            hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
+            fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
+            )
+            """,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"create_hubverse_table: {result.stderr}")
+    return None
+
+
 def main(
     disease: str,
     report_date: str,
@@ -454,6 +474,8 @@ def main(
         pyrenew_model_name,
         timeseries_model_name,
     )
+
+    create_hubverse_table(Path(model_run_dir, pyrenew_model_name))
 
     logger.info("Postprocessing complete.")
 

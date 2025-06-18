@@ -35,6 +35,7 @@ example_eval_dat <- tibble::tibble(
 test_that("to_tidy_draws_timeseries() works as expected", {
   forecast <- tibble::tibble(
     date = as.Date(c("2024-12-21", "2024-12-22")),
+    resolution = "daily",
     .draw = c(1L, 1L),
     geo_value = c("CA", "CA"),
     disease = c("COVID-19", "COVID-19"),
@@ -75,6 +76,7 @@ test_that("to_tidy_draws_timeseries() works as expected", {
       20641.1242073179819,
       25812.84128089781
     ),
+    resolution = "daily"
   )
 
   expect_equal(result, expected)
