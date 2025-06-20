@@ -3,9 +3,9 @@
 main <- function(model_batch_dir, output_path) {
   model_batch_dir |>
     fs::dir_ls(recurse = TRUE, glob = "*/hubverse_table.parquet") |>
-    purrr::map(nanoparquet::read_parquet) |>
+    purrr::map(arrow::read_parquet) |>
     dplyr::bind_rows() |>
-    nanoparquet::write_parquet(output_path)
+    arrow::write_parquet(output_path)
 }
 
 

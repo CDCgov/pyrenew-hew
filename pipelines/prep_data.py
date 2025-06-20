@@ -79,7 +79,7 @@ def get_nhsn(
             )) |>
             dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
             dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
-            nanoparquet::write_parquet("{str(local_data_file)}")
+            arrow::write_parquet("{str(local_data_file)}")
             """,
         ]
 

@@ -57,7 +57,7 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
   )
 
   quantilized_samples_forecast <- samples_paths |>
-    purrr::map(nanoparquet::read_parquet) |>
+    purrr::map(arrow::read_parquet) |>
     purrr::map(\(x) {
       forecasttools::trajectories_to_quantiles(
         x,
@@ -92,7 +92,7 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
 
   quantiles_forecast <- quantiles_paths |>
     purrr::map(\(x) {
-      nanoparquet::read_parquet(x) |>
+      arrow::read_parquet(x) |>
         dplyr::rename("quantile_value" = ".value")
     }) |>
     tibble::enframe(name = "file_path", value = "data") |>
