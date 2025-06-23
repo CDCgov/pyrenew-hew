@@ -319,6 +319,9 @@ class LatentInfectionProcess(RandomVariable):
 
         if self.n_subpops == 1:
             latent_infections = latent_infections_subpop
+            latent_infections_subpop = jnp.expand_dims(
+                latent_infections_subpop, axis=1
+            )
         else:
             latent_infections = jnp.sum(
                 self.pop_fraction * latent_infections_subpop, axis=1
@@ -794,7 +797,7 @@ class WastewaterObservationProcess(RandomVariable):
 
         model_net_inf_ind_shedding = jax.vmap(
             batch_colvolve_fn, in_axes=1, out_axes=1
-        )(jnp.atleast_2d(latent_infections_subpop))
+        )(latent_infections_subpop)
 
         log10_genome_per_inf_ind = self.log10_genome_per_inf_ind_rv()
         expected_obs_viral_genomes = (
