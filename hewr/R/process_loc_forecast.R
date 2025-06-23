@@ -26,7 +26,7 @@ load_and_aggregate_ts <- function(
       samples_file_names,
       ext = "parquet"
     ) |>
-      purrr::map(nanoparquet::read_parquet),
+      purrr::map(arrow::read_parquet),
     observed = list(daily_training_dat, epiweekly_training_dat) |>
       purrr::map(\(x) dplyr::select(x, -"data_type", -"lab_site_index"))
   ) |>
@@ -342,7 +342,7 @@ process_pyrenew_model <- function(
   )
 
   pyrenew_posterior_predictive <-
-    nanoparquet::read_parquet(
+    arrow::read_parquet(
       fs::path(
         pyrenew_model_dir,
         "mcmc_tidy",
@@ -595,7 +595,7 @@ process_loc_forecast <- function(
     save_dir <- fs::path(model_run_dir, model_name)
 
     purrr::iwalk(result, \(tab, name) {
-      nanoparquet::write_parquet(
+      arrow::write_parquet(
         tab,
         fs::path(save_dir, name, ext = "parquet")
       )
