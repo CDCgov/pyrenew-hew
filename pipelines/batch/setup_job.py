@@ -37,7 +37,6 @@ def main(
         "PR",
         "UM",
         "VI",
-        "WY",
     ],
     test: bool = False,
 ) -> None:
@@ -92,7 +91,7 @@ def main(
         exclude from the job. If ``None``, do not exclude any
         locations. Defaults to a list of locations for which
         we typically do not have available NSSP ED visit data:
-        ``["AS", "GU", "MP", "PR", "UM", "VI", "WY"]``.
+        ``["AS", "GU", "MP", "PR", "UM", "VI"]``.
 
     test
         Is this a testing run? Default ``False``.
@@ -341,9 +340,9 @@ if __name__ == "__main__":
             "exclude from the job, as a whitespace-separated "
             "string. Defaults to a set of locations for which "
             "we typically do not have available NSSP ED visit "
-            "data: 'AS GU MP PR UM VI WY'."
+            "data: 'AS GU MP PR UM VI'."
         ),
-        default="AS GU MP PR UM VI WY",
+        default="AS GU MP PR UM VI",
     )
 
     parser.add_argument(
