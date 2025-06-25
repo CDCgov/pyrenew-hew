@@ -604,9 +604,9 @@ nwss_site_pop = (
     )
     .with_columns(
         pl.when(pl.col("wwtp_jurisdiction") == "DC")
-        .then(
-            pl.concat_list([pl.col("population") * 2])
-        )  # Single value for DC
+        .then(pl.concat_list([pl.col("population") * 2]))
+        # Simulates nwss data in DC where pop served
+        # by ww surveillance > state population
         .otherwise(
             pl.struct(["population", "wwtp_id"]).map_elements(
                 lambda x: dirichlet_integer_split(
