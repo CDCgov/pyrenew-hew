@@ -556,7 +556,7 @@ def process_and_save_loc(
                 / loc_pop
             )
         else:
-            pop_fraction = subpop_sizes / loc_pop
+            pop_fraction = subpop_sizes / sum(subpop_sizes)
 
     data_for_model_fit = {
         "inf_to_hosp_admit_pmf": delay_pmf,
