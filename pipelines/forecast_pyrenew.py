@@ -377,11 +377,13 @@ def main(
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
     os.makedirs(model_run_dir, exist_ok=True)
 
+    timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
+
     if fit_ed_visits and not os.path.exists(
-        Path(model_run_dir, "timeseries_e")
+        Path(model_run_dir, timeseries_model_name)
     ):
         raise ValueError(
-            "timeseries_e model run not found. "
+            f"{timeseries_model_name} model run not found. "
             "Please ensure that the timeseries forecasts "
             "for the ED visits (E) signal are generated "
             "before fitting Pyrenew models with the E signal. "
@@ -463,10 +465,6 @@ def main(
     logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
-    if fit_ed_visits:
-        timeseries_model_name = "timeseries_e"
-    else:
-        timeseries_model_name = None
 
     plot_and_save_loc_forecast(
         model_run_dir,
