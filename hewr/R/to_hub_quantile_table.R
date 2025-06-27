@@ -48,7 +48,7 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
   samples_paths <- fs::dir_ls(
     model_fit_dir,
     recurse = TRUE,
-    glob = "*samples*.parquet"
+    glob = "*samples.parquet"
   )
   quantiles_paths <- fs::dir_ls(
     model_fit_dir,
