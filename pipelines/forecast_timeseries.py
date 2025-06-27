@@ -272,14 +272,9 @@ def main(
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
     cdc_flat_baseline_forecasts(
-        model_run_dir,
-        baseline_model_name,
-        n_days_past_last_training,
-        n_denominator_samples,
+        model_run_dir, baseline_model_name, n_days_past_last_training
     )
-    plot_and_save_loc_forecast(
-        model_run_dir, n_days_past_last_training, baseline_model_name
-    )
+
     create_hubverse_table(Path(model_run_dir, baseline_model_name))
 
     logger.info("Performing timesereis ensemble forecasting")
@@ -293,13 +288,6 @@ def main(
         model_run_dir, n_days_past_last_training, ensemble_model_name
     )
     create_hubverse_table(Path(model_run_dir, ensemble_model_name))
-
-    logger.info("Postprocessing forecast...")
-    plot_and_save_loc_forecast(
-        model_run_dir, n_days_past_last_training, baseline_model_name
-    )
-
-    create_hubverse_table(Path(model_run_dir, baseline_model_name))
 
     logger.info("Postprocessing complete.")
 
