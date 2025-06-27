@@ -25,7 +25,7 @@ else
 fi
 
 echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and diseases"
-for location in US CA MT; do
+for location in US CA MT DC; do
 	for disease in Influenza COVID-19; do
 		echo "TEST-MODE: Running Timeseries forecasting pipeline for $disease, $location"
 		bash pipelines/tests/test_ts_fit.sh $BASE_DIR $disease $location "e"
@@ -41,7 +41,7 @@ done
 echo "TEST-MODE: Finished Timeseries forecasting pipeline for all locations and diseases."
 
 echo "TEST-MODE: Running Pyrenew forecasting pipelines for various signals, locations, and diseases"
-for location in US CA MT; do
+for location in US CA MT DC; do
 	for model in {,h}{,e}{,w}; do
 		for disease in Influenza COVID-19; do
 
