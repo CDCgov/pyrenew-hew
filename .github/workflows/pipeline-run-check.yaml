@@ -42,7 +42,7 @@ jobs:
       matrix:
         model: [e]
         disease: [COVID-19, Influenza]
-        location: [US, CA, MT]
+        location: [US, CA, MT, DC]
     steps:
       - uses: actions/checkout@v4
 
@@ -80,7 +80,7 @@ jobs:
       matrix:
         model: [h, e, he, hw, ew, hew]
         disease: [COVID-19, Influenza]
-        location: [US, CA, MT]
+        location: [US, CA, MT, DC]
         exclude:
           - model: hw
             disease: Influenza
