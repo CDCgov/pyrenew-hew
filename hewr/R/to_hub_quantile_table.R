@@ -81,13 +81,6 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
         fs::path_dir() |>
         fs::path_file()
     ) |>
-    dplyr::mutate(
-      model = dplyr::if_else(
-        .data$model == "timeseries_e",
-        "ts_ensemble",
-        .data$model
-      )
-    ) |>
     dplyr::select("model", "data")
 
   quantiles_forecast <- quantiles_paths |>
@@ -96,7 +89,11 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
         dplyr::rename("quantile_value" = ".value")
     }) |>
     tibble::enframe(name = "file_path", value = "data") |>
-    dplyr::mutate(model = "baseline_cdc") |>
+    dplyr::mutate(
+      model = .data$file_path |>
+        fs::path_dir() |>
+        fs::path_file()
+    ) |>
     dplyr::select("model", "data")
 
   forecast_data <-

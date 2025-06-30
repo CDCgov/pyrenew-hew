@@ -8,7 +8,7 @@ variable_resolution_key <-
 
 load_and_aggregate_ts <- function(
   model_run_dir,
-  timeseries_model_name = "timeseries_e",
+  timeseries_model_name,
   daily_training_dat,
   epiweekly_training_dat,
   required_columns
@@ -556,7 +556,7 @@ process_loc_forecast <- function(
   if (!is.na(timeseries_model_name)) {
     ts_samples <- load_and_aggregate_ts(
       model_run_dir,
-      timeseries_model_name = "timeseries_e",
+      timeseries_model_name,
       daily_training_dat,
       epiweekly_training_dat,
       required_columns = required_columns_e
