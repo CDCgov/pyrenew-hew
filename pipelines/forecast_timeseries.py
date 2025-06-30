@@ -43,7 +43,7 @@ def timeseries_ensemble_forecasts(
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/generate_timeseries_ensemble.R",
+            "pipelines/forecast_timeseries_ensemble.R",
             f"{model_run_dir}",
             "--model-name",
             f"{model_name}",
@@ -67,7 +67,7 @@ def cdc_flat_baseline_forecasts(
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/generate_cdc_flat_baseline.R",
+            "pipelines/forecast_cdc_flat_baseline.R",
             f"{model_run_dir}",
             "--model-name",
             f"{model_name}",

@@ -2,7 +2,7 @@
 % Please edit documentation in R/timeseries_utils.R
 \name{format_timeseries_output}
 \alias{format_timeseries_output}
-\title{Process and format timesries forecasts into
+\title{Process and format timeseries forecasts into
 a standardized format for downstream processing.}
 \usage{
 format_timeseries_output(
@@ -39,6 +39,6 @@ A tibble with columns:
 \code{.value}.
 }
 \description{
-Process and format timesries forecasts into
+Process and format timeseries forecasts into
 a standardized format for downstream processing.
 }
