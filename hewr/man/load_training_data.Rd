@@ -22,7 +22,7 @@ directory containing model run data.}
 Default \code{FALSE}.}
 }
 \value{
-A list with components:
+A list with:
 \code{data} (processed training data tibble),
 \code{geo_value},
 \code{disease},
@@ -31,6 +31,6 @@ A list with components:
 }
 \description{
 Loads and preprocesses training data for timeseries
-forecasting models to be in the format expected by
-the downstream forecasting functions.
+forecasting models in the format expected by
+the forecasting functions.
 }

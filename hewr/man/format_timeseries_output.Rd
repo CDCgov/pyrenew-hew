@@ -2,7 +2,8 @@
 % Please edit documentation in R/timeseries_utils.R
 \name{format_timeseries_output}
 \alias{format_timeseries_output}
-\title{Process and format timesries Forecast Output}
+\title{Process and format timesries forecasts into
+a standardized format for downstream processing.}
 \usage{
 format_timeseries_output(
   forecast_data,
@@ -16,17 +17,17 @@ format_timeseries_output(
 \item{forecast_data}{A data frame containing forecast results with date,
 output type identifier, and forecast variables.}
 
-\item{geo_value}{Character. Geographic identifier for the forecast location.}
+\item{geo_value}{Geographic identifier for the forecast location.}
 
-\item{disease}{Character. Disease name for the forecast.}
+\item{disease}{Disease name for the forecast.}
 
-\item{resolution}{Character. Temporal resolution ("daily" or "epiweekly").}
+\item{resolution}{Temporal resolution ("daily" or "epiweekly").}
 
-\item{output_type_id}{Character. Name of the column containing output type
-identifiers (e.g., ".draw" for samples, "quantile_level" for quantiles).}
+\item{output_type_id}{Output type identifiers
+(e.g., ".draw" for samples, "quantile_level" for quantiles).}
 }
 \value{
-A tibble with standardized forecast output columns:
+A tibble with columns:
 \code{date},
 \code{geo_value},
 \code{disease},
@@ -38,6 +39,6 @@ A tibble with standardized forecast output columns:
 \code{.value}.
 }
 \description{
-Transforms forecast data into a standardized
-format for and downstream processing.
+Process and format timesries forecasts into
+a standardized format for downstream processing.
 }
