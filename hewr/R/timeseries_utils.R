@@ -58,7 +58,7 @@ load_training_data <- function(
   )
 }
 
-#' Process and format timesries forecasts into
+#' Process and format timeseries forecasts into
 #' a standardized format for downstream processing.
 #'
 #' @param forecast_data A data frame containing forecast results with date,
