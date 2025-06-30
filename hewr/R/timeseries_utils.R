@@ -4,8 +4,8 @@
 #' Load Training Data for Timeseries Forecasting
 #'
 #' Loads and preprocesses training data for timeseries
-#' forecasting models to be in the format expected by
-#' the downstream forecasting functions.
+#' forecasting models in the format expected by
+#' the forecasting functions.
 #'
 #' @param model_run_dir Path to the
 #' directory containing model run data.
@@ -13,7 +13,7 @@
 #' @param epiweekly Logical. Indicate epiweekly (TRUE) or daily (FALSE) data.
 #'   Default `FALSE`.
 #'
-#' @return A list with components:
+#' @return A list with:
 #' `data` (processed training data tibble),
 #' `geo_value`,
 #' `disease`,
@@ -58,20 +58,18 @@ load_training_data <- function(
   )
 }
 
-#' Process and format timesries Forecast Output
-#'
-#' Transforms forecast data into a standardized
-#' format for and downstream processing.
+#' Process and format timesries forecasts into
+#' a standardized format for downstream processing.
 #'
 #' @param forecast_data A data frame containing forecast results with date,
 #'   output type identifier, and forecast variables.
-#' @param geo_value Character. Geographic identifier for the forecast location.
-#' @param disease Character. Disease name for the forecast.
-#' @param resolution Character. Temporal resolution ("daily" or "epiweekly").
-#' @param output_type_id Character. Name of the column containing output type
-#'   identifiers (e.g., ".draw" for samples, "quantile_level" for quantiles).
+#' @param geo_value Geographic identifier for the forecast location.
+#' @param disease Disease name for the forecast.
+#' @param resolution Temporal resolution ("daily" or "epiweekly").
+#' @param output_type_id Output type identifiers
+#' (e.g., ".draw" for samples, "quantile_level" for quantiles).
 #'
-#' @return A tibble with standardized forecast output columns:
+#' @return A tibble with columns:
 #' `date`,
 #' `geo_value`,
 #' `disease`,
