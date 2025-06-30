@@ -67,7 +67,7 @@ def create_hubverse_table(model_fit_path):
             "Rscript",
             "-e",
             f"""
-            arrow::write_parquet(
+            forecasttools::write_tabular(
             hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
             fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
             )

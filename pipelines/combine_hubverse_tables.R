@@ -3,9 +3,9 @@
 main <- function(model_batch_dir, output_path) {
   model_batch_dir |>
     fs::dir_ls(recurse = TRUE, glob = "*/hubverse_table.parquet") |>
-    purrr::map(arrow::read_parquet) |>
+    purrr::map(forecasttools::read_tabular) |>
     dplyr::bind_rows() |>
-    arrow::write_parquet(output_path)
+    forecasttools::write_tabular(output_path)
 }
 
 

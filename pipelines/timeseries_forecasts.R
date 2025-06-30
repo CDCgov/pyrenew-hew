@@ -8,7 +8,7 @@ script_packages <- c(
   "fable",
   "jsonlite",
   "argparser",
-  "arrow",
+  "forecasttools",
   "glue",
   "epipredict",
   "epiprocess",
