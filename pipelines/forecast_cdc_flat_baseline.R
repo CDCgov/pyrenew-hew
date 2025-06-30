@@ -9,7 +9,8 @@ script_packages <- c(
   "glue",
   "epipredict",
   "epiprocess",
-  "hewr"
+  "hewr",
+  "forecasttools"
 )
 
 
@@ -125,7 +126,7 @@ main <- function(
       resolution = resolution,
       output_type_id = "quantile_level"
     ) |>
-    write_parquet(path(
+    write_tabular(path(
       model_dir,
       glue::glue("{prefix}baseline_cdc_quantiles_e"),
       ext = "parquet"

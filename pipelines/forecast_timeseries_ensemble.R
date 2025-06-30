@@ -11,7 +11,8 @@ script_packages <- c(
   "epipredict",
   "epiprocess",
   "rlang",
-  "hewr"
+  "hewr",
+  "forecasttools"
 )
 
 ## load in packages without messages
@@ -157,7 +158,7 @@ main <- function(
     )
 
   # Save the forecast
-  write_parquet(
+  write_tabular(
     ts_ensemble_forecast_e,
     path(
       model_dir,
