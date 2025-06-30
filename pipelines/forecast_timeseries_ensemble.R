@@ -8,7 +8,6 @@ script_packages <- c(
   "fable",
   "glue",
   "argparser",
-  "arrow",
   "epipredict",
   "epiprocess",
   "rlang",

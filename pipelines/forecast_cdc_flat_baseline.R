@@ -6,7 +6,6 @@ script_packages <- c(
   "stringr",
   "fs",
   "argparser",
-  "arrow",
   "glue",
   "epipredict",
   "epiprocess",
