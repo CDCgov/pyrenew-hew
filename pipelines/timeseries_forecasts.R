@@ -323,7 +323,7 @@ main <- function(
   walk2(
     to_save$value,
     to_save$save_path,
-    write_parquet
+    write_tabular
   )
 }
 
