@@ -277,7 +277,7 @@ def main(
 
     create_hubverse_table(Path(model_run_dir, baseline_model_name))
 
-    logger.info("Performing timesereis ensemble forecasting")
+    logger.info("Performing timeseries ensemble forecasting")
     timeseries_ensemble_forecasts(
         model_run_dir,
         ensemble_model_name,
