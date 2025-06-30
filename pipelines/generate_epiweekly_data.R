@@ -1,5 +1,4 @@
 script_packages <- c(
-  "arrow",
   "argparser",
   "dplyr",
   "forecasttools",

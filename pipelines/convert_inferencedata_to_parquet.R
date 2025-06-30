@@ -1,6 +1,5 @@
 script_packages <- c(
   "argparser",
-  "arrow",
   "dplyr",
   "forecasttools",
   "fs",
@@ -31,7 +30,7 @@ tidy_and_save_mcmc <- function(
   inference_data_path <- path(model_dir, "inference_data", ext = "parquet")
 
   tidy_inference_data <- inference_data_path |>
-    read_parquet() |>
+    read_tabular() |>
     inferencedata_to_tidy_draws()
 
   if (filter_bad_chains) {
@@ -59,7 +58,7 @@ tidy_and_save_mcmc <- function(
   dir_create(save_dir)
 
   purrr::pwalk(tidy_inference_data, .f = function(group_name, data) {
-    write_parquet(
+    write_tabular(
       data,
       path(save_dir, str_c(file_name_prefix, group_name), ext = "parquet")
     )
