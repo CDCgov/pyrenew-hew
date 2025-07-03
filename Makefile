@@ -1,5 +1,7 @@
 .PHONY: help container_build container_tag ghcr_login container_push run_timeseries run_e_model run_h_models post_process
 
+# Build parameters
+
 ifndef ENGINE
 ENGINE = docker
 endif
@@ -15,6 +17,8 @@ endif
 ifndef CONTAINER_REMOTE_NAME
 CONTAINER_REMOTE_NAME = ghcr.io/cdcgov/$(CONTAINER_NAME):latest
 endif
+
+# Forecasting paramters
 
 ifndef FORECAST_DATE
 FORECAST_DATE = $(shell date +%Y-%m-%d)
@@ -38,6 +42,8 @@ help:
 	@echo "  run_h_models        : Run the h_models forecasting job"
 	@echo "  post_process        : Post-process the forecast batches"
 	@echo "  help                : Show this help message"
+
+# Build
 
 container_build: ghcr_login
 	$(ENGINE) build . -t $(CONTAINER_NAME) -f $(CONTAINERFILE)
