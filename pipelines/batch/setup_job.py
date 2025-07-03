@@ -52,7 +52,7 @@ def main(
         as a single string (one disease) or a list of strings.
         Supported values are 'COVID-19' and 'Influenza'.
 
-     output_subdir
+    output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
 
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="Run in test mode")
     parser.add_argument(
-        "model_letters",
+        "--model_letters",
         type=str,
         help=(
             "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
@@ -256,12 +256,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "job_id", type=str, help="Name for the Azure batch job"
+        "--job_id", type=str, help="Name for the Azure batch job"
     )
     parser.add_argument(
-        "pool_id",
+        "--pool_id",
         type=str,
         help=("Name of the Azure batch pool on which to run the job"),
+        default="pyrenew-pool"
     )
     parser.add_argument(
         "--diseases",
