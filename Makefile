@@ -83,7 +83,7 @@ run_h_models:
 		--job_id "pyrenew-h-prod${FORECAST_YEAR_MONTH}h" \
 		--pool_id pyrenew-pool
 
-post_process:	
+post_process:
 	uv run python pipelines/postprocess_forecast_batches.py \
     	--input "./blobfuse/mounts/pyrenew-hew-prod-output/${FORECAST_DATE}_forecasts" \
     	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}.parquet"
