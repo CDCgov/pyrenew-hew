@@ -476,8 +476,8 @@ def process_and_save_loc(
         )
     )
 
-    right_truncation_offset = (report_date - last_training_date).days - 1 
-    # First entry of source right truncation PMFs corresponds to reports 
+    right_truncation_offset = (report_date - last_training_date).days - 1
+    # First entry of source right truncation PMFs corresponds to reports
     # for ref date = report_date - 1 as of report_date
 
     aggregated_facility_data = aggregate_facility_level_nssp_to_loc(
