@@ -103,7 +103,7 @@ def main(
         Supported values are 'pyrenew' and 'timeseries'.
 
     vm_identity: bool
-        Default false. Useful for local development; 
+        Default false. Useful for local development;
         Skips needing to prepopulate Environment Variables for credentials if your VM has been added to the appropriate rbac group.
 
     Returns
@@ -272,7 +272,7 @@ if __name__ == "__main__":
         "--pool_id",
         type=str,
         help=("Name of the Azure batch pool on which to run the job"),
-        default="pyrenew-pool"
+        default="pyrenew-pool",
     )
     parser.add_argument(
         "--diseases",
@@ -381,7 +381,7 @@ if __name__ == "__main__":
         "--vm_identity",
         type=bool,
         help=("Use VM identity for authentication."),
-        default=False
+        default=False,
     )
 
     args = parser.parse_args()
