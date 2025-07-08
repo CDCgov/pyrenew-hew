@@ -262,7 +262,7 @@ if __name__ == "__main__":
         "--pool_id",
         type=str,
         help=("Name of the Azure batch pool on which to run the job"),
-        default="pyrenew-pool"
+        default="pyrenew-pool",
     )
     parser.add_argument(
         "--diseases",
