@@ -28,6 +28,10 @@ ifndef FORECAST_YEAR_MONTH
 FORECAST_YEAR_MONTH = $(shell date +%y%m)
 endif
 
+ifndef VM_IDENTITY
+VM_IDENTITY = False
+endif
+
 
 help:
 	@echo "Usage: make [target]"
@@ -58,32 +62,38 @@ container_push: container_tag ghcr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
 
 # Forecasting
+# TODO: remove "jon" from job_id and output_subdir once done with testing
+
+source_azure_config:
+	echo "Sourcing Azure configuration..."
+	bash -c "source ~/azureconfig.sh || { echo 'Failed to source azureconfig.sh'; exit 1; }"
 
 run_timeseries:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family timeseries \
-		--output-subdir "${FORECAST_DATE}_forecasts" \
+		--output-subdir "${FORECAST_DATE}_jon_forecasts" \
 		--model_letters "e" \
-		--job_id "pyrenew-e-prod${FORECAST_YEAR_MONTH}t" \
-		--pool_id pyrenew-pool
+		--job_id "pyrenew-e-prod${FORECAST_YEAR_MONTH}_jon_t" \
+		--pool_id pyrenew-pool \
+		--vm_identity $(VM_IDENTITY)
 
 run_e_model:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family e_model \
-		--output-subdir "${FORECAST_DATE}_forecasts" \
+		--output-subdir "${FORECAST_DATE}_jon_forecasts" \
 		--model_letters "e" \
-		--job_id "pyrenew-e-prod${FORECAST_YEAR_MONTH}e" \
+		--job_id "pyrenew-e-prod${FORECAST_YEAR_MONTH}_jon_e" \
 		--pool_id pyrenew-pool
 
 run_h_models:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family h_models \
-		--output-subdir "${FORECAST_DATE}_forecasts" \
+		--output-subdir "${FORECAST_DATE}_jon_forecasts" \
 		--model_letters "h" \
-		--job_id "pyrenew-h-prod${FORECAST_YEAR_MONTH}h" \
+		--job_id "pyrenew-h-prod${FORECAST_YEAR_MONTH}jon_h" \
 		--pool_id pyrenew-pool
 
 post_process:	
 	uv run python pipelines/postprocess_forecast_batches.py \
-    	--input "./blobfuse/mounts/pyrenew-hew-prod-output/${FORECAST_DATE}_forecasts" \
-    	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}.parquet"
+    	--input "./blobfuse/mounts/pyrenew-hew-prod-output/${FORECAST_DATE}_jon_forecasts" \
+    	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}_jon.parquet"
