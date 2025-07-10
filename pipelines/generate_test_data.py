@@ -13,7 +13,8 @@ import polars.selectors as cs
 from scipy.stats import expon, norm
 
 from pipelines.build_pyrenew_model import (
-    build_model_from_dir,
+    build_pyrenew_model,
+    get_model_data_and_priors_from_dir,
 )
 from pipelines.prep_data import process_and_save_loc
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
@@ -346,8 +347,10 @@ def simulate_data_from_bootstrap(
         Path(model_run_dir, "priors.py"),
     )
 
-    (my_model, my_data) = build_model_from_dir(
-        model_run_dir,
+    (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
+    (my_model, my_data) = build_pyrenew_model(
+        model_data,
+        priors,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,

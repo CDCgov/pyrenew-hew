@@ -17,21 +17,37 @@ from pyrenew_hew.pyrenew_hew_model import (
 )
 
 
-def build_model_from_dir(
-    model_dir: Path,
+def get_model_data_and_priors_from_dir(model_dir):
+    data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
+    prior_path = Path(model_dir) / "priors.py"
+    priors = runpy.run_path(str(prior_path))
+
+    with open(
+        data_path,
+        "r",
+    ) as file:
+        model_data = json.load(file)
+
+    return model_data, priors
+
+
+def build_pyrenew_model(
+    model_data: dict,
+    priors: dict,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
     """
-    Build a pyrenew-family model from a model run directory
-    containing data (as a .json file) and priors (as a .py file)
+    Build a pyrenew-family model from a model_data and priors
 
     Parameters
     ----------
-    model_dir
-        The model directory, containing a priors file and a
-        data subdirectory.
+    model_data : dict
+        Dictionary containing the data to fit the model.
+
+    priors : dict
+        Dictionary containing the priors for the model.
 
     fit_ed_visits
         Fit ED visit data in the built model? Default ``False``.
@@ -50,16 +66,6 @@ def build_model_from_dir(
         Instantiated model and data objects representing
         the model and its fitting data, respectively.
     """
-    data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
-    prior_path = Path(model_dir) / "priors.py"
-    priors = runpy.run_path(str(prior_path))
-
-    with open(
-        data_path,
-        "r",
-    ) as file:
-        model_data = json.load(file)
-
     he = fit_hospital_admissions and fit_ed_visits
 
     inf_to_ed_rv = DeterministicPMF(

@@ -4,7 +4,8 @@ from pathlib import Path
 
 import arviz as az
 from build_pyrenew_model import (
-    build_model_from_dir,
+    build_pyrenew_model,
+    get_model_data_and_priors_from_dir,
 )
 
 from pyrenew_hew.util import flags_from_pyrenew_model_name
@@ -23,8 +24,9 @@ def generate_and_save_predictions(
     if not model_dir.exists():
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
 
-    (my_model, my_data) = build_model_from_dir(
-        model_run_dir, **flags_from_pyrenew_model_name(model_name)
+    (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
+    (my_model, my_data) = build_pyrenew_model(
+        model_data, priors, **flags_from_pyrenew_model_name(model_name)
     )
 
     my_model._init_model(1, 1)

@@ -4,7 +4,10 @@ import jax.numpy as jnp
 import polars as pl
 import pytest
 
-from pipelines.build_pyrenew_model import build_model_from_dir
+from pipelines.build_pyrenew_model import (
+    build_pyrenew_model,
+    get_model_data_and_priors_from_dir,
+)
 
 
 @pytest.fixture
@@ -96,7 +99,7 @@ offset_ref_log_rt_rv=None
 """
 
 
-def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
+def test_build_pyrenew_model(tmp_path, mock_data, mock_priors):
     model_dir = tmp_path / "model_dir"
     data_dir = model_dir / "data"
     data_dir.mkdir(parents=True)
@@ -109,14 +112,17 @@ def test_build_model_from_dir(tmp_path, mock_data, mock_priors):
     model_data = json.loads(mock_data)
 
     # Test when all `fit_` arguments are False
-    _, data = build_model_from_dir(model_dir)
+
+    (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
+    _, data = build_pyrenew_model(model_data, priors)
     assert data.data_observed_disease_ed_visits is None
     assert data.data_observed_disease_hospital_admissions is None
     assert data.data_observed_disease_wastewater_conc is None
 
     # Test when all `fit_` arguments are True
-    _, data = build_model_from_dir(
-        model_dir,
+    _, data = build_pyrenew_model(
+        model_data,
+        priors,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,
