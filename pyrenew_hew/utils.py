@@ -255,7 +255,7 @@ def build_pyrenew_model(
     fit_wastewater: bool = False,
 ) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
     """
-    Build a pyrenew-family model from a model_data and priors
+    Build a PyRenew-HEW-family model from a model_data and priors
 
     Parameters
     ----------
