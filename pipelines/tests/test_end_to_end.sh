@@ -26,9 +26,10 @@ fi
 
 echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and diseases"
 LOCATIONS=(US CA MT DC)
+DISEASES=(Influenza COVID-19)
 
 for location in "${LOCATIONS[@]}"; do
-	for disease in Influenza COVID-19; do
+	for disease in "${DISEASES[@]}"; do
 		echo "TEST-MODE: Running Timeseries forecasting pipeline for $disease, $location"
 		bash pipelines/tests/test_ts_fit.sh $BASE_DIR $disease $location "e"
 		if [ $? -ne 0 ]; then
@@ -45,7 +46,7 @@ echo "TEST-MODE: Finished Timeseries forecasting pipeline for all locations and 
 echo "TEST-MODE: Running Pyrenew forecasting pipelines for various signals, locations, and diseases"
 for location in "${LOCATIONS[@]}"; do
 	for model in {,h}{,e}{,w}; do
-		for disease in Influenza COVID-19; do
+		for disease in "${DISEASES[@]}"; do
 
 			if [[ ($model == *w* && ($disease == "Influenza" || $location == "US")) || $model == "w" ]]; then
 				echo "TEST-MODE: Skipping forecasting pipeline for $model, $disease, $location. " \
