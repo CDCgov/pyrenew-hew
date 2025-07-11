@@ -1,6 +1,9 @@
 #!/bin/bash
 
 BASE_DIR=pipelines/tests/end_to_end_test_output
+LOCATIONS=(US CA MT DC)
+DISEASES=(Influenza COVID-19)
+
 echo "TEST-MODE: Running forecast_pyrenew.py in test mode with base directory $BASE_DIR"
 
 if [ -d "$BASE_DIR" ]; then
@@ -25,8 +28,6 @@ else
 fi
 
 echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and diseases"
-LOCATIONS=(US CA MT DC)
-DISEASES=(Influenza COVID-19)
 
 for location in "${LOCATIONS[@]}"; do
 	for disease in "${DISEASES[@]}"; do
