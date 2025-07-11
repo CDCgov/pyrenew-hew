@@ -6,7 +6,7 @@ import jax
 import numpy as np
 
 from pipelines.utils import get_model_data_and_priors_from_dir
-from pyrenew_hew.util import build_pyrenew_model
+from pyrenew_hew.utils import build_pyrenew_model
 
 
 def fit_and_save_model(

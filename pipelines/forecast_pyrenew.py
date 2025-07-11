@@ -14,7 +14,7 @@ from prep_data import process_and_save_loc
 from prep_eval_data import save_eval_data
 from pygit2 import Repository
 
-from pyrenew_hew.util import (
+from pyrenew_hew.utils import (
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
 )

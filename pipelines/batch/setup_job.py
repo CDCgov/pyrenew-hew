@@ -14,7 +14,7 @@ from azuretools.job import create_job
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
 
-from pyrenew_hew.util import validate_hew_letters
+from pyrenew_hew.utils import validate_hew_letters
 
 
 def main(
