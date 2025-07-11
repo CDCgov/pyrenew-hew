@@ -131,7 +131,7 @@ def main(
     n_warmup = 200 if test else 1000
     n_samples = 200 if test else 500
 
-    #TODO: Use VM managed identity with DefaultAzureCredential()
+    # TODO: Use VM managed identity with DefaultAzureCredential()
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
     job = models.JobAddParameter(
