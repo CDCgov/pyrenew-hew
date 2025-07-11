@@ -8,6 +8,7 @@ import itertools
 from pathlib import Path
 
 from azure.batch import models
+from azure.identity import DefaultAzureCredential
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
@@ -39,6 +40,7 @@ def main(
         "VI",
     ],
     test: bool = False,
+    vm_identity: bool = False,
 ) -> None:
     """
     job_id
@@ -52,7 +54,7 @@ def main(
         as a single string (one disease) or a list of strings.
         Supported values are 'COVID-19' and 'Influenza'.
 
-     output_subdir
+    output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
 
@@ -129,6 +131,7 @@ def main(
     n_warmup = 200 if test else 1000
     n_samples = 200 if test else 500
 
+    # TODO: Use VM managed identity with DefaultAzureCredential()
     creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
     job = models.JobAddParameter(
@@ -248,7 +251,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="Run in test mode")
     parser.add_argument(
-        "model_letters",
+        "--model_letters",
         type=str,
         help=(
             "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
@@ -256,12 +259,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "job_id", type=str, help="Name for the Azure batch job"
+        "--job_id", type=str, help="Name for the Azure batch job"
     )
     parser.add_argument(
-        "pool_id",
+        "--pool_id",
         type=str,
         help=("Name of the Azure batch pool on which to run the job"),
+        default="pyrenew-pool",
     )
     parser.add_argument(
         "--diseases",
