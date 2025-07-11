@@ -13,8 +13,6 @@ env:
   BASE_DIR: "pipelines/tests/end_to_end_test_output"
   DATA_DIR: "pipelines/tests/end_to_end_test_output/private_data"
   FORECAST_DIR: "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts"
-  DISEASES: '["COVID-19", "Influenza"]'
-  LOCATIONS: '["US", "CA", "MT", "DC"]'
 
 jobs:
 
@@ -43,8 +41,8 @@ jobs:
     strategy:
       matrix:
         model: [e]
-        disease: ${{ fromJSON(env.DISEASES) }}
-        location: ${{ fromJSON(env.LOCATIONS) }}
+        disease: [COVID-19, Influenza]
+        location: [US, CA, MT, DC]
     steps:
       - uses: actions/checkout@v4
 
@@ -81,8 +79,8 @@ jobs:
     strategy:
       matrix:
         model: [h, e, he, hw, ew, hew]
-        disease: ${{ fromJSON(env.DISEASES) }}
-        location: ${{ fromJSON(env.LOCATIONS) }}
+        disease: [COVID-19, Influenza]
+        location: [US, CA, MT, DC]
         exclude:
           - model: hw
             disease: Influenza
