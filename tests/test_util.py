@@ -2,7 +2,7 @@ from typing import Iterable
 
 import pytest
 
-from pyrenew_hew.util import (
+from pyrenew_hew.utils import (
     flags_from_hew_letters,
     flags_from_pyrenew_model_name,
     hew_letters_from_flags,
