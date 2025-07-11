@@ -4,10 +4,8 @@ import jax.numpy as jnp
 import polars as pl
 import pytest
 
-from pipelines.build_pyrenew_model import (
-    build_pyrenew_model,
-    get_model_data_and_priors_from_dir,
-)
+from pipelines.build_pyrenew_model import build_pyrenew_model
+from pipelines.utils import get_model_data_and_priors_from_dir
 
 
 @pytest.fixture

@@ -1,7 +1,3 @@
-import json
-import runpy
-from pathlib import Path
-
 import jax.numpy as jnp
 import polars as pl
 from pyrenew.deterministic import DeterministicPMF
@@ -15,20 +11,6 @@ from pyrenew_hew.pyrenew_hew_model import (
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
-
-
-def get_model_data_and_priors_from_dir(model_dir):
-    data_path = Path(model_dir) / "data" / "data_for_model_fit.json"
-    prior_path = Path(model_dir) / "priors.py"
-    priors = runpy.run_path(str(prior_path))
-
-    with open(
-        data_path,
-        "r",
-    ) as file:
-        model_data = json.load(file)
-
-    return model_data, priors
 
 
 def build_pyrenew_model(

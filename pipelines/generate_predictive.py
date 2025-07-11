@@ -3,11 +3,9 @@ import pickle
 from pathlib import Path
 
 import arviz as az
-from build_pyrenew_model import (
-    build_pyrenew_model,
-    get_model_data_and_priors_from_dir,
-)
+from build_pyrenew_model import build_pyrenew_model
 
+from pipelines.utils import get_model_data_and_priors_from_dir
 from pyrenew_hew.util import flags_from_pyrenew_model_name
 
 
