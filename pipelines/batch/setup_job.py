@@ -97,10 +97,6 @@ def main(
         The model family to use for the job. Default 'pyrenew'.
         Supported values are 'pyrenew' and 'timeseries'.
 
-    vm_identity: bool
-        Default false. Useful for local development; 
-        Skips needing to prepopulate Environment Variables for credentials if your VM has been added to the appropriate rbac group.
-
     Returns
     -------
     None
@@ -130,11 +126,8 @@ def main(
     n_warmup = 200 if test else 1000
     n_samples = 200 if test else 500
 
-    if vm_identity == True:
-        creds = DefaultAzureCredential()
-    else:
-        creds = EnvCredentialHandler()
-
+    #TODO: Use VM managed identity with DefaultAzureCredential()
+    creds = EnvCredentialHandler()
     client = get_batch_service_client(creds)
     job = models.JobAddParameter(
         id=job_id,
@@ -371,13 +364,6 @@ if __name__ == "__main__":
             "Default 'pyrenew'."
         ),
         default="pyrenew",
-    )
-
-    parser.add_argument(
-        "--vm_identity",
-        type=bool,
-        help=("Use VM identity for authentication."),
-        default=False
     )
 
     args = parser.parse_args()

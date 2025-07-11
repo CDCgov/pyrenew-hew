@@ -64,18 +64,13 @@ container_push: container_tag ghcr_login
 # Forecasting
 # TODO: remove "jon" from job_id and output_subdir once done with testing
 
-source_azure_config:
-	echo "Sourcing Azure configuration..."
-	bash -c "source ~/azureconfig.sh || { echo 'Failed to source azureconfig.sh'; exit 1; }"
-
 run_timeseries:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family timeseries \
 		--output-subdir "${FORECAST_DATE}_jon_forecasts" \
 		--model_letters "e" \
 		--job_id "pyrenew-e-prod${FORECAST_YEAR_MONTH}_jon_t" \
-		--pool_id pyrenew-pool \
-		--vm_identity $(VM_IDENTITY)
+		--pool_id pyrenew-pool
 
 run_e_model:
 	uv run python pipelines/batch/setup_job.py \
