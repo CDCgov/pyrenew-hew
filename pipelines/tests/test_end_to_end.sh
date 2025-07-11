@@ -3,9 +3,9 @@
 BASE_DIR=pipelines/tests/end_to_end_test_output
 echo "TEST-MODE: Running forecast_pyrenew.py in test mode with base directory $BASE_DIR"
 
-if [ -d $BASE_DIR ]; then
-	if [ $1 = "--force" ]; then
-		rm -r $BASE_DIR
+if [ -d "$BASE_DIR" ]; then
+	if [ "$1" = "--force" ]; then
+		rm -r "$BASE_DIR"
 	else
 		# make the user delete the directory, to avoid accidental deletes of
 		# test output
@@ -15,9 +15,9 @@ if [ -d $BASE_DIR ]; then
 	fi
 fi
 
-uv run python pipelines/generate_test_data.py $BASE_DIR
+uv run python pipelines/generate_test_data.py "$BASE_DIR"
 
-if [ $? -ne 0 ]; then
+if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Generating test data failed"
 	exit 1
 else
@@ -31,8 +31,8 @@ DISEASES=(Influenza COVID-19)
 for location in "${LOCATIONS[@]}"; do
 	for disease in "${DISEASES[@]}"; do
 		echo "TEST-MODE: Running Timeseries forecasting pipeline for $disease, $location"
-		bash pipelines/tests/test_ts_fit.sh $BASE_DIR $disease $location "e"
-		if [ $? -ne 0 ]; then
+		bash pipelines/tests/test_ts_fit.sh "$BASE_DIR" "$disease" "$location" "e"
+		if [ "$?" -ne 0 ]; then
 			echo "TEST-MODE FAIL: Timeseries forecasting pipeline failed"
 			echo "TEST-MODE: Cleanup: removing temporary directories"
 			exit 1
@@ -54,9 +54,9 @@ for location in "${LOCATIONS[@]}"; do
 					"are not yet supported."
 			else
 				echo "TEST-MODE: Running forecasting pipeline for $model, $disease, $location"
-				bash pipelines/tests/test_pyrenew_fit.sh $BASE_DIR $disease $location $model
+				bash pipelines/tests/test_pyrenew_fit.sh "$BASE_DIR" "$disease" "$location" "$model"
 			fi
-			if [ $? -ne 0 ]; then
+			if [ "$?" -ne 0 ]; then
 				echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
 				echo "TEST-MODE: Cleanup: removing temporary directories"
 				exit 1
@@ -72,10 +72,10 @@ echo "TEST-MODE: All pipeline runs complete."
 echo "TEST-MODE: Running batch postprocess..."
 
 python pipelines/postprocess_forecast_batches.py \
-	$BASE_DIR/2024-12-21_forecasts \
-	$BASE_DIR/private_data/nssp-etl/latest_comprehensive.parquet
+	"$BASE_DIR/2024-12-21_forecasts" \
+	"$BASE_DIR/private_data/nssp-etl/latest_comprehensive.parquet"
 
-if [ $? -ne 0 ]; then
+if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Batch postprocess failed."
 	exit 1
 else
