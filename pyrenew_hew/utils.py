@@ -247,7 +247,7 @@ def flags_from_pyrenew_model_name(model_name: str) -> dict[str, bool]:
     return flags_from_hew_letters(hew_letters, flag_prefix="fit")
 
 
-def build_pyrenew_model(
+def build_pyrenew_hew_model(
     model_data: dict,
     priors: dict,
     fit_ed_visits: bool = False,

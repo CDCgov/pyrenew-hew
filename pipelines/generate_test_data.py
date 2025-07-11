@@ -15,7 +15,7 @@ from scipy.stats import expon, norm
 from pipelines.prep_data import process_and_save_loc
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pipelines.utils import get_model_data_and_priors_from_dir
-from pyrenew_hew.utils import build_pyrenew_model
+from pyrenew_hew.utils import build_pyrenew_hew_model
 
 parser = argparse.ArgumentParser(
     description="Create fit data for disease modeling."
@@ -346,7 +346,7 @@ def simulate_data_from_bootstrap(
     )
 
     (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
-    (my_model, my_data) = build_pyrenew_model(
+    (my_model, my_data) = build_pyrenew_hew_model(
         model_data,
         priors,
         fit_ed_visits=True,

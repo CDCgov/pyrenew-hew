@@ -1,7 +1,7 @@
 import pytest
 from pyrenew.deterministic import NullVariable
 
-from pyrenew_hew.utils import build_pyrenew_model
+from pyrenew_hew.utils import build_pyrenew_hew_model
 
 
 @pytest.fixture
@@ -89,16 +89,16 @@ def mock_priors():
     }
 
 
-def test_build_pyrenew_model(mock_data, mock_priors):
+def test_build_pyrenew_hew_model(mock_data, mock_priors):
     # Test when all `fit_` arguments are False
 
-    _, data = build_pyrenew_model(mock_data, mock_priors)
+    _, data = build_pyrenew_hew_model(mock_data, mock_priors)
     assert data.data_observed_disease_ed_visits is None
     assert data.data_observed_disease_hospital_admissions is None
     assert data.data_observed_disease_wastewater_conc is None
 
     # Test when all `fit_` arguments are True
-    _, data = build_pyrenew_model(
+    _, data = build_pyrenew_hew_model(
         mock_data,
         mock_priors,
         fit_ed_visits=True,
