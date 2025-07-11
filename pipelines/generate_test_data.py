@@ -12,10 +12,10 @@ import polars as pl
 import polars.selectors as cs
 from scipy.stats import expon, norm
 
-from pipelines.build_pyrenew_model import build_pyrenew_model
 from pipelines.prep_data import process_and_save_loc
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pipelines.utils import get_model_data_and_priors_from_dir
+from pyrenew_hew.util import build_pyrenew_model
 
 parser = argparse.ArgumentParser(
     description="Create fit data for disease modeling."

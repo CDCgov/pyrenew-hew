@@ -3,10 +3,9 @@ import pickle
 from pathlib import Path
 
 import arviz as az
-from build_pyrenew_model import build_pyrenew_model
 
 from pipelines.utils import get_model_data_and_priors_from_dir
-from pyrenew_hew.util import flags_from_pyrenew_model_name
+from pyrenew_hew.util import build_pyrenew_model, flags_from_pyrenew_model_name
 
 
 def generate_and_save_predictions(
