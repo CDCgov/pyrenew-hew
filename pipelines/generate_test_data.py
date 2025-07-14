@@ -590,6 +590,18 @@ nwss_etl_base = (
         )
     )
     .select(cs.by_name(loc_level_nwss_data_columns, require_all=False))
+    .pipe(
+        lambda df: pl.concat(
+            [
+                df,
+                df.sample(n=5).with_columns(
+                    (pl.col("pcr_target_avg_conc") + np.random.rand(5))
+                    .cast(pl.Float32)
+                    .alias("pcr_target_avg_conc"),
+                ),
+            ]
+        )
+    )
 )
 
 nwss_site_pop = (
