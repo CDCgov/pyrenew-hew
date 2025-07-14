@@ -30,7 +30,7 @@ def approx_lognorm(
     """
     Find loc and scale parameters
     of a lognormal distribution such that
-    the lognormal PDF is approxmimately
+    the lognormal PDF is approximately
     proportional to the given discrete PMF.
 
     Parameters
