@@ -203,7 +203,7 @@ def main(
     )
 
     loc_abbrs = location_table.get_column("short_name").to_list()
-    locations_include = locations_include or []
+    locations_include = locations_include or loc_abbrs
 
     # Always exclude these default locations
     default_excludes = ["AS", "GU", "MP", "PR", "UM", "VI"]
