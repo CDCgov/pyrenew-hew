@@ -11,3 +11,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Custom branch naming strategy for Docker tags compatibility
+    pull-request-branch-name:
+      separator: "-"
