@@ -37,13 +37,13 @@ def plot_and_save_loc_forecast(
     return None
 
 
-def timeseries_forecasts(
+def timeseries_ensemble_forecasts(
     model_run_dir: Path, model_name: str, n_forecast_days: int, n_samples: int
 ) -> None:
     result = subprocess.run(
         [
             "Rscript",
-            "pipelines/timeseries_forecasts.R",
+            "pipelines/forecast_timeseries_ensemble.R",
             f"{model_run_dir}",
             "--model-name",
             f"{model_name}",
@@ -56,7 +56,29 @@ def timeseries_forecasts(
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"timeseries_forecasts: {result.stderr.decode('utf-8')}"
+            f"timeseries_ensemble_forecasts: {result.stderr.decode('utf-8')}"
+        )
+    return None
+
+
+def cdc_flat_baseline_forecasts(
+    model_run_dir: Path, model_name: str, n_forecast_days: int
+) -> None:
+    result = subprocess.run(
+        [
+            "Rscript",
+            "pipelines/forecast_cdc_flat_baseline.R",
+            f"{model_run_dir}",
+            "--model-name",
+            f"{model_name}",
+            "--n-forecast-days",
+            f"{n_forecast_days}",
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"cdc_flat_baseline_forecasts: {result.stderr.decode('utf-8')}"
         )
     return None
 
@@ -67,7 +89,7 @@ def create_hubverse_table(model_fit_path):
             "Rscript",
             "-e",
             f"""
-            arrow::write_parquet(
+            forecasttools::write_tabular(
             hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
             fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
             )
@@ -104,12 +126,13 @@ def main(
         raise ValueError(
             "Only model_letters 'e' is supported for 'timeseries' model_family."
         )
-    timeseries_model_name = f"timeseries_{model_letters}"
+
+    ensemble_model_name = f"ts_ensemble_{model_letters}"
+    baseline_model_name = f"baseline_cdc_{model_letters}"
 
     logger.info(
         "Starting single-location timeseries forecasting pipeline for "
-        f"model {timeseries_model_name}, location {loc}, "
-        f"and report date {report_date}"
+        f"location {loc}, and report date {report_date}"
     )
 
     if credentials_path is not None:
@@ -245,32 +268,32 @@ def main(
 
     logger.info("Data preparation complete.")
 
-    logger.info(
-        "Performing baseline forecasting and non-target pathogen "
-        "forecasting..."
-    )
+    logger.info("Performing baseline forecasting and postprocessing...")
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
-    timeseries_forecasts(
+    cdc_flat_baseline_forecasts(
+        model_run_dir, baseline_model_name, n_days_past_last_training
+    )
+
+    create_hubverse_table(Path(model_run_dir, baseline_model_name))
+
+    logger.info("Performing timeseries ensemble forecasting")
+    timeseries_ensemble_forecasts(
         model_run_dir,
-        timeseries_model_name,
+        ensemble_model_name,
         n_days_past_last_training,
         n_denominator_samples,
     )
-    logger.info("Postprocessing forecast...")
-
     plot_and_save_loc_forecast(
-        model_run_dir, n_days_past_last_training, timeseries_model_name
+        model_run_dir, n_days_past_last_training, ensemble_model_name
     )
-
-    create_hubverse_table(Path(model_run_dir, timeseries_model_name))
+    create_hubverse_table(Path(model_run_dir, ensemble_model_name))
 
     logger.info("Postprocessing complete.")
 
     logger.info(
-        "Single-location pipeline complete "
-        f"for model {timeseries_model_name}, "
-        f"location {loc}, and "
+        "Single-location timeseries pipeline complete "
+        f"for location {loc}, and "
         f"report date {report_date}."
     )
     return None

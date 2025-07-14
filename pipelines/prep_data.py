@@ -10,12 +10,10 @@ from pathlib import Path
 import forecasttools
 import jax.numpy as jnp
 import numpy as np
-import numpyro.distributions as dist
 import polars as pl
 import polars.selectors as cs
-from jax.scipy.special import logsumexp
-from jax.typing import ArrayLike
-from scipy.optimize import minimize
+
+from pyrenew_hew.utils import approx_lognorm
 
 _disease_map = {
     "COVID-19": "COVID-19/Omicron",
@@ -79,7 +77,7 @@ def get_nhsn(
             )) |>
             dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
             dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
-            arrow::write_parquet("{str(local_data_file)}")
+            forecasttools::write_tabular("{str(local_data_file)}")
             """,
         ]
 
@@ -375,66 +373,6 @@ def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
 
 
-def approx_lognorm(
-    pmf: ArrayLike, loc_guess, scale_guess, method: str = "Nelder-Mead"
-) -> tuple[float, float]:
-    """
-    Find loc and scale parameters
-    of a lognormal distribution such that
-    the lognormal PDF is approxmimately
-    proportional to the given discrete PMF.
-
-    Parameters
-    ----------
-    pmf
-       Array representing the PMF.
-
-    loc_guess
-       Initial loc value to pass to the optimizer.
-
-    scale_guess
-       Initial scale value to pass to the optimizer.
-
-    method
-       Optimization method. Passed as the ``method``
-       keyword argument to :func:`scipy.optimize.minimize`.
-       Default ``"Nelder-Mead"``.
-
-    Returns
-    -------
-    tuple[float, float]
-       A tuple containing the loc parameter as the first
-       entry and the scale parameter as the second.
-
-    Raises
-    ------
-    ValueError
-       If optimization fails.
-    """
-    log_pmf = jnp.log(pmf)
-    n = log_pmf.size
-
-    def err(loc_and_scale):
-        """
-        Our objective function: the squared
-        errors of log prob values
-        """
-        lnorm = dist.LogNormal(loc=loc_and_scale[0], scale=loc_and_scale[1])
-        lp = lnorm.log_prob(jnp.arange(1, n + 1))
-        normed_lp = lp - logsumexp(lp)
-        return jnp.sum((log_pmf - normed_lp) ** 2)
-
-    result = minimize(
-        err, jnp.array([loc_guess, scale_guess]), method="Nelder-Mead"
-    )
-    if not result.success:
-        print(result)
-        raise ValueError("Discretized lognormal approximation to PMF failed")
-    else:
-        res = result.x
-        return (float(res[0]), float(res[1]))
-
-
 def process_and_save_loc(
     loc_abb: str,
     disease: str,
@@ -476,7 +414,9 @@ def process_and_save_loc(
         )
     )
 
-    right_truncation_offset = (report_date - last_training_date).days
+    right_truncation_offset = (report_date - last_training_date).days - 1
+    # First entry of source right truncation PMFs corresponds to reports
+    # for ref date = report_date - 1 as of report_date
 
     aggregated_facility_data = aggregate_facility_level_nssp_to_loc(
         facility_level_nssp_data=facility_level_nssp_data,

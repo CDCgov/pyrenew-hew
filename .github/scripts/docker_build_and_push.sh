@@ -1,7 +1,7 @@
 IMAGE="ghcr.io/cdcgov/$1"
-TAG=$2
-GIT_COMMIT_SHA=$3
-GIT_BRANCH_NAME=$4
+TAG="$2"
+GIT_COMMIT_SHA="$3"
+GIT_BRANCH_NAME="$4"
 BUILDER=docker-container-driver-builder
 
 # create a builder with the docker-container driver to allow cache-export

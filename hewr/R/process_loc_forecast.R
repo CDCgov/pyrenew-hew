@@ -8,7 +8,7 @@ variable_resolution_key <-
 
 load_and_aggregate_ts <- function(
   model_run_dir,
-  timeseries_model_name = "timeseries_e",
+  timeseries_model_name,
   daily_training_dat,
   epiweekly_training_dat,
   required_columns
@@ -26,7 +26,7 @@ load_and_aggregate_ts <- function(
       samples_file_names,
       ext = "parquet"
     ) |>
-      purrr::map(arrow::read_parquet),
+      purrr::map(forecasttools::read_tabular),
     observed = list(daily_training_dat, epiweekly_training_dat) |>
       purrr::map(\(x) dplyr::select(x, -"data_type", -"lab_site_index"))
   ) |>
@@ -139,7 +139,7 @@ read_and_combine_data <- function(model_run_dir) {
     .value = readr::col_double()
   )
 
-  combined_dat <-
+  dat <-
     tidyr::expand_grid(
       epiweekly = c(FALSE, TRUE),
       root = c("combined_training_data", "combined_eval_data")
@@ -168,8 +168,11 @@ read_and_combine_data <- function(model_run_dir) {
       )
     ) |>
     dplyr::select(-"aggregated") |>
-    dplyr::distinct() |>
-    # suggest reforms to prep_data to prevent duplicate data being in each table
+    dplyr::distinct()
+  # suggest reforms to prep_data to prevent duplicate data being in each table
+
+  non_ww_dat <- dat |>
+    dplyr::filter(.variable != "site_level_log_ww_conc") |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
     dplyr::mutate(
       prop_disease_ed_visits = .data$observed_ed_visits /
@@ -181,7 +184,6 @@ read_and_combine_data <- function(model_run_dir) {
         "geo_value",
         "disease",
         "data_type",
-        "lab_site_index",
         "resolution"
       ),
       names_to = ".variable",
@@ -189,6 +191,10 @@ read_and_combine_data <- function(model_run_dir) {
     ) |>
     tidyr::drop_na(".value")
 
+  ww_dat <- dat |>
+    dplyr::filter(.variable == "site_level_log_ww_conc")
+
+  combined_dat <- dplyr::bind_rows(ww_dat, non_ww_dat)
   return(combined_dat)
 }
 
@@ -342,7 +348,7 @@ process_pyrenew_model <- function(
   )
 
   pyrenew_posterior_predictive <-
-    arrow::read_parquet(
+    forecasttools::read_tabular(
       fs::path(
         pyrenew_model_dir,
         "mcmc_tidy",
@@ -556,7 +562,7 @@ process_loc_forecast <- function(
   if (!is.na(timeseries_model_name)) {
     ts_samples <- load_and_aggregate_ts(
       model_run_dir,
-      timeseries_model_name = "timeseries_e",
+      timeseries_model_name,
       daily_training_dat,
       epiweekly_training_dat,
       required_columns = required_columns_e
@@ -595,7 +601,7 @@ process_loc_forecast <- function(
     save_dir <- fs::path(model_run_dir, model_name)
 
     purrr::iwalk(result, \(tab, name) {
-      arrow::write_parquet(
+      forecasttools::write_tabular(
         tab,
         fs::path(save_dir, name, ext = "parquet")
       )
