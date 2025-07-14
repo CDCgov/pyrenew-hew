@@ -139,7 +139,7 @@ read_and_combine_data <- function(model_run_dir) {
     .value = readr::col_double()
   )
 
-  combined_dat <-
+  dat <-
     tidyr::expand_grid(
       epiweekly = c(FALSE, TRUE),
       root = c("combined_training_data", "combined_eval_data")
@@ -168,8 +168,11 @@ read_and_combine_data <- function(model_run_dir) {
       )
     ) |>
     dplyr::select(-"aggregated") |>
-    dplyr::distinct() |>
-    # suggest reforms to prep_data to prevent duplicate data being in each table
+    dplyr::distinct()
+  # suggest reforms to prep_data to prevent duplicate data being in each table
+
+  non_ww_dat <- dat |>
+    dplyr::filter(.variable != "site_level_log_ww_conc") |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
     dplyr::mutate(
       prop_disease_ed_visits = .data$observed_ed_visits /
@@ -181,7 +184,6 @@ read_and_combine_data <- function(model_run_dir) {
         "geo_value",
         "disease",
         "data_type",
-        "lab_site_index",
         "resolution"
       ),
       names_to = ".variable",
@@ -189,6 +191,10 @@ read_and_combine_data <- function(model_run_dir) {
     ) |>
     tidyr::drop_na(".value")
 
+  ww_dat <- dat |>
+    dplyr::filter(.variable == "site_level_log_ww_conc")
+
+  combined_dat <- dplyr::bind_rows(ww_dat, non_ww_dat)
   return(combined_dat)
 }
 
