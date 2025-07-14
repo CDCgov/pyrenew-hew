@@ -16,6 +16,9 @@ from forecasttools import location_table
 
 from pyrenew_hew.utils import validate_hew_letters
 
+# Locations that are always excluded due to lack of NSSP ED visit data
+DEFAULT_EXCLUDED_LOCATIONS = ["AS", "GU", "MP", "PR", "UM", "VI"]
+
 
 def main(
     model_letters: str,
@@ -82,7 +85,7 @@ def main(
     locations_exclude
         List of additional two letter USPS location abbreviations to
         exclude from the job. These will be combined with the default
-        exclusions: ["AS", "GU", "MP", "PR", "UM", "VI"]. If ``None``,
+        exclusions (see DEFAULT_EXCLUDED_LOCATIONS). If ``None``,
         only the default locations will be excluded. Default ``None``.
 
     test
@@ -205,11 +208,10 @@ def main(
     loc_abbrs = location_table.get_column("short_name").to_list()
     locations_include = locations_include or loc_abbrs
 
-    # Always exclude these default locations
-    default_excludes = ["AS", "GU", "MP", "PR", "UM", "VI"]
+    # Always exclude the default locations
     locations_exclude = locations_exclude or []
     # Combine default exclusions with any additional exclusions
-    all_exclusions = list(set(default_excludes + locations_exclude))
+    all_exclusions = list(set(DEFAULT_EXCLUDED_LOCATIONS + locations_exclude))
 
     all_locations = [
         loc
@@ -334,7 +336,7 @@ if __name__ == "__main__":
             "Additional two-letter USPS location abbreviations to "
             "exclude from the job, as a whitespace-separated "
             "string. These will be combined with the default "
-            "exclusions (AS GU MP PR UM VI) which are always excluded."
+            f"exclusions ({' '.join(DEFAULT_EXCLUDED_LOCATIONS)}) which are always excluded."
         ),
         default=None,
     )
