@@ -6,8 +6,12 @@ from itertools import chain, combinations
 from typing import Iterable
 
 import jax.numpy as jnp
+import numpyro.distributions as dist
 import polars as pl
+from jax.scipy.special import logsumexp
+from jax.typing import ArrayLike
 from pyrenew.deterministic import DeterministicPMF
+from scipy.optimize import minimize
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
@@ -18,6 +22,64 @@ from pyrenew_hew.pyrenew_hew_model import (
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
+
+
+def approx_lognorm(
+    pmf: ArrayLike, loc_guess, scale_guess, method: str = "Nelder-Mead"
+) -> tuple[float, float]:
+    """
+    Find loc and scale parameters
+    of a lognormal distribution such that
+    the lognormal PDF is approximately
+    proportional to the given discrete PMF.
+
+    Parameters
+    ----------
+    pmf
+       Array representing the PMF.
+
+    loc_guess
+       Initial loc value to pass to the optimizer.
+
+    scale_guess
+       Initial scale value to pass to the optimizer.
+
+    method
+       Optimization method. Passed as the ``method``
+       keyword argument to :func:`scipy.optimize.minimize`.
+       Default ``"Nelder-Mead"``.
+
+    Returns
+    -------
+    tuple[float, float]
+       A tuple containing the loc parameter as the first
+       entry and the scale parameter as the second.
+
+    Raises
+    ------
+    ValueError
+       If optimization fails.
+    """
+    log_pmf = jnp.log(pmf)
+    n = log_pmf.size
+
+    def err(loc_and_scale):
+        """
+        Our objective function: the squared
+        errors of log prob values
+        """
+        lnorm = dist.LogNormal(loc=loc_and_scale[0], scale=loc_and_scale[1])
+        lp = lnorm.log_prob(jnp.arange(1, n + 1))
+        normed_lp = lp - logsumexp(lp)
+        return jnp.sum((log_pmf - normed_lp) ** 2)
+
+    result = minimize(err, jnp.array([loc_guess, scale_guess]), method=method)
+    if not result.success:
+        print(result)
+        raise ValueError("Discretized lognormal approximation to PMF failed")
+    else:
+        res = result.x
+        return (float(res[0]), float(res[1]))
 
 
 def powerset(iterable: Iterable) -> Iterable:
