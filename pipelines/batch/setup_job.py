@@ -29,15 +29,8 @@ def main(
     container_image_version: str = "latest",
     n_training_days: int = 150,
     exclude_last_n_days: int = 1,
-    locations_include: list[str] = None,
-    locations_exclude: list[str] = [
-        "AS",
-        "GU",
-        "MP",
-        "PR",
-        "UM",
-        "VI",
-    ],
+    locations_include: list[str] | None = None,
+    locations_exclude: list[str] | None = None,
     test: bool = False,
 ) -> None:
     """
@@ -87,11 +80,10 @@ def main(
         not-explicitly-excluded locations. Default ``None``.
 
     locations_exclude
-        List of two letter USPS location abbreviations to
-        exclude from the job. If ``None``, do not exclude any
-        locations. Defaults to a list of locations for which
-        we typically do not have available NSSP ED visit data:
-        ``["AS", "GU", "MP", "PR", "UM", "VI"]``.
+        List of additional two letter USPS location abbreviations to
+        exclude from the job. These will be combined with the default
+        exclusions: ["AS", "GU", "MP", "PR", "UM", "VI"]. If ``None``,
+        only the default locations will be excluded. Default ``None``.
 
     test
         Is this a testing run? Default ``False``.
@@ -211,15 +203,18 @@ def main(
     )
 
     loc_abbrs = location_table.get_column("short_name").to_list()
-    if locations_include is None:
-        locations_include = loc_abbrs
-    if locations_exclude is None:
-        locations_exclude = []
+    locations_include = locations_include or []
+
+    # Always exclude these default locations
+    default_excludes = ["AS", "GU", "MP", "PR", "UM", "VI"]
+    locations_exclude = locations_exclude or []
+    # Combine default exclusions with any additional exclusions
+    all_exclusions = list(set(default_excludes + locations_exclude))
 
     all_locations = [
         loc
         for loc in loc_abbrs
-        if loc not in locations_exclude and loc in locations_include
+        if loc not in all_exclusions and loc in locations_include
     ]
 
     for disease, loc in itertools.product(disease_list, all_locations):
@@ -336,13 +331,12 @@ if __name__ == "__main__":
         "--locations-exclude",
         type=str,
         help=(
-            "Two-letter USPS location abbreviations to "
+            "Additional two-letter USPS location abbreviations to "
             "exclude from the job, as a whitespace-separated "
-            "string. Defaults to a set of locations for which "
-            "we typically do not have available NSSP ED visit "
-            "data: 'AS GU MP PR UM VI'."
+            "string. These will be combined with the default "
+            "exclusions (AS GU MP PR UM VI) which are always excluded."
         ),
-        default="AS GU MP PR UM VI",
+        default=None,
     )
 
     parser.add_argument(
@@ -368,9 +362,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.diseases = args.diseases.split()
-    if args.locations_include is not None:
-        args.locations_include = args.locations_include.split()
-    args.locations_exclude = args.locations_exclude.split()
+    args.locations_include = (
+        args.locations_include.split() if args.locations_include else []
+    )
+    args.locations_exclude = (
+        args.locations_exclude.split() if args.locations_exclude else []
+    )
     if args.additional_forecast_letters is None:
         args.additional_forecast_letters = args.model_letters
     main(**vars(args))
