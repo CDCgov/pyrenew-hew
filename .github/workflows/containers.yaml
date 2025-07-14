@@ -52,4 +52,4 @@ jobs:
               ${{ env.IMAGE_NAME }} \
               ${{ steps.image-tag.outputs.tag }} \
               ${{ github.event.pull_request.head.sha || github.sha }} \
-              ${{ steps.branch.outputs.name }} \
+              ${{ steps.branch-name.outputs.branch }} \
