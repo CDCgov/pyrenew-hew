@@ -164,12 +164,20 @@ def do_timeseries_reruns(
     append_id: str = "",
 ):
     if e_exclude_last_n_days == 1:
-        print("Skipping Timeseries-E re-fitting")
+        print("Skipping Timeseries-E re-fitting due to E")
     else:
         fit_timeseries_e(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=e_exclude_last_n_days,
+        )
+    if h_exclude_last_n_days == 1:
+        print("Skipping Timeseries-E re-fitting due to H")
+    else:
+        fit_timeseries_e(
+            append_id=append_id,
+            locations_include=locations_include,
+            exclude_last_n_days=h_exclude_last_n_days,
         )
 
 
@@ -202,6 +210,7 @@ def do_pyrenew_reruns(
             locations_include=locations_include,
             exclude_last_n_days=h_exclude_last_n_days,
         )
+
     if he_exclude_last_n_days == 1:
         print("Skipping PyRenew-HE and HEW re-fitting")
     else:
