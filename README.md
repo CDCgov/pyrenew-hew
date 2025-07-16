@@ -27,9 +27,12 @@ ENGINE=podman make container_build
 
 Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
 
-## Running forecast models
+## How to Run pyrnew-hew
 
-A Standard Operating Procedure for running routine forecast models is available within CDCent github. Please contact a maintainer if you believe you need access to it.
+A Standard Operating Procedure (SOP) for running routine forecast model inference from within this repository is available within CDC Enterprise Github.
+Please contact a project maintainer if you believe you need access to it.
+
+Related: the `Makefile` also includes targets for running forecast jobs against Azure Batch. These targets are explained in detail in the aforementioned SOP.
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
