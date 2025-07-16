@@ -52,7 +52,7 @@ help:
 	@echo "Forecasting Targets: "
 	@echo "  run_timeseries      : Run the timeseries forecasting job"
 	@echo "  run_e_model         : Run the e_model forecasting job"
-	@echo "  run_h_models        : Run the h_models forecasting job"	
+	@echo "  run_h_models        : Run the h_models forecasting job"
 	@echo "  post_process        : Post-process the forecast batches"
 	@echo ""
 	@echo "Toggle default forecasting parameters with the following syntax:"

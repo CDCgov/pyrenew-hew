@@ -36,7 +36,7 @@ def main(
     locations_include: list[str] | None = None,
     locations_exclude: list[str] | None = None,
     test: bool = False,
-    dry_run: bool = False
+    dry_run: bool = False,
 ) -> None:
     """
     job_id
@@ -105,7 +105,7 @@ def main(
     -------
     None
     """
-    
+
     supported_diseases = ["COVID-19", "Influenza"]
 
     disease_list = diseases
@@ -233,7 +233,7 @@ def main(
     print(f"{'Diseases:':25} {', '.join(disease_list)}")
     # Print locations, 5 per line for readability
     for i, line in enumerate(range(0, len(all_locations), 5)):
-        locs = ', '.join(all_locations[line:line+5])
+        locs = ", ".join(all_locations[line : line + 5])
         print(f"{'Locations:' if i == 0 else '':25} {locs}")
     print(f"{'Output Subdirectory:':25} {output_subdir}")
     print(f"{'Container Image:':25} {container_image}")
@@ -243,7 +243,7 @@ def main(
     print(f"{'Test Mode:':25} {test}")
     print(f"{'Dry Run:':25} {dry_run}")
     print("=" * 50)
-    
+
     if dry_run:
         print("Dry run mode enabled. No tasks will be submitted.")
         print("Closing...")
@@ -260,8 +260,6 @@ def main(
         pool_info=models.PoolInformation(pool_id=pool_id),
     )
     create_job(client, job)
-
-    
 
     for disease, loc in itertools.product(disease_list, all_locations):
         task = get_task_config(
@@ -401,7 +399,7 @@ if __name__ == "__main__":
         nargs="?",
         const=True,
         default=False,
-        help="Run in test mode (default: False). Pass --test True or --test False to set explicitly."
+        help="Run in test mode (default: False). Pass --test True or --test False to set explicitly.",
     )
     parser.add_argument(
         "--dry_run",
