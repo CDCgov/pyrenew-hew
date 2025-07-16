@@ -111,6 +111,7 @@ def main(
         )
 
     validate_hew_letters(model_letters)
+    additional_forecast_letters = additional_forecast_letters or model_letters
     validate_hew_letters(additional_forecast_letters)
 
     if model_family == "timeseries" and model_letters != "e":
