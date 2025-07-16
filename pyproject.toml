@@ -25,6 +25,8 @@ dependencies = [
     "pygit2>=1.17.0",
     "tomli-w>=1.1.0",
     "azuretools @ git+https://github.com/cdcgov/cfa-azuretools",
+    "just>=0.8.165",
+    "rust-just>=1.42.2",
 ]
 
 [build-system]
