@@ -13,7 +13,7 @@ from rich.text import Text
 from .batch.setup_job import main as setup_job
 from .postprocess_forecast_batches import main as postprocess
 
-# to do: work with specific diseases
+# TODO: work with specific diseases
 DISEASES = ["COVID-19"]  # not forecasting flu currently
 W_EXCLUDE_DEFAULT = ["US", "NY"]
 
