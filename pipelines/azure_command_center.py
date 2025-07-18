@@ -14,22 +14,7 @@ from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
 
-
-def get_env_or_prompt(var_name: str, default: str = "") -> str:
-    value = os.getenv(var_name, default)
-    if not value:
-        prompt = f"Environment variable [bold]{var_name}[/bold] not found. Enter a temporary value"
-        value = Prompt.ask(prompt)
-
-    return value
-
-
-# Config
-nssp_etl_path = Path(get_env_or_prompt("NSSP_ETL_PATH"))
-pyrenew_hew_prod_output_path = Path(
-    get_env_or_prompt("PYRENEW_HEW_PROD_OUTPUT_PATH")
-)
-nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
+console = Console()
 
 # TODO: work with specific diseases
 DISEASES = ["COVID-19"]  # not forecasting flu currently
@@ -39,7 +24,14 @@ today = dt.date.today()
 today_str = today.strftime("%Y-%m-%d")
 output_subdir = f"{today_str}_forecasts"
 
-console = Console()
+
+def get_env_or_prompt(var_name: str, default: str = "") -> str:
+    value = os.getenv(var_name, default)
+    if not value:
+        prompt = f"Environment variable [bold]{var_name}[/bold] not found. Enter a temporary value"
+        value = Prompt.ask(prompt)
+
+    return value
 
 
 def setup_job_append_id(
@@ -319,11 +311,6 @@ def print_data_status(datasets):
     console.print(table)
 
 
-# Get and print data status
-datasets = get_data_status(nssp_etl_path, nhsn_target_url)
-print_data_status(datasets)
-
-
 def ask_integer_choice(choices):
     """
     Asks the user to select an integer choice from a list of options.
@@ -350,6 +337,12 @@ def ask_integer_choice(choices):
 
 
 if __name__ == "__main__":
+    nssp_etl_path = Path(get_env_or_prompt("NSSP_ETL_PATH"))
+    pyrenew_hew_prod_output_path = Path(
+        get_env_or_prompt("PYRENEW_HEW_PROD_OUTPUT_PATH")
+    )
+    nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
+
     choices = [
         "Fit initial Timeseries Models",
         "Fit initial PyRenew-E Models",
@@ -359,6 +352,10 @@ if __name__ == "__main__":
         "Postprocess Forecast Batches",
         "Exit",
     ]
+
+    # Get and print data status
+    datasets = get_data_status(nssp_etl_path, nhsn_target_url)
+    print_data_status(datasets)
 
     while True:
         selected_choice = ask_integer_choice(choices)
