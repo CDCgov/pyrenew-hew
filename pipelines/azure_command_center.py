@@ -5,8 +5,8 @@ from pathlib import Path
 
 import polars as pl
 import requests
-from batch.setup_job import main as setup_job
-from postprocess_forecast_batches import main as postprocess
+from .batch.setup_job import main as setup_job
+from .postprocess_forecast_batches import main as postprocess
 from rich import print
 from rich.console import Console
 from rich.table import Table
