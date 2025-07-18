@@ -9,8 +9,20 @@ from batch.setup_job import main as setup_job
 from postprocess_forecast_batches import main as postprocess
 from rich import print
 from rich.console import Console
+from rich.prompt import IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
+
+
+def get_env_or_prompt(
+    var_name: str, prompt_text: str = "", default: str = ""
+) -> str:
+    value = os.getenv(var_name, default)
+    if value is not None:
+        return value
+    prompt = prompt_text or f"[bold]{var_name}[/bold] (required)"
+    return Prompt.ask(prompt)
+
 
 # Config
 nssp_etl_path = Path(os.environ["nssp_etl_path"])
@@ -129,33 +141,21 @@ fit_pyrenew_hew = partial(
 
 
 def ask_about_reruns():
-    locations_input = input(
-        "Enter locations to include (space-separated, or press Enter for all locations): "
+    locations_input = Prompt.ask(
+        "Enter locations to include (space-separated, or press Enter for all locations)",
+        default="",
     ).strip()
     locations_include = (
         None
         if locations_input == ""
         else [loc.strip() for loc in locations_input.split(" ")]
     )
-    while True:
-        try:
-            e_input = input(
-                "How many days to exclude for E signal? (default: 1): "
-            ).strip()
-            e_exclude_last_n_days = 1 if e_input == "" else int(e_input)
-            break
-        except ValueError:
-            print("Please enter a valid integer.")
-
-    while True:
-        try:
-            h_input = input(
-                "How many days to exclude for H signal? (default: 1): "
-            ).strip()
-            h_exclude_last_n_days = 1 if h_input == "" else int(h_input)
-            break
-        except ValueError:
-            print("Please enter a valid integer.")
+    e_exclude_last_n_days = IntPrompt.ask(
+        "How many days to exclude for E signal?", default=1
+    )
+    h_exclude_last_n_days = IntPrompt.ask(
+        "How many days to exclude for H signal?", default=1
+    )
 
     return {
         "locations_include": locations_include,
@@ -325,11 +325,12 @@ if __name__ == "__main__":
     while True:
         for i, choice in enumerate(choices, 1):
             print(f"{i}. {choice}")
-        choice = input(f"\nEnter your choice (1-{len(choices)}): ")
+        choice = IntPrompt.ask("\nEnter your choice")
+
         current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
         try:
-            choice_idx = int(choice) - 1
+            choice_idx = choice - 1
             if choice_idx < 0 or choice_idx >= len(choices):
                 raise IndexError()
             selected_choice = choices[choice_idx]
