@@ -8,6 +8,7 @@ import itertools
 from pathlib import Path
 
 from azure.batch import models
+from azure.identity import DefaultAzureCredential
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
@@ -35,6 +36,7 @@ def main(
     locations_include: list[str] | None = None,
     locations_exclude: list[str] | None = None,
     test: bool = False,
+    dry_run: bool = False,
 ) -> None:
     """
     job_id
@@ -48,7 +50,7 @@ def main(
         as a single string (one disease) or a list of strings.
         Supported values are 'COVID-19' and 'Influenza'.
 
-     output_subdir
+    output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
 
@@ -88,17 +90,22 @@ def main(
         exclusions (see DEFAULT_EXCLUDED_LOCATIONS). If ``None``,
         only the default locations will be excluded. Default ``None``.
 
-    test
-        Is this a testing run? Default ``False``.
-
     model_family
         The model family to use for the job. Default 'pyrenew'.
         Supported values are 'pyrenew' and 'timeseries'.
+
+    test
+        Is this a testing run? Default ``False``.
+
+    dry_run
+        If set, do not submit tasks to Azure Batch.
+        Only print what would be done. Default ``False``.
 
     Returns
     -------
     None
     """
+
     supported_diseases = ["COVID-19", "Influenza"]
 
     disease_list = diseases
@@ -125,14 +132,22 @@ def main(
     n_warmup = 200 if test else 1000
     n_samples = 200 if test else 500
 
-    creds = EnvCredentialHandler()
-    client = get_batch_service_client(creds)
-    job = models.JobAddParameter(
-        id=job_id,
-        pool_info=models.PoolInformation(pool_id=pool_id),
-    )
-    create_job(client, job)
+    # Locations
+    loc_abbrs = location_table.get_column("short_name").to_list()
+    locations_include = locations_include or loc_abbrs
 
+    # Always exclude the default locations
+    locations_exclude = locations_exclude or []
+    # Combine default exclusions with any additional exclusions
+    all_exclusions = list(set(DEFAULT_EXCLUDED_LOCATIONS + locations_exclude))
+
+    all_locations = [
+        loc
+        for loc in loc_abbrs
+        if loc not in all_exclusions and loc in locations_include
+    ]
+
+    # Container Setup
     container_image = (
         f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
     )
@@ -167,6 +182,7 @@ def main(
         ],
     )
 
+    # Model family and corresponding run script selection
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
@@ -206,19 +222,45 @@ def main(
         "'"
     )
 
-    loc_abbrs = location_table.get_column("short_name").to_list()
-    locations_include = locations_include or loc_abbrs
+    print("")
+    print("=" * 50)
+    print("🚀 pyrenew-hew: Azure Batch Job Submission 🚀")
+    print("=" * 50)
+    print(f"{'Job ID:':25} {job_id}")
+    print(f"{'Pool ID:':25} {pool_id}")
+    print(f"{'Model Family:':25} {model_family}")
+    print(f"{'Model Letters:':25} {model_letters}")
+    print(f"{'Additional Forecast Letters:':25} {additional_forecast_letters}")
+    print(f"{'Diseases:':25} {', '.join(disease_list)}")
+    # Print locations, 5 per line for readability
+    for i, line in enumerate(range(0, len(all_locations), 5)):
+        locs = ", ".join(all_locations[line : line + 5])
+        print(f"{'Locations:' if i == 0 else '':25} {locs}")
+    print(f"{'Output Subdirectory:':25} {output_subdir}")
+    print(f"{'Container Image:':25} {container_image}")
+    print(f"{'Container Version:':25} {container_image_version}")
+    print(f"{'Training Days:':25} {n_training_days}")
+    print(f"{'Exclude Last N Days:':25} {exclude_last_n_days}")
+    print(f"{'Test Mode:':25} {test}")
+    print(f"{'Dry Run:':25} {dry_run}")
+    print("=" * 50)
 
-    # Always exclude the default locations
-    locations_exclude = locations_exclude or []
-    # Combine default exclusions with any additional exclusions
-    all_exclusions = list(set(DEFAULT_EXCLUDED_LOCATIONS + locations_exclude))
+    if dry_run:
+        print("Dry run mode enabled. No tasks will be submitted.")
+        print("Closing...")
+        return None
 
-    all_locations = [
-        loc
-        for loc in loc_abbrs
-        if loc not in all_exclusions and loc in locations_include
-    ]
+    # TODO: Use VM managed identity with DefaultAzureCredential()
+    print("")
+    print("Using environment credentials to authenticate with Azure Batch...")
+    creds = EnvCredentialHandler()
+    client = get_batch_service_client(creds)
+    print("Submitting job to Azure Batch...")
+    job = models.JobAddParameter(
+        id=job_id,
+        pool_info=models.PoolInformation(pool_id=pool_id),
+    )
+    create_job(client, job)
 
     for disease, loc in itertools.product(disease_list, all_locations):
         task = get_task_config(
@@ -244,22 +286,21 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test", action="store_true", help="Run in test mode")
     parser.add_argument(
-        "model_letters",
+        "--model_letters",
         type=str,
         help=(
             "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
         ),
     )
-
     parser.add_argument(
-        "job_id", type=str, help="Name for the Azure batch job"
+        "--job_id", type=str, help="Name for the Azure batch job"
     )
     parser.add_argument(
-        "pool_id",
+        "--pool_id",
         type=str,
         help=("Name of the Azure batch pool on which to run the job"),
+        default="pyrenew-pool",
     )
     parser.add_argument(
         "--diseases",
@@ -272,7 +313,6 @@ if __name__ == "__main__":
             "Default 'COVID-19 Influenza' (i.e. run for both)."
         ),
     )
-
     parser.add_argument(
         "--output-subdir",
         type=str,
@@ -282,21 +322,18 @@ if __name__ == "__main__":
         ),
         default="./",
     )
-
     parser.add_argument(
         "--container-image-name",
         type=str,
         help="Name of the container to use for the job.",
         default="pyrenew-hew",
     )
-
     parser.add_argument(
         "--container-image-version",
         type=str,
         help="Version of the container to use for the job.",
         default="latest",
     )
-
     parser.add_argument(
         "--n-training-days",
         type=int,
@@ -306,7 +343,6 @@ if __name__ == "__main__":
         ),
         default=150,
     )
-
     parser.add_argument(
         "--exclude-last-n-days",
         type=int,
@@ -316,7 +352,6 @@ if __name__ == "__main__":
         ),
         default=1,
     )
-
     parser.add_argument(
         "--locations-include",
         type=str,
@@ -329,7 +364,6 @@ if __name__ == "__main__":
         ),
         default=None,
     )
-
     parser.add_argument(
         "--locations-exclude",
         type=str,
@@ -341,7 +375,6 @@ if __name__ == "__main__":
         ),
         default=None,
     )
-
     parser.add_argument(
         "--additional-forecast-letters",
         type=str,
@@ -351,7 +384,6 @@ if __name__ == "__main__":
         ),
         default=None,
     )
-
     parser.add_argument(
         "--model-family",
         type=str,
@@ -361,6 +393,22 @@ if __name__ == "__main__":
             "Default 'pyrenew'."
         ),
         default="pyrenew",
+    )
+    parser.add_argument(
+        "--test",
+        type=bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="Run in test mode (default: False). Pass --test True or --test False to set explicitly.",
+    )
+    parser.add_argument(
+        "--dry_run",
+        type=bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="If set to True, do not submit tasks to Azure Batch. Only print what would be done. Pass --dry_run True or --dry_run False to set explicitly.",
     )
 
     args = parser.parse_args()
