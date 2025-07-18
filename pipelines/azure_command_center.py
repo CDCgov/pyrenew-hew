@@ -236,7 +236,10 @@ def get_data_status(
 ):
     """Get the status of various datasets including update dates and days behind."""
     latest_comprehensive_path = nssp_etl_path / latest_comprehensive_filename
-    latest_gold_path = max((nssp_etl_path / gold_subdir).glob("*.parquet"))
+    gold_files = list((nssp_etl_path / gold_subdir).glob("*.parquet"))
+    if not gold_files:
+        raise FileNotFoundError(f"No .parquet files found in the directory: {nssp_etl_path / gold_subdir}")
+    latest_gold_path = max(gold_files)
 
     gold_update_date = dt.datetime.strptime(
         latest_gold_path.stem, "%Y-%m-%d"
