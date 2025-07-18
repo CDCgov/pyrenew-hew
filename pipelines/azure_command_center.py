@@ -5,13 +5,12 @@ from pathlib import Path
 
 import polars as pl
 import requests
+from batch.setup_job import main as setup_job
+from postprocess_forecast_batches import main as postprocess
 from rich import print
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
-
-from .batch.setup_job import main as setup_job
-from .postprocess_forecast_batches import main as postprocess
 
 # Config
 nssp_etl_path = Path(os.environ["nssp_etl_path"])
