@@ -1,6 +1,7 @@
 import datetime as dt
 import os
 from functools import partial
+from operator import le
 from pathlib import Path
 
 import polars as pl
@@ -9,7 +10,7 @@ from batch.setup_job import main as setup_job
 from postprocess_forecast_batches import main as postprocess
 from rich import print
 from rich.console import Console
-from rich.prompt import IntPrompt, Prompt
+from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
 
@@ -59,22 +60,23 @@ def setup_job_append_id(
 ):
     updated_job_id = job_id + append_id
     print(f"Submitting job: {updated_job_id}")
-    setup_job(
-        model_letters=model_letters,
-        job_id=updated_job_id,
-        pool_id=pool_id,
-        model_family=model_family,
-        diseases=diseases,
-        output_subdir=output_subdir,
-        additional_forecast_letters=additional_forecast_letters,
-        container_image_name=container_image_name,
-        container_image_version=container_image_version,
-        n_training_days=n_training_days,
-        exclude_last_n_days=exclude_last_n_days,
-        locations_include=locations_include,
-        locations_exclude=locations_exclude,
-        test=test,
-    )
+    if Confirm.ask(f"Submit job {updated_job_id}?"):
+        setup_job(
+            model_letters=model_letters,
+            job_id=updated_job_id,
+            pool_id=pool_id,
+            model_family=model_family,
+            diseases=diseases,
+            output_subdir=output_subdir,
+            additional_forecast_letters=additional_forecast_letters,
+            container_image_name=container_image_name,
+            container_image_version=container_image_version,
+            n_training_days=n_training_days,
+            exclude_last_n_days=exclude_last_n_days,
+            locations_include=locations_include,
+            locations_exclude=locations_exclude,
+            test=test,
+        )
 
 
 fit_timeseries_e = partial(
@@ -310,6 +312,31 @@ datasets = get_data_status(nssp_etl_path, nhsn_target_url)
 print_data_status(datasets)
 
 
+def ask_integer_choice(choices):
+    """
+    Asks the user to select an integer choice from a list of options.
+
+    :param choices: A list of choices to present to the user.
+    :return: The index of the selected choice (1-based).
+    """
+    if not choices:
+        raise ValueError("Choices list cannot be empty")
+    while True:
+        print("\nWhat would you like to do?")
+        for i, choice in enumerate(choices, 1):
+            print(f"{i}. {choice}")
+
+        choice = IntPrompt.ask(
+            f"Enter a number between [b]1[/b] and [b]{len(choices)}[/b]"
+        )
+        if choice >= 1 and choice <= len(choices):
+            return choices[choice - 1]
+        else:
+            print(
+                f"[prompt.invalid]Number must be between 1 and {len(choices)}"
+            )
+
+
 if __name__ == "__main__":
     print("\nWhat would you like to do?")
     choices = [
@@ -322,52 +349,35 @@ if __name__ == "__main__":
         "Exit",
     ]
 
+    selected_choice = ask_integer_choice(choices)
+    current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
     while True:
-        for i, choice in enumerate(choices, 1):
-            print(f"{i}. {choice}")
-        choice = IntPrompt.ask("\nEnter your choice")
-
-        current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-        try:
-            choice_idx = choice - 1
-            if choice_idx < 0 or choice_idx >= len(choices):
-                raise IndexError()
-            selected_choice = choices[choice_idx]
-
-            # You can add specific logic here based on the selected choice
-            if selected_choice == "Exit":
-                print("Exiting...")
-                break
-            elif selected_choice == "Fit initial Timeseries Models":
-                fit_timeseries_e(append_id=current_time)
-            elif selected_choice == "Fit initial PyRenew-E Models":
-                fit_pyrenew_e(append_id=current_time)
-            elif selected_choice == "Fit initial PyRenew-H** models":
-                fit_pyrenew_h(append_id=current_time)
-                fit_pyrenew_he(append_id=current_time)
-                fit_pyrenew_hw(append_id=current_time)
-                fit_pyrenew_hew(append_id=current_time)
-            elif selected_choice == "Rerun Timeseries Models":
-                ask_about_reruns_input = ask_about_reruns()
-                do_timeseries_reruns(
-                    append_id=current_time, **ask_about_reruns_input
-                )
-            elif selected_choice == "Rerun PyRenew Models":
-                ask_about_reruns_input = ask_about_reruns()
-                do_pyrenew_reruns(
-                    append_id=current_time, **ask_about_reruns_input
-                )
-            elif selected_choice == "Postprocess Forecast Batches":
-                postprocess(
-                    base_forecast_dir=pyrenew_hew_prod_output_path
-                    / output_subdir,
-                    diseases=DISEASES,
-                )
-            else:
-                print(f"Executing: {selected_choice}")
-            input("Press any key to continue...")
-        except (ValueError, IndexError):
-            print(
-                f"Invalid input. Please enter a number between 1-{len(choices)}."
+        if selected_choice == "Exit":
+            print("Exiting...")
+            break
+        elif selected_choice == "Fit initial Timeseries Models":
+            fit_timeseries_e(append_id=current_time)
+        elif selected_choice == "Fit initial PyRenew-E Models":
+            fit_pyrenew_e(append_id=current_time)
+        elif selected_choice == "Fit initial PyRenew-H** models":
+            fit_pyrenew_h(append_id=current_time)
+            fit_pyrenew_he(append_id=current_time)
+            fit_pyrenew_hw(append_id=current_time)
+            fit_pyrenew_hew(append_id=current_time)
+        elif selected_choice == "Rerun Timeseries Models":
+            ask_about_reruns_input = ask_about_reruns()
+            do_timeseries_reruns(
+                append_id=current_time, **ask_about_reruns_input
             )
+        elif selected_choice == "Rerun PyRenew Models":
+            ask_about_reruns_input = ask_about_reruns()
+            do_pyrenew_reruns(append_id=current_time, **ask_about_reruns_input)
+        elif selected_choice == "Postprocess Forecast Batches":
+            postprocess(
+                base_forecast_dir=pyrenew_hew_prod_output_path / output_subdir,
+                diseases=DISEASES,
+            )
+        else:
+            print(f"Executing: {selected_choice}")
+        input("Press any key to continue...")
