@@ -59,7 +59,6 @@ def setup_job_append_id(
     append_id: str = "",
 ):
     updated_job_id = job_id + append_id
-    print(f"Submitting job: {updated_job_id}")
     if Confirm.ask(f"Submit job {updated_job_id}?"):
         setup_job(
             model_letters=model_letters,
@@ -338,7 +337,6 @@ def ask_integer_choice(choices):
 
 
 if __name__ == "__main__":
-    print("\nWhat would you like to do?")
     choices = [
         "Fit initial Timeseries Models",
         "Fit initial PyRenew-E Models",
@@ -349,10 +347,10 @@ if __name__ == "__main__":
         "Exit",
     ]
 
-    selected_choice = ask_integer_choice(choices)
-    current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
     while True:
+        selected_choice = ask_integer_choice(choices)
+        current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
         if selected_choice == "Exit":
             print("Exiting...")
             break
@@ -378,6 +376,5 @@ if __name__ == "__main__":
                 base_forecast_dir=pyrenew_hew_prod_output_path / output_subdir,
                 diseases=DISEASES,
             )
-        else:
-            print(f"Executing: {selected_choice}")
-        input("Press any key to continue...")
+
+        input("Press enter to continue...")
