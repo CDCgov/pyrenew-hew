@@ -238,7 +238,9 @@ def get_data_status(
     latest_comprehensive_path = nssp_etl_path / latest_comprehensive_filename
     gold_files = list((nssp_etl_path / gold_subdir).glob("*.parquet"))
     if not gold_files:
-        raise FileNotFoundError(f"No .parquet files found in the directory: {nssp_etl_path / gold_subdir}")
+        raise FileNotFoundError(
+            f"No .parquet files found in the directory: {nssp_etl_path / gold_subdir}"
+        )
     latest_gold_path = max(gold_files)
 
     gold_update_date = dt.datetime.strptime(
