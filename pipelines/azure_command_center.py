@@ -13,6 +13,11 @@ from rich.text import Text
 from .batch.setup_job import main as setup_job
 from .postprocess_forecast_batches import main as postprocess
 
+# Config
+nssp_etl_path = Path(os.environ["nssp_etl_path"])
+pyrenew_hew_prod_output_path = Path(os.environ["pyrenew_hew_prod_output_path"])
+nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
+
 # TODO: work with specific diseases
 DISEASES = ["COVID-19"]  # not forecasting flu currently
 W_EXCLUDE_DEFAULT = ["US", "NY"]
@@ -20,6 +25,8 @@ W_EXCLUDE_DEFAULT = ["US", "NY"]
 today = dt.date.today()
 today_str = today.strftime("%Y-%m-%d")
 output_subdir = f"{today_str}_forecasts"
+
+console = Console()
 
 
 def setup_job_append_id(
@@ -228,53 +235,40 @@ def do_pyrenew_reruns(
         )
 
 
-nssp_etl_path = Path(os.environ["nssp_etl_path"])
-pyrenew_hew_prod_output_path = Path(os.environ["pyrenew_hew_prod_output_path"])
-latest_comprehensive_path = nssp_etl_path / "latest_comprehensive.parquet"
-latest_gold_path = max((nssp_etl_path / "gold").glob("*.parquet"))
+def get_data_status(
+    nssp_etl_path: Path,
+    nhsn_target_url: str,
+    latest_comprehensive_filename: str = "latest_comprehensive.parquet",
+    gold_subdir: str = "gold",
+):
+    """Get the status of various datasets including update dates and days behind."""
+    latest_comprehensive_path = nssp_etl_path / latest_comprehensive_filename
+    latest_gold_path = max((nssp_etl_path / gold_subdir).glob("*.parquet"))
 
-gold_update_date = dt.datetime.strptime(
-    latest_gold_path.stem, "%Y-%m-%d"
-).date()
+    gold_update_date = dt.datetime.strptime(
+        latest_gold_path.stem, "%Y-%m-%d"
+    ).date()
 
+    latest_comprehensive_update_date = (
+        pl.read_parquet(latest_comprehensive_path)
+        .select(pl.col("report_date").max())
+        .item(0, "report_date")
+    )
 
-latest_comprehensive_update_date = (
-    pl.read_parquet(latest_comprehensive_path)
-    .select(pl.col("report_date").max())
-    .item(0, "report_date")
-)
+    nhsn_update_date_raw = (
+        requests.get(nhsn_target_url).json().get("rowsUpdatedAt")
+    )
+    nhsn_update_date = dt.datetime.fromtimestamp(nhsn_update_date_raw).date()
 
+    datasets = {
+        "nssp-etl/gold": gold_update_date,
+        "latest_comprehensive": latest_comprehensive_update_date,
+        "NHSN API": nhsn_update_date,
+    }
 
-nhsn_update_date_raw = (
-    requests.get("https://data.cdc.gov/api/views/mpgq-jmmr.json")
-    .json()
-    .get("rowsUpdatedAt")
-)
-nhsn_update_date = dt.datetime.fromtimestamp(nhsn_update_date_raw).date()
-
-
-console = Console()
-
-# Create a table
-table = Table(
-    title="Dataset Status Report",
-    show_header=True,
-    header_style="bold magenta",
-)
-table.add_column("Dataset", style="cyan", no_wrap=True)
-table.add_column("Last Updated", style="green")
-table.add_column("Days Behind", style="yellow")
-table.add_column("Status", justify="center")
-
-# Calculate days behind and add rows to table
-datasets = [
-    ("nssp-etl/gold", gold_update_date),
-    ("latest_comprehensive", latest_comprehensive_update_date),
-    ("NHSN API", nhsn_update_date),
-]
+    return datasets
 
 
-# Helper function to get status emoji and color
 def get_status(days_behind):
     if days_behind == 0:
         return Text("✅ Current", style="bold green")
@@ -282,74 +276,98 @@ def get_status(days_behind):
         return Text("❌ Stale", style="bold red")
 
 
-for name, update_date in datasets:
-    days_behind = (today - update_date).days
-    table.add_row(
-        name,
-        str(update_date),
-        str(days_behind),
-        get_status(days_behind),
+def print_data_status(datasets):
+    """Print a formatted table showing dataset status."""
+    # Move this to the main body with other global variables
+
+    # Create a table
+    table = Table(
+        title="Dataset Status Report",
+        show_header=True,
+        header_style="bold magenta",
     )
+    table.add_column("Dataset", style="cyan", no_wrap=True)
+    table.add_column("Last Updated", style="green")
+    table.add_column("Days Behind", style="yellow")
+    table.add_column("Status", justify="center")
 
-# Print the table
-console.print(table)
+    # Helper function to get status emoji and color
 
-
-# Ask user for action
-print("\nWhat would you like to do?")
-choices = [
-    "Fit initial Timeseries Models",
-    "Fit initial PyRenew-E Models",
-    "Fit initial PyRenew-H** models",
-    "Rerun Timeseries Models",
-    "Rerun PyRenew Models",
-    "Postprocess Forecast Batches",
-    "Exit",
-]
-
-
-while True:
-    for i, choice in enumerate(choices, 1):
-        print(f"{i}. {choice}")
-    choice = input(f"\nEnter your choice (1-{len(choices)}): ")
-    current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-    try:
-        choice_idx = int(choice) - 1
-        if choice_idx < 0 or choice_idx >= len(choices):
-            raise IndexError()
-        selected_choice = choices[choice_idx]
-
-        # You can add specific logic here based on the selected choice
-        if selected_choice == "Exit":
-            print("Exiting...")
-            break
-        elif selected_choice == "Fit initial Timeseries Models":
-            fit_timeseries_e(append_id=current_time)
-        elif selected_choice == "Fit initial PyRenew-E Models":
-            fit_pyrenew_e(append_id=current_time)
-        elif selected_choice == "Fit initial PyRenew-H** models":
-            fit_pyrenew_h(append_id=current_time)
-            fit_pyrenew_he(append_id=current_time)
-            fit_pyrenew_hw(append_id=current_time)
-            fit_pyrenew_hew(append_id=current_time)
-        elif selected_choice == "Rerun Timeseries Models":
-            ask_about_reruns_input = ask_about_reruns()
-            do_timeseries_reruns(
-                append_id=current_time, **ask_about_reruns_input
-            )
-        elif selected_choice == "Rerun PyRenew Models":
-            ask_about_reruns_input = ask_about_reruns()
-            do_pyrenew_reruns(append_id=current_time, **ask_about_reruns_input)
-        elif selected_choice == "Postprocess Forecast Batches":
-            postprocess(
-                base_forecast_dir=pyrenew_hew_prod_output_path / output_subdir,
-                diseases=DISEASES,
-            )
-        else:
-            print(f"Executing: {selected_choice}")
-        input("Press any key to continue...")
-    except (ValueError, IndexError):
-        print(
-            f"Invalid input. Please enter a number between 1-{len(choices)}."
+    for name, update_date in datasets.items():
+        days_behind = (today - update_date).days
+        table.add_row(
+            name,
+            str(update_date),
+            str(days_behind),
+            get_status(days_behind),
         )
+
+    # Print the table
+    console.print(table)
+
+
+# Get and print data status
+datasets = get_data_status(nssp_etl_path, nhsn_target_url)
+print_data_status(datasets)
+
+
+if __name__ == "__main__":
+    print("\nWhat would you like to do?")
+    choices = [
+        "Fit initial Timeseries Models",
+        "Fit initial PyRenew-E Models",
+        "Fit initial PyRenew-H** models",
+        "Rerun Timeseries Models",
+        "Rerun PyRenew Models",
+        "Postprocess Forecast Batches",
+        "Exit",
+    ]
+
+    while True:
+        for i, choice in enumerate(choices, 1):
+            print(f"{i}. {choice}")
+        choice = input(f"\nEnter your choice (1-{len(choices)}): ")
+        current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+        try:
+            choice_idx = int(choice) - 1
+            if choice_idx < 0 or choice_idx >= len(choices):
+                raise IndexError()
+            selected_choice = choices[choice_idx]
+
+            # You can add specific logic here based on the selected choice
+            if selected_choice == "Exit":
+                print("Exiting...")
+                break
+            elif selected_choice == "Fit initial Timeseries Models":
+                fit_timeseries_e(append_id=current_time)
+            elif selected_choice == "Fit initial PyRenew-E Models":
+                fit_pyrenew_e(append_id=current_time)
+            elif selected_choice == "Fit initial PyRenew-H** models":
+                fit_pyrenew_h(append_id=current_time)
+                fit_pyrenew_he(append_id=current_time)
+                fit_pyrenew_hw(append_id=current_time)
+                fit_pyrenew_hew(append_id=current_time)
+            elif selected_choice == "Rerun Timeseries Models":
+                ask_about_reruns_input = ask_about_reruns()
+                do_timeseries_reruns(
+                    append_id=current_time, **ask_about_reruns_input
+                )
+            elif selected_choice == "Rerun PyRenew Models":
+                ask_about_reruns_input = ask_about_reruns()
+                do_pyrenew_reruns(
+                    append_id=current_time, **ask_about_reruns_input
+                )
+            elif selected_choice == "Postprocess Forecast Batches":
+                postprocess(
+                    base_forecast_dir=pyrenew_hew_prod_output_path
+                    / output_subdir,
+                    diseases=DISEASES,
+                )
+            else:
+                print(f"Executing: {selected_choice}")
+            input("Press any key to continue...")
+        except (ValueError, IndexError):
+            print(
+                f"Invalid input. Please enter a number between 1-{len(choices)}."
+            )
