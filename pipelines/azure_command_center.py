@@ -262,8 +262,12 @@ def get_data_status(
         nhsn_data = response.json()
         nhsn_update_date_raw = nhsn_data.get("rowsUpdatedAt")
         if nhsn_update_date_raw is None:
-            raise ValueError("Key 'rowsUpdatedAt' not found in NHSN API response.")
-        nhsn_update_date = dt.datetime.fromtimestamp(nhsn_update_date_raw).date()
+            raise ValueError(
+                "Key 'rowsUpdatedAt' not found in NHSN API response."
+            )
+        nhsn_update_date = dt.datetime.fromtimestamp(
+            nhsn_update_date_raw
+        ).date()
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Failed to fetch data from NHSN API: {e}")
     except (ValueError, KeyError, TypeError) as e:
