@@ -15,19 +15,20 @@ from rich.table import Table
 from rich.text import Text
 
 
-def get_env_or_prompt(
-    var_name: str, prompt_text: str = "", default: str = ""
-) -> str:
+def get_env_or_prompt(var_name: str, default: str = "") -> str:
     value = os.getenv(var_name, default)
-    if value is not None:
-        return value
-    prompt = prompt_text or f"[bold]{var_name}[/bold] (required)"
-    return Prompt.ask(prompt)
+    if not value:
+        prompt = f"Environment variable [bold]{var_name}[/bold] not found. Enter a temporary value"
+        value = Prompt.ask(prompt)
+
+    return value
 
 
 # Config
-nssp_etl_path = Path(os.environ["nssp_etl_path"])
-pyrenew_hew_prod_output_path = Path(os.environ["pyrenew_hew_prod_output_path"])
+nssp_etl_path = Path(get_env_or_prompt("NSSP_ETL_PATH"))
+pyrenew_hew_prod_output_path = Path(
+    get_env_or_prompt("PYRENEW_HEW_PROD_OUTPUT_PATH")
+)
 nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
 
 # TODO: work with specific diseases
