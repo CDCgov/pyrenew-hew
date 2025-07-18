@@ -62,7 +62,6 @@ def process_model_batch_dir(
 
 def main(
     base_forecast_dir: Path | str,
-    path_to_latest_data: Path | str,
     diseases: list[str] = ["COVID-19", "Influenza"],
 ) -> None:
     logging.basicConfig(level=logging.INFO)
@@ -84,11 +83,6 @@ if __name__ == "__main__":
         "base_forecast_dir",
         type=Path,
         help="Directory containing forecast subdirectories.",
-    )
-    parser.add_argument(
-        "path_to_latest_data",
-        type=Path,
-        help=("Path to a parquet file containing the latest observed data."),
     )
     parser.add_argument(
         "--diseases",
