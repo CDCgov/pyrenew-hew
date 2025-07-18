@@ -256,10 +256,18 @@ def get_data_status(
         .item(0, "report_date")
     )
 
-    nhsn_update_date_raw = (
-        requests.get(nhsn_target_url).json().get("rowsUpdatedAt")
-    )
-    nhsn_update_date = dt.datetime.fromtimestamp(nhsn_update_date_raw).date()
+    try:
+        response = requests.get(nhsn_target_url)
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+        nhsn_data = response.json()
+        nhsn_update_date_raw = nhsn_data.get("rowsUpdatedAt")
+        if nhsn_update_date_raw is None:
+            raise ValueError("Key 'rowsUpdatedAt' not found in NHSN API response.")
+        nhsn_update_date = dt.datetime.fromtimestamp(nhsn_update_date_raw).date()
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Failed to fetch data from NHSN API: {e}")
+    except (ValueError, KeyError, TypeError) as e:
+        raise RuntimeError(f"Error processing NHSN API response: {e}")
 
     datasets = {
         "nssp-etl/gold": gold_update_date,
