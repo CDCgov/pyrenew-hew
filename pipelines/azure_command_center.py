@@ -256,9 +256,10 @@ def get_data_status(
         )
     latest_nwss_path = max(nwss_gold_dirs)
 
-    nwss_update_date = dt.datetime.strptime(
-        latest_nwss_path.name[-10:], "%Y-%m-%d"
-    ).date()
+    date_match = re.search(r"\d{4}-\d{2}-\d{2}$", latest_nwss_path.name)
+    if not date_match:
+        raise ValueError(f"Filename does not contain a valid date: {latest_nwss_path.name}")
+    nwss_update_date = dt.datetime.strptime(date_match.group(), "%Y-%m-%d").date()
 
     latest_comprehensive_update_date = (
         pl.read_parquet(latest_comprehensive_path)
