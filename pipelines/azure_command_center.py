@@ -1,7 +1,6 @@
 import datetime as dt
 import os
 from functools import partial
-from operator import le
 from pathlib import Path
 
 import polars as pl
@@ -232,21 +231,33 @@ def do_pyrenew_reruns(
 
 def get_data_status(
     nssp_etl_path: Path,
+    nwss_vintages_path: Path,
     nhsn_target_url: str,
     latest_comprehensive_filename: str = "latest_comprehensive.parquet",
     gold_subdir: str = "gold",
 ):
     """Get the status of various datasets including update dates and days behind."""
     latest_comprehensive_path = nssp_etl_path / latest_comprehensive_filename
-    gold_files = list((nssp_etl_path / gold_subdir).glob("*.parquet"))
-    if not gold_files:
+    nssp_gold_files = list((nssp_etl_path / gold_subdir).glob("*.parquet"))
+    if not nssp_gold_files:
         raise FileNotFoundError(
             f"No .parquet files found in the directory: {nssp_etl_path / gold_subdir}"
         )
-    latest_gold_path = max(gold_files)
+    latest_gold_path = max(nssp_gold_files)
 
-    gold_update_date = dt.datetime.strptime(
+    nssp_gold_update_date = dt.datetime.strptime(
         latest_gold_path.stem, "%Y-%m-%d"
+    ).date()
+
+    nwss_gold_dirs = list(nwss_vintages_path.glob("NWSS-ETL-covid-*"))
+    if not nwss_gold_dirs:
+        raise FileNotFoundError(
+            f"No NWSS-ETL-covid-* files found in the directory: {nwss_vintages_path}"
+        )
+    latest_nwss_path = max(nwss_gold_dirs)
+
+    nwss_update_date = dt.datetime.strptime(
+        latest_nwss_path.name[-10:], "%Y-%m-%d"
     ).date()
 
     latest_comprehensive_update_date = (
@@ -273,7 +284,8 @@ def get_data_status(
         raise RuntimeError(f"Error processing NHSN API response: {e}")
 
     datasets = {
-        "nssp-etl/gold": gold_update_date,
+        "nssp-etl/gold": nssp_gold_update_date,
+        "nwss-etl": nwss_update_date,
         "latest_comprehensive": latest_comprehensive_update_date,
         "NHSN API": nhsn_update_date,
     }
@@ -348,6 +360,7 @@ if __name__ == "__main__":
     pyrenew_hew_prod_output_path = Path(
         get_env_or_prompt("PYRENEW_HEW_PROD_OUTPUT_PATH")
     )
+    nwss_vintages_path = Path(get_env_or_prompt("NWSS_VINTAGES_PATH"))
     nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
 
     choices = [
@@ -361,7 +374,9 @@ if __name__ == "__main__":
     ]
 
     # Get and print data status
-    datasets = get_data_status(nssp_etl_path, nhsn_target_url)
+    datasets = get_data_status(
+        nssp_etl_path, nwss_vintages_path, nhsn_target_url
+    )
     print_data_status(datasets)
 
     while True:
