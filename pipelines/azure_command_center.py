@@ -7,6 +7,7 @@ from pathlib import Path
 import polars as pl
 import requests
 from batch.setup_job import main as setup_job
+from dotenv import load_dotenv
 from postprocess_forecast_batches import main as postprocess
 from rich import print
 from rich.console import Console
@@ -14,6 +15,7 @@ from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
 
+load_dotenv()
 console = Console()
 
 # TODO: work with specific diseases
