@@ -252,7 +252,7 @@ def get_data_status(
     nwss_gold_dirs = list(nwss_vintages_path.glob("NWSS-ETL-covid-*"))
     if not nwss_gold_dirs:
         raise FileNotFoundError(
-            f"No NWSS-ETL-covid-* files found in the directory: {nwss_vintages_path}"
+            f"No NWSS-ETL-covid-* directories found in the path: {nwss_vintages_path}"
         )
     latest_nwss_path = max(nwss_gold_dirs)
 
