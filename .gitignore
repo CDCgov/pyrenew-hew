@@ -401,8 +401,3 @@ nssp-etl
 output
 params
 nwss-vintages
-
-# Nextflow
-results/
-work/
-.nextflow*
