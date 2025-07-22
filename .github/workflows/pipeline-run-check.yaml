@@ -151,5 +151,4 @@ jobs:
       - name: Run postprocessing
         run: |
           uv run python pipelines/postprocess_forecast_batches.py \
-          ${{ env.FORECAST_DIR }} \
-          ${{ env.DATA_DIR }}/nssp-etl/latest_comprehensive.parquet
+          ${{ env.FORECAST_DIR }}
