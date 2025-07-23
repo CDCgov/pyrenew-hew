@@ -20,7 +20,9 @@ console = Console()
 
 # TODO: work with specific diseases
 DISEASES = ["COVID-19"]  # not forecasting flu currently
-W_EXCLUDE_DEFAULT = ["US", "NY"]
+# ND: wastewater data not available
+# TN: wastewater data unusable (dry sludge)
+W_EXCLUDE_DEFAULT = ["US", "NY", "TN", "ND"]
 
 today = dt.date.today()
 today_str = today.strftime("%Y-%m-%d")
