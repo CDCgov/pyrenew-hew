@@ -66,8 +66,8 @@ jobs:
               --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
               --tenant ${{ secrets.AZURE_TENANT_ID }} \
               --federated-token ${{ steps.idtoken.outputs.id_token }} \
-              --output none  
-            
+              --output none
+
             echo "Setting env vars for Azure Batch and azuretools compatibility."
               az storage blob download \
               --account-name "cfaazurebatchprd" \
@@ -76,7 +76,7 @@ jobs:
               --file "./azureconfig.sh" \
               --auth-mode login \
               --overwrite
-            
+
             # Sourcing the azure config
             source ./azureconfig.sh
 
