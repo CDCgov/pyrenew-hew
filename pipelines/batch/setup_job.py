@@ -394,6 +394,7 @@ if __name__ == "__main__":
         ),
         default="pyrenew",
     )
+
     # Function to convert string to boolean
     # This is used to allow passing boolean values as command line arguments
     # Reference: https://docs.python.org/3/library/argparse.html#type
@@ -402,12 +403,12 @@ if __name__ == "__main__":
     def str2bool(v):
         if isinstance(v, bool):
             return v
-        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        if v.lower() in ("yes", "true", "t", "y", "1"):
             return True
-        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        elif v.lower() in ("no", "false", "f", "n", "0"):
             return False
         else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')
+            raise argparse.ArgumentTypeError("Boolean value expected.")
 
     # With the str2bool type, you can supply the flag for True, omit it for False, or pass True/False explicitly
     parser.add_argument(
