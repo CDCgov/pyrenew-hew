@@ -14,8 +14,9 @@ options(
   repos = c(
     RSPM = "https://packagemanager.posit.co/cran/__linux__/bookworm/latest"
   ),
-  renv.config.pak.enabled = TRUE,
-  pkgType = "binary"
+  ## prefer binary packages even if they're out of date
+  install.packages.compile.from.source = "never",
+  renv.config.pak.enabled = TRUE
 )
 
 cat(".Rprofile for container loaded successfully\n")
