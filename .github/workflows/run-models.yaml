@@ -6,7 +6,7 @@ on:
   #   - cron: "0 13 * * 3" # Every Wednesday at 1300 UTC (8 AM ET)
   push:
     branches:
-      - startswith(github.ref_name, 'jk') # For testing purposes
+      - 'jk*' # For testing purposes; matches any branch starting with 'jk'
 
 env:
   REGISTRY: cfaprdbatchcr.azurecr.io/
