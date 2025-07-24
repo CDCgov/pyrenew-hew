@@ -20,7 +20,6 @@ ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 RUN apt-get update
 RUN apt-get install -y r-base
 RUN apt-get install -y cmake
-RUN apt-get install -y libgsl27 libgsl-dev git
 
 COPY ./hewr /pyrenew-hew/hewr
 
@@ -28,10 +27,10 @@ WORKDIR /pyrenew-hew
 
 COPY .ContainerBuildRprofile .Rprofile
 
-RUN Rscript -e "install.packages(c('pak', 'remotes'))"
+RUN Rscript -e "install.packages('pak')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epipredict@main')"
-RUN Rscript -e "remotes::install_local('hewr')"
+RUN Rscript -e "pak::local_install('hewr', upgrade = FALSE)"
 
 
 COPY --exclude=pipelines/priors . .
