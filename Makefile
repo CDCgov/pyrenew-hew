@@ -113,7 +113,7 @@ run_h_model:
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "h" \
 		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
-		--pool-id pyrenew-pool-32gb \
+		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)"
 
