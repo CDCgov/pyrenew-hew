@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   # schedule:
   #   - cron: "0 13 * * 3" # Every Wednesday at 1300 UTC (8 AM ET)
+  push:
+    branches:
+      - startswith(github.ref_name, 'jk') # For testing purposes
 
 env:
   REGISTRY: cfaprdbatchcr.azurecr.io/
