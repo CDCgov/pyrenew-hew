@@ -20,7 +20,7 @@ ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 RUN apt-get update
 RUN apt-get install -y r-base
 RUN apt-get install -y cmake
-
+RUN apt-get install -y libgsl27 libgsl-dev git
 
 COPY ./hewr /pyrenew-hew/hewr
 
