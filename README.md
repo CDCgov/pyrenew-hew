@@ -31,7 +31,9 @@ Container images pushed to the Azure Container Registry are automatically tagged
 > [!NOTE]
 >
 > Please contact a project maintainer if you believe you need access to pipelines.
+
 > Specific environment setup steps required can be found on CDCent Github.
+
 > Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
 
 Pipelines can be run interactively or non-interactively:

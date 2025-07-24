@@ -8,7 +8,6 @@ import itertools
 from pathlib import Path
 
 from azure.batch import models
-from azure.identity import DefaultAzureCredential
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
