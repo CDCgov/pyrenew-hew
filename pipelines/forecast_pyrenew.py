@@ -9,8 +9,8 @@ from pathlib import Path
 
 import polars as pl
 import tomli_w
-from fit_pyrenew_model import fit_and_save_model  # noqa
-from generate_predictive import (  # noqa
+from fit_pyrenew_model import fit_and_save_model
+from generate_predictive import (
     generate_and_save_predictions,
 )
 from prep_data import process_and_save_loc
