@@ -4,7 +4,8 @@ options(
     getRversion(),
     paste(
       getRversion(),
-      R.version["platform"], R.version["arch"],
+      R.version["platform"],
+      R.version["arch"],
       R.version["os"]
     )
   ),
@@ -13,7 +14,8 @@ options(
   repos = c(
     RSPM = "https://packagemanager.posit.co/cran/__linux__/bookworm/latest"
   ),
-  renv.config.pak.enabled = TRUE
+  renv.config.pak.enabled = TRUE,
+  pkgType = "binary"
 )
 
 cat(".Rprofile for container loaded successfully\n")
