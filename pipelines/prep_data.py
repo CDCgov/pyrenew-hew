@@ -13,8 +13,6 @@ import numpy as np
 import polars as pl
 import polars.selectors as cs
 
-from pyrenew_hew.utils import approx_lognorm
-
 _disease_map = {
     "COVID-19": "COVID-19/Omicron",
 }
@@ -322,64 +320,12 @@ def get_loc_pop_df():
     )
 
 
-def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
-    generation_interval_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "generation_interval")
-            & (pl.col("end_date").is_null())  # most recent estimate
-        )
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
-    )
-
-    delay_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "delay")
-            & (pl.col("end_date").is_null())  # most recent estimate
-        )
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
-    )
-
-    # ensure 0 first entry; we do not model the possibility
-    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
-    delay_pmf[0] = 0.0
-    delay_pmf = jnp.array(delay_pmf)
-    delay_pmf = delay_pmf / delay_pmf.sum()
-    delay_pmf = delay_pmf.tolist()
-
-    right_truncation_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value") == loc_abb)
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "right_truncation")
-            & (pl.col("end_date").is_null())
-        )
-        .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
-    )
-
-    return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
-
-
 def process_and_save_loc(
     loc_abb: str,
     disease: str,
     report_date: datetime.date,
     first_training_date: datetime.date,
     last_training_date: datetime.date,
-    param_estimates: pl.LazyFrame,
     model_run_dir: Path,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
@@ -401,18 +347,6 @@ def process_and_save_loc(
     loc_pop_df = get_loc_pop_df()
 
     loc_pop = loc_pop_df.filter(pl.col("abb") == loc_abb).item(0, "population")
-
-    (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
-        param_estimates=param_estimates, loc_abb=loc_abb, disease=disease
-    )
-
-    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
-        approx_lognorm(
-            jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
-            loc_guess=0,
-            scale_guess=0.5,
-        )
-    )
 
     right_truncation_offset = (report_date - last_training_date).days - 1
     # First entry of source right truncation PMFs corresponds to reports
@@ -499,11 +433,6 @@ def process_and_save_loc(
             pop_fraction = subpop_sizes / sum(subpop_sizes)
 
     data_for_model_fit = {
-        "inf_to_hosp_admit_pmf": delay_pmf,
-        "inf_to_hosp_admit_lognormal_loc": inf_to_hosp_admit_lognormal_loc,
-        "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
-        "generation_interval_pmf": generation_interval_pmf,
-        "right_truncation_pmf": right_truncation_pmf,
         "loc_pop": loc_pop,
         "right_truncation_offset": right_truncation_offset,
         "nwss_training_data": nwss_training_data,

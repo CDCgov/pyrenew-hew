@@ -3,6 +3,7 @@ import pickle
 from pathlib import Path
 
 import arviz as az
+from jax.typing import ArrayLike
 
 from pipelines.utils import get_model_data_and_priors_from_dir
 from pyrenew_hew.utils import (
@@ -15,6 +16,12 @@ def generate_and_save_predictions(
     model_run_dir: str | Path,
     model_name: str,
     n_forecast_points: int,
+    generation_interval_pmf: ArrayLike,
+    delay_pmf: ArrayLike,
+    inf_to_hosp_admit_lognormal_loc: ArrayLike,
+    inf_to_hosp_admit_lognormal_scale: ArrayLike,
+    inf_to_hosp_admit_pmf: ArrayLike,
+    right_truncation_pmf: ArrayLike = None,
     predict_ed_visits: bool = False,
     predict_hospital_admissions: bool = False,
     predict_wastewater: bool = False,
@@ -26,7 +33,15 @@ def generate_and_save_predictions(
 
     (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
     (my_model, my_data) = build_pyrenew_hew_model(
-        model_data, priors, **flags_from_pyrenew_model_name(model_name)
+        model_data,
+        priors,
+        generation_interval_pmf=generation_interval_pmf,
+        delay_pmf=delay_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
+        **flags_from_pyrenew_model_name(model_name),
     )
 
     my_model._init_model(1, 1)

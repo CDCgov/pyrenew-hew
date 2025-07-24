@@ -4,6 +4,7 @@ from pathlib import Path
 
 import jax
 import numpy as np
+from jax.typing import ArrayLike
 
 from pipelines.utils import get_model_data_and_priors_from_dir
 from pyrenew_hew.utils import build_pyrenew_hew_model
@@ -12,6 +13,12 @@ from pyrenew_hew.utils import build_pyrenew_hew_model
 def fit_and_save_model(
     model_run_dir: str,
     model_name: str,
+    generation_interval_pmf: ArrayLike,
+    delay_pmf: ArrayLike,
+    inf_to_hosp_admit_lognormal_loc: ArrayLike,
+    inf_to_hosp_admit_lognormal_scale: ArrayLike,
+    inf_to_hosp_admit_pmf: ArrayLike,
+    right_truncation_pmf: ArrayLike = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -34,6 +41,12 @@ def fit_and_save_model(
     (my_model, my_data) = build_pyrenew_hew_model(
         model_data,
         priors,
+        generation_interval_pmf=generation_interval_pmf,
+        delay_pmf=delay_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,

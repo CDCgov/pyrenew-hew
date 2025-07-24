@@ -312,6 +312,12 @@ def flags_from_pyrenew_model_name(model_name: str) -> dict[str, bool]:
 def build_pyrenew_hew_model(
     model_data: dict,
     priors: dict,
+    generation_interval_pmf: ArrayLike,
+    delay_pmf: ArrayLike,
+    inf_to_hosp_admit_lognormal_loc: ArrayLike,
+    inf_to_hosp_admit_lognormal_scale: ArrayLike,
+    inf_to_hosp_admit_pmf: ArrayLike,
+    right_truncation_pmf: ArrayLike = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -347,7 +353,7 @@ def build_pyrenew_hew_model(
     he = fit_hospital_admissions and fit_ed_visits
 
     inf_to_ed_rv = DeterministicPMF(
-        "inf_to_ed", jnp.array(model_data["inf_to_hosp_admit_pmf"])
+        "inf_to_ed", jnp.array(inf_to_hosp_admit_pmf)
     )
     # For now follow NNH in just substituting
     # (eventually will use a different inferred fixed).
@@ -356,26 +362,25 @@ def build_pyrenew_hew_model(
         # when fitting admissions
         inf_to_hosp_admit_rv = OffsetDiscretizedLognormalPMF(
             "inf_to_hosp_admit",
-            reference_loc=model_data["inf_to_hosp_admit_lognormal_loc"],
-            reference_scale=model_data["inf_to_hosp_admit_lognormal_scale"],
-            n=jnp.array(model_data["inf_to_hosp_admit_pmf"]).size * 2,
+            reference_loc=inf_to_hosp_admit_lognormal_loc,
+            reference_scale=inf_to_hosp_admit_lognormal_scale,
+            n=jnp.array(inf_to_hosp_admit_pmf).size * 2,
             # Flexibility to infer delays with a longer tail, up to a point.
             offset_loc_rv=priors["delay_offset_loc_rv"],
             log_offset_scale_rv=priors["delay_log_offset_scale_rv"],
         )
     else:
         inf_to_hosp_admit_rv = DeterministicPMF(
-            "inf_to_hosp_admit", jnp.array(model_data["inf_to_hosp_admit_pmf"])
+            "inf_to_hosp_admit", jnp.array(inf_to_hosp_admit_pmf)
         )  # else use same, following NNH
 
     generation_interval_pmf_rv = DeterministicPMF(
         "generation_interval_pmf",
-        jnp.array(model_data["generation_interval_pmf"]),
+        jnp.array(generation_interval_pmf),
     )  # check if off by 1 or reversed
 
     infection_feedback_pmf_rv = DeterministicPMF(
-        "infection_feedback_pmf",
-        jnp.array(model_data["generation_interval_pmf"]),
+        "infection_feedback_pmf", jnp.array(generation_interval_pmf)
     )  # check if off by 1 or reversed
 
     nssp_training_data = (
@@ -424,7 +429,7 @@ def build_pyrenew_hew_model(
     pop_fraction = jnp.array(model_data["pop_fraction"])
 
     ed_right_truncation_pmf_rv = DeterministicPMF(
-        "right_truncation_pmf", jnp.array(model_data["right_truncation_pmf"])
+        "right_truncation_pmf", jnp.array(right_truncation_pmf)
     )
 
     n_initialization_points = (

@@ -7,6 +7,7 @@ import tomllib
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import jax.numpy as jnp
 import numpyro
 import polars as pl
 import tomli_w
@@ -15,6 +16,7 @@ from prep_eval_data import save_eval_data
 from pygit2 import Repository
 
 from pyrenew_hew.utils import (
+    approx_lognorm,
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
 )
@@ -177,6 +179,57 @@ def create_hubverse_table(model_fit_path):
     if result.returncode != 0:
         raise RuntimeError(f"create_hubverse_table: {result.stderr}")
     return None
+
+
+def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
+    generation_interval_pmf = (
+        param_estimates.filter(
+            (pl.col("geo_value").is_null())
+            & (pl.col("disease") == disease)
+            & (pl.col("parameter") == "generation_interval")
+            & (pl.col("end_date").is_null())  # most recent estimate
+        )
+        .collect(engine="streaming")
+        .get_column("value")
+        .item(0)
+        .to_list()
+    )
+
+    delay_pmf = (
+        param_estimates.filter(
+            (pl.col("geo_value").is_null())
+            & (pl.col("disease") == disease)
+            & (pl.col("parameter") == "delay")
+            & (pl.col("end_date").is_null())  # most recent estimate
+        )
+        .collect(engine="streaming")
+        .get_column("value")
+        .item(0)
+        .to_list()
+    )
+
+    # ensure 0 first entry; we do not model the possibility
+    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
+    delay_pmf[0] = 0.0
+    delay_pmf = jnp.array(delay_pmf)
+    delay_pmf = delay_pmf / delay_pmf.sum()
+    delay_pmf = delay_pmf.tolist()
+
+    right_truncation_pmf = (
+        param_estimates.filter(
+            (pl.col("geo_value") == loc_abb)
+            & (pl.col("disease") == disease)
+            & (pl.col("parameter") == "right_truncation")
+            & (pl.col("end_date").is_null())
+        )
+        .filter(pl.col("reference_date") == pl.col("reference_date").max())
+        .collect(engine="streaming")
+        .get_column("value")
+        .item(0)
+        .to_list()
+    )
+
+    return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
 
 
 def main(
@@ -367,6 +420,20 @@ def main(
         loc_level_nwss_data = None
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
+    (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
+        param_estimates=param_estimates, loc_abb=loc, disease=disease
+    )
+
+    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
+        approx_lognorm(
+            jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+            loc_guess=0,
+            scale_guess=0.5,
+        )
+    )
+
+    inf_to_hosp_admit_pmf = delay_pmf
+
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -407,7 +474,6 @@ def main(
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
-        param_estimates=param_estimates,
         model_run_dir=model_run_dir,
         logger=logger,
         credentials_dict=credentials_dict,
@@ -444,6 +510,12 @@ def main(
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
+        generation_interval_pmf=generation_interval_pmf,
+        delay_pmf=delay_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
     )
     logger.info("Model fitting complete")
 
@@ -454,6 +526,12 @@ def main(
         model_run_dir,
         pyrenew_model_name,
         n_days_past_last_training,
+        generation_interval_pmf=generation_interval_pmf,
+        delay_pmf=delay_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
         predict_ed_visits=forecast_ed_visits,
         predict_hospital_admissions=forecast_hospital_admissions,
         predict_wastewater=forecast_wastewater,
