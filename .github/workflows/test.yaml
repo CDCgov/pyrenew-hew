@@ -28,6 +28,7 @@ jobs:
         env:
           NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
           NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
+          XLA_FLAGS: --xla_force_host_platform_device_count=2
         run: |
           uv run pytest tests \
             --mpl --mpl-default-tolerance=10 \
@@ -54,6 +55,8 @@ jobs:
         uses: ./.github/actions/setup-pyrenew-hew
 
       - name: run tests
+        env:
+          XLA_FLAGS: --xla_force_host_platform_device_count=2
         run: |
           uv run pytest pipelines \
             --mpl --mpl-default-tolerance=10 \
