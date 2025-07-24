@@ -2,8 +2,19 @@ name: R CMD check hewr
 
 on:
   pull_request:
+    branches: [main]
+    paths:
+      # Explicitly include paths that should trigger the workflow
+      - 'hewr/**'
+      - '.github/workflows/r-cmd-check.yaml'
+      - '.github/actions/setup-hewr.yaml'
   push:
     branches: [main]
+    paths:
+      # Explicitly include paths that should trigger the workflow
+      - 'hewr/**'
+      - '.github/workflows/r-cmd-check.yaml'
+      - '.github/actions/setup-hewr.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
