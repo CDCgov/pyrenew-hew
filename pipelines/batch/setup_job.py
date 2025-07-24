@@ -225,7 +225,6 @@ def main(
     print("")
     print("=" * 58)
     print(f"{'':<5} 🚀 pyrenew-hew: Azure Batch Job Submission 🚀")
-    print(f"{'':<5} 🚀 pyrenew-hew: Azure Batch Job Submission 🚀")
     print("=" * 58)
     print(f"{'Job ID':<30}: {job_id}")
     print(f"{'Pool ID':<30}: {pool_id}")
@@ -395,6 +394,7 @@ if __name__ == "__main__":
         ),
         default="pyrenew",
     )
+
     # Function to convert string to boolean
     # This is used to allow passing boolean values as command line arguments
     # Reference: https://docs.python.org/3/library/argparse.html#type
@@ -408,7 +408,7 @@ if __name__ == "__main__":
         elif value.lower() in ('no', 'false', 'f', 'n', '0'):
             return False
         else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')
+            raise argparse.ArgumentTypeError("Boolean value expected.")
 
     # With the string_to_boolean argparse type arg,
     # you can supply the flag for True, omit it for False, or pass True/False explicitly
