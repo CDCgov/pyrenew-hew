@@ -29,7 +29,7 @@ COPY .ContainerBuildRprofile .Rprofile
 RUN Rscript -e "install.packages('pak')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epipredict@main')"
-RUN Rscript -e "pak::local_install('hewr')"
+RUN Rscript -e "pak::local_install('hewr', upgrade = FALSE)"
 
 
 COPY --exclude=pipelines/priors . .
