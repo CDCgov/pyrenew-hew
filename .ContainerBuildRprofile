@@ -4,7 +4,8 @@ options(
     getRversion(),
     paste(
       getRversion(),
-      R.version["platform"], R.version["arch"],
+      R.version["platform"],
+      R.version["arch"],
       R.version["os"]
     )
   ),
