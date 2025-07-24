@@ -28,7 +28,7 @@ WORKDIR /pyrenew-hew
 
 COPY .ContainerBuildRprofile .Rprofile
 
-RUN Rscript -e "install.packages('pak', 'remotes')"
+RUN Rscript -e "install.packages(c('pak', 'remotes'))"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epipredict@main')"
 RUN Rscript -e "remotes::install_local('hewr')"
