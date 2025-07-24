@@ -27,15 +27,15 @@ ENGINE=podman make container_build
 
 Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
 
-## How to run pyrnew-hew
+## How to run `pyrenew-hew`
 > [!NOTE]
 >
-> Please contact a project maintainer if you believe you need access to pipelines.
+> Please contact a project maintainer if you believe you need access to pipelines.  
 > Pipelines as written can only be run within CFA's Virtual Analyst Platform.
 
 Running model pipelines:
 - `pipelines/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
-- the `Makefile` also allows you to run pipelines, and can be used non-interactively. Run `make help` for more information.
+- The `Makefile` also allows you to run pipelines, and can be used non-interactively. Run `make help` for more information.
 
 
 ## General Disclaimer
