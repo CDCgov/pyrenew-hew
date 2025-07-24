@@ -24,12 +24,6 @@ def mock_data():
             "data_type": ["train"] * 2,
         },
         "loc_pop": [10000],
-        "generation_interval_pmf": [0.1, 0.2, 0.7],
-        "inf_to_ed_pmf": [0.4, 0.5, 0.1],
-        "inf_to_hosp_admit_pmf": [0.0, 0.7, 0.1, 0.1, 0.1],
-        "inf_to_hosp_admit_lognormal_loc": 0.015,
-        "inf_to_hosp_admit_lognormal_scale": 0.851,
-        "right_truncation_pmf": [0.7, 0.1, 0.2],
         "nssp_training_dates": ["2025-01-01"],
         "nhsn_training_dates": ["2025-01-04"],
         "right_truncation_offset": 10,
@@ -50,6 +44,18 @@ def mock_data():
             "below_lod": [False, False, False, False],
         },
         "pop_fraction": [0.4, 0.4, 0.2],
+    }
+
+
+@pytest.fixture
+def mock_pmfs():
+    return {
+        "generation_interval_pmf": [0.1, 0.2, 0.7],
+        "delay_pmf": [0.1, 0.2, 0.7],
+        "inf_to_hosp_admit_lognormal_loc": 0.015,
+        "inf_to_hosp_admit_lognormal_scale": 0.851,
+        "inf_to_hosp_admit_pmf": [0.0, 0.7, 0.1, 0.1, 0.1],
+        "right_truncation_pmf": [0.7, 0.1, 0.2],
     }
 
 
@@ -89,10 +95,10 @@ def mock_priors():
     }
 
 
-def test_build_pyrenew_hew_model(mock_data, mock_priors):
+def test_build_pyrenew_hew_model(mock_data, mock_priors, mock_pmfs):
     # Test when all `fit_` arguments are False
 
-    _, data = build_pyrenew_hew_model(mock_data, mock_priors)
+    _, data = build_pyrenew_hew_model(mock_data, mock_priors, **mock_pmfs)
     assert data.data_observed_disease_ed_visits is None
     assert data.data_observed_disease_hospital_admissions is None
     assert data.data_observed_disease_wastewater_conc is None
@@ -101,6 +107,7 @@ def test_build_pyrenew_hew_model(mock_data, mock_priors):
     _, data = build_pyrenew_hew_model(
         mock_data,
         mock_priors,
+        **mock_pmfs,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,
