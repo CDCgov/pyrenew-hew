@@ -7,26 +7,21 @@ import tomllib
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import numpyro
 import polars as pl
 import tomli_w
+from fit_pyrenew_model import fit_and_save_model  # noqa
+from generate_predictive import (  # noqa
+    generate_and_save_predictions,
+)
 from prep_data import process_and_save_loc
 from prep_eval_data import save_eval_data
+from prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pygit2.repository import Repository
 
 from pyrenew_hew.utils import (
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
 )
-
-if "XLA_FLAGS" not in os.environ:
-    numpyro.set_host_device_count(4)
-
-from fit_pyrenew_model import fit_and_save_model  # noqa
-from generate_predictive import (  # noqa
-    generate_and_save_predictions,
-)
-from prep_ww_data import clean_nwss_data, preprocess_ww_data
 
 
 def record_git_info(model_run_dir: Path):
