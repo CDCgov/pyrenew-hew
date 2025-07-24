@@ -230,7 +230,9 @@ def main(
     print(f"{'Pool ID':<30}: {pool_id}")
     print(f"{'Model Family':<30}: {model_family}")
     print(f"{'Model Letters':<30}: {model_letters}")
-    print(f"{'Additional Forecast Letters':<30}: {additional_forecast_letters}")
+    print(
+        f"{'Additional Forecast Letters':<30}: {additional_forecast_letters}"
+    )
     print(f"{'Diseases':<30}: {', '.join(disease_list)}")
     # Print locations, 5 per line for readability
     for i, line in enumerate(range(0, len(all_locations), 5)):
@@ -403,9 +405,9 @@ if __name__ == "__main__":
     def string_to_boolean(value: str | bool) -> bool:
         if isinstance(value, bool):
             return value
-        if value.lower() in ('yes', 'true', 't', 'y', '1'):
+        if value.lower() in ("yes", "true", "t", "y", "1"):
             return True
-        elif value.lower() in ('no', 'false', 'f', 'n', '0'):
+        elif value.lower() in ("no", "false", "f", "n", "0"):
             return False
         else:
             raise argparse.ArgumentTypeError("Boolean value expected.")
@@ -432,7 +434,7 @@ if __name__ == "__main__":
         help=(
             "If set to True, do not submit tasks to Azure Batch. Only print what would be done."
             "Pass --dry-run True or --dry-run False to set explicitly; omit to use default (False)."
-        )
+        ),
     )
 
     args = parser.parse_args()
