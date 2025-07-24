@@ -12,10 +12,11 @@ import polars as pl
 import polars.selectors as cs
 from scipy.stats import expon, norm
 
+from pipelines.forecast_pyrenew import get_pmfs
 from pipelines.prep_data import process_and_save_loc
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pipelines.utils import get_model_data_and_priors_from_dir
-from pyrenew_hew.utils import build_pyrenew_hew_model
+from pyrenew_hew.utils import approx_lognorm, build_pyrenew_hew_model
 
 parser = argparse.ArgumentParser(
     description="Create fit data for disease modeling."
@@ -335,7 +336,6 @@ def simulate_data_from_bootstrap(
         report_date=max_train_date,
         first_training_date=first_training_date,
         last_training_date=max_train_date,
-        param_estimates=param_estimates.lazy(),
         model_run_dir=model_run_dir,
         nhsn_data_path=bootstrap_nhsn_data_path,
     )
@@ -344,11 +344,28 @@ def simulate_data_from_bootstrap(
         Path("pipelines/priors/prod_priors.py"),
         Path(model_run_dir, "priors.py"),
     )
-
+    (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
+        param_estimates=param_estimates,
+        loc_abb=bootstrap_loc,
+        disease=bootstrap_disease,
+    )
+    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
+        approx_lognorm(
+            np.array(delay_pmf)[1:],  # only fit the non-zero delays
+            loc_guess=0,
+            scale_guess=0.5,
+        )
+    )
     (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
     (my_model, my_data) = build_pyrenew_hew_model(
         model_data,
         priors,
+        generation_interval_pmf=generation_interval_pmf,
+        delay_pmf=delay_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=delay_pmf,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,
@@ -451,7 +468,7 @@ dfs_ref_subpop = simulate_data_from_bootstrap(
     n_training_weeks,
     nhsn_cols,
     bootstrap_private_data_dir,
-    param_estimates,
+    param_estimates.lazy(),
     n_forecast_days,
     predictive_var_names,
     n_ww_sites,
@@ -469,7 +486,7 @@ dfs_no_ref_subpop = simulate_data_from_bootstrap(
     n_training_weeks,
     nhsn_cols,
     bootstrap_private_data_dir,
-    param_estimates,
+    param_estimates.lazy(),
     n_forecast_days,
     predictive_var_names,
     n_ww_sites=1,
