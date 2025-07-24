@@ -16,6 +16,8 @@ options(
   ),
   ## prefer binary packages even if they're out of date
   install.packages.compile.from.source = "never",
+  ## configure pak to only use binary platforms
+  pkg.platforms = c("x86_64-pc-linux-gnu"),
   renv.config.pak.enabled = TRUE
 )
 
