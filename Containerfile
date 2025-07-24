@@ -19,7 +19,7 @@ ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 # R
 RUN apt-get update
 RUN apt-get install -y r-base
-RUN uv tool install cmake
+RUN apt-get install -y cmake
 
 
 COPY ./hewr /pyrenew-hew/hewr

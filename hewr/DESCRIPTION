@@ -10,6 +10,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:
     argparser,
+    arrow (== 20.0.0),
     cowplot,
     dplyr,
     DT,
