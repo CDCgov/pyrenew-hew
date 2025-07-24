@@ -12,14 +12,15 @@ import polars as pl
 import tomli_w
 from prep_data import process_and_save_loc
 from prep_eval_data import save_eval_data
-from pygit2 import Repository
+from pygit2.repository import Repository
 
 from pyrenew_hew.utils import (
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
 )
 
-numpyro.set_host_device_count(4)
+if "XLA_FLAGS" not in os.environ:
+    numpyro.set_host_device_count(4)
 
 from fit_pyrenew_model import fit_and_save_model  # noqa
 from generate_predictive import (  # noqa
@@ -657,7 +658,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    numpyro.set_host_device_count(args.n_chains)
     fit_flags = flags_from_hew_letters(args.model_letters)
     forecast_flags = flags_from_hew_letters(
         args.model_letters + args.additional_forecast_letters,
