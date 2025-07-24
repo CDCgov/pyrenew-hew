@@ -8,7 +8,6 @@ import itertools
 from pathlib import Path
 
 from azure.batch import models
-from azure.identity import DefaultAzureCredential
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
@@ -223,26 +222,28 @@ def main(
     )
 
     print("")
-    print("=" * 50)
-    print("🚀 pyrenew-hew: Azure Batch Job Submission 🚀")
-    print("=" * 50)
-    print(f"{'Job ID:':25} {job_id}")
-    print(f"{'Pool ID:':25} {pool_id}")
-    print(f"{'Model Family:':25} {model_family}")
-    print(f"{'Model Letters:':25} {model_letters}")
-    print(f"{'Additional Forecast Letters:':25} {additional_forecast_letters}")
-    print(f"{'Diseases:':25} {', '.join(disease_list)}")
+    print("=" * 58)
+    print(f"{'':<5} 🚀 pyrenew-hew: Azure Batch Job Submission 🚀")
+    print("=" * 58)
+    print(f"{'Job ID':<30}: {job_id}")
+    print(f"{'Pool ID':<30}: {pool_id}")
+    print(f"{'Model Family':<30}: {model_family}")
+    print(f"{'Model Letters':<30}: {model_letters}")
+    print(
+        f"{'Additional Forecast Letters':<30}: {additional_forecast_letters}"
+    )
+    print(f"{'Diseases':<30}: {', '.join(disease_list)}")
     # Print locations, 5 per line for readability
     for i, line in enumerate(range(0, len(all_locations), 5)):
         locs = ", ".join(all_locations[line : line + 5])
-        print(f"{'Locations:' if i == 0 else '':25} {locs}")
-    print(f"{'Output Subdirectory:':25} {output_subdir}")
-    print(f"{'Container Image:':25} {container_image}")
-    print(f"{'Container Version:':25} {container_image_version}")
-    print(f"{'Training Days:':25} {n_training_days}")
-    print(f"{'Exclude Last N Days:':25} {exclude_last_n_days}")
-    print(f"{'Test Mode:':25} {test}")
-    print(f"{'Dry Run:':25} {dry_run}")
+        print(f"{'Locations':<30}: {locs}" if i == 0 else f"{'':<30} {locs}")
+    print(f"{'Output Subdirectory':<30}: {output_subdir}")
+    print(f"{'Container Image':<30}: {container_image}")
+    print(f"{'Container Version':<30}: {container_image_version}")
+    print(f"{'Training Days':30}: {n_training_days}")
+    print(f"{'Exclude Last N Days':<30}: {exclude_last_n_days}")
+    print(f"{'Test Mode':<30}: {test}")
+    print(f"{'Dry Run':<30}: {dry_run}")
     print("=" * 50)
 
     if dry_run:
@@ -287,17 +288,17 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model_letters",
+        "--model-letters",
         type=str,
         help=(
             "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
         ),
     )
     parser.add_argument(
-        "--job_id", type=str, help="Name for the Azure batch job"
+        "--job-id", type=str, help="Name for the Azure batch job"
     )
     parser.add_argument(
-        "--pool_id",
+        "--pool-id",
         type=str,
         help=("Name of the Azure batch pool on which to run the job"),
         default="pyrenew-pool",
@@ -394,21 +395,45 @@ if __name__ == "__main__":
         ),
         default="pyrenew",
     )
+
+    # Function to convert string to boolean
+    # This is used to allow passing boolean values as command line arguments
+    # Reference: https://docs.python.org/3/library/argparse.html#type
+    # and
+    # https://stackoverflow.com/a/43357954
+    def string_to_boolean(value: str | bool) -> bool:
+        if isinstance(value, bool):
+            return value
+        if value.lower() in ("yes", "true", "t", "y", "1"):
+            return True
+        elif value.lower() in ("no", "false", "f", "n", "0"):
+            return False
+        else:
+            raise argparse.ArgumentTypeError("Boolean value expected.")
+
+    # With the string_to_boolean argparse type arg,
+    # you can supply the flag for True, omit it for False, or pass True/False explicitly
     parser.add_argument(
         "--test",
-        type=bool,
+        type=string_to_boolean,
         nargs="?",
         const=True,
         default=False,
         help="Run in test mode (default: False). Pass --test True or --test False to set explicitly.",
     )
+
+    # With the string_to_boolean argparse type arg,
+    # you can supply the flag for True, omit it for False, or pass True/False explicitly
     parser.add_argument(
-        "--dry_run",
-        type=bool,
+        "--dry-run",
+        type=string_to_boolean,
         nargs="?",
         const=True,
         default=False,
-        help="If set to True, do not submit tasks to Azure Batch. Only print what would be done. Pass --dry_run True or --dry_run False to set explicitly.",
+        help=(
+            "If set to True, do not submit tasks to Azure Batch. Only print what would be done."
+            "Pass --dry-run True or --dry-run False to set explicitly; omit to use default (False)."
+        ),
     )
 
     args = parser.parse_args()

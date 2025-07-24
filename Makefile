@@ -18,7 +18,7 @@ ifndef CONTAINER_REMOTE_NAME
 CONTAINER_REMOTE_NAME = ghcr.io/cdcgov/$(CONTAINER_NAME):latest
 endif
 
-# Forecasting paramters
+# Model Fit Parameters
 
 ifndef FORECAST_DATE
 FORECAST_DATE = $(shell date +%Y-%m-%d)
@@ -30,10 +30,6 @@ endif
 
 ifndef DRY_RUN
 DRY_RUN = False
-endif
-
-ifndef MODEL_LETTERS
-MODEL_LETTERS = hew
 endif
 
 # ----------- #
@@ -49,10 +45,13 @@ help:
 	@echo "  ghcr_login          : Log in to the Github Container Registry. Requires GH_USERNAME and GH_PAT env vars"
 	@echo "  container_push      : Push the container image to the Azure Container Registry"
 	@echo ""
-	@echo "Forecasting Targets: "
-	@echo "  run_timeseries      : Run the timeseries forecasting job"
-	@echo "  run_e_model         : Run the e_model forecasting job"
-	@echo "  run_h_models        : Run the h_models forecasting job"
+	@echo "Model Fit Targets: "
+	@echo "  run_timeseries      : Run the timeseries model fit job"
+	@echo "  run_e_model         : Run an e model fit job"
+	@echo "  run_h_models        : Run an h model fit job"
+	@echo "  run_he_model        : Run an he model fit job"
+	@echo "  run_hw_model        : Run an hw model fit job"
+	@echo "  run_hew_model       : Run an hew model fit job"
 	@echo "  post_process        : Post-process the forecast batches"
 	@echo ""
 	@echo "Toggle default forecasting parameters with the following syntax:"
@@ -64,8 +63,8 @@ help:
 	@echo "To run the pyrenew-e model in test mode with a dry run for a custom date:"
 	@echo "  make run_e_model TEST=True DRY_RUN=True FORECAST_DATE=2025-07-01"
 	@echo ""
-	@echo "To run the full pyrenew-hew model and output to pyrenew-test-output:"
-	@echo "  make run_h_models TEST=True MODEL_LETTERS=hew"
+	@echo "To run the pyrenew-hew model and output to pyrenew-test-output:"
+	@echo "  make run_hew_model TEST=True MODEL_LETTERS=hew"
 	@echo ""
 
 # ----------------------- #
@@ -84,39 +83,69 @@ ghcr_login:
 container_push: container_tag ghcr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
 
-# ----------- #
-# Forecasting
-# ----------- #
+# ---------------- #
+# Model Fit Targets
+# ---------------- #
 
 run_timeseries:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family timeseries \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
-		--model_letters "e" \
-		--job_id "pyrenew-e-prod_${FORECAST_DATE}_t" \
-		--pool_id pyrenew-pool \
+		--model-letters "e" \
+		--job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
+		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
-		--dry_run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)"
 
 run_e_model:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
-		--model_letters "e" \
-		--job_id "pyrenew-e-prod_${FORECAST_DATE}" \
-		--pool_id pyrenew-pool \
+		--model-letters "e" \
+		--job-id "pyrenew-e-prod_${FORECAST_DATE}" \
+		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
-		--dry_run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)"
 
-run_h_models:
+run_h_model:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
-		--model_letters "$(MODEL_LETTERS)" \
-		--job_id "pyrenew-h-prod_${FORECAST_DATE}" \
-		--pool_id pyrenew-pool-32gb \
+		--model-letters "h" \
+		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
-		--dry_run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)"
+
+run_he_model:
+	uv run python pipelines/batch/setup_job.py \
+		--model-family pyrenew \
+		--output-subdir "${FORECAST_DATE}_forecasts" \
+		--model-letters "he" \
+		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--pool-id pyrenew-pool-32gb \
+		--test "$(TEST)" \
+		--dry-run "$(DRY_RUN)"
+
+run_hw_model:
+	uv run python pipelines/batch/setup_job.py \
+		--model-family pyrenew \
+		--output-subdir "${FORECAST_DATE}_forecasts" \
+		--model-letters "hw" \
+		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--pool-id pyrenew-pool-32gb \
+		--test "$(TEST)" \
+		--dry-run "$(DRY_RUN)"
+
+run_hew_model:
+	uv run python pipelines/batch/setup_job.py \
+		--model-family pyrenew \
+		--output-subdir "${FORECAST_DATE}_forecasts" \
+		--model-letters "hew" \
+		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--pool-id pyrenew-pool-32gb \
+		--test "$(TEST)" \
+		--dry-run "$(DRY_RUN)"
 
 post_process:
 	uv run python pipelines/postprocess_forecast_batches.py \
