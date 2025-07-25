@@ -28,6 +28,7 @@ on:
       - '.python-version'
       # Explicitly exclude batch script changes from triggering this workflow
       - '!pipelines/batch/**'
+      - '!pipelines/azure_command_center.py`
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
