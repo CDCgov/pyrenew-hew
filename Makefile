@@ -122,7 +122,7 @@ run_he_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "he" \
-		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-he-prod_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)"
@@ -132,7 +132,7 @@ run_hw_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hw" \
-		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-hw-prod_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)"
@@ -142,7 +142,7 @@ run_hew_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
-		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-hew-prod_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)"
