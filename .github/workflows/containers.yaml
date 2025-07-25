@@ -3,17 +3,7 @@ name: Create Docker Image
 on:
   push:
     branches: [main]
-    paths:
-      - 'Containerfile'
-      - '.github/workflows/containers.yaml'
-      - '.github/scripts/docker_build_and_push.sh'
   pull_request:
-    branches: [main]
-    paths:
-      - 'Containerfile'
-      - '.github/workflows/containers.yaml'
-      - '.github/scripts/docker_build_and_push.sh'
-
   workflow_dispatch:
 
 concurrency:
