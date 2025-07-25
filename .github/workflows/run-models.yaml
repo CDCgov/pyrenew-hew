@@ -13,9 +13,7 @@ env:
   IMAGE_NAME: pyrenew-hew
 
 jobs:
-
   setup-federated-login:
-
     runs-on: ubuntu-latest
     # TODO: change test environment startswith pattern
     environment: |-
