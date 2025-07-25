@@ -111,6 +111,9 @@ def main(
     None
     """
 
+    # ==================
+    # Disease Validation
+    # ==================
     supported_diseases = ["COVID-19", "Influenza"]
 
     disease_list = diseases
@@ -122,22 +125,33 @@ def main(
             f"supported diseases are: {', '.join(supported_diseases)}"
         )
 
+    # ========================
+    # Model Letters Validation
+    # ========================
     validate_hew_letters(model_letters)
     additional_forecast_letters = additional_forecast_letters or model_letters
     validate_hew_letters(additional_forecast_letters)
 
+    # =======================
+    # Model Family Validation
+    # =======================
     if model_family == "timeseries" and model_letters != "e":
         raise ValueError(
             "Only model_letters 'e' is supported for the 'timeseries' model_family."
         )
 
+    # ========================================
+    # Output Container and Sampling Parameters
+    # ========================================
     pyrenew_hew_output_container = (
         "pyrenew-test-output" if test else "pyrenew-hew-prod-output"
     )
     n_warmup = 200 if test else 1000
     n_samples = 200 if test else 500
 
-    # Locations
+    # ==============
+    # Location Setup
+    # ==============
     loc_abbrs = location_table.get_column("short_name").to_list()
     locations_include = locations_include or loc_abbrs
 
@@ -152,7 +166,9 @@ def main(
         if loc not in all_exclusions and loc in locations_include
     ]
 
+    # ===============
     # Container Setup
+    # ===============
     container_image = (
         f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
     )
@@ -187,7 +203,9 @@ def main(
         ],
     )
 
-    # Model family and corresponding run script selection
+    # =====================================
+    # Model Family and Run Script Selection
+    # =====================================
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
@@ -205,7 +223,9 @@ def main(
             "Supported values are 'pyrenew' and 'timeseries'."
         )
 
-    # The script that will be run by Azure Batch
+    # =======================================
+    # Azure Batch Script Command Construction
+    # =======================================
     base_call = (
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script} "
@@ -228,9 +248,9 @@ def main(
         "'"
     )
 
-    # Print job details, useful for debugging
-    # Script will end here on a dry run.
-
+    # =================
+    # Print Job Details
+    # =================
     console = Console()
 
     # Header panel
@@ -281,11 +301,17 @@ def main(
 
     console.print(table)
 
+    # ================
+    # Dry Run Handling
+    # ================
     if dry_run:
         console.print("Dry run mode enabled. No tasks will be submitted.")
         console.print("Closing...")
         return None
 
+    # ==========================
+    # Azure Batch Job Submission
+    # ==========================
     # TODO: Use VM managed identity (or Federated Identity in GH Actions) with DefaultAzureCredential(), output the BatchServiceClient with the Azure SDK instead.
     # We can do an error handling step explicitly defined here to tell the users if their environment needs to be added to an RBAC group or federated identity whitelist.
     print("")
@@ -301,6 +327,9 @@ def main(
     )
     create_job(client, job)
 
+    # ===========================
+    # Azure Batch Task Submission
+    # ===========================
     for disease, loc in itertools.product(disease_list, all_locations):
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-prod",
