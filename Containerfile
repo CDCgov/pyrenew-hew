@@ -13,12 +13,13 @@ ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
+ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
+
 
 # R
 RUN apt-get update
 RUN apt-get install -y r-base
 RUN apt-get install -y cmake
-
 
 COPY ./hewr /pyrenew-hew/hewr
 
@@ -29,7 +30,7 @@ COPY .ContainerBuildRprofile .Rprofile
 RUN Rscript -e "install.packages('pak')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epipredict@main')"
-RUN Rscript -e "pak::local_install('hewr')"
+RUN Rscript -e "pak::local_install('hewr', upgrade = FALSE)"
 
 
 COPY --exclude=pipelines/priors . .

@@ -27,6 +27,19 @@ ENGINE=podman make container_build
 
 Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
 
+## Running Model Pipelines
+> [!NOTE]
+>
+> Please contact a project maintainer if you believe you need access to pipelines.
+
+> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-team-materials/routine_forecast_sop.html).
+
+> Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
+
+Pipelines can be run interactively or non-interactively:
+- `pipelines/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
+- The `Makefile` also provides targets that will run pipelines non-interactively. Run `make help` for more information.
+
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
 
