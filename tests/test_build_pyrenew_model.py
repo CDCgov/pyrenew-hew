@@ -44,6 +44,9 @@ def mock_data():
             "below_lod": [False, False, False, False],
         },
         "pop_fraction": [0.4, 0.4, 0.2],
+        "nhsn_step_size": 7,
+        "nssp_step_size": 1,
+        "nwss_step_size": 1,
     }
 
 

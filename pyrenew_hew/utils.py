@@ -509,6 +509,9 @@ def build_pyrenew_hew_model(
         right_truncation_offset=right_truncation_offset,
         pop_fraction=pop_fraction,
         population_size=population_size,
+        nhsn_step_size=model_data["nhsn_step_size"],
+        nssp_step_size=model_data["nssp_step_size"],
+        nwss_step_size=model_data["nwss_step_size"],
     )
 
     return (mod, dat)

@@ -435,11 +435,13 @@ def process_and_save_loc(
     data_for_model_fit = {
         "loc_pop": loc_pop,
         "right_truncation_offset": right_truncation_offset,
+        "pop_fraction": pop_fraction.tolist(),
         "nwss_training_data": nwss_training_data,
         "nssp_training_data": nssp_training_data.to_dict(as_series=False),
         "nhsn_training_data": nhsn_training_data.to_dict(as_series=False),
         "nhsn_step_size": nhsn_step_size,
-        "pop_fraction": pop_fraction.tolist(),
+        "nssp_step_size": 1,
+        "nwss_step_size": 1,
     }
 
     data_dir = Path(model_run_dir, "data")

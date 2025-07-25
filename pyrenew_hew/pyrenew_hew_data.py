@@ -17,6 +17,9 @@ class PyrenewHEWData:
         nssp_training_data: pl.DataFrame = None,
         nhsn_training_data: pl.DataFrame = None,
         nwss_training_data: pl.DataFrame = None,
+        nssp_step_size: int = None,
+        nhsn_step_size: int = None,
+        nwss_step_size: int = None,
         n_ed_visits_data_days: int = None,
         n_hospital_admissions_data_days: int = None,
         n_wastewater_data_days: int = None,
@@ -32,6 +35,9 @@ class PyrenewHEWData:
         self.n_ed_visits_data_days_ = n_ed_visits_data_days
         self.n_hospital_admissions_data_days_ = n_hospital_admissions_data_days
         self.n_wastewater_data_days_ = n_wastewater_data_days
+        self.nssp_step_size = nssp_step_size
+        self.nhsn_step_size = nhsn_step_size
+        self.nwss_step_size = nwss_step_size
         self.nssp_training_data = nssp_training_data
         self.nhsn_training_data = nhsn_training_data
         self.nwss_training_data = nwss_training_data
