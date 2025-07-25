@@ -15,8 +15,12 @@ from scipy.stats import expon, norm
 from pipelines.forecast_pyrenew import get_pmfs
 from pipelines.prep_data import process_and_save_loc
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
-from pipelines.utils import get_model_data_and_priors_from_dir
-from pyrenew_hew.utils import approx_lognorm, build_pyrenew_hew_model
+from pipelines.utils import get_priors_from_dir
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_hew.utils import (
+    approx_lognorm,
+    build_pyrenew_hew_model,
+)
 
 parser = argparse.ArgumentParser(
     description="Create fit data for disease modeling."
@@ -356,12 +360,20 @@ def simulate_data_from_bootstrap(
             scale_guess=0.5,
         )
     )
-    (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
-    (my_model, my_data) = build_pyrenew_hew_model(
-        model_data,
+    priors = get_priors_from_dir(model_run_dir)
+    my_data = PyrenewHEWData.from_json(
+        json_file_path=Path(model_run_dir)
+        / "data"
+        / "data_for_model_fit.json",
+        fit_ed_visits=True,
+        fit_hospital_admissions=True,
+        fit_wastewater=True,
+    )
+    my_model = build_pyrenew_hew_model(
         priors,
+        pop_fraction=my_data.pop_fraction,
+        population_size=my_data.population_size,
         generation_interval_pmf=generation_interval_pmf,
-        delay_pmf=delay_pmf,
         right_truncation_pmf=right_truncation_pmf,
         inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
         inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,

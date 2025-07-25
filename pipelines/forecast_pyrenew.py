@@ -177,7 +177,11 @@ def create_hubverse_table(model_fit_path):
     return None
 
 
-def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
+def get_pmfs(
+    param_estimates: pl.LazyFrame,
+    loc_abb: str,
+    disease: str,
+):
     generation_interval_pmf = (
         param_estimates.filter(
             (pl.col("geo_value").is_null())
@@ -507,7 +511,6 @@ def main(
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
         generation_interval_pmf=generation_interval_pmf,
-        delay_pmf=delay_pmf,
         right_truncation_pmf=right_truncation_pmf,
         inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
         inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
@@ -523,7 +526,6 @@ def main(
         pyrenew_model_name,
         n_days_past_last_training,
         generation_interval_pmf=generation_interval_pmf,
-        delay_pmf=delay_pmf,
         right_truncation_pmf=right_truncation_pmf,
         inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
         inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,

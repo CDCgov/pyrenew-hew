@@ -44,6 +44,7 @@ def mock_data():
             "below_lod": [False, False, False, False],
         },
         "pop_fraction": [0.4, 0.4, 0.2],
+        "population_size": 1e5,
         "nhsn_step_size": 7,
         "nssp_step_size": 1,
         "nwss_step_size": 1,
@@ -54,7 +55,6 @@ def mock_data():
 def mock_pmfs():
     return {
         "generation_interval_pmf": [0.1, 0.2, 0.7],
-        "delay_pmf": [0.1, 0.2, 0.7],
         "inf_to_hosp_admit_lognormal_loc": 0.015,
         "inf_to_hosp_admit_lognormal_scale": 0.851,
         "inf_to_hosp_admit_pmf": [0.0, 0.7, 0.1, 0.1, 0.1],
@@ -101,20 +101,20 @@ def mock_priors():
 def test_build_pyrenew_hew_model(mock_data, mock_priors, mock_pmfs):
     # Test when all `fit_` arguments are False
 
-    _, data = build_pyrenew_hew_model(mock_data, mock_priors, **mock_pmfs)
-    assert data.data_observed_disease_ed_visits is None
-    assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater_conc is None
+    mod = build_pyrenew_hew_model(
+        mock_priors,
+        pop_fraction=mock_data["pop_fraction"],
+        population_size=mock_data["population_size"],
+        **mock_pmfs,
+    )
 
     # Test when all `fit_` arguments are True
-    _, data = build_pyrenew_hew_model(
-        mock_data,
+    mod = build_pyrenew_hew_model(
         mock_priors,
+        pop_fraction=mock_data["pop_fraction"],
+        population_size=mock_data["population_size"],
         **mock_pmfs,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,
     )
-    assert data.data_observed_disease_ed_visits is not None
-    assert data.data_observed_disease_hospital_admissions is not None
-    assert data.data_observed_disease_wastewater_conc is not None
