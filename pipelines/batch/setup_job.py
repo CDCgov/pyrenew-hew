@@ -7,24 +7,22 @@ import argparse
 import itertools
 from pathlib import Path
 
-from rich import print
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-
 from azure.batch import models
-
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
+from rich import print
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from pyrenew_hew.utils import validate_hew_letters
-
-
 
 # Locations that are always excluded due to lack of NSSP ED visit data
 DEFAULT_EXCLUDED_LOCATIONS = ["AS", "GU", "MP", "PR", "UM", "VI"]
+
 
 def main(
     model_letters: str,
@@ -249,7 +247,9 @@ def main(
     table.add_row("Pool ID", str(pool_id))
     table.add_row("Model Family", str(model_family))
     table.add_row("Model Letters", str(model_letters))
-    table.add_row("Additional Forecast Letters", str(additional_forecast_letters))
+    table.add_row(
+        "Additional Forecast Letters", str(additional_forecast_letters)
+    )
     table.add_row("Diseases", ", ".join(disease_list))
     table.add_row("Output Subdirectory", str(output_subdir))
     table.add_row("Container Image", str(container_image))
@@ -270,7 +270,11 @@ def main(
     table.add_row("Excluded Locations", ", ".join(all_exclusions))
 
     def style_bool(val):
-        return f"[bold green]True[/bold green]" if val else "[grey50]False[/grey50]"
+        return (
+            f"[bold green]True[/bold green]"
+            if val
+            else "[grey50]False[/grey50]"
+        )
 
     table.add_row("Test Mode", style_bool(test))
     table.add_row("Dry Run", style_bool(dry_run))
@@ -286,8 +290,10 @@ def main(
     # We can do an error handling step explicitly defined here to tell the users if their environment needs to be added to an RBAC group or federated identity whitelist.
     print("")
     print("Using environment credentials to authenticate with Azure Batch...")
-    creds = EnvCredentialHandler() # TODO: Jon note: azuretools class. I would love to use DefaultAzureCredential() instead with OIDC and VM identities.
-    client = get_batch_service_client(creds) # TODO: Jon note: azuretools... but outputs an azure SDK object. IF we can get here with DefaultAzureCredential, it will be more portable.
+    creds = EnvCredentialHandler()  # TODO: Jon note: azuretools class. I would love to use DefaultAzureCredential() instead with OIDC and VM identities.
+    client = get_batch_service_client(
+        creds
+    )  # TODO: Jon note: azuretools... but outputs an azure SDK object. IF we can get here with DefaultAzureCredential, it will be more portable.
     print("Submitting job to Azure Batch...")
     job = models.JobAddParameter(
         id=job_id,
