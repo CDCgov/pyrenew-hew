@@ -101,6 +101,7 @@ jobs:
     env:
       NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
       NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
+      XLA_FLAGS: --xla_force_host_platform_device_count=2
     strategy:
       matrix:
         model: [h, e, he, hw, ew, hew]
