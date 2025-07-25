@@ -20,11 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     # TODO: change test environment startswith pattern
     environment: |-
-      ${{
-           github.ref_name == 'main'               && 'production'
-        || startsWith(github.ref_name, 'jk')       && 'test'
-
-      }}
+      ${{github.ref_name == 'main'               && 'production'
+                                                 || 'test'      }}
     permissions:
       contents: read
       id-token: write
@@ -54,7 +51,7 @@ jobs:
             coredemo.setOutput('id_token', id_token)
 
 
-      - name: Submit Pyrenew Hew Job
+      - name: Submit Pyrenew-Hew Job
         id: create_batch_pool
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
         uses: CDCgov/cfa-actions/runner-action@v1.4.0
@@ -83,4 +80,15 @@ jobs:
             # Sourcing the azure config
             source ./azureconfig.sh
 
-            make run_timeseries DRY_RUN=True
+            FORECAST_DATE=$(date +%Y-%m-%d)
+
+            az login --identity
+
+            # Run timeseries-e
+            uv run python pipelines/batch/setup_job.py \
+              --model-family timeseries \
+              --output-subdir "${FORECAST_DATE}_forecasts" \
+              --model-letters "e" \
+              --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
+              --pool-id pyrenew-pool \
+              --dry-run True
