@@ -14,9 +14,8 @@ env:
 
 jobs:
 
-  submit_job_py:
+  setup-federated-login:
 
-    name: Submit job to azure Batch
     runs-on: ubuntu-latest
     # TODO: change test environment startswith pattern
     environment: |-
@@ -49,9 +48,19 @@ jobs:
             const coredemo = require('@actions/core')
             const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
             coredemo.setOutput('id_token', id_token)
+  run-timeseries-e:
 
-
-      - name: Submit Pyrenew-Hew Job
+    runs-on: ubuntu-latest
+    # TODO: change test environment startswith pattern
+    environment: |-
+      ${{github.ref_name == 'main'               && 'production'
+                                                 || 'test'      }}
+    permissions:
+      contents: read
+      id-token: write
+    needs: setup-federated-login
+    steps:
+      - name: Submit timeseries-e Job
         id: create_batch_pool
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
         uses: CDCgov/cfa-actions/runner-action@v1.4.0
@@ -78,11 +87,9 @@ jobs:
               --overwrite
 
             # Sourcing the azure config
-            source ./azureconfig.sh
+            source ./azureconfig.sh # TODO: Eventually we want to move away from needing this at all.
 
             FORECAST_DATE=$(date +%Y-%m-%d)
-
-            az login --identity
 
             # Run timeseries-e
             uv run python pipelines/batch/setup_job.py \
@@ -90,5 +97,57 @@ jobs:
               --output-subdir "${FORECAST_DATE}_forecasts" \
               --model-letters "e" \
               --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
+              --pool-id pyrenew-pool \
+              --dry-run True
+
+   run-pyrenew-e:
+
+    runs-on: ubuntu-latest
+    # TODO: change test environment startswith pattern
+    environment: |-
+      ${{github.ref_name == 'main'               && 'production'
+                                                 || 'test'      }}
+    permissions:
+      contents: read
+      id-token: write
+    needs: [ setup-federated-login, run-timeseries-e ]
+    steps:
+      - name: Submit Pyrenew-e Job
+        id: create_batch_pool
+        # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "Logging into Azure CLI"
+              az login --service-principal \
+              --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+              --tenant ${{ secrets.AZURE_TENANT_ID }} \
+              --federated-token ${{ steps.idtoken.outputs.id_token }} \
+              --output none
+
+            echo "Setting env vars for Azure Batch and azuretools compatibility."
+              az storage blob download \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --file "./azureconfig.sh" \
+              --auth-mode login \
+              --overwrite
+
+            # Sourcing the azure config
+            source ./azureconfig.sh # TODO: Eventually we want to move away from needing this at all.
+
+            FORECAST_DATE=$(date +%Y-%m-%d)
+
+            # Run pyrenew-e
+            uv run python pipelines/batch/setup_job.py \
+              --model-family pyrenew \
+              --output-subdir "${FORECAST_DATE}_forecasts" \
+              --model-letters "e" \
+              --job-id "pyrenew-e-prod_${FORECAST_DATE}" \
               --pool-id pyrenew-pool \
               --dry-run True
