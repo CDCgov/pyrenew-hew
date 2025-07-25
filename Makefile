@@ -37,7 +37,7 @@ endif
 # ----------- #
 
 help:
-	@echo "Usage: make [target]"
+	@echo "Usage: make [target] [ARGS]"
 	@echo ""
 	@echo "Container Build Targets: "
 	@echo "  container_build     : Build the container image"
@@ -66,6 +66,10 @@ help:
 	@echo "To run the pyrenew-hew model and output to pyrenew-test-output:"
 	@echo "  make run_hew_model TEST=True MODEL_LETTERS=hew"
 	@echo ""
+	@echo "Any additional flags can be passed with ARGS, for example:"
+	@echo "  make run_hew_model ARGS=\"--locations-include 'NY GA'\""
+	@echo ""
+	@echo "Passing a flag through ARGS will also override the flags set previously."
 
 # ----------------------- #
 # Container Build Targets
@@ -95,7 +99,8 @@ run_timeseries:
 		--job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
-		--dry-run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)" \
+		$(ARGS)
 
 run_e_model:
 	uv run python pipelines/batch/setup_job.py \
@@ -105,7 +110,8 @@ run_e_model:
 		--job-id "pyrenew-e-prod_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
-		--dry-run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)" \
+		$(ARGS)
 
 run_h_model:
 	uv run python pipelines/batch/setup_job.py \
@@ -113,41 +119,46 @@ run_h_model:
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "h" \
 		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
-		--pool-id pyrenew-pool-32gb \
+		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
-		--dry-run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)" \
+		$(ARGS)
 
 run_he_model:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "he" \
-		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
-		--pool-id pyrenew-pool-32gb \
+		--job-id "pyrenew-he-prod_${FORECAST_DATE}" \
+		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
-		--dry-run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)" \
+		$(ARGS)
 
 run_hw_model:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hw" \
-		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-hw-prod_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
-		--dry-run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)" \
+		$(ARGS)
 
 run_hew_model:
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
-		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-hew-prod_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
-		--dry-run "$(DRY_RUN)"
+		--dry-run "$(DRY_RUN)" \
+		$(ARGS)
 
 post_process:
 	uv run python pipelines/postprocess_forecast_batches.py \
     	--input "./blobfuse/mounts/pyrenew-hew-prod-output/${FORECAST_DATE}_forecasts" \
-    	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}_forecasts.parquet"
+    	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}_forecasts.parquet" \
+		${ARGS}
