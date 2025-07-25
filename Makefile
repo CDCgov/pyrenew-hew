@@ -69,7 +69,7 @@ help:
 	@echo "Any additional flags can be passed with ARGS, for example:"
 	@echo "  make run_hew_model ARGS=\"--locations-include 'NY GA'\""
 	@echo ""
-	@echo "Passing a flag here will also override the flags set in this Makefile previously."
+	@echo "Passing a flag through ARGS will also override the flags set previously."
 
 # ----------------------- #
 # Container Build Targets
