@@ -4,14 +4,21 @@ from pathlib import Path
 
 import jax
 import numpy as np
+from jax.typing import ArrayLike
 
-from pipelines.utils import get_model_data_and_priors_from_dir
+from pipelines.utils import get_priors_from_dir
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.utils import build_pyrenew_hew_model
 
 
 def fit_and_save_model(
     model_run_dir: str,
     model_name: str,
+    generation_interval_pmf: ArrayLike,
+    inf_to_hosp_admit_lognormal_loc: ArrayLike,
+    inf_to_hosp_admit_lognormal_scale: ArrayLike,
+    inf_to_hosp_admit_pmf: ArrayLike,
+    right_truncation_pmf: ArrayLike = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -30,10 +37,24 @@ def fit_and_save_model(
             "to seed :func:`jax.random.key`"
         )
 
-    (model_data, priors) = get_model_data_and_priors_from_dir(model_run_dir)
-    (my_model, my_data) = build_pyrenew_hew_model(
-        model_data,
+    priors = get_priors_from_dir(model_run_dir)
+    my_data = PyrenewHEWData.from_json(
+        json_file_path=Path(model_run_dir)
+        / "data"
+        / "data_for_model_fit.json",
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
+    my_model = build_pyrenew_hew_model(
         priors,
+        pop_fraction=my_data.pop_fraction,
+        population_size=my_data.population_size,
+        generation_interval_pmf=generation_interval_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
