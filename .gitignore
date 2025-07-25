@@ -401,7 +401,3 @@ nssp-etl
 output
 params
 nwss-vintages
-
-# Azure configuration files
-azureconfig.env
-azureconfig.sh
