@@ -7,18 +7,24 @@ import argparse
 import itertools
 from pathlib import Path
 
+from rich import print
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from azure.batch import models
+
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
-
 from pyrenew_hew.utils import validate_hew_letters
+
+
 
 # Locations that are always excluded due to lack of NSSP ED visit data
 DEFAULT_EXCLUDED_LOCATIONS = ["AS", "GU", "MP", "PR", "UM", "VI"]
-
 
 def main(
     model_letters: str,
@@ -95,6 +101,8 @@ def main(
 
     test
         Is this a testing run? Default ``False``.
+        If set, output to pyrenew-test-output.
+        If not set, output to pyrenew-hew-prod-output.
 
     dry_run
         If set, do not submit tasks to Azure Batch.
@@ -199,6 +207,7 @@ def main(
             "Supported values are 'pyrenew' and 'timeseries'."
         )
 
+    # The script that will be run by Azure Batch
     base_call = (
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script} "
@@ -221,41 +230,64 @@ def main(
         "'"
     )
 
-    print("")
-    print("=" * 58)
-    print(f"{'':<5} 🚀 pyrenew-hew: Azure Batch Job Submission 🚀")
-    print("=" * 58)
-    print(f"{'Job ID':<30}: {job_id}")
-    print(f"{'Pool ID':<30}: {pool_id}")
-    print(f"{'Model Family':<30}: {model_family}")
-    print(f"{'Model Letters':<30}: {model_letters}")
-    print(
-        f"{'Additional Forecast Letters':<30}: {additional_forecast_letters}"
+    # Print job details, useful for debugging
+    # Script will end here on a dry run.
+
+    console = Console()
+
+    # Header panel
+    console.print(
+        Panel.fit(
+            "[bold magenta]🚀 pyrenew-hew: Azure Batch Job Submission 🚀",
+            border_style="magenta",
+        )
     )
-    print(f"{'Diseases':<30}: {', '.join(disease_list)}")
-    # Print locations, 5 per line for readability
-    for i, line in enumerate(range(0, len(all_locations), 5)):
-        locs = ", ".join(all_locations[line : line + 5])
-        print(f"{'Locations':<30}: {locs}" if i == 0 else f"{'':<30} {locs}")
-    print(f"{'Output Subdirectory':<30}: {output_subdir}")
-    print(f"{'Container Image':<30}: {container_image}")
-    print(f"{'Container Version':<30}: {container_image_version}")
-    print(f"{'Training Days':30}: {n_training_days}")
-    print(f"{'Exclude Last N Days':<30}: {exclude_last_n_days}")
-    print(f"{'Test Mode':<30}: {test}")
-    print(f"{'Dry Run':<30}: {dry_run}")
-    print("=" * 50)
+
+    # Job details table
+    table = Table(show_header=False, pad_edge=False)
+    table.add_row("Job ID", str(job_id))
+    table.add_row("Pool ID", str(pool_id))
+    table.add_row("Model Family", str(model_family))
+    table.add_row("Model Letters", str(model_letters))
+    table.add_row("Additional Forecast Letters", str(additional_forecast_letters))
+    table.add_row("Diseases", ", ".join(disease_list))
+    table.add_row("Output Subdirectory", str(output_subdir))
+    table.add_row("Container Image", str(container_image))
+    table.add_row("Container Version", str(container_image_version))
+    table.add_row("Training Days", str(n_training_days))
+    table.add_row("Exclude Last N Days", str(exclude_last_n_days))
+
+    # Locations included (5 per line)
+    loc_lines = [
+        ", ".join(all_locations[i : i + 5])
+        for i in range(0, len(all_locations), 5)
+    ]
+    table.add_row("Locations Included", loc_lines[0] if loc_lines else "")
+    for loc_line in loc_lines[1:]:
+        table.add_row("", loc_line)
+
+    # Excluded locations
+    table.add_row("Excluded Locations", ", ".join(all_exclusions))
+
+    def style_bool(val):
+        return f"[bold green]True[/bold green]" if val else "[grey50]False[/grey50]"
+
+    table.add_row("Test Mode", style_bool(test))
+    table.add_row("Dry Run", style_bool(dry_run))
+
+    console.print(table)
 
     if dry_run:
-        print("Dry run mode enabled. No tasks will be submitted.")
-        print("Closing...")
+        console.print("Dry run mode enabled. No tasks will be submitted.")
+        console.print("Closing...")
         return None
 
-    # TODO: Use VM managed identity with DefaultAzureCredential()
+    # TODO: Use VM managed identity (or Federated Identity in GH Actions) with DefaultAzureCredential(), output the BatchServiceClient with the Azure SDK instead.
+    # We can do an error handling step explicitly defined here to tell the users if their environment needs to be added to an RBAC group or federated identity whitelist.
     print("")
     print("Using environment credentials to authenticate with Azure Batch...")
-    creds = EnvCredentialHandler()
-    client = get_batch_service_client(creds)
+    creds = EnvCredentialHandler() # TODO: Jon note: azuretools class. I would love to use DefaultAzureCredential() instead with OIDC and VM identities.
+    client = get_batch_service_client(creds) # TODO: Jon note: azuretools... but outputs an azure SDK object. IF we can get here with DefaultAzureCredential, it will be more portable.
     print("Submitting job to Azure Batch...")
     job = models.JobAddParameter(
         id=job_id,
