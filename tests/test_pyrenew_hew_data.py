@@ -10,7 +10,7 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 @pytest.mark.parametrize(
     "erroring_date",
     [
-        datetime.datetime(2025, 3, 8) + datetime.timedelta(days=x)
+        np.datetime64("2025-03-08") + np.timedelta64(x, "D")
         for x in range(1, 7)
     ],
 )
@@ -24,7 +24,7 @@ def test_validation(erroring_date):
             PyrenewHEWData(
                 n_ed_visits_data_days=5,
                 n_hospital_admissions_data_days=10,
-                first_ed_visits_date=datetime.datetime(2025, 3, 5),
+                first_ed_visits_date=np.datetime64("2025-03-05"),
                 first_hospital_admissions_date=erroring_date,
                 right_truncation_offset=0,
             ),
@@ -48,9 +48,9 @@ def test_validation(erroring_date):
             0,
             0,
             5,
-            datetime.date(2023, 1, 1),
-            datetime.date(2022, 2, 5),
-            datetime.date(2025, 12, 5),
+            np.datetime64("2023-01-01"),
+            np.datetime64("2022-02-05"),
+            np.datetime64("2025-12-05"),
             10,
         ],
         [
@@ -58,9 +58,9 @@ def test_validation(erroring_date):
             325,
             2,
             5,
-            datetime.date(2025, 1, 1),
-            datetime.date(2023, 5, 27),
-            datetime.date(2022, 4, 5),
+            np.datetime64("2025-01-01"),
+            np.datetime64("2023-05-27"),
+            np.datetime64("2022-04-05"),
             10,
         ],
         [
@@ -68,9 +68,9 @@ def test_validation(erroring_date):
             0,
             2,
             3,
-            datetime.date(2025, 1, 1),
-            datetime.date(2025, 2, 8),
-            datetime.date(2024, 12, 5),
+            np.datetime64("2025-01-01"),
+            np.datetime64("2025-02-08"),
+            np.datetime64("2024-12-05"),
             30,
         ],
         [
@@ -78,9 +78,9 @@ def test_validation(erroring_date):
             0,
             23,
             3,
-            datetime.date(2025, 1, 1),
-            datetime.date(2025, 2, 8),
-            datetime.date(2024, 12, 5),
+            np.datetime64("2025-01-01"),
+            np.datetime64("2025-02-08"),
+            np.datetime64("2024-12-05"),
             30,
         ],
     ],
@@ -90,9 +90,9 @@ def test_to_forecast_data(
     n_hospital_admissions_data_days: int,
     n_wastewater_data_days: int,
     right_truncation_offset: int,
-    first_ed_visits_date: datetime.date,
-    first_hospital_admissions_date: datetime.date,
-    first_wastewater_date: datetime.date,
+    first_ed_visits_date: np.datetime64,
+    first_hospital_admissions_date: np.datetime64,
+    first_wastewater_date: np.datetime64,
     n_forecast_points: int,
 ) -> None:
     """
@@ -123,19 +123,28 @@ def test_to_forecast_data(
         forecast_data.first_hospital_admissions_date
         >= data.first_data_date_overall
     )
-    assert forecast_data.first_hospital_admissions_date.weekday() == 5
     assert (
-        forecast_data.first_hospital_admissions_date
-        - data.first_data_date_overall
-    ).days <= 6
+        forecast_data.first_hospital_admissions_date.astype(
+            datetime.datetime
+        ).weekday()
+        == 5
+    )
+
+    assert (
+        (
+            forecast_data.first_hospital_admissions_date
+            - data.first_data_date_overall
+        )
+        / np.timedelta64(1, "D")
+    ).item() <= 6
 
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
     assert forecast_data.data_observed_disease_wastewater_conc is None
 
 
 def test_pyrenew_wastewater_data():
-    first_training_date = datetime.date(2023, 1, 1)
-    last_training_date = datetime.date(2023, 7, 23)
+    first_training_date = np.datetime64("2023-01-01")
+    last_training_date = np.datetime64("2023-07-23")
     dates = pl.date_range(
         first_training_date,
         last_training_date,
@@ -165,9 +174,9 @@ def test_pyrenew_wastewater_data():
         .alias("below_lod")
     )
 
-    first_ed_visits_date = datetime.date(2023, 1, 1)
-    first_hospital_admissions_date = datetime.date(2023, 1, 7)  # Saturday
-    first_wastewater_date = datetime.date(2023, 1, 1)
+    first_ed_visits_date = np.datetime64("2023-01-01")
+    first_hospital_admissions_date = np.datetime64("2023-01-07")  # Saturday
+    first_wastewater_date = np.datetime64("2023-01-01")
     n_forecast_points = 10
 
     data = PyrenewHEWData(

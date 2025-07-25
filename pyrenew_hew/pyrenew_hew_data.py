@@ -2,6 +2,7 @@ import datetime
 from typing import Self
 
 import jax.numpy as jnp
+import numpy as np
 import polars as pl
 from jax.typing import ArrayLike
 
@@ -48,7 +49,10 @@ class PyrenewHEWData:
 
         if (
             first_hospital_admissions_date is not None
-            and not first_hospital_admissions_date.weekday() == 5
+            and not first_hospital_admissions_date.astype(
+                datetime.datetime
+            ).weekday()
+            == 5
         ):
             raise ValueError(
                 "Dates for hospital admissions timeseries must "
@@ -86,19 +90,25 @@ class PyrenewHEWData:
     @property
     def dates_observed_ed_visits(self):
         if self.nssp_training_data is not None:
-            return self.nssp_training_data.get_column("date").unique()
+            return (
+                self.nssp_training_data.get_column("date").unique().to_numpy()
+            )
 
     @property
     def dates_observed_hospital_admissions(self):
         if self.nhsn_training_data is not None:
-            return self.nhsn_training_data.get_column(
-                "weekendingdate"
-            ).unique()
+            return (
+                self.nhsn_training_data.get_column("weekendingdate")
+                .unique()
+                .to_numpy()
+            )
 
     @property
     def dates_observed_disease_wastewater(self):
         if self.nwss_training_data is not None:
-            return self.nwss_training_data.get_column("date").unique()
+            return (
+                self.nwss_training_data.get_column("date").unique().to_numpy()
+            )
 
     @property
     def first_wastewater_date(self):
@@ -169,8 +179,10 @@ class PyrenewHEWData:
     @property
     def n_days_post_init(self):
         return (
-            self.last_data_date_overall - self.first_data_date_overall
-        ).days + 1
+            (self.last_data_date_overall - self.first_data_date_overall)
+            // np.timedelta64(1, "D")
+            + 1
+        ).item()
 
     @property
     def data_observed_disease_ed_visits(self):
@@ -392,8 +404,8 @@ class PyrenewHEWData:
                 )
             result = None
         else:
-            result = first_date + datetime.timedelta(
-                days=(n_datapoints - 1) * timestep_days
+            result = first_date + np.timedelta64(
+                (n_datapoints - 1) * timestep_days, "D"
             )
         return result
 
@@ -413,19 +425,22 @@ class PyrenewHEWData:
             )
         elif date_array is not None:
             return (
-                max(date_array) - min(date_array)
-            ).days // timestep_days + 1
+                (max(date_array) - min(date_array))
+                // np.timedelta64((timestep_days), "D")
+                + 1
+            ).item()
         else:
             return n_datapoints
 
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
-        first_dow = self.first_data_date_overall.weekday()
+        first_dow = self.first_data_date_overall.astype(
+            datetime.datetime
+        ).weekday()
         to_first_sat = (5 - first_dow) % 7
-        first_mmwr_ending_date = (
-            self.first_data_date_overall
-            + datetime.timedelta(days=to_first_sat)
+        first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
+            to_first_sat, "D"
         )
         return PyrenewHEWData(
             n_ed_visits_data_days=n_days,
