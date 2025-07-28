@@ -1,5 +1,7 @@
-import pytest
 import json
+
+import pytest
+
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
@@ -59,7 +61,6 @@ def mock_data_dir(mock_data, tmpdir):
 
 
 def test_build_pyrenew_hew_model(mock_data_dir):
-
     # Test when all `fit_` arguments are False
 
     data = PyrenewHEWData.from_json(mock_data_dir)

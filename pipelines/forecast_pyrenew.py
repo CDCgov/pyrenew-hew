@@ -177,6 +177,26 @@ def create_hubverse_table(model_fit_path):
     return None
 
 
+def _validate_and_extract(
+    df: pl.DataFrame,
+    parameter_name: str,
+    allow_missing_right_truncation: bool = False,
+) -> list:
+    if (
+        allow_missing_right_truncation
+        and parameter_name == "right_truncation"
+        and df.height == 0
+    ):
+        return list([1])
+    if df.height != 1:
+        error_msg = f"Expected exactly one {parameter_name} parameter row, but found {df.height}"
+        logging.error(error_msg)
+        if df.height > 0:
+            logging.error(f"Found rows: {df}")
+        raise ValueError(error_msg)
+    return df.item(0, "value").to_list()
+
+
 def get_pmfs(
     param_estimates: pl.LazyFrame,
     loc_abb: str,
@@ -258,25 +278,6 @@ def get_pmfs(
             pl.col("end_date") >= as_of,
         )
     )
-
-    def _validate_and_extract(
-        df: pl.DataFrame,
-        parameter_name: str,
-        allow_missing_right_truncation: bool = False,
-    ) -> list:
-        if (
-            allow_missing_right_truncation
-            and parameter_name == "right_truncation"
-            and df.height == 0
-        ):
-            return list([1])
-        if df.height != 1:
-            error_msg = f"Expected exactly one {parameter_name} parameter row, but found {df.height}"
-            logging.error(error_msg)
-            if df.height > 0:
-                logging.error(f"Found rows: {df}")
-            raise ValueError(error_msg)
-        return df.item(0, "value").to_list()
 
     generation_interval_df = filtered_estimates.filter(
         pl.col("parameter") == "generation_interval"
