@@ -321,7 +321,7 @@ def build_pyrenew_hew_model(
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
-) -> tuple[PyrenewHEWModel, PyrenewHEWData]:
+) -> PyrenewHEWModel:
     """
     Build a pyrenew-family model from dictionaries specifying priors and pmfs
 
@@ -331,7 +331,7 @@ def build_pyrenew_hew_model(
     fit_ed_visits
         Fit ED visit data in the built model? Default ``False``.
 
-    fit_ed_visits
+    fit_hospital_admissions
         Fit hospital admissions data in the built model?
         Default ``False``.
 
@@ -341,7 +341,7 @@ def build_pyrenew_hew_model(
 
     Returns
     -------
-    tuple[PyrenewHEWModel, PyrenewHEWData]
+    PyrenewHEWModel
         Instantiated model and data objects representing
         the model and its fitting data, respectively.
     """

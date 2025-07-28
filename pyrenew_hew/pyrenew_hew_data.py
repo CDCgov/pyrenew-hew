@@ -26,9 +26,9 @@ class PyrenewHEWData:
         n_ed_visits_data_days: int = None,
         n_hospital_admissions_data_days: int = None,
         n_wastewater_data_days: int = None,
-        first_ed_visits_date: datetime.date = None,
-        first_hospital_admissions_date: datetime.date = None,
-        first_wastewater_date: datetime.date = None,
+        first_ed_visits_date: np.datetime64 = None,
+        first_hospital_admissions_date: np.datetime64 = None,
+        first_wastewater_date: np.datetime64 = None,
         right_truncation_offset: int = None,
         pop_fraction: ArrayLike = None,
         n_ww_lab_sites: int = None,
@@ -471,10 +471,10 @@ class PyrenewHEWData:
 
     def get_end_date(
         self,
-        first_date: datetime.date,
+        first_date: np.datetime64,
         n_datapoints: int,
         timestep_days: int = 1,
-    ) -> datetime.date:
+    ) -> np.datetime64:
         """
         Get end date from a first date and a number of datapoints,
         with handling of None values and non-daily timeseries
