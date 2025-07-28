@@ -1,10 +1,10 @@
 import argparse
+import datetime as dt
 import logging
 import os
 import shutil
 import subprocess
 import tomllib
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import jax.numpy as jnp
@@ -152,7 +152,7 @@ def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
     return [
-        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        dt.datetime.strptime(f.stem, "%Y-%m-%d").date()
         for f in Path(data_dir).glob(glob_pattern)
     ]
 
@@ -181,32 +181,115 @@ def get_pmfs(
     param_estimates: pl.LazyFrame,
     loc_abb: str,
     disease: str,
-):
-    generation_interval_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "generation_interval")
-            & (pl.col("end_date").is_null())  # most recent estimate
+    as_of: dt.date = None,
+    reference_date: dt.date = None,
+    allow_missing_right_truncation: bool = False,
+) -> tuple[list, list, list]:
+    """
+    Filter and extract probability mass functions (PMFs) from
+    parameter estimates LazyFrame based on location, disease
+    and date filters.
+
+    This function queries a LazyFrame containing epidemiological
+    parameters and returns three types of PMF parameters:
+    delay, generation interval, and right truncation.
+
+    Parameters
+    ----------
+    param_estimates: pl.LazyFrame
+        A LazyFrame containing parameter data with columns
+        including 'disease', 'parameter', 'value', 'geo_value',
+        'start_date', 'end_date', and 'reference_date'.
+
+    loc_abb : str
+        Location abbreviation (geo_value) to filter
+        right truncation parameters.
+
+    disease : str
+        Name of the disease.
+
+    as_of : datetime.date, optional
+        Date for which parameters must be valid
+        (start_date <= as_of <= end_date). Defaults
+        to the most recent estimates.
+
+    reference_date : datetime.date, optional
+        The reference date for right truncation estimates.
+        Defaults to as_of value. Selects the most recent estimate
+        with reference_date <= this value.
+
+    allow_missing_right_truncation : bool, optional
+        If true, allows extraction of other pmfs if
+        right_truncation estimate is missing
+
+    Returns
+    -------
+    tuple[list, list, list]
+        A tuple containing three arrays:
+        - generation_interval_pmf: Generation interval distribution
+        - delay_pmf: Delay distribution
+        - right_truncation_pmf: Right truncation distribution
+
+    Raises
+    ------
+    ValueError
+        If exactly one row is not found for any of the required parameters.
+
+    Notes
+    -----
+    The function applies specific filtering logic for each parameter type:
+    - For delay and generation_interval: filters by disease,
+      parameter name, and validity date range.
+    - For right_truncation: additionally filters by location.
+    """
+    min_as_of = dt.date(1000, 1, 1)
+    max_as_of = dt.date(3000, 1, 1)
+    as_of = as_of or max_as_of
+    reference_date = reference_date or as_of
+
+    filtered_estimates = (
+        param_estimates.with_columns(
+            pl.col("start_date").fill_null(min_as_of),
+            pl.col("end_date").fill_null(max_as_of),
         )
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
+        .filter(pl.col("disease") == disease)
+        .filter(
+            pl.col("start_date") <= as_of,
+            pl.col("end_date") >= as_of,
+        )
     )
 
-    delay_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "delay")
-            & (pl.col("end_date").is_null())  # most recent estimate
-        )
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
+    def _validate_and_extract(
+        df: pl.DataFrame,
+        parameter_name: str,
+        allow_missing_right_truncation: bool = False,
+    ) -> list:
+        if (
+            allow_missing_right_truncation
+            and parameter_name == "right_truncation"
+            and df.height == 0
+        ):
+            return list([1])
+        if df.height != 1:
+            error_msg = f"Expected exactly one {parameter_name} parameter row, but found {df.height}"
+            logging.error(error_msg)
+            if df.height > 0:
+                logging.error(f"Found rows: {df}")
+            raise ValueError(error_msg)
+        return df.item(0, "value").to_list()
+
+    generation_interval_df = filtered_estimates.filter(
+        pl.col("parameter") == "generation_interval"
+    ).collect()
+
+    generation_interval_pmf = _validate_and_extract(
+        generation_interval_df, "generation_interval"
     )
+
+    delay_df = filtered_estimates.filter(
+        pl.col("parameter") == "delay"
+    ).collect()
+    delay_pmf = _validate_and_extract(delay_df, "delay")
 
     # ensure 0 first entry; we do not model the possibility
     # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
@@ -215,18 +298,14 @@ def get_pmfs(
     delay_pmf = delay_pmf / delay_pmf.sum()
     delay_pmf = delay_pmf.tolist()
 
-    right_truncation_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value") == loc_abb)
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "right_truncation")
-            & (pl.col("end_date").is_null())
-        )
+    right_truncation_df = (
+        filtered_estimates.filter(pl.col("geo_value") == loc_abb)
+        .filter(pl.col("parameter") == "right_truncation")
         .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
+        .collect()
+    )
+    right_truncation_pmf = _validate_and_extract(
+        right_truncation_df, "right_truncation", allow_missing_right_truncation
     )
 
     return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
@@ -318,7 +397,7 @@ def main(
     if report_date == "latest":
         report_date = max(available_facility_level_reports)
     else:
-        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+        report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
 
     if report_date in available_loc_level_reports:
         loc_report_date = report_date
@@ -342,7 +421,9 @@ def main(
         logger.info(f"Using location-level data as of: {loc_report_date}")
 
     # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
+    last_training_date = report_date - dt.timedelta(
+        days=exclude_last_n_days + 1
+    )
 
     if last_training_date >= report_date:
         raise ValueError(
@@ -353,7 +434,7 @@ def main(
 
     logger.info(f"last training date: {last_training_date}")
 
-    first_training_date = last_training_date - timedelta(
+    first_training_date = last_training_date - dt.timedelta(
         days=n_training_days - 1
     )
 
@@ -388,7 +469,7 @@ def main(
         glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
     ):
         return [
-            datetime.strptime(
+            dt.datetime.strptime(
                 f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
             ).date()
             for f in Path(data_dir).glob(f"{glob_pattern}*")
@@ -421,7 +502,10 @@ def main(
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
-        param_estimates=param_estimates, loc_abb=loc, disease=disease
+        param_estimates=param_estimates,
+        loc_abb=loc,
+        disease=disease,
+        allow_missing_right_truncation=not fit_ed_visits,
     )
 
     inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
@@ -489,7 +573,7 @@ def main(
         last_training_date=last_training_date,
         latest_comprehensive_path=eval_data_path,
         output_data_dir=Path(model_run_dir, "data"),
-        last_eval_date=report_date + timedelta(days=n_forecast_days),
+        last_eval_date=report_date + dt.timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
