@@ -2,17 +2,15 @@ import argparse
 import logging
 import os
 import subprocess
-import tomllib
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-
+import datetime as dt
 import polars as pl
 from forecast_pyrenew import (
     generate_epiweekly_data,
     get_available_reports,
 )
-from prep_data import process_and_save_loc
-from prep_eval_data import save_eval_data
+from prep_data import process_and_save_loc, get_training_dates
 
 
 def plot_and_save_loc_forecast(
@@ -105,19 +103,14 @@ def create_hubverse_table(model_fit_path):
 
 def main(
     disease: str,
-    report_date: str,
     loc: str,
-    facility_level_nssp_data_dir: Path | str,
-    state_level_nssp_data_dir: Path | str,
-    param_data_dir: Path | str,
+    report_date: dt.date,
     output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
     n_denominator_samples: int,
     model_letters: str,
     exclude_last_n_days: int = 0,
-    eval_data_path: Path = None,
-    credentials_path: Path = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -135,94 +128,14 @@ def main(
         f"location {loc}, and report date {report_date}"
     )
 
-    if credentials_path is not None:
-        cp = Path(credentials_path)
-        if not cp.suffix.lower() == ".toml":
-            raise ValueError(
-                "Credentials file must have the extension "
-                "'.toml' (not case-sensitive). Got "
-                f"{cp.suffix}"
-            )
-        logger.info(f"Reading in credentials from {cp}...")
-        with open(cp, "rb") as fp:
-            credentials_dict = tomllib.load(fp)
-    else:
-        logger.info("No credentials file given. Will proceed without one.")
-        credentials_dict = None
-
-    available_facility_level_reports = get_available_reports(
-        facility_level_nssp_data_dir
-    )
-    available_loc_level_reports = get_available_reports(
-        state_level_nssp_data_dir
-    )
-    first_available_loc_report = min(available_loc_level_reports)
-    last_available_loc_report = max(available_loc_level_reports)
-
-    if report_date == "latest":
-        report_date = max(available_facility_level_reports)
-    else:
-        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
-
-    if report_date in available_loc_level_reports:
-        loc_report_date = report_date
-    elif report_date > last_available_loc_report:
-        loc_report_date = last_available_loc_report
-    elif report_date > first_available_loc_report:
-        raise ValueError(
-            "Dataset appear to be missing some state-level "
-            f"reports. First entry is {first_available_loc_report}, "
-            f"last is {last_available_loc_report}, but no entry "
-            f"for {report_date}"
-        )
-    else:
-        raise ValueError(
-            "Requested report date is earlier than the first "
-            "state-level vintage. This is not currently supported"
-        )
-
+    report_date = datetime.date.today()
     logger.info(f"Report date: {report_date}")
-    if loc_report_date is not None:
-        logger.info(f"Using location-level data as of: {loc_report_date}")
-
-    # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
-
-    if last_training_date >= report_date:
-        raise ValueError(
-            "Last training date must be before the report date. "
-            f"Got a last training date of {last_training_date} "
-            f"with a report date of {report_date}."
-        )
+    (last_training_date, first_training_date) = get_training_dates(
+        report_date, exclude_last_n_days, n_training_days
+    )
 
     logger.info(f"last training date: {last_training_date}")
-
-    first_training_date = last_training_date - timedelta(
-        days=n_training_days - 1
-    )
-
     logger.info(f"First training date {first_training_date}")
-
-    facility_level_nssp_data, loc_level_nssp_data = None, None
-
-    if report_date in available_facility_level_reports:
-        logger.info("Facility level data available for the given report date")
-        facility_datafile = f"{report_date}.parquet"
-        facility_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, facility_datafile)
-        )
-    if loc_report_date in available_loc_level_reports:
-        logger.info("location-level data available for the given report date.")
-        loc_datafile = f"{loc_report_date}.parquet"
-        loc_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, loc_datafile)
-        )
-    if facility_level_nssp_data is None and loc_level_nssp_data is None:
-        raise ValueError(
-            f"No data available for the requested report date {report_date}"
-        )
-
-    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -232,49 +145,12 @@ def main(
 
     os.makedirs(model_run_dir, exist_ok=True)
 
-    logger.info(f"Processing {loc}")
-    process_and_save_loc(
-        loc_abb=loc,
-        disease=disease,
-        facility_level_nssp_data=facility_level_nssp_data,
-        loc_level_nssp_data=loc_level_nssp_data,
-        loc_level_nwss_data=None,
-        report_date=report_date,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        param_estimates=param_estimates,
-        model_run_dir=model_run_dir,
-        logger=logger,
-        credentials_dict=credentials_dict,
-    )
-
-    logger.info("Getting eval data...")
-    if eval_data_path is None:
-        raise ValueError("No path to an evaluation dataset provided.")
-    save_eval_data(
-        loc=loc,
-        disease=disease,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        latest_comprehensive_path=eval_data_path,
-        output_data_dir=Path(model_run_dir, "data"),
-        last_eval_date=report_date + timedelta(days=n_forecast_days),
-        credentials_dict=credentials_dict,
-    )
-    logger.info("Done getting eval data.")
-
-    logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(model_run_dir)
-
-    logger.info("Data preparation complete.")
-
     logger.info("Performing baseline forecasting and postprocessing...")
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
     cdc_flat_baseline_forecasts(
         model_run_dir, baseline_model_name, n_days_past_last_training
     )
-
     create_hubverse_table(Path(model_run_dir, baseline_model_name))
 
     logger.info("Performing timeseries ensemble forecasting")
@@ -321,53 +197,18 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--report-date",
+        type=dt.date,
+        default=dt.date.today(),
+        help="Report date in YYYY-MM-DD format",
+    )
+
+    parser.add_argument(
         "--model-letters",
         type=str,
         default="e",
         help=(
             "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
-        ),
-        required=True,
-    )
-
-    parser.add_argument(
-        "--credentials-path",
-        type=Path,
-        help=("Path to a TOML file containing credentials such as API keys."),
-    )
-
-    parser.add_argument(
-        "--report-date",
-        type=str,
-        default="latest",
-        help="Report date in YYYY-MM-DD format or latest (default: latest).",
-    )
-
-    parser.add_argument(
-        "--facility-level-nssp-data-dir",
-        type=Path,
-        default=Path("private_data", "nssp_etl_gold"),
-        help=(
-            "Directory in which to look for facility-level NSSP ED visit data"
-        ),
-    )
-
-    parser.add_argument(
-        "--state-level-nssp-data-dir",
-        type=Path,
-        default=Path("private_data", "nssp_state_level_gold"),
-        help=(
-            "Directory in which to look for state-level NSSP ED visit data."
-        ),
-    )
-
-    parser.add_argument(
-        "--param-data-dir",
-        type=Path,
-        default=Path("private_data", "prod_param_estimates"),
-        help=(
-            "Directory in which to look for parameter estimates"
-            "such as delay PMFs."
         ),
         required=True,
     )
@@ -421,12 +262,6 @@ if __name__ == "__main__":
             "Optionally exclude the final n days of available training "
             "data (Default: 0, i.e. exclude no available data"
         ),
-    )
-
-    parser.add_argument(
-        "--eval-data-path",
-        type=Path,
-        help=("Path to a parquet file containing compehensive truth data."),
     )
 
     args = parser.parse_args()

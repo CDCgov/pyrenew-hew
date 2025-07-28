@@ -1,7 +1,8 @@
-import pytest
-from pyrenew.deterministic import NullVariable
+import json
 
-from pyrenew_hew.utils import build_pyrenew_hew_model
+import pytest
+
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
 @pytest.fixture
@@ -24,12 +25,6 @@ def mock_data():
             "data_type": ["train"] * 2,
         },
         "loc_pop": [10000],
-        "generation_interval_pmf": [0.1, 0.2, 0.7],
-        "inf_to_ed_pmf": [0.4, 0.5, 0.1],
-        "inf_to_hosp_admit_pmf": [0.0, 0.7, 0.1, 0.1, 0.1],
-        "inf_to_hosp_admit_lognormal_loc": 0.015,
-        "inf_to_hosp_admit_lognormal_scale": 0.851,
-        "right_truncation_pmf": [0.7, 0.1, 0.2],
         "nssp_training_dates": ["2025-01-01"],
         "nhsn_training_dates": ["2025-01-04"],
         "right_truncation_offset": 10,
@@ -50,61 +45,39 @@ def mock_data():
             "below_lod": [False, False, False, False],
         },
         "pop_fraction": [0.4, 0.4, 0.2],
+        "population_size": 1e5,
+        "nhsn_step_size": 7,
+        "nssp_step_size": 1,
+        "nwss_step_size": 1,
     }
 
 
 @pytest.fixture
-def mock_priors():
-    return {
-        "i0_first_obs_n_rv": None,
-        "initialization_rate_rv": None,
-        "log_r_mu_intercept_rv": None,
-        "autoreg_rt_rv": None,
-        "eta_sd_rv": None,
-        "inf_feedback_strength_rv": NullVariable(),
-        "p_ed_visit_mean_rv": None,
-        "p_ed_visit_w_sd_rv": None,
-        "autoreg_p_ed_visit_rv": None,
-        "ed_visit_wday_effect_rv": None,
-        "ed_neg_bin_concentration_rv": None,
-        "hosp_admit_neg_bin_concentration_rv": None,
-        "ihr_rv": None,
-        "ihr_rel_iedr_rv": None,
-        "t_peak_rv": None,
-        "duration_shed_after_peak_rv": None,
-        "delay_offset_loc_rv": None,
-        "delay_log_offset_scale_rv": None,
-        "log10_genome_per_inf_ind_rv": None,
-        "mode_sigma_ww_site_rv": None,
-        "sd_log_sigma_ww_site_rv": None,
-        "mode_sd_ww_site_rv": None,
-        "max_shed_interval": 10,
-        "ww_ml_produced_per_day": None,
-        "pop_fraction": None,
-        "autoreg_rt_subpop_rv": None,
-        "sigma_rt_rv": None,
-        "sigma_i_first_obs_rv": None,
-        "offset_ref_logit_i_first_obs_rv": None,
-        "offset_ref_log_rt_rv": None,
-    }
+def mock_data_dir(mock_data, tmpdir):
+    data_path = tmpdir.join("data.json")
+    with open(data_path, "w") as f:
+        json.dump(mock_data, f)
+    return data_path
 
 
-def test_build_pyrenew_hew_model(mock_data, mock_priors):
+def test_build_pyrenew_hew_model(mock_data_dir):
     # Test when all `fit_` arguments are False
 
-    _, data = build_pyrenew_hew_model(mock_data, mock_priors)
+    data = PyrenewHEWData.from_json(mock_data_dir)
+    assert isinstance(data, PyrenewHEWData)
     assert data.data_observed_disease_ed_visits is None
     assert data.data_observed_disease_hospital_admissions is None
     assert data.data_observed_disease_wastewater_conc is None
 
     # Test when all `fit_` arguments are True
-    _, data = build_pyrenew_hew_model(
-        mock_data,
-        mock_priors,
+
+    data = PyrenewHEWData.from_json(
+        mock_data_dir,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,
     )
+    assert isinstance(data, PyrenewHEWData)
     assert data.data_observed_disease_ed_visits is not None
     assert data.data_observed_disease_hospital_admissions is not None
     assert data.data_observed_disease_wastewater_conc is not None

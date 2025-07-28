@@ -1,24 +1,25 @@
 import argparse
+import datetime as dt
 import logging
 import os
 import shutil
 import subprocess
 import tomllib
-from datetime import datetime, timedelta
+import datetime as dt
+from datetime import datetime
 from pathlib import Path
 
+import jax.numpy as jnp
 import polars as pl
 import tomli_w
 from fit_pyrenew_model import fit_and_save_model
 from generate_predictive import (
     generate_and_save_predictions,
 )
-from prep_data import process_and_save_loc
-from prep_eval_data import save_eval_data
-from prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pygit2.repository import Repository
-
+from prep_data import get_training_dates
 from pyrenew_hew.utils import (
+    approx_lognorm,
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
 )
@@ -73,31 +74,7 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly_data(
-    model_run_dir: Path, data_names: str = None
-) -> None:
-    command = [
-        "Rscript",
-        "pipelines/generate_epiweekly_data.R",
-        f"{model_run_dir}",
-    ]
-    if data_names is not None:
-        command.extend(["--data-names", f"{data_names}"])
-
-    result = subprocess.run(
-        command,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"generate_epiweekly_data: {result.stderr.decode('utf-8')}"
-        )
-    return None
-
-
-def convert_inferencedata_to_parquet(
-    model_run_dir: Path, model_name: str
-) -> None:
+def convert_inferencedata_to_parquet(model_run_dir: Path, model_name: str) -> None:
     result = subprocess.run(
         [
             "Rscript",
@@ -146,15 +123,6 @@ def plot_and_save_loc_forecast(
     return None
 
 
-def get_available_reports(
-    data_dir: str | Path, glob_pattern: str = "*.parquet"
-):
-    return [
-        datetime.strptime(f.stem, "%Y-%m-%d").date()
-        for f in Path(data_dir).glob(glob_pattern)
-    ]
-
-
 def create_hubverse_table(model_fit_path):
     result = subprocess.run(
         [
@@ -175,13 +143,143 @@ def create_hubverse_table(model_fit_path):
     return None
 
 
+def _validate_and_extract(
+    df: pl.DataFrame,
+    parameter_name: str,
+    allow_missing_right_truncation: bool = False,
+) -> list:
+    if (
+        allow_missing_right_truncation
+        and parameter_name == "right_truncation"
+        and df.height == 0
+    ):
+        return list([1])
+    if df.height != 1:
+        error_msg = f"Expected exactly one {parameter_name} parameter row, but found {df.height}"
+        logging.error(error_msg)
+        if df.height > 0:
+            logging.error(f"Found rows: {df}")
+        raise ValueError(error_msg)
+    return df.item(0, "value").to_list()
+
+
+def get_pmfs(
+    param_estimates: pl.LazyFrame,
+    loc_abb: str,
+    disease: str,
+    as_of: dt.date = None,
+    reference_date: dt.date = None,
+    allow_missing_right_truncation: bool = False,
+) -> tuple[list, list, list]:
+    """
+    Filter and extract probability mass functions (PMFs) from
+    parameter estimates LazyFrame based on location, disease
+    and date filters.
+
+    This function queries a LazyFrame containing epidemiological
+    parameters and returns three types of PMF parameters:
+    delay, generation interval, and right truncation.
+
+    Parameters
+    ----------
+    param_estimates: pl.LazyFrame
+        A LazyFrame containing parameter data with columns
+        including 'disease', 'parameter', 'value', 'geo_value',
+        'start_date', 'end_date', and 'reference_date'.
+
+    loc_abb : str
+        Location abbreviation (geo_value) to filter
+        right truncation parameters.
+
+    disease : str
+        Name of the disease.
+
+    as_of : datetime.date, optional
+        Date for which parameters must be valid
+        (start_date <= as_of <= end_date). Defaults
+        to the most recent estimates.
+
+    reference_date : datetime.date, optional
+        The reference date for right truncation estimates.
+        Defaults to as_of value. Selects the most recent estimate
+        with reference_date <= this value.
+
+    allow_missing_right_truncation : bool, optional
+        If true, allows extraction of other pmfs if
+        right_truncation estimate is missing
+
+    Returns
+    -------
+    tuple[list, list, list]
+        A tuple containing three arrays:
+        - generation_interval_pmf: Generation interval distribution
+        - delay_pmf: Delay distribution
+        - right_truncation_pmf: Right truncation distribution
+
+    Raises
+    ------
+    ValueError
+        If exactly one row is not found for any of the required parameters.
+
+    Notes
+    -----
+    The function applies specific filtering logic for each parameter type:
+    - For delay and generation_interval: filters by disease,
+      parameter name, and validity date range.
+    - For right_truncation: additionally filters by location.
+    """
+    min_as_of = dt.date(1000, 1, 1)
+    max_as_of = dt.date(3000, 1, 1)
+    as_of = as_of or max_as_of
+    reference_date = reference_date or as_of
+
+    filtered_estimates = (
+        param_estimates.with_columns(
+            pl.col("start_date").fill_null(min_as_of),
+            pl.col("end_date").fill_null(max_as_of),
+        )
+        .filter(pl.col("disease") == disease)
+        .filter(
+            pl.col("start_date") <= as_of,
+            pl.col("end_date") >= as_of,
+        )
+    )
+
+    generation_interval_df = filtered_estimates.filter(
+        pl.col("parameter") == "generation_interval"
+    ).collect()
+
+    generation_interval_pmf = _validate_and_extract(
+        generation_interval_df, "generation_interval"
+    )
+
+    delay_df = filtered_estimates.filter(pl.col("parameter") == "delay").collect()
+    delay_pmf = _validate_and_extract(delay_df, "delay")
+
+    # ensure 0 first entry; we do not model the possibility
+    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
+    delay_pmf[0] = 0.0
+    delay_pmf = jnp.array(delay_pmf)
+    delay_pmf = delay_pmf / delay_pmf.sum()
+    delay_pmf = delay_pmf.tolist()
+
+    right_truncation_df = (
+        filtered_estimates.filter(pl.col("geo_value") == loc_abb)
+        .filter(pl.col("parameter") == "right_truncation")
+        .filter(pl.col("reference_date") == pl.col("reference_date").max())
+        .collect()
+    )
+    right_truncation_pmf = _validate_and_extract(
+        right_truncation_df, "right_truncation", allow_missing_right_truncation
+    )
+
+    return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
+
+
 def main(
     disease: str,
-    report_date: str,
     loc: str,
-    facility_level_nssp_data_dir: Path | str,
-    state_level_nssp_data_dir: Path | str,
-    nwss_data_dir: Path | str,
+    report_date: dt.date,
     param_data_dir: Path | str,
     priors_path: Path | str,
     output_dir: Path | str,
@@ -190,10 +288,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
-    nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
-    eval_data_path: Path = None,
-    credentials_path: Path = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -229,140 +324,16 @@ def main(
     any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
     if not any_fit:
         raise ValueError(
-            "pyrenew_null (fitting to no signals) "
-            "is not supported by this pipeline"
+            "pyrenew_null (fitting to no signals) " "is not supported by this pipeline"
         )
-
-    if credentials_path is not None:
-        cp = Path(credentials_path)
-        if not cp.suffix.lower() == ".toml":
-            raise ValueError(
-                "Credentials file must have the extension "
-                "'.toml' (not case-sensitive). Got "
-                f"{cp.suffix}"
-            )
-        logger.info(f"Reading in credentials from {cp}...")
-        with open(cp, "rb") as fp:
-            credentials_dict = tomllib.load(fp)
-    else:
-        logger.info("No credentials file given. Will proceed without one.")
-        credentials_dict = None
-
-    available_facility_level_reports = get_available_reports(
-        facility_level_nssp_data_dir
-    )
-
-    available_loc_level_reports = get_available_reports(
-        state_level_nssp_data_dir
-    )
-    first_available_loc_report = min(available_loc_level_reports)
-    last_available_loc_report = max(available_loc_level_reports)
-
-    if report_date == "latest":
-        report_date = max(available_facility_level_reports)
-    else:
-        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
-
-    if report_date in available_loc_level_reports:
-        loc_report_date = report_date
-    elif report_date > last_available_loc_report:
-        loc_report_date = last_available_loc_report
-    elif report_date > first_available_loc_report:
-        raise ValueError(
-            "Dataset appear to be missing some state-level "
-            f"reports. First entry is {first_available_loc_report}, "
-            f"last is {last_available_loc_report}, but no entry "
-            f"for {report_date}"
-        )
-    else:
-        raise ValueError(
-            "Requested report date is earlier than the first "
-            "state-level vintage. This is not currently supported"
-        )
-
-    logger.info(f"Report date: {report_date}")
-    if loc_report_date is not None:
-        logger.info(f"Using location-level data as of: {loc_report_date}")
-
-    # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
-
-    if last_training_date >= report_date:
-        raise ValueError(
-            "Last training date must be before the report date. "
-            "Got a last training date of {last_training_date} "
-            "with a report date of {report_date}."
-        )
-
-    logger.info(f"last training date: {last_training_date}")
-
-    first_training_date = last_training_date - timedelta(
-        days=n_training_days - 1
-    )
-
-    logger.info(f"First training date {first_training_date}")
-
-    facility_level_nssp_data, loc_level_nssp_data = None, None
-
-    if report_date in available_facility_level_reports:
-        logger.info("Facility level data available for the given report date")
-        facility_datafile = f"{report_date}.parquet"
-        facility_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, facility_datafile)
-        )
-    if loc_report_date in available_loc_level_reports:
-        logger.info("location-level data available for the given report date.")
-        loc_datafile = f"{loc_report_date}.parquet"
-        loc_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, loc_datafile)
-        )
-    if facility_level_nssp_data is None and loc_level_nssp_data is None:
-        raise ValueError(
-            f"No data available for the requested report date {report_date}"
-        )
-
-    nwss_data_disease_map = {
-        "COVID-19": "covid",
-        "Influenza": "flu",
-    }
-
-    def get_available_nwss_reports(
-        data_dir: str | Path,
-        glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
-    ):
-        return [
-            datetime.strptime(
-                f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
-            ).date()
-            for f in Path(data_dir).glob(f"{glob_pattern}*")
-        ]
-
-    if fit_wastewater:
-        available_nwss_reports = get_available_nwss_reports(nwss_data_dir)
-        if report_date in available_nwss_reports:
-            nwss_data_raw = pl.scan_parquet(
-                Path(
-                    nwss_data_dir,
-                    f"NWSS-ETL-{nwss_data_disease_map[disease]}-{report_date}",
-                    "bronze.parquet",
-                )
-            )
-            nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
-                (pl.col("location") == loc)
-                & (pl.col("date") >= first_training_date)
-            )
-            loc_level_nwss_data = preprocess_ww_data(
-                nwss_data_cleaned.collect()
-            )
-        else:
-            raise ValueError(
-                "NWSS data not available for the requested report date "
-                f"{report_date}"
-            )
-    else:
-        loc_level_nwss_data = None
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
+
+    report_date = datetime.date.today()
+    logger.info(f"Report date: {report_date}")
+    (last_training_date, first_training_date) = get_training_dates(
+        report_date, exclude_last_n_days, n_training_days
+    )
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -375,9 +346,7 @@ def main(
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 
-    if fit_ed_visits and not os.path.exists(
-        Path(model_run_dir, timeseries_model_name)
-    ):
+    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
         raise ValueError(
             f"{timeseries_model_name} model run not found. "
             "Please ensure that the timeseries forecasts "
@@ -393,43 +362,6 @@ def main(
     logger.info(f"Copying and recording priors from {priors_path}...")
     copy_and_record_priors(priors_path, model_run_dir)
 
-    logger.info(f"Processing {loc}")
-    process_and_save_loc(
-        loc_abb=loc,
-        disease=disease,
-        facility_level_nssp_data=facility_level_nssp_data,
-        loc_level_nssp_data=loc_level_nssp_data,
-        loc_level_nwss_data=loc_level_nwss_data,
-        report_date=report_date,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        param_estimates=param_estimates,
-        model_run_dir=model_run_dir,
-        logger=logger,
-        credentials_dict=credentials_dict,
-        nhsn_data_path=nhsn_data_path,
-    )
-    logger.info("Getting eval data...")
-    if eval_data_path is None:
-        raise ValueError("No path to an evaluation dataset provided.")
-    save_eval_data(
-        loc=loc,
-        disease=disease,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        latest_comprehensive_path=eval_data_path,
-        output_data_dir=Path(model_run_dir, "data"),
-        last_eval_date=report_date + timedelta(days=n_forecast_days),
-        credentials_dict=credentials_dict,
-        nhsn_data_path=nhsn_data_path,
-    )
-    logger.info("Done getting eval data.")
-
-    logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(model_run_dir)
-
-    logger.info("Data preparation complete.")
-
     logger.info("Fitting model")
     fit_and_save_model(
         model_run_dir,
@@ -440,6 +372,11 @@ def main(
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
+        generation_interval_pmf=generation_interval_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
     )
     logger.info("Model fitting complete")
 
@@ -450,6 +387,11 @@ def main(
         model_run_dir,
         pyrenew_model_name,
         n_days_past_last_training,
+        generation_interval_pmf=generation_interval_pmf,
+        right_truncation_pmf=right_truncation_pmf,
+        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
+        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
+        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
         predict_ed_visits=forecast_ed_visits,
         predict_hospital_admissions=forecast_hospital_admissions,
         predict_wastewater=forecast_wastewater,
@@ -502,7 +444,12 @@ if __name__ == "__main__":
             "(e.g. 'AK', 'AL', 'AZ', etc.)."
         ),
     )
-
+    parser.add_argument(
+        "--report-date",
+        type=dt.date,
+        default=dt.date.today(),
+        help="Report date in YYYY-MM-DD format",
+    )
     parser.add_argument(
         "--model-letters",
         type=str,
@@ -513,44 +460,11 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--report-date",
-        type=str,
-        default="latest",
-        help="Report date in YYYY-MM-DD format or latest (default: latest).",
-    )
-
-    parser.add_argument(
-        "--facility-level-nssp-data-dir",
-        type=Path,
-        default=Path("private_data", "nssp_etl_gold"),
-        help=(
-            "Directory in which to look for facility-level NSSP ED visit data"
-        ),
-    )
-
-    parser.add_argument(
-        "--state-level-nssp-data-dir",
-        type=Path,
-        default=Path("private_data", "nssp_state_level_gold"),
-        help=(
-            "Directory in which to look for state-level NSSP ED visit data."
-        ),
-    )
-
-    parser.add_argument(
-        "--nwss-data-dir",
-        type=Path,
-        default=Path("private_data", "nwss_vintages"),
-        help=("Directory in which to look for NWSS data."),
-    )
-
-    parser.add_argument(
         "--param-data-dir",
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
         help=(
-            "Directory in which to look for parameter estimates"
-            "such as delay PMFs."
+            "Directory in which to look for parameter estimates" "such as delay PMFs."
         ),
         required=True,
     )
@@ -563,12 +477,6 @@ if __name__ == "__main__":
             "that require priors as pyrenew RandomVariable objects."
         ),
         required=True,
-    )
-
-    parser.add_argument(
-        "--credentials-path",
-        type=Path,
-        help=("Path to a TOML file containing credentials such as API keys."),
     )
 
     parser.add_argument(
@@ -606,9 +514,7 @@ if __name__ == "__main__":
         "--n-warmup",
         type=int,
         default=1000,
-        help=(
-            "Number of warmup iterations per chain for NUTS (default: 1000)."
-        ),
+        help=("Number of warmup iterations per chain for NUTS (default: 1000)."),
     )
 
     parser.add_argument(
@@ -632,11 +538,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--eval-data-path",
-        type=Path,
-        help=("Path to a parquet file containing compehensive truth data."),
-    )
-    parser.add_argument(
         "--additional-forecast-letters",
         type=str,
         help=(
@@ -644,12 +545,6 @@ if __name__ == "__main__":
             "Fit signals are always forecast."
         ),
         default="he",
-    )
-    parser.add_argument(
-        "--nhsn-data-path",
-        type=Path,
-        help=("Path to local NHSN data (for local testing)"),
-        default=None,
     )
 
     args = parser.parse_args()

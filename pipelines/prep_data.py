@@ -1,17 +1,19 @@
-import datetime
+import datetime as dt
+from datetime import datetime
 import json
 import logging
 import os
 import subprocess
 import tempfile
+import tomllib
 from logging import Logger
 from pathlib import Path
-
+import argparse
 import forecasttools
 import jax.numpy as jnp
-import numpy as np
 import polars as pl
 import polars.selectors as cs
+from prep_ww_data import clean_nwss_data, preprocess_ww_data
 
 from pyrenew_hew.utils import approx_lognorm
 
@@ -23,8 +25,8 @@ _inverse_disease_map = {v: k for k, v in _disease_map.items()}
 
 
 def get_nhsn(
-    start_date: datetime.date,
-    end_date: datetime.date,
+    start_date: dt.date,
+    end_date: dt.date,
     disease: str,
     loc_abb: str,
     temp_dir: Path = None,
@@ -84,13 +86,9 @@ def get_nhsn(
         result = subprocess.run(r_command)
 
         if result.returncode != 0:
-            raise RuntimeError(
-                f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
-            )
+            raise RuntimeError(f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}")
     raw_dat = pl.read_parquet(local_data_file)
-    dat = raw_dat.with_columns(
-        weekendingdate=pl.col("weekendingdate").cast(pl.Date)
-    )
+    dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
     return dat
 
 
@@ -181,7 +179,7 @@ def combine_surveillance_data(
 def aggregate_to_national(
     data: pl.LazyFrame,
     geo_values_to_include: list[str],
-    first_date_to_include: datetime.date,
+    first_date_to_include: dt.date,
     national_geo_value="US",
 ):
     assert national_geo_value not in geo_values_to_include
@@ -199,7 +197,7 @@ def process_loc_level_data(
     loc_level_nssp_data: pl.LazyFrame,
     loc_abb: str,
     disease: str,
-    first_training_date: datetime.date,
+    first_training_date: dt.date,
     loc_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
     logging.basicConfig(level=logging.INFO)
@@ -249,9 +247,7 @@ def process_loc_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect(engine="streaming")
@@ -302,9 +298,7 @@ def aggregate_facility_level_nssp_to_loc(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
             geo_value=pl.lit(loc_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -320,6 +314,24 @@ def get_loc_pop_df():
         pl.col("long_name").alias("name"),
         pl.col("population"),
     )
+
+
+def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
+    command = [
+        "Rscript",
+        "pipelines/generate_epiweekly_data.R",
+        f"{model_run_dir}",
+    ]
+    if data_names is not None:
+        command.extend(["--data-names", f"{data_names}"])
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"generate_epiweekly_data: {result.stderr.decode('utf-8')}")
+    return None
 
 
 def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
@@ -376,11 +388,11 @@ def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
 def process_and_save_loc(
     loc_abb: str,
     disease: str,
-    report_date: datetime.date,
-    first_training_date: datetime.date,
-    last_training_date: datetime.date,
-    param_estimates: pl.LazyFrame,
+    report_date: dt.date,
+    first_training_date: dt.date,
+    last_training_date: dt.date,
     model_run_dir: Path,
+    param_estimates: pl.LazyFrame = None,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     loc_level_nssp_data: pl.LazyFrame = None,
@@ -393,9 +405,7 @@ def process_and_save_loc(
 
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one "
-            "of facility-level and state-level"
-            "NSSP data"
+            "Must provide at least one " "of facility-level and state-level" "NSSP data"
         )
 
     loc_pop_df = get_loc_pop_df()
@@ -406,12 +416,10 @@ def process_and_save_loc(
         param_estimates=param_estimates, loc_abb=loc_abb, disease=disease
     )
 
-    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
-        approx_lognorm(
-            jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
-            loc_guess=0,
-            scale_guess=0.5,
-        )
+    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = approx_lognorm(
+        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+        loc_guess=0,
+        scale_guess=0.5,
     )
 
     right_truncation_offset = (report_date - last_training_date).days - 1
@@ -499,18 +507,15 @@ def process_and_save_loc(
             pop_fraction = subpop_sizes / sum(subpop_sizes)
 
     data_for_model_fit = {
-        "inf_to_hosp_admit_pmf": delay_pmf,
-        "inf_to_hosp_admit_lognormal_loc": inf_to_hosp_admit_lognormal_loc,
-        "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
-        "generation_interval_pmf": generation_interval_pmf,
-        "right_truncation_pmf": right_truncation_pmf,
         "loc_pop": loc_pop,
         "right_truncation_offset": right_truncation_offset,
+        "pop_fraction": pop_fraction.tolist(),
         "nwss_training_data": nwss_training_data,
         "nssp_training_data": nssp_training_data.to_dict(as_series=False),
         "nhsn_training_data": nhsn_training_data.to_dict(as_series=False),
         "nhsn_step_size": nhsn_step_size,
-        "pop_fraction": pop_fraction.tolist(),
+        "nssp_step_size": 1,
+        "nwss_step_size": 1,
     }
 
     data_dir = Path(model_run_dir, "data")
@@ -533,3 +538,270 @@ def process_and_save_loc(
         Path(data_dir, "combined_training_data.tsv"), separator="\t"
     )
     return None
+
+
+def get_training_dates(report_date, exclude_last_n_days, n_training_days):
+    # + 1 because max date in dataset is report_date - 1
+    last_training_date = report_date - dt.timedelta(days=exclude_last_n_days + 1)
+    if last_training_date >= report_date:
+        raise ValueError(
+            "Last training date must be before the report date. "
+            "Got a last training date of {last_training_date} "
+            "with a report date of {report_date}."
+        )
+    first_training_date = last_training_date - dt.timedelta(days=n_training_days - 1)
+    return (last_training_date, first_training_date)
+
+
+def get_available_reports(data_dir: str | Path, glob_pattern: str = "*.parquet"):
+    return [
+        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        for f in Path(data_dir).glob(glob_pattern)
+    ]
+
+
+def main(
+    disease: str,
+    loc: str,
+    report_date: str,
+    facility_level_nssp_data_dir: Path | str,
+    state_level_nssp_data_dir: Path | str,
+    nwss_data_dir: Path | str,
+    output_dir: Path | str,
+    n_training_days: int,
+    credentials_path: Path = None,
+    nhsn_data_path: Path | str = None,
+    exclude_last_n_days: int = 0,
+) -> None:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    if credentials_path is not None:
+        cp = Path(credentials_path)
+        if not cp.suffix.lower() == ".toml":
+            raise ValueError(
+                "Credentials file must have the extension "
+                "'.toml' (not case-sensitive). Got "
+                f"{cp.suffix}"
+            )
+        logger.info(f"Reading in credentials from {cp}...")
+        with open(cp, "rb") as fp:
+            credentials_dict = tomllib.load(fp)
+    else:
+        logger.info("No credentials file given. Will proceed without one.")
+        credentials_dict = None
+
+    report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
+    logger.info(f"Report date: {report_date}")
+    (last_training_date, first_training_date) = get_training_dates(
+        report_date,
+        exclude_last_n_days,
+        n_training_days,
+    )
+
+    logger.info(f"First training date {first_training_date}")
+    logger.info(f"last training date: {last_training_date}")
+
+    available_facility_level_reports = get_available_reports(
+        facility_level_nssp_data_dir
+    )
+    available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
+    first_available_loc_report = min(available_loc_level_reports)
+    last_available_loc_report = max(available_loc_level_reports)
+
+    if report_date in available_loc_level_reports:
+        loc_report_date = report_date
+    elif report_date > last_available_loc_report:
+        loc_report_date = last_available_loc_report
+    elif report_date > first_available_loc_report:
+        raise ValueError(
+            "Dataset appear to be missing some state-level "
+            f"reports. First entry is {first_available_loc_report}, "
+            f"last is {last_available_loc_report}, but no entry "
+            f"for {report_date}"
+        )
+    else:
+        raise ValueError(
+            "Requested report date is earlier than the first "
+            "state-level vintage. This is not currently supported"
+        )
+
+    if loc_report_date is not None:
+        logger.info(f"Using location-level data as of: {loc_report_date}")
+
+    facility_level_nssp_data, loc_level_nssp_data = None, None
+
+    if report_date in available_facility_level_reports:
+        logger.info("Facility level data available for the given report date")
+        facility_datafile = f"{report_date}.parquet"
+        facility_level_nssp_data = pl.scan_parquet(
+            Path(facility_level_nssp_data_dir, facility_datafile)
+        )
+    if loc_report_date in available_loc_level_reports:
+        logger.info("location-level data available for the given report date.")
+        loc_datafile = f"{loc_report_date}.parquet"
+        loc_level_nssp_data = pl.scan_parquet(
+            Path(state_level_nssp_data_dir, loc_datafile)
+        )
+    if facility_level_nssp_data is None and loc_level_nssp_data is None:
+        raise ValueError(
+            f"No data available for the requested report date {report_date}"
+        )
+
+    nwss_data_disease_map = {
+        "COVID-19": "covid",
+        "Influenza": "flu",
+    }
+
+    def get_available_nwss_reports(
+        data_dir: str | Path,
+        glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
+    ):
+        return [
+            datetime.strptime(f.stem.removeprefix(glob_pattern), "%Y-%m-%d").date()
+            for f in Path(data_dir).glob(f"{glob_pattern}*")
+        ]
+
+    available_nwss_reports = get_available_nwss_reports(nwss_data_dir)
+    if report_date in available_nwss_reports:
+        nwss_data_raw = pl.scan_parquet(
+            Path(
+                nwss_data_dir,
+                f"NWSS-ETL-{nwss_data_disease_map[disease]}-{report_date}",
+                "bronze.parquet",
+            )
+        )
+        nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
+            (pl.col("location") == loc) & (pl.col("date") >= first_training_date)
+        )
+        loc_level_nwss_data = preprocess_ww_data(nwss_data_cleaned.collect())
+    else:
+        raise ValueError(
+            "NWSS data not available for the requested report date " f"{report_date}"
+        )
+
+    model_batch_dir_name = (
+        f"{disease.lower()}_r_{report_date}_f_"
+        f"{first_training_date}_t_{last_training_date}"
+    )
+
+    model_batch_dir = Path(output_dir, model_batch_dir_name)
+
+    model_run_dir = Path(model_batch_dir, "model_runs", loc)
+    os.makedirs(model_run_dir, exist_ok=True)
+
+    logger.info(f"Processing {loc}")
+    process_and_save_loc(
+        loc_abb=loc,
+        disease=disease,
+        facility_level_nssp_data=facility_level_nssp_data,
+        loc_level_nssp_data=loc_level_nssp_data,
+        loc_level_nwss_data=loc_level_nwss_data,
+        report_date=report_date,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+        model_run_dir=model_run_dir,
+        logger=logger,
+        credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
+    )
+
+    logger.info("Generating epiweekly datasets from daily datasets...")
+    generate_epiweekly_data(model_run_dir)
+
+    logger.info(
+        "Data preparation complete."
+        f" for location {loc}, and "
+        f"report date {report_date}."
+    )
+    return None
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Create fit data for disease modeling."
+    )
+    parser.add_argument(
+        "--disease",
+        type=str,
+        required=True,
+        help="Disease to model (e.g., COVID-19, Influenza, RSV).",
+    )
+
+    parser.add_argument(
+        "--loc",
+        type=str,
+        required=True,
+        help=(
+            "Two-letter USPS abbreviation for the location to fit"
+            "(e.g. 'AK', 'AL', 'AZ', etc.)."
+        ),
+    )
+
+    parser.add_argument(
+        "--report-date",
+        type=str,
+        default=datetime.today().strftime("%Y-%m-%d"),
+        help="Report date in YYYY-MM-DD format",
+    )
+
+    parser.add_argument(
+        "--facility-level-nssp-data-dir",
+        type=Path,
+        default=Path("private_data", "nssp_etl_gold"),
+        help=("Directory in which to look for facility-level NSSP ED visit data"),
+    )
+
+    parser.add_argument(
+        "--state-level-nssp-data-dir",
+        type=Path,
+        default=Path("private_data", "nssp_state_level_gold"),
+        help=("Directory in which to look for state-level NSSP ED visit data."),
+    )
+
+    parser.add_argument(
+        "--nwss-data-dir",
+        type=Path,
+        default=Path("private_data", "nwss_vintages"),
+        help=("Directory in which to look for NWSS data."),
+    )
+
+    parser.add_argument(
+        "--credentials-path",
+        type=Path,
+        help=("Path to a TOML file containing credentials such as API keys."),
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default="private_data",
+        help="Directory in which to save output.",
+    )
+
+    parser.add_argument(
+        "--n-training-days",
+        type=int,
+        default=180,
+        help="Number of training days (default: 180).",
+    )
+
+    parser.add_argument(
+        "--exclude-last-n-days",
+        type=int,
+        default=0,
+        help=(
+            "Optionally exclude the final n days of available training "
+            "data (Default: 0, i.e. exclude no available data"
+        ),
+    )
+
+    parser.add_argument(
+        "--nhsn-data-path",
+        type=Path,
+        help=("Path to local NHSN data (for local testing)"),
+        default=None,
+    )
+
+    args = parser.parse_args()
+    main(**vars(args))
