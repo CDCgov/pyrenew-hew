@@ -3,7 +3,7 @@ name: Submit model fit jobs to Azure Batch via cron
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 9-20 * * WED" # Every Wednesday, once per hour from 9 AM to 8 PM UTC
+    - cron: "0,30 9-20 * * WED" # Every Wednesday, every 30 minutes from 9 AM to 8 PM UTC
   push:
     branches:
       - 'jk*' # For testing purposes; matches any branch starting with 'jk'
