@@ -46,43 +46,43 @@ jobs:
             const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
             coredemo.setOutput('id_token', id_token)
   
-  # run-timeseries-e:
+  run-timeseries-e:
 
-  #   runs-on: ubuntu-latest
-  #   environment: |-
-  #     ${{github.ref_name == 'main'               && 'production'
-  #                                                || 'test'      }}
-  #   permissions:
-  #     contents: read
-  #     id-token: write
+    runs-on: ubuntu-latest
+    environment: |-
+      ${{github.ref_name == 'main'               && 'production'
+                                                 || 'test'      }}
+    permissions:
+      contents: read
+      id-token: write
 
-  #   needs: setup-federated-login
-  #   steps:
-  #     - name: Submit timeseries-e Job
-  #       id: create_batch_pool
-  #       # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
-  #       uses: CDCgov/cfa-actions/runner-action@v1.4.0
-  #       with:
-  #         github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }}
-  #         github_app_pem: ${{ secrets.CDCENT_ACTOR_APP_PEM }}
-  #         wait_for_completion: true
-  #         print_logs: true
-  #         script: |
-  #           echo "Logging into Azure CLI"
-  #             az login --service-principal \
-  #             --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
-  #             --tenant ${{ secrets.AZURE_TENANT_ID }} \
-  #             --federated-token ${{ steps.idtoken.outputs.id_token }} \
-  #             --output none
+    needs: setup-federated-login
+    steps:
+      - name: Submit timeseries-e Job
+        id: create_batch_pool
+        # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "Logging into Azure CLI"
+              az login --service-principal \
+              --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+              --tenant ${{ secrets.AZURE_TENANT_ID }} \
+              --federated-token ${{ steps.idtoken.outputs.id_token }} \
+              --output none
 
-  #           echo "Setting env vars for Azure Batch and azuretools compatibility."
-  #             az storage blob download \
-  #             --account-name "cfaazurebatchprd" \
-  #             --container-name "pyrenew-hew-config" \
-  #             --name "azureconfig.sh" \
-  #             --file "./azureconfig.sh" \
-  #             --auth-mode login \
-  #             --overwrite
+            echo "Setting env vars for Azure Batch and azuretools compatibility."
+              az storage blob download \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --file "./azureconfig.sh" \
+              --auth-mode login \
+              --overwrite
 
   #           # Sourcing the azure config
   #           source ./azureconfig.sh # TODO: Eventually we want to move away from needing this at all.
