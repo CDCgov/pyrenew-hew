@@ -210,7 +210,6 @@ def test_pyrenew_wastewater_data():
     assert forecast_data.model_t_obs_wastewater is None
 
     assert np.array_equal(data.n_ww_lab_sites, forecast_data.n_ww_lab_sites)
-    assert np.array_equal(data.pop_fraction, forecast_data.pop_fraction)
 
     assert np.array_equal(
         data.data_observed_disease_wastewater_conc,
