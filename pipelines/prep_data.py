@@ -348,14 +348,14 @@ def get_pmfs(
     as_of: dt.date = None,
     reference_date: dt.date = None,
     right_truncation_required: bool = True,
-) -> tuple[list, list, list]:
+) -> dict[str, list]:
     """
     Filter and extract probability mass functions (PMFs) from
     parameter estimates LazyFrame based on location, disease
     and date filters.
 
     This function queries a LazyFrame containing epidemiological
-    parameters and returns three types of PMF parameters:
+    parameters and returns a dictionary of three PMFs:
     delay, generation interval, and right truncation.
 
     Parameters
@@ -388,11 +388,11 @@ def get_pmfs(
 
     Returns
     -------
-    tuple[list, list, list]
-        A tuple containing three arrays:
-        - generation_interval_pmf: Generation interval distribution
-        - delay_pmf: Delay distribution
-        - right_truncation_pmf: Right truncation distribution
+    dict[str, list]
+        A dictionary containing three PMF arrays:
+        - 'generation_interval_pmf': Generation interval distribution
+        - 'delay_pmf': Delay distribution
+        - 'right_truncation_pmf': Right truncation distribution
 
     Raises
     ------
@@ -453,7 +453,11 @@ def get_pmfs(
         right_truncation_df, "right_truncation", right_truncation_required
     )
 
-    return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
+    return {
+        "generation_interval_pmf": generation_interval_pmf,
+        "delay_pmf": delay_pmf,
+        "right_truncation_pmf": right_truncation_pmf,
+    }
 
 
 def process_and_save_loc_data(
@@ -612,7 +616,7 @@ def process_and_save_loc_param(
         else:
             pop_fraction = subpop_sizes / sum(subpop_sizes)
 
-    (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
+    pmfs = get_pmfs(
         param_estimates=param_estimates,
         loc_abb=loc_abb,
         disease=disease,
@@ -621,22 +625,20 @@ def process_and_save_loc_param(
 
     inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
         approx_lognorm(
-            jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
+            jnp.array(pmfs["delay_pmf"])[1:],  # only fit the non-zero delays
             loc_guess=0,
             scale_guess=0.5,
         )
     )
 
-    inf_to_hosp_admit_pmf = delay_pmf
-
     model_params = {
         "population_size": loc_pop,
         "pop_fraction": pop_fraction.tolist(),
-        "generation_interval_pmf": generation_interval_pmf,
-        "right_truncation_pmf": right_truncation_pmf,
+        "generation_interval_pmf": pmfs["generation_interval_pmf"],
+        "right_truncation_pmf": pmfs["right_truncation_pmf"],
         "inf_to_hosp_admit_lognormal_loc": inf_to_hosp_admit_lognormal_loc,
         "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
-        "inf_to_hosp_admit_pmf": inf_to_hosp_admit_pmf,
+        "inf_to_hosp_admit_pmf": pmfs["delay_pmf"],
     }
     with open(Path(model_run_dir, "model_params.json"), "w") as json_file:
         json.dump(model_params, json_file, default=str)
