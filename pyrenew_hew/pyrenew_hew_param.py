@@ -19,7 +19,7 @@ class PyrenewHEWParam:
     inf_to_hosp_admit_lognormal_loc: float
     inf_to_hosp_admit_lognormal_scale: float
     inf_to_hosp_admit_pmf: ArrayLike
-    right_truncation_pmf: ArrayLike = None
+    right_truncation_pmf: ArrayLike
 
     @classmethod
     def from_json(cls, file_path: Path | str) -> Self:
