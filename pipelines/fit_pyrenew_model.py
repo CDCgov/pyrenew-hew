@@ -8,17 +8,13 @@ from jax.typing import ArrayLike
 
 from pipelines.utils import get_priors_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 from pyrenew_hew.utils import build_pyrenew_hew_model
 
 
 def fit_and_save_model(
     model_run_dir: str,
     model_name: str,
-    generation_interval_pmf: ArrayLike,
-    inf_to_hosp_admit_lognormal_loc: ArrayLike,
-    inf_to_hosp_admit_lognormal_scale: ArrayLike,
-    inf_to_hosp_admit_pmf: ArrayLike,
-    right_truncation_pmf: ArrayLike = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -46,15 +42,12 @@ def fit_and_save_model(
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
     )
+    model_params = PyrenewHEWParam.from_json(
+        Path(model_run_dir) / "model_params.json"
+    )
     my_model = build_pyrenew_hew_model(
         priors,
-        pop_fraction=my_data.pop_fraction,
-        population_size=my_data.population_size,
-        generation_interval_pmf=generation_interval_pmf,
-        right_truncation_pmf=right_truncation_pmf,
-        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
-        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
-        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
+        model_params,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,

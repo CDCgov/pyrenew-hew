@@ -3,10 +3,10 @@ import pickle
 from pathlib import Path
 
 import arviz as az
-from jax.typing import ArrayLike
 
 from pipelines.utils import get_priors_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 from pyrenew_hew.utils import (
     build_pyrenew_hew_model,
     flags_from_pyrenew_model_name,
@@ -17,11 +17,6 @@ def generate_and_save_predictions(
     model_run_dir: str | Path,
     model_name: str,
     n_forecast_points: int,
-    generation_interval_pmf: ArrayLike,
-    inf_to_hosp_admit_lognormal_loc: ArrayLike,
-    inf_to_hosp_admit_lognormal_scale: ArrayLike,
-    inf_to_hosp_admit_pmf: ArrayLike,
-    right_truncation_pmf: ArrayLike = None,
     predict_ed_visits: bool = False,
     predict_hospital_admissions: bool = False,
     predict_wastewater: bool = False,
@@ -38,15 +33,13 @@ def generate_and_save_predictions(
         / "data_for_model_fit.json",
         **flags_from_pyrenew_model_name(model_name),
     )
+    model_params = PyrenewHEWParam.from_json(
+        Path(model_run_dir) / "model_params.json"
+    )
+
     my_model = build_pyrenew_hew_model(
         priors,
-        pop_fraction=my_data.pop_fraction,
-        population_size=my_data.population_size,
-        generation_interval_pmf=generation_interval_pmf,
-        right_truncation_pmf=right_truncation_pmf,
-        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
-        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
-        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
+        model_params,
         **flags_from_pyrenew_model_name(model_name),
     )
 

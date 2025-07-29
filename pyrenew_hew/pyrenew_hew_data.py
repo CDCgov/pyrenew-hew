@@ -30,7 +30,6 @@ class PyrenewHEWData:
         first_hospital_admissions_date: np.datetime64 = None,
         first_wastewater_date: np.datetime64 = None,
         right_truncation_offset: int = None,
-        pop_fraction: ArrayLike = None,
         n_ww_lab_sites: int = None,
         lab_site_to_subpop_map: ArrayLike = None,
         population_size: int = None,
@@ -65,7 +64,6 @@ class PyrenewHEWData:
         self.first_ed_visits_date_ = first_ed_visits_date
         self.first_hospital_admissions_date_ = first_hospital_admissions_date
         self.first_wastewater_date_ = first_wastewater_date
-        self.pop_fraction = pop_fraction
 
     @classmethod
     def from_json(
@@ -143,7 +141,6 @@ class PyrenewHEWData:
             nhsn_training_data=nhsn_training_data,
             nwss_training_data=nwss_training_data,
             population_size=jnp.array(model_data["loc_pop"]).item(),
-            pop_fraction=jnp.array(model_data["pop_fraction"]),
             right_truncation_offset=model_data["right_truncation_offset"],
             nhsn_step_size=model_data["nhsn_step_size"],
             nssp_step_size=model_data["nssp_step_size"],
@@ -538,5 +535,4 @@ class PyrenewHEWData:
             right_truncation_offset=None,  # by default, want forecasts of complete reports
             n_ww_lab_sites=self.n_ww_lab_sites,
             lab_site_to_subpop_map=self.lab_site_to_subpop_map,
-            pop_fraction=self.pop_fraction,
         )

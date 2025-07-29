@@ -12,11 +12,14 @@ import polars as pl
 import polars.selectors as cs
 from scipy.stats import expon, norm
 
-from pipelines.forecast_pyrenew import get_pmfs
-from pipelines.prep_data import process_and_save_loc
+from pipelines.prep_data import (
+    process_and_save_loc_data,
+    process_and_save_loc_param,
+)
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pipelines.utils import get_priors_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 from pyrenew_hew.utils import (
     approx_lognorm,
     build_pyrenew_hew_model,
@@ -331,7 +334,7 @@ def simulate_data_from_bootstrap(
     model_run_dir = Path(bootstrap_private_data_dir, bootstrap_loc)
     model_run_dir.mkdir(parents=True, exist_ok=True)
 
-    process_and_save_loc(
+    process_and_save_loc_data(
         loc_abb=bootstrap_loc,
         disease=bootstrap_disease,
         facility_level_nssp_data=bootstrap_facility_level_nssp_data.lazy(),
@@ -348,17 +351,13 @@ def simulate_data_from_bootstrap(
         Path("pipelines/priors/prod_priors.py"),
         Path(model_run_dir, "priors.py"),
     )
-    (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
-        param_estimates=param_estimates,
+    process_and_save_loc_param(
         loc_abb=bootstrap_loc,
         disease=bootstrap_disease,
-    )
-    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
-        approx_lognorm(
-            np.array(delay_pmf)[1:],  # only fit the non-zero delays
-            loc_guess=0,
-            scale_guess=0.5,
-        )
+        loc_level_nwss_data=bootstrap_loc_level_nwss_data,
+        param_estimates=param_estimates,
+        fit_ed_visits=True,
+        model_run_dir=model_run_dir,
     )
     priors = get_priors_from_dir(model_run_dir)
     my_data = PyrenewHEWData.from_json(
@@ -369,15 +368,13 @@ def simulate_data_from_bootstrap(
         fit_hospital_admissions=True,
         fit_wastewater=True,
     )
+    model_params = PyrenewHEWParam.from_json(
+        Path(model_run_dir) / "model_params.json"
+    )
+
     my_model = build_pyrenew_hew_model(
         priors,
-        pop_fraction=my_data.pop_fraction,
-        population_size=my_data.population_size,
-        generation_interval_pmf=generation_interval_pmf,
-        right_truncation_pmf=right_truncation_pmf,
-        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
-        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
-        inf_to_hosp_admit_pmf=delay_pmf,
+        model_params,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,

@@ -11,7 +11,7 @@ from forecast_pyrenew import (
     generate_epiweekly_data,
     get_available_reports,
 )
-from prep_data import process_and_save_loc
+from prep_data import process_and_save_loc_data
 from prep_eval_data import save_eval_data
 
 
@@ -233,7 +233,7 @@ def main(
     os.makedirs(model_run_dir, exist_ok=True)
 
     logger.info(f"Processing {loc}")
-    process_and_save_loc(
+    process_and_save_loc_data(
         loc_abb=loc,
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
