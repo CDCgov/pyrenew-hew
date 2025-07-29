@@ -5,7 +5,6 @@ import os
 import shutil
 import subprocess
 import tomllib
-import datetime as dt
 from datetime import datetime
 from pathlib import Path
 
@@ -16,8 +15,9 @@ from fit_pyrenew_model import fit_and_save_model
 from generate_predictive import (
     generate_and_save_predictions,
 )
-from pygit2.repository import Repository
 from prep_data import get_training_dates
+from pygit2.repository import Repository
+
 from pyrenew_hew.utils import (
     approx_lognorm,
     flags_from_hew_letters,
@@ -74,7 +74,9 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def convert_inferencedata_to_parquet(model_run_dir: Path, model_name: str) -> None:
+def convert_inferencedata_to_parquet(
+    model_run_dir: Path, model_name: str
+) -> None:
     result = subprocess.run(
         [
             "Rscript",
@@ -253,7 +255,9 @@ def get_pmfs(
         generation_interval_df, "generation_interval"
     )
 
-    delay_df = filtered_estimates.filter(pl.col("parameter") == "delay").collect()
+    delay_df = filtered_estimates.filter(
+        pl.col("parameter") == "delay"
+    ).collect()
     delay_pmf = _validate_and_extract(delay_df, "delay")
 
     # ensure 0 first entry; we do not model the possibility
@@ -279,7 +283,7 @@ def get_pmfs(
 def main(
     disease: str,
     loc: str,
-    report_date: dt.date,
+    report_date: str,
     param_data_dir: Path | str,
     priors_path: Path | str,
     output_dir: Path | str,
@@ -324,12 +328,13 @@ def main(
     any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
     if not any_fit:
         raise ValueError(
-            "pyrenew_null (fitting to no signals) " "is not supported by this pipeline"
+            "pyrenew_null (fitting to no signals) "
+            "is not supported by this pipeline"
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
 
-    report_date = datetime.date.today()
+    report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     logger.info(f"Report date: {report_date}")
     (last_training_date, first_training_date) = get_training_dates(
         report_date, exclude_last_n_days, n_training_days
@@ -346,7 +351,9 @@ def main(
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 
-    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
+    if fit_ed_visits and not os.path.exists(
+        Path(model_run_dir, timeseries_model_name)
+    ):
         raise ValueError(
             f"{timeseries_model_name} model run not found. "
             "Please ensure that the timeseries forecasts "
@@ -446,8 +453,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--report-date",
-        type=dt.date,
-        default=dt.date.today(),
+        type=str,
+        default=datetime.today().strftime("%Y-%m-%d"),
         help="Report date in YYYY-MM-DD format",
     )
     parser.add_argument(
@@ -464,7 +471,8 @@ if __name__ == "__main__":
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
         help=(
-            "Directory in which to look for parameter estimates" "such as delay PMFs."
+            "Directory in which to look for parameter estimates"
+            "such as delay PMFs."
         ),
         required=True,
     )
@@ -514,7 +522,9 @@ if __name__ == "__main__":
         "--n-warmup",
         type=int,
         default=1000,
-        help=("Number of warmup iterations per chain for NUTS (default: 1000)."),
+        help=(
+            "Number of warmup iterations per chain for NUTS (default: 1000)."
+        ),
     )
 
     parser.add_argument(

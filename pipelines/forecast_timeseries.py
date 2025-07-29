@@ -1,16 +1,17 @@
 import argparse
+import datetime as dt
 import logging
 import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
-import datetime as dt
+
 import polars as pl
 from forecast_pyrenew import (
     generate_epiweekly_data,
     get_available_reports,
 )
-from prep_data import process_and_save_loc, get_training_dates
+from prep_data import get_training_dates, process_and_save_loc
 
 
 def plot_and_save_loc_forecast(
@@ -104,7 +105,7 @@ def create_hubverse_table(model_fit_path):
 def main(
     disease: str,
     loc: str,
-    report_date: dt.date,
+    report_date: str,
     output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
@@ -128,7 +129,7 @@ def main(
         f"location {loc}, and report date {report_date}"
     )
 
-    report_date = datetime.date.today()
+    report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     logger.info(f"Report date: {report_date}")
     (last_training_date, first_training_date) = get_training_dates(
         report_date, exclude_last_n_days, n_training_days
@@ -198,8 +199,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--report-date",
-        type=dt.date,
-        default=dt.date.today(),
+        type=str,
+        default=datetime.today().strftime("%Y-%m-%d"),
         help="Report date in YYYY-MM-DD format",
     )
 

@@ -1,14 +1,15 @@
+import argparse
 import datetime as dt
-from datetime import datetime
 import json
 import logging
 import os
 import subprocess
 import tempfile
 import tomllib
+from datetime import datetime
 from logging import Logger
 from pathlib import Path
-import argparse
+
 import forecasttools
 import jax.numpy as jnp
 import polars as pl
@@ -86,9 +87,13 @@ def get_nhsn(
         result = subprocess.run(r_command)
 
         if result.returncode != 0:
-            raise RuntimeError(f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}")
+            raise RuntimeError(
+                f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
+            )
     raw_dat = pl.read_parquet(local_data_file)
-    dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
+    dat = raw_dat.with_columns(
+        weekendingdate=pl.col("weekendingdate").cast(pl.Date)
+    )
     return dat
 
 
@@ -247,7 +252,9 @@ def process_loc_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect(engine="streaming")
@@ -298,7 +305,9 @@ def aggregate_facility_level_nssp_to_loc(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
+            disease=pl.col("disease")
+            .cast(pl.Utf8)
+            .replace(_inverse_disease_map),
             geo_value=pl.lit(loc_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -316,7 +325,9 @@ def get_loc_pop_df():
     )
 
 
-def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
+def generate_epiweekly_data(
+    model_run_dir: Path, data_names: str = None
+) -> None:
     command = [
         "Rscript",
         "pipelines/generate_epiweekly_data.R",
@@ -330,59 +341,10 @@ def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"generate_epiweekly_data: {result.stderr.decode('utf-8')}")
+        raise RuntimeError(
+            f"generate_epiweekly_data: {result.stderr.decode('utf-8')}"
+        )
     return None
-
-
-def get_pmfs(param_estimates: pl.LazyFrame, loc_abb: str, disease: str):
-    generation_interval_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "generation_interval")
-            & (pl.col("end_date").is_null())  # most recent estimate
-        )
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
-    )
-
-    delay_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value").is_null())
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "delay")
-            & (pl.col("end_date").is_null())  # most recent estimate
-        )
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
-    )
-
-    # ensure 0 first entry; we do not model the possibility
-    # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
-    delay_pmf[0] = 0.0
-    delay_pmf = jnp.array(delay_pmf)
-    delay_pmf = delay_pmf / delay_pmf.sum()
-    delay_pmf = delay_pmf.tolist()
-
-    right_truncation_pmf = (
-        param_estimates.filter(
-            (pl.col("geo_value") == loc_abb)
-            & (pl.col("disease") == disease)
-            & (pl.col("parameter") == "right_truncation")
-            & (pl.col("end_date").is_null())
-        )
-        .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect(engine="streaming")
-        .get_column("value")
-        .item(0)
-        .to_list()
-    )
-
-    return (generation_interval_pmf, delay_pmf, right_truncation_pmf)
 
 
 def process_and_save_loc(
@@ -405,22 +367,14 @@ def process_and_save_loc(
 
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one " "of facility-level and state-level" "NSSP data"
+            "Must provide at least one "
+            "of facility-level and state-level"
+            "NSSP data"
         )
 
     loc_pop_df = get_loc_pop_df()
 
     loc_pop = loc_pop_df.filter(pl.col("abb") == loc_abb).item(0, "population")
-
-    (generation_interval_pmf, delay_pmf, right_truncation_pmf) = get_pmfs(
-        param_estimates=param_estimates, loc_abb=loc_abb, disease=disease
-    )
-
-    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = approx_lognorm(
-        jnp.array(delay_pmf)[1:],  # only fit the non-zero delays
-        loc_guess=0,
-        scale_guess=0.5,
-    )
 
     right_truncation_offset = (report_date - last_training_date).days - 1
     # First entry of source right truncation PMFs corresponds to reports
@@ -542,18 +496,24 @@ def process_and_save_loc(
 
 def get_training_dates(report_date, exclude_last_n_days, n_training_days):
     # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - dt.timedelta(days=exclude_last_n_days + 1)
+    last_training_date = report_date - dt.timedelta(
+        days=exclude_last_n_days + 1
+    )
     if last_training_date >= report_date:
         raise ValueError(
             "Last training date must be before the report date. "
             "Got a last training date of {last_training_date} "
             "with a report date of {report_date}."
         )
-    first_training_date = last_training_date - dt.timedelta(days=n_training_days - 1)
+    first_training_date = last_training_date - dt.timedelta(
+        days=n_training_days - 1
+    )
     return (last_training_date, first_training_date)
 
 
-def get_available_reports(data_dir: str | Path, glob_pattern: str = "*.parquet"):
+def get_available_reports(
+    data_dir: str | Path, glob_pattern: str = "*.parquet"
+):
     return [
         datetime.strptime(f.stem, "%Y-%m-%d").date()
         for f in Path(data_dir).glob(glob_pattern)
@@ -605,7 +565,9 @@ def main(
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
-    available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
+    available_loc_level_reports = get_available_reports(
+        state_level_nssp_data_dir
+    )
     first_available_loc_report = min(available_loc_level_reports)
     last_available_loc_report = max(available_loc_level_reports)
 
@@ -658,7 +620,9 @@ def main(
         glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
     ):
         return [
-            datetime.strptime(f.stem.removeprefix(glob_pattern), "%Y-%m-%d").date()
+            datetime.strptime(
+                f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
+            ).date()
             for f in Path(data_dir).glob(f"{glob_pattern}*")
         ]
 
@@ -672,12 +636,14 @@ def main(
             )
         )
         nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
-            (pl.col("location") == loc) & (pl.col("date") >= first_training_date)
+            (pl.col("location") == loc)
+            & (pl.col("date") >= first_training_date)
         )
         loc_level_nwss_data = preprocess_ww_data(nwss_data_cleaned.collect())
     else:
         raise ValueError(
-            "NWSS data not available for the requested report date " f"{report_date}"
+            "NWSS data not available for the requested report date "
+            f"{report_date}"
         )
 
     model_batch_dir_name = (
@@ -749,14 +715,18 @@ if __name__ == "__main__":
         "--facility-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_etl_gold"),
-        help=("Directory in which to look for facility-level NSSP ED visit data"),
+        help=(
+            "Directory in which to look for facility-level NSSP ED visit data"
+        ),
     )
 
     parser.add_argument(
         "--state-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_state_level_gold"),
-        help=("Directory in which to look for state-level NSSP ED visit data."),
+        help=(
+            "Directory in which to look for state-level NSSP ED visit data."
+        ),
     )
 
     parser.add_argument(
