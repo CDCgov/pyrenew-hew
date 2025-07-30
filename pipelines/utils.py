@@ -3,7 +3,7 @@ Python utilities for the NSSP ED visit forecasting
 pipeline.
 """
 
-import datetime
+import datetime as dt
 import json
 import os
 import re
@@ -11,6 +11,10 @@ import runpy
 from pathlib import Path
 
 from forecasttools import ensure_listlike, location_table
+
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
+from pyrenew_hew.utils import build_pyrenew_hew_model
 
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
 loc_abbrs_ = location_table["short_name"].to_list()
@@ -39,25 +43,22 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
         )
     else:
         raise ValueError(
-            "Invalid model batch directory name format: "
-            f"{model_batch_dir_name}"
+            "Invalid model batch directory name format: " f"{model_batch_dir_name}"
         )
     return dict(
         disease=disease_map_lower_[disease],
-        report_date=datetime.datetime.strptime(report_date, "%Y-%m-%d").date(),
-        first_training_date=datetime.datetime.strptime(
+        report_date=dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
+        first_training_date=dt.datetime.strptime(
             first_training_date, "%Y-%m-%d"
         ).date(),
-        last_training_date=datetime.datetime.strptime(
-            last_training_date, "%Y-%m-%d"
-        ).date(),
+        last_training_date=dt.datetime.strptime(last_training_date, "%Y-%m-%d").date(),
     )
 
 
 def get_all_forecast_dirs(
     parent_dir: Path | str,
     diseases: str | list[str],
-    report_date: str | datetime.date = None,
+    report_date: str | dt.date = None,
 ) -> list[str]:
     """
     Get all the subdirectories within a parent directory
@@ -90,7 +91,7 @@ def get_all_forecast_dirs(
         report_date_str = ""
     elif isinstance(report_date, str):
         report_date_str = report_date
-    elif isinstance(report_date, datetime.date):
+    elif isinstance(report_date, dt.date):
         report_date_str = f"{report_date:%Y-%m-%d}"
     else:
         raise ValueError(
@@ -131,14 +132,38 @@ def get_all_model_run_dirs(parent_dir: Path) -> list[str]:
     """
 
     return [
-        f.name
-        for f in os.scandir(parent_dir)
-        if f.is_dir() and f.name in loc_abbrs_
+        f.name for f in os.scandir(parent_dir) if f.is_dir() and f.name in loc_abbrs_
     ]
 
 
-def get_priors_from_dir(model_dir):
-    prior_path = Path(model_dir) / "priors.py"
-    priors = runpy.run_path(str(prior_path))
+def build_pyrenew_hew_model_from_dir(
+    model_run_dir: Path | str = None,
+    prior_path: Path | str = None,
+    model_params_path: Path | str = None,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
+):
+    if model_run_dir is not None:
+        prior_path = Path(model_run_dir) / "priors.py"
+        model_params_path = Path(model_run_dir) / "model_params.json"
+    else:
+        if prior_path is None or model_params_path is None:
+            raise ValueError(
+                "Either model_run_dir must be provided, "
+                "or both prior_path and model_params_path "
+                "must be provided."
+            )
+        prior_path = Path(prior_path)
+        model_params_path = Path(model_params_path)
 
-    return priors
+    priors = runpy.run_path(str(prior_path))
+    model_params = PyrenewHEWParam.from_json(model_params_path)
+    my_model = build_pyrenew_hew_model(
+        priors,
+        model_params,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
+    return my_model

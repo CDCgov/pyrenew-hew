@@ -1,5 +1,5 @@
 import argparse
-import datetime
+import datetime as dt
 import logging
 from pathlib import Path
 
@@ -9,8 +9,8 @@ import polars as pl
 def main(
     nssp_data_dir,
     output_path,
-    report_date: str | datetime.date,
-    first_date_to_pull: str | datetime.date = None,
+    report_date: str | dt.date,
+    first_date_to_pull: str | dt.date = None,
     separator="\t",
     diseases=["covid", "influenza", "rsv"],
 ):
@@ -32,10 +32,8 @@ def main(
             report_date = max(
                 f.stem for f in Path(nssp_data_dir).glob("*.parquet")
             )
-        report_date = datetime.datetime.strptime(
-            report_date, "%Y-%m-%d"
-        ).date()
-    elif not isinstance(report_date, datetime.date):
+        report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
+    elif not isinstance(report_date, dt.date):
         raise ValueError(
             "`report_date` must be either be a "
             "a `datetime.date` object, or a string "
@@ -45,10 +43,10 @@ def main(
     if first_date_to_pull is None:
         first_date_to_pull = pl.col("reference_date").min()
     elif isinstance(first_date_to_pull, str):
-        first_date_to_pull = datetime.datetime.strptime(
+        first_date_to_pull = dt.datetime.strptime(
             first_date_to_pull, "%Y-%m-%d"
         ).date()
-    elif not isinstance(first_date_to_pull, datetime.date):
+    elif not isinstance(first_date_to_pull, dt.date):
         raise ValueError(
             "`first_date_to_pull` must be `None` "
             "in which case all available dates are pulled, ",
