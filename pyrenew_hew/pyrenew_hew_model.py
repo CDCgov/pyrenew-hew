@@ -1,5 +1,5 @@
 # numpydoc ignore=GL08
-import datetime
+import datetime as dt
 from functools import partial
 
 import jax
@@ -921,7 +921,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             )
         )
         first_latent_infection_dow = (
-            data.first_data_date_overall - datetime.timedelta(days=n_init_days)
+            data.first_data_date_overall - dt.timedelta(days=n_init_days)
         ).weekday()
 
         observed_ed_visits = None

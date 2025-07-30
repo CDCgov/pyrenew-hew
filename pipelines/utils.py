@@ -3,7 +3,7 @@ Python utilities for the NSSP ED visit forecasting
 pipeline.
 """
 
-import datetime
+import datetime as dt
 import json
 import os
 import re
@@ -44,11 +44,11 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
         )
     return dict(
         disease=disease_map_lower_[disease],
-        report_date=datetime.datetime.strptime(report_date, "%Y-%m-%d").date(),
-        first_training_date=datetime.datetime.strptime(
+        report_date=dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
+        first_training_date=dt.datetime.strptime(
             first_training_date, "%Y-%m-%d"
         ).date(),
-        last_training_date=datetime.datetime.strptime(
+        last_training_date=dt.datetime.strptime(
             last_training_date, "%Y-%m-%d"
         ).date(),
     )
@@ -57,7 +57,7 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
 def get_all_forecast_dirs(
     parent_dir: Path | str,
     diseases: str | list[str],
-    report_date: str | datetime.date = None,
+    report_date: str | dt.date = None,
 ) -> list[str]:
     """
     Get all the subdirectories within a parent directory
@@ -90,7 +90,7 @@ def get_all_forecast_dirs(
         report_date_str = ""
     elif isinstance(report_date, str):
         report_date_str = report_date
-    elif isinstance(report_date, datetime.date):
+    elif isinstance(report_date, dt.date):
         report_date_str = f"{report_date:%Y-%m-%d}"
     else:
         raise ValueError(

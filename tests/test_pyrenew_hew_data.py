@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import json
 
 import numpy as np
@@ -126,7 +126,7 @@ def test_to_forecast_data(
     )
     assert (
         forecast_data.first_hospital_admissions_date.astype(
-            datetime.datetime
+            dt.datetime
         ).weekday()
         == 5
     )

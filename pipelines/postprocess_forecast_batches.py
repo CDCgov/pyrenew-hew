@@ -7,7 +7,7 @@ and .tsv-format hubverse tables.
 """
 
 import argparse
-import datetime
+import datetime as dt
 import logging
 import subprocess
 from pathlib import Path
@@ -17,9 +17,7 @@ import collate_plots as cp
 from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
 
-def _hubverse_table_filename(
-    report_date: str | datetime.date, disease: str
-) -> None:
+def _hubverse_table_filename(report_date: str | dt.date, disease: str) -> None:
     return f"{report_date}-{disease.lower()}-hubverse-table.parquet"
 
 

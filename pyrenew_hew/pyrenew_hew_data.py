@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import json
 from pathlib import Path
 from typing import Self
@@ -51,7 +51,7 @@ class PyrenewHEWData:
         if (
             first_hospital_admissions_date is not None
             and not first_hospital_admissions_date.astype(
-                datetime.datetime
+                dt.datetime
             ).weekday()
             == 5
         ):
@@ -517,9 +517,7 @@ class PyrenewHEWData:
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
-        first_dow = self.first_data_date_overall.astype(
-            datetime.datetime
-        ).weekday()
+        first_dow = self.first_data_date_overall.astype(dt.datetime).weekday()
         to_first_sat = (5 - first_dow) % 7
         first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
             to_first_sat, "D"
