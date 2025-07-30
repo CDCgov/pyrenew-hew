@@ -1,15 +1,11 @@
-import argparse
 import pickle
 from pathlib import Path
 
 import jax
 import numpy as np
-from jax.typing import ArrayLike
 
-from pipelines.utils import get_priors_from_dir
+from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
-from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
-from pyrenew_hew.utils import build_pyrenew_hew_model
 
 
 def fit_and_save_model(
@@ -33,7 +29,6 @@ def fit_and_save_model(
             "to seed :func:`jax.random.key`"
         )
 
-    priors = get_priors_from_dir(model_run_dir)
     my_data = PyrenewHEWData.from_json(
         json_file_path=Path(model_run_dir)
         / "data"
@@ -42,12 +37,8 @@ def fit_and_save_model(
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
     )
-    model_params = PyrenewHEWParam.from_json(
-        Path(model_run_dir) / "model_params.json"
-    )
-    my_model = build_pyrenew_hew_model(
-        priors,
-        model_params,
+    my_model = build_pyrenew_hew_model_from_dir(
+        model_run_dir,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,

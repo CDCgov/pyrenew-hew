@@ -17,13 +17,8 @@ from pipelines.prep_data import (
     process_and_save_loc_param,
 )
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
-from pipelines.utils import get_priors_from_dir
+from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
-from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
-from pyrenew_hew.utils import (
-    approx_lognorm,
-    build_pyrenew_hew_model,
-)
 
 parser = argparse.ArgumentParser(
     description="Create fit data for disease modeling."
@@ -359,7 +354,6 @@ def simulate_data_from_bootstrap(
         fit_ed_visits=True,
         model_run_dir=model_run_dir,
     )
-    priors = get_priors_from_dir(model_run_dir)
     my_data = PyrenewHEWData.from_json(
         json_file_path=Path(model_run_dir)
         / "data"
@@ -368,13 +362,9 @@ def simulate_data_from_bootstrap(
         fit_hospital_admissions=True,
         fit_wastewater=True,
     )
-    model_params = PyrenewHEWParam.from_json(
-        Path(model_run_dir) / "model_params.json"
-    )
 
-    my_model = build_pyrenew_hew_model(
-        priors,
-        model_params,
+    my_model = build_pyrenew_hew_model_from_dir(
+        model_run_dir,
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,

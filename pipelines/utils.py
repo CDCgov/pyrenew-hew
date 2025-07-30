@@ -12,6 +12,10 @@ from pathlib import Path
 
 from forecasttools import ensure_listlike, location_table
 
+from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
+from pyrenew_hew.utils import build_pyrenew_hew_model
+
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
 loc_abbrs_ = location_table["short_name"].to_list()
 
@@ -137,8 +141,34 @@ def get_all_model_run_dirs(parent_dir: Path) -> list[str]:
     ]
 
 
-def get_priors_from_dir(model_dir):
-    prior_path = Path(model_dir) / "priors.py"
-    priors = runpy.run_path(str(prior_path))
+def build_pyrenew_hew_model_from_dir(
+    model_run_dir: Path | str = None,
+    prior_path: Path | str = None,
+    model_params_path: Path | str = None,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
+):
+    if model_run_dir is not None:
+        prior_path = Path(model_run_dir) / "priors.py"
+        model_params_path = Path(model_run_dir) / "model_params.json"
+    else:
+        if prior_path is None or model_params_path is None:
+            raise ValueError(
+                "Either model_run_dir must be provided, "
+                "or both prior_path and model_params_path "
+                "must be provided."
+            )
+        prior_path = Path(prior_path)
+        model_params_path = Path(model_params_path)
 
-    return priors
+    priors = runpy.run_path(str(prior_path))
+    model_params = PyrenewHEWParam.from_json(model_params_path)
+    my_model = build_pyrenew_hew_model(
+        priors,
+        model_params,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
+    return my_model
