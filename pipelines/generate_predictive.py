@@ -32,7 +32,8 @@ def generate_and_save_predictions(
     )
 
     my_model = build_pyrenew_hew_model_from_dir(
-        model_run_dir ** flags_from_pyrenew_model_name(model_name),
+        model_run_dir,
+        **flags_from_pyrenew_model_name(model_name),
     )
 
     my_model._init_model(1, 1)
