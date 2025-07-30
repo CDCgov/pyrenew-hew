@@ -302,7 +302,8 @@ def flags_from_pyrenew_model_name(model_name: str) -> dict[str, bool]:
     """
     if not model_name.startswith("pyrenew_"):
         raise ValueError(
-            "Expected a model_name beginning with " f"'pyrenew_'. Got {model_name}."
+            "Expected a model_name beginning with "
+            f"'pyrenew_'. Got {model_name}."
         )
     hew_letters = model_name.removeprefix("pyrenew_")
     return flags_from_hew_letters(hew_letters, flag_prefix="fit")
@@ -398,7 +399,9 @@ def build_pyrenew_hew_model(
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
         sigma_rt_rv=priors["sigma_rt_rv"],
         sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
-        offset_ref_logit_i_first_obs_rv=priors["offset_ref_logit_i_first_obs_rv"],
+        offset_ref_logit_i_first_obs_rv=priors[
+            "offset_ref_logit_i_first_obs_rv"
+        ],
         offset_ref_log_rt_rv=priors["offset_ref_log_rt_rv"],
     )
 

@@ -34,10 +34,14 @@ def generate_and_save_predictions(
 
     priors = get_priors_from_dir(model_run_dir)
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir)
+        / "data"
+        / "data_for_model_fit.json",
         **flags_from_pyrenew_model_name(model_name),
     )
-    model_params = PyrenewHEWParam.from_json(Path(model_run_dir) / "model_params.json")
+    model_params = PyrenewHEWParam.from_json(
+        Path(model_run_dir) / "model_params.json"
+    )
 
     my_model = build_pyrenew_hew_model(
         priors,
@@ -64,9 +68,13 @@ def generate_and_save_predictions(
         sample_wastewater=predict_wastewater,
     )
 
-    idata = az.from_numpyro(my_model.mcmc, posterior_predictive=posterior_predictive)
+    idata = az.from_numpyro(
+        my_model.mcmc, posterior_predictive=posterior_predictive
+    )
 
-    idata.to_dataframe().to_parquet(model_dir / "inference_data.parquet", index=False)
+    idata.to_dataframe().to_parquet(
+        model_dir / "inference_data.parquet", index=False
+    )
 
     # Save one netcdf for reloading
     idata.to_netcdf(model_dir / "inference_data.nc")
@@ -110,7 +118,8 @@ if __name__ == "__main__":
         type=bool,
         action=argparse.BooleanOptionalAction,
         help=(
-            "If provided, generate posterior predictions " "for hospital admissions."
+            "If provided, generate posterior predictions "
+            "for hospital admissions."
         ),
     )
     parser.add_argument(
