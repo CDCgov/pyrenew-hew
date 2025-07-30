@@ -11,7 +11,7 @@ from forecast_pyrenew import (
     generate_epiweekly_data,
     get_available_reports,
 )
-from prep_data import get_training_dates, process_and_save_loc
+from prep_data import get_training_dates
 
 
 def plot_and_save_loc_forecast(

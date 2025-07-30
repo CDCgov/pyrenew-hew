@@ -5,7 +5,6 @@ from pathlib import Path
 import jax
 import numpy as np
 from jax.typing import ArrayLike
-from jax.typing import ArrayLike
 
 from pipelines.utils import get_priors_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData

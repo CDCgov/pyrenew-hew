@@ -1,6 +1,5 @@
 import argparse
 import datetime as dt
-import datetime as dt
 import logging
 import os
 import shutil
@@ -9,7 +8,6 @@ import tomllib
 from datetime import datetime
 from pathlib import Path
 
-import jax.numpy as jnp
 import jax.numpy as jnp
 import polars as pl
 import tomli_w

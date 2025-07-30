@@ -50,9 +50,7 @@ class PyrenewHEWData:
 
         if (
             first_hospital_admissions_date is not None
-            and not first_hospital_admissions_date.astype(
-                datetime.datetime
-            ).weekday()
+            and not first_hospital_admissions_date.astype(datetime.datetime).weekday()
             == 5
         ):
             raise ValueError(
@@ -147,89 +145,6 @@ class PyrenewHEWData:
             nwss_step_size=model_data["nwss_step_size"],
         )
 
-    @classmethod
-    def from_json(
-        cls,
-        json_file_path: str | Path,
-        fit_ed_visits: bool = False,
-        fit_hospital_admissions: bool = False,
-        fit_wastewater: bool = False,
-    ) -> Self:
-        """
-        Create a PyrenewHEWData instance from a JSON file.
-
-        Parameters
-        ----------
-        json_file_path : str | Path
-            Path to the data file in json format.
-        fit_ed_visits : bool, optional
-            Whether to fit ED visits data. Defaults to False.
-        fit_hospital_admissions : bool, optional
-            Whether to fit hospital admissions data. Defaults to False.
-        fit_wastewater : bool, optional
-            Whether to fit wastewater data. Defaults to False.
-
-        Returns
-        -------
-        PyrenewHEWData
-        """
-        with open(
-            json_file_path,
-            "r",
-        ) as file:
-            model_data = json.load(file)
-        nssp_training_data = (
-            pl.DataFrame(
-                model_data["nssp_training_data"],
-                schema={
-                    "date": pl.Date,
-                    "geo_value": pl.String,
-                    "observed_ed_visits": pl.Float64,
-                    "other_ed_visits": pl.Float64,
-                    "data_type": pl.String,
-                },
-            )
-            if fit_ed_visits
-            else None
-        )
-        nhsn_training_data = (
-            pl.DataFrame(
-                model_data["nhsn_training_data"],
-                schema={
-                    "weekendingdate": pl.Date,
-                    "jurisdiction": pl.String,
-                    "hospital_admissions": pl.Float64,
-                    "data_type": pl.String,
-                },
-            )
-            if fit_hospital_admissions
-            else None
-        )
-        nwss_training_data = (
-            pl.DataFrame(
-                model_data["nwss_training_data"],
-                schema_overrides={
-                    "date": pl.Date,
-                    "lab_index": pl.Int64,
-                    "site_index": pl.Int64,
-                },
-            )
-            if fit_wastewater
-            else None
-        )
-
-        return cls(
-            nssp_training_data=nssp_training_data,
-            nhsn_training_data=nhsn_training_data,
-            nwss_training_data=nwss_training_data,
-            population_size=jnp.array(model_data["loc_pop"]).item(),
-            pop_fraction=jnp.array(model_data["pop_fraction"]),
-            right_truncation_offset=model_data["right_truncation_offset"],
-            nhsn_step_size=model_data["nhsn_step_size"],
-            nssp_step_size=model_data["nssp_step_size"],
-            nwss_step_size=model_data["nwss_step_size"],
-        )
-
     @property
     def n_ed_visits_data_days(self):
         return self.get_n_data_days(
@@ -255,25 +170,19 @@ class PyrenewHEWData:
     @property
     def dates_observed_ed_visits(self):
         if self.nssp_training_data is not None:
-            return (
-                self.nssp_training_data.get_column("date").unique().to_numpy()
-            )
+            return self.nssp_training_data.get_column("date").unique().to_numpy()
 
     @property
     def dates_observed_hospital_admissions(self):
         if self.nhsn_training_data is not None:
             return (
-                self.nhsn_training_data.get_column("weekendingdate")
-                .unique()
-                .to_numpy()
+                self.nhsn_training_data.get_column("weekendingdate").unique().to_numpy()
             )
 
     @property
     def dates_observed_disease_wastewater(self):
         if self.nwss_training_data is not None:
-            return (
-                self.nwss_training_data.get_column("date").unique().to_numpy()
-            )
+            return self.nwss_training_data.get_column("date").unique().to_numpy()
 
     @property
     def first_wastewater_date(self):
@@ -352,31 +261,23 @@ class PyrenewHEWData:
     @property
     def data_observed_disease_ed_visits(self):
         if self.nssp_training_data is not None:
-            return self.nssp_training_data.get_column(
-                "observed_ed_visits"
-            ).to_numpy()
+            return self.nssp_training_data.get_column("observed_ed_visits").to_numpy()
 
     @property
     def data_observed_total_ed_visits(self):
         if self.nssp_training_data is not None:
-            return self.nssp_training_data.get_column(
-                "other_ed_visits"
-            ).to_numpy()
+            return self.nssp_training_data.get_column("other_ed_visits").to_numpy()
 
     @property
     def data_observed_disease_hospital_admissions(self):
         if self.nhsn_training_data is not None:
-            return self.nhsn_training_data.get_column(
-                "hospital_admissions"
-            ).to_numpy()
+            return self.nhsn_training_data.get_column("hospital_admissions").to_numpy()
 
     @property
     def site_subpop_spine(self):
         if self.nwss_training_data is not None:
             site_indices = (
-                self.nwss_training_data.select(
-                    ["site_index", "site", "site_pop"]
-                )
+                self.nwss_training_data.select(["site_index", "site", "site_pop"])
                 .unique()
                 .sort("site_index", descending=False)
             )
@@ -403,12 +304,10 @@ class PyrenewHEWData:
             site_subpop_spine = (
                 pl.concat([aux_subpop, site_indices], how="vertical_relaxed")
                 .with_columns(
-                    subpop_index=pl.col("site_index")
-                    .cum_count()
-                    .alias("subpop_index"),
-                    subpop_name=pl.format(
-                        "Site: {}", pl.col("site")
-                    ).fill_null("remainder of population"),
+                    subpop_index=pl.col("site_index").cum_count().alias("subpop_index"),
+                    subpop_name=pl.format("Site: {}", pl.col("site")).fill_null(
+                        "remainder of population"
+                    ),
                 )
                 .rename({"site_pop": "subpop_pop"})
             )
@@ -509,23 +408,17 @@ class PyrenewHEWData:
     @property
     def ww_observed_subpops(self):
         if self.nwss_training_data is not None:
-            return self.wastewater_data_extended.get_column(
-                "subpop_index"
-            ).to_numpy()
+            return self.wastewater_data_extended.get_column("subpop_index").to_numpy()
 
     @property
     def ww_observed_lab_sites(self):
         if self.nwss_training_data is not None:
-            return self.wastewater_data_extended.get_column(
-                "lab_site_index"
-            ).to_numpy()
+            return self.wastewater_data_extended.get_column("lab_site_index").to_numpy()
 
     @property
     def ww_log_lod(self):
         if self.nwss_training_data is not None:
-            return self.wastewater_data_extended.get_column(
-                "log_lod"
-            ).to_numpy()
+            return self.wastewater_data_extended.get_column("log_lod").to_numpy()
 
     @property
     def n_ww_lab_sites(self):
@@ -538,9 +431,7 @@ class PyrenewHEWData:
         if self.nwss_training_data is not None:
             return (
                 (
-                    self.wastewater_data_extended[
-                        "lab_site_index", "subpop_index"
-                    ]
+                    self.wastewater_data_extended["lab_site_index", "subpop_index"]
                     .unique()
                     .sort(by="lab_site_index", descending=False)
                 )
@@ -600,9 +491,7 @@ class PyrenewHEWData:
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
-        first_dow = self.first_data_date_overall.astype(
-            datetime.datetime
-        ).weekday()
+        first_dow = self.first_data_date_overall.astype(datetime.datetime).weekday()
         to_first_sat = (5 - first_dow) % 7
         first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
             to_first_sat, "D"
