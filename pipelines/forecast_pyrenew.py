@@ -1,5 +1,6 @@
 import argparse
 import datetime as dt
+import datetime as dt
 import logging
 import os
 import shutil
@@ -8,6 +9,7 @@ import tomllib
 from datetime import datetime
 from pathlib import Path
 
+import jax.numpy as jnp
 import jax.numpy as jnp
 import polars as pl
 import tomli_w
@@ -74,9 +76,7 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def convert_inferencedata_to_parquet(
-    model_run_dir: Path, model_name: str
-) -> None:
+def convert_inferencedata_to_parquet(model_run_dir: Path, model_name: str) -> None:
     result = subprocess.run(
         [
             "Rscript",
@@ -255,9 +255,7 @@ def get_pmfs(
         generation_interval_df, "generation_interval"
     )
 
-    delay_df = filtered_estimates.filter(
-        pl.col("parameter") == "delay"
-    ).collect()
+    delay_df = filtered_estimates.filter(pl.col("parameter") == "delay").collect()
     delay_pmf = _validate_and_extract(delay_df, "delay")
 
     # ensure 0 first entry; we do not model the possibility
@@ -328,8 +326,7 @@ def main(
     any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
     if not any_fit:
         raise ValueError(
-            "pyrenew_null (fitting to no signals) "
-            "is not supported by this pipeline"
+            "pyrenew_null (fitting to no signals) " "is not supported by this pipeline"
         )
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
@@ -351,9 +348,7 @@ def main(
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 
-    if fit_ed_visits and not os.path.exists(
-        Path(model_run_dir, timeseries_model_name)
-    ):
+    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
         raise ValueError(
             f"{timeseries_model_name} model run not found. "
             "Please ensure that the timeseries forecasts "
@@ -471,8 +466,7 @@ if __name__ == "__main__":
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
         help=(
-            "Directory in which to look for parameter estimates"
-            "such as delay PMFs."
+            "Directory in which to look for parameter estimates" "such as delay PMFs."
         ),
         required=True,
     )
@@ -522,9 +516,7 @@ if __name__ == "__main__":
         "--n-warmup",
         type=int,
         default=1000,
-        help=(
-            "Number of warmup iterations per chain for NUTS (default: 1000)."
-        ),
+        help=("Number of warmup iterations per chain for NUTS (default: 1000)."),
     )
 
     parser.add_argument(

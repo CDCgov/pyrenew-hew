@@ -5,9 +5,11 @@ from pathlib import Path
 import jax
 import numpy as np
 from jax.typing import ArrayLike
+from jax.typing import ArrayLike
 
 from pipelines.utils import get_priors_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 from pyrenew_hew.utils import build_pyrenew_hew_model
 
 
@@ -33,28 +35,20 @@ def fit_and_save_model(
         rng_key = jax.random.key(rng_key)
     else:
         raise ValueError(
-            "rng_key must be an integer with which "
-            "to seed :func:`jax.random.key`"
+            "rng_key must be an integer with which " "to seed :func:`jax.random.key`"
         )
 
     priors = get_priors_from_dir(model_run_dir)
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir)
-        / "data"
-        / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
     )
+    model_params = PyrenewHEWParam.from_json(Path(model_run_dir) / "model_params.json")
     my_model = build_pyrenew_hew_model(
         priors,
-        pop_fraction=my_data.pop_fraction,
-        population_size=my_data.population_size,
-        generation_interval_pmf=generation_interval_pmf,
-        right_truncation_pmf=right_truncation_pmf,
-        inf_to_hosp_admit_lognormal_loc=inf_to_hosp_admit_lognormal_loc,
-        inf_to_hosp_admit_lognormal_scale=inf_to_hosp_admit_lognormal_scale,
-        inf_to_hosp_admit_pmf=inf_to_hosp_admit_pmf,
+        model_params,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,

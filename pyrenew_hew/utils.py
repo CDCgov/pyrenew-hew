@@ -13,7 +13,6 @@ from jax.typing import ArrayLike
 from pyrenew.deterministic import DeterministicPMF
 from scipy.optimize import minimize
 
-from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_model import (
     EDVisitObservationProcess,
     HospAdmitObservationProcess,
@@ -22,6 +21,7 @@ from pyrenew_hew.pyrenew_hew_model import (
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 
 
 def approx_lognorm(
@@ -302,8 +302,7 @@ def flags_from_pyrenew_model_name(model_name: str) -> dict[str, bool]:
     """
     if not model_name.startswith("pyrenew_"):
         raise ValueError(
-            "Expected a model_name beginning with "
-            f"'pyrenew_'. Got {model_name}."
+            "Expected a model_name beginning with " f"'pyrenew_'. Got {model_name}."
         )
     hew_letters = model_name.removeprefix("pyrenew_")
     return flags_from_hew_letters(hew_letters, flag_prefix="fit")
@@ -311,13 +310,7 @@ def flags_from_pyrenew_model_name(model_name: str) -> dict[str, bool]:
 
 def build_pyrenew_hew_model(
     priors: dict,
-    pop_fraction: ArrayLike,
-    population_size: float,
-    generation_interval_pmf: ArrayLike,
-    inf_to_hosp_admit_lognormal_loc: ArrayLike,
-    inf_to_hosp_admit_lognormal_scale: ArrayLike,
-    inf_to_hosp_admit_pmf: ArrayLike,
-    right_truncation_pmf: ArrayLike = None,
+    params: PyrenewHEWParam,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -327,6 +320,9 @@ def build_pyrenew_hew_model(
 
     priors : dict
         Dictionary containing the priors for the model.
+
+    params: PyrenewHEWParam
+        Model parameters as PyrenewHEWParam instance
 
     fit_ed_visits
         Fit ED visit data in the built model? Default ``False``.
@@ -347,9 +343,7 @@ def build_pyrenew_hew_model(
     """
     he = fit_hospital_admissions and fit_ed_visits
 
-    inf_to_ed_rv = DeterministicPMF(
-        "inf_to_ed", jnp.array(inf_to_hosp_admit_pmf)
-    )
+    inf_to_ed_rv = DeterministicPMF("inf_to_ed", params.inf_to_hosp_admit_pmf)
     # For now follow NNH in just substituting
     # (eventually will use a different inferred fixed).
     if he:
@@ -357,28 +351,28 @@ def build_pyrenew_hew_model(
         # when fitting admissions
         inf_to_hosp_admit_rv = OffsetDiscretizedLognormalPMF(
             "inf_to_hosp_admit",
-            reference_loc=inf_to_hosp_admit_lognormal_loc,
-            reference_scale=inf_to_hosp_admit_lognormal_scale,
-            n=jnp.array(inf_to_hosp_admit_pmf).size * 2,
+            reference_loc=params.inf_to_hosp_admit_lognormal_loc,
+            reference_scale=params.inf_to_hosp_admit_lognormal_scale,
+            n=params.inf_to_hosp_admit_pmf.size * 2,
             # Flexibility to infer delays with a longer tail, up to a point.
             offset_loc_rv=priors["delay_offset_loc_rv"],
             log_offset_scale_rv=priors["delay_log_offset_scale_rv"],
         )
     else:
         inf_to_hosp_admit_rv = DeterministicPMF(
-            "inf_to_hosp_admit", jnp.array(inf_to_hosp_admit_pmf)
+            "inf_to_hosp_admit", params.inf_to_hosp_admit_pmf
         )  # else use same, following NNH
 
     generation_interval_pmf_rv = DeterministicPMF(
         "generation_interval_pmf",
-        jnp.array(generation_interval_pmf),
+        params.generation_interval_pmf,
     )  # check if off by 1 or reversed
 
     infection_feedback_pmf_rv = DeterministicPMF(
-        "infection_feedback_pmf", jnp.array(generation_interval_pmf)
+        "infection_feedback_pmf", params.generation_interval_pmf
     )  # check if off by 1 or reversed
     ed_right_truncation_pmf_rv = DeterministicPMF(
-        "right_truncation_pmf", jnp.array(right_truncation_pmf)
+        "right_truncation_pmf", params.right_truncation_pmf
     )
     n_initialization_points = (
         max(
@@ -400,13 +394,11 @@ def build_pyrenew_hew_model(
         infection_feedback_strength_rv=priors["inf_feedback_strength_rv"],
         infection_feedback_pmf_rv=infection_feedback_pmf_rv,
         n_initialization_points=n_initialization_points,
-        pop_fraction=pop_fraction,
+        pop_fraction=params.pop_fraction,
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
         sigma_rt_rv=priors["sigma_rt_rv"],
         sigma_i_first_obs_rv=priors["sigma_i_first_obs_rv"],
-        offset_ref_logit_i_first_obs_rv=priors[
-            "offset_ref_logit_i_first_obs_rv"
-        ],
+        offset_ref_logit_i_first_obs_rv=priors["offset_ref_logit_i_first_obs_rv"],
         offset_ref_log_rt_rv=priors["offset_ref_log_rt_rv"],
     )
 
@@ -438,10 +430,11 @@ def build_pyrenew_hew_model(
         mode_sd_ww_site_rv=priors["mode_sd_ww_site_rv"],
         max_shed_interval=priors["max_shed_interval"],
         ww_ml_produced_per_day=priors["ww_ml_produced_per_day"],
+        pop_fraction=params.pop_fraction,
     )
 
     mod = PyrenewHEWModel(
-        population_size=population_size,
+        population_size=params.population_size,
         latent_infection_process_rv=latent_infections_rv,
         ed_visit_obs_process_rv=ed_visit_obs_rv,
         hosp_admit_obs_process_rv=hosp_admit_obs_rv,

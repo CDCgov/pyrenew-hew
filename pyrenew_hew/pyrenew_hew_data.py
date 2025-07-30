@@ -30,7 +30,6 @@ class PyrenewHEWData:
         first_hospital_admissions_date: np.datetime64 = None,
         first_wastewater_date: np.datetime64 = None,
         right_truncation_offset: int = None,
-        pop_fraction: ArrayLike = None,
         n_ww_lab_sites: int = None,
         lab_site_to_subpop_map: ArrayLike = None,
         population_size: int = None,
@@ -65,7 +64,88 @@ class PyrenewHEWData:
         self.first_ed_visits_date_ = first_ed_visits_date
         self.first_hospital_admissions_date_ = first_hospital_admissions_date
         self.first_wastewater_date_ = first_wastewater_date
-        self.pop_fraction = pop_fraction
+
+    @classmethod
+    def from_json(
+        cls,
+        json_file_path: str | Path,
+        fit_ed_visits: bool = False,
+        fit_hospital_admissions: bool = False,
+        fit_wastewater: bool = False,
+    ) -> Self:
+        """
+        Create a PyrenewHEWData instance from a JSON file.
+
+        Parameters
+        ----------
+        json_file_path : str | Path
+            Path to the data file in json format.
+        fit_ed_visits : bool, optional
+            Whether to fit ED visits data. Defaults to False.
+        fit_hospital_admissions : bool, optional
+            Whether to fit hospital admissions data. Defaults to False.
+        fit_wastewater : bool, optional
+            Whether to fit wastewater data. Defaults to False.
+
+        Returns
+        -------
+        PyrenewHEWData
+        """
+        with open(
+            json_file_path,
+            "r",
+        ) as file:
+            model_data = json.load(file)
+        nssp_training_data = (
+            pl.DataFrame(
+                model_data["nssp_training_data"],
+                schema={
+                    "date": pl.Date,
+                    "geo_value": pl.String,
+                    "observed_ed_visits": pl.Float64,
+                    "other_ed_visits": pl.Float64,
+                    "data_type": pl.String,
+                },
+            )
+            if fit_ed_visits
+            else None
+        )
+        nhsn_training_data = (
+            pl.DataFrame(
+                model_data["nhsn_training_data"],
+                schema={
+                    "weekendingdate": pl.Date,
+                    "jurisdiction": pl.String,
+                    "hospital_admissions": pl.Float64,
+                    "data_type": pl.String,
+                },
+            )
+            if fit_hospital_admissions
+            else None
+        )
+        nwss_training_data = (
+            pl.DataFrame(
+                model_data["nwss_training_data"],
+                schema_overrides={
+                    "date": pl.Date,
+                    "lab_index": pl.Int64,
+                    "site_index": pl.Int64,
+                },
+            )
+            if fit_wastewater
+            else None
+        )
+
+        return cls(
+            nssp_training_data=nssp_training_data,
+            nhsn_training_data=nhsn_training_data,
+            nwss_training_data=nwss_training_data,
+            population_size=jnp.array(model_data["loc_pop"]).item(),
+            right_truncation_offset=model_data["right_truncation_offset"],
+            nhsn_step_size=model_data["nhsn_step_size"],
+            nssp_step_size=model_data["nssp_step_size"],
+            nwss_step_size=model_data["nwss_step_size"],
+        )
 
     @classmethod
     def from_json(
@@ -538,5 +618,4 @@ class PyrenewHEWData:
             right_truncation_offset=None,  # by default, want forecasts of complete reports
             n_ww_lab_sites=self.n_ww_lab_sites,
             lab_site_to_subpop_map=self.lab_site_to_subpop_map,
-            pop_fraction=self.pop_fraction,
         )
