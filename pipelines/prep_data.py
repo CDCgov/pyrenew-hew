@@ -326,12 +326,8 @@ def get_loc_pop_df():
 def _validate_and_extract(
     df: pl.DataFrame,
     parameter_name: str,
-    right_truncation_required: bool = True,
 ) -> list:
-    if (
-        parameter_name == "right_truncation" and df.height == 0
-    ) and not right_truncation_required:
-        return list([1])
+    df = df.filter(pl.col("parameter") == parameter_name).collect()
     if df.height != 1:
         error_msg = f"Expected exactly one {parameter_name} parameter row, but found {df.height}"
         logging.error(error_msg)
@@ -423,18 +419,11 @@ def get_pmfs(
         )
     )
 
-    generation_interval_df = filtered_estimates.filter(
-        pl.col("parameter") == "generation_interval"
-    ).collect()
-
     generation_interval_pmf = _validate_and_extract(
-        generation_interval_df, "generation_interval"
+        filtered_estimates, "generation_interval"
     )
 
-    delay_df = filtered_estimates.filter(
-        pl.col("parameter") == "delay"
-    ).collect()
-    delay_pmf = _validate_and_extract(delay_df, "delay")
+    delay_pmf = _validate_and_extract(filtered_estimates, "delay")
 
     # ensure 0 first entry; we do not model the possibility
     # of a zero infection-to-recorded-admission delay in Pyrenew-HEW
@@ -443,15 +432,19 @@ def get_pmfs(
     delay_pmf = delay_pmf / delay_pmf.sum()
     delay_pmf = delay_pmf.tolist()
 
-    right_truncation_df = (
-        filtered_estimates.filter(pl.col("geo_value") == loc_abb)
-        .filter(pl.col("parameter") == "right_truncation")
-        .filter(pl.col("reference_date") == pl.col("reference_date").max())
-        .collect()
-    )
-    right_truncation_pmf = _validate_and_extract(
-        right_truncation_df, "right_truncation", right_truncation_required
-    )
+    right_truncation_df = filtered_estimates.filter(
+        pl.col("geo_value") == loc_abb
+    ).filter(pl.col("reference_date") == pl.col("reference_date").max())
+
+    if (
+        right_truncation_df.collect().height == 0
+        and not right_truncation_required
+    ):
+        right_truncation_pmf = [1]
+    else:
+        right_truncation_pmf = _validate_and_extract(
+            right_truncation_df, "right_truncation"
+        )
 
     return {
         "generation_interval_pmf": generation_interval_pmf,
