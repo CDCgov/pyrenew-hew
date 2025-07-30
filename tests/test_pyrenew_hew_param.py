@@ -1,6 +1,7 @@
 import json
-from jax.typing import ArrayLike
+
 import pytest
+from jax.typing import ArrayLike
 
 from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 
