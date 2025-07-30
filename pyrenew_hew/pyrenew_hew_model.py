@@ -1,5 +1,5 @@
 # numpydoc ignore=GL08
-import datetime
+import datetime as dt
 from functools import partial
 
 import jax
@@ -670,6 +670,7 @@ class WastewaterObservationProcess(RandomVariable):
         mode_sd_ww_site_rv: RandomVariable,
         max_shed_interval: float,
         ww_ml_produced_per_day: float,
+        pop_fraction: ArrayLike,
     ) -> None:
         self.t_peak_rv = t_peak_rv
         self.duration_shed_after_peak_rv = duration_shed_after_peak_rv
@@ -679,6 +680,7 @@ class WastewaterObservationProcess(RandomVariable):
         self.mode_sd_ww_site_rv = mode_sd_ww_site_rv
         self.max_shed_interval = max_shed_interval
         self.ww_ml_produced_per_day = ww_ml_produced_per_day
+        self.pop_fraction = pop_fraction
 
     def validate(self):
         pass
@@ -786,7 +788,6 @@ class WastewaterObservationProcess(RandomVariable):
         lab_site_to_subpop_map: ArrayLike,
         n_ww_lab_sites: int,
         shedding_offset: float,
-        pop_fraction: ArrayLike,
     ):
         t_peak = self.t_peak_rv()
         dur_shed = self.duration_shed_after_peak_rv()
@@ -882,7 +883,7 @@ class WastewaterObservationProcess(RandomVariable):
             )()
 
         pop_log_latent_viral_genome_conc = jax.scipy.special.logsumexp(
-            expected_obs_viral_genomes, axis=1, b=pop_fraction
+            expected_obs_viral_genomes, axis=1, b=self.pop_fraction
         )
 
         return site_level_log_ww_conc, pop_log_latent_viral_genome_conc
@@ -920,7 +921,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             )
         )
         first_latent_infection_dow = (
-            data.first_data_date_overall - datetime.timedelta(days=n_init_days)
+            data.first_data_date_overall - dt.timedelta(days=n_init_days)
         ).weekday()
 
         observed_ed_visits = None
@@ -967,7 +968,6 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 lab_site_to_subpop_map=data.lab_site_to_subpop_map,
                 n_ww_lab_sites=data.n_ww_lab_sites,
                 shedding_offset=1e-8,
-                pop_fraction=data.pop_fraction,
             )
 
         return {

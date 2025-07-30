@@ -1,4 +1,5 @@
-import datetime
+import datetime as dt
+import json
 
 import numpy as np
 import polars as pl
@@ -10,7 +11,7 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 @pytest.mark.parametrize(
     "erroring_date",
     [
-        datetime.datetime(2025, 3, 8) + datetime.timedelta(days=x)
+        np.datetime64("2025-03-08") + np.timedelta64(x, "D")
         for x in range(1, 7)
     ],
 )
@@ -24,7 +25,7 @@ def test_validation(erroring_date):
             PyrenewHEWData(
                 n_ed_visits_data_days=5,
                 n_hospital_admissions_data_days=10,
-                first_ed_visits_date=datetime.datetime(2025, 3, 5),
+                first_ed_visits_date=np.datetime64("2025-03-05"),
                 first_hospital_admissions_date=erroring_date,
                 right_truncation_offset=0,
             ),
@@ -48,9 +49,9 @@ def test_validation(erroring_date):
             0,
             0,
             5,
-            datetime.date(2023, 1, 1),
-            datetime.date(2022, 2, 5),
-            datetime.date(2025, 12, 5),
+            np.datetime64("2023-01-01"),
+            np.datetime64("2022-02-05"),
+            np.datetime64("2025-12-05"),
             10,
         ],
         [
@@ -58,9 +59,9 @@ def test_validation(erroring_date):
             325,
             2,
             5,
-            datetime.date(2025, 1, 1),
-            datetime.date(2023, 5, 27),
-            datetime.date(2022, 4, 5),
+            np.datetime64("2025-01-01"),
+            np.datetime64("2023-05-27"),
+            np.datetime64("2022-04-05"),
             10,
         ],
         [
@@ -68,9 +69,9 @@ def test_validation(erroring_date):
             0,
             2,
             3,
-            datetime.date(2025, 1, 1),
-            datetime.date(2025, 2, 8),
-            datetime.date(2024, 12, 5),
+            np.datetime64("2025-01-01"),
+            np.datetime64("2025-02-08"),
+            np.datetime64("2024-12-05"),
             30,
         ],
         [
@@ -78,9 +79,9 @@ def test_validation(erroring_date):
             0,
             23,
             3,
-            datetime.date(2025, 1, 1),
-            datetime.date(2025, 2, 8),
-            datetime.date(2024, 12, 5),
+            np.datetime64("2025-01-01"),
+            np.datetime64("2025-02-08"),
+            np.datetime64("2024-12-05"),
             30,
         ],
     ],
@@ -90,9 +91,9 @@ def test_to_forecast_data(
     n_hospital_admissions_data_days: int,
     n_wastewater_data_days: int,
     right_truncation_offset: int,
-    first_ed_visits_date: datetime.date,
-    first_hospital_admissions_date: datetime.date,
-    first_wastewater_date: datetime.date,
+    first_ed_visits_date: np.datetime64,
+    first_hospital_admissions_date: np.datetime64,
+    first_wastewater_date: np.datetime64,
     n_forecast_points: int,
 ) -> None:
     """
@@ -123,19 +124,28 @@ def test_to_forecast_data(
         forecast_data.first_hospital_admissions_date
         >= data.first_data_date_overall
     )
-    assert forecast_data.first_hospital_admissions_date.weekday() == 5
     assert (
-        forecast_data.first_hospital_admissions_date
-        - data.first_data_date_overall
-    ).days <= 6
+        forecast_data.first_hospital_admissions_date.astype(
+            dt.datetime
+        ).weekday()
+        == 5
+    )
+
+    assert (
+        (
+            forecast_data.first_hospital_admissions_date
+            - data.first_data_date_overall
+        )
+        / np.timedelta64(1, "D")
+    ).item() <= 6
 
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
     assert forecast_data.data_observed_disease_wastewater_conc is None
 
 
 def test_pyrenew_wastewater_data():
-    first_training_date = datetime.date(2023, 1, 1)
-    last_training_date = datetime.date(2023, 7, 23)
+    first_training_date = np.datetime64("2023-01-01")
+    last_training_date = np.datetime64("2023-07-23")
     dates = pl.date_range(
         first_training_date,
         last_training_date,
@@ -165,9 +175,9 @@ def test_pyrenew_wastewater_data():
         .alias("below_lod")
     )
 
-    first_ed_visits_date = datetime.date(2023, 1, 1)
-    first_hospital_admissions_date = datetime.date(2023, 1, 7)  # Saturday
-    first_wastewater_date = datetime.date(2023, 1, 1)
+    first_ed_visits_date = np.datetime64("2023-01-01")
+    first_hospital_admissions_date = np.datetime64("2023-01-07")  # Saturday
+    first_wastewater_date = np.datetime64("2023-01-01")
     n_forecast_points = 10
 
     data = PyrenewHEWData(
@@ -201,7 +211,6 @@ def test_pyrenew_wastewater_data():
     assert forecast_data.model_t_obs_wastewater is None
 
     assert np.array_equal(data.n_ww_lab_sites, forecast_data.n_ww_lab_sites)
-    assert np.array_equal(data.pop_fraction, forecast_data.pop_fraction)
 
     assert np.array_equal(
         data.data_observed_disease_wastewater_conc,
@@ -215,3 +224,79 @@ def test_pyrenew_wastewater_data():
     )
     assert np.array_equal(data.ww_log_lod, ww_data["log_lod"])
     assert data.n_ww_lab_sites == ww_data["lab_site_index"].n_unique()
+
+
+@pytest.fixture
+def mock_data():
+    return {
+        "nssp_training_data": {
+            "date": [
+                "2025-01-01",
+                "2025-01-02",
+            ],
+            "geo_value": ["CA"] * 2,
+            "other_ed_visits": [200, 400],
+            "observed_ed_visits": [10, 3],
+            "data_type": ["train"] * 2,
+        },
+        "nhsn_training_data": {
+            "weekendingdate": ["2025-01-01", "2025-01-02"],
+            "jurisdiction": ["CA"] * 2,
+            "hospital_admissions": [5, 1],
+            "data_type": ["train"] * 2,
+        },
+        "loc_pop": [10000],
+        "nssp_training_dates": ["2025-01-01"],
+        "nhsn_training_dates": ["2025-01-04"],
+        "right_truncation_offset": 10,
+        "nwss_training_data": {
+            "date": [
+                "2025-01-01",
+                "2025-01-01",
+                "2025-01-02",
+                "2025-01-02",
+            ],
+            "site": ["1.0", "1.0", "2.0", "2.0"],
+            "lab": ["1.0", "1.0", "1.0", "1.0"],
+            "site_pop": [4000, 4000, 2000, 2000],
+            "site_index": [1, 1, 0, 0],
+            "lab_site_index": [1, 1, 0, 0],
+            "log_genome_copies_per_ml": [0.1, 0.1, 0.5, 0.4],
+            "log_lod": [1.1, 2.0, 1.5, 2.1],
+            "below_lod": [False, False, False, False],
+        },
+        "pop_fraction": [0.4, 0.4, 0.2],
+        "population_size": 1e5,
+        "nhsn_step_size": 7,
+        "nssp_step_size": 1,
+        "nwss_step_size": 1,
+    }
+
+
+@pytest.fixture
+def mock_data_dir(mock_data, tmpdir):
+    data_path = tmpdir.join("data.json")
+    with open(data_path, "w") as f:
+        json.dump(mock_data, f)
+    return data_path
+
+
+def test_build_pyrenew_hew_data_from_json(mock_data_dir):
+    # Test when all `fit_` arguments are False
+    data = PyrenewHEWData.from_json(mock_data_dir)
+    assert isinstance(data, PyrenewHEWData)
+    assert data.data_observed_disease_ed_visits is None
+    assert data.data_observed_disease_hospital_admissions is None
+    assert data.data_observed_disease_wastewater_conc is None
+
+    # Test when all `fit_` arguments are True
+    data = PyrenewHEWData.from_json(
+        mock_data_dir,
+        fit_ed_visits=True,
+        fit_hospital_admissions=True,
+        fit_wastewater=True,
+    )
+    assert isinstance(data, PyrenewHEWData)
+    assert data.data_observed_disease_ed_visits is not None
+    assert data.data_observed_disease_hospital_admissions is not None
+    assert data.data_observed_disease_wastewater_conc is not None
