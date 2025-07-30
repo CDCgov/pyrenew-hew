@@ -10,7 +10,10 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 @pytest.mark.parametrize(
     "erroring_date",
-    [np.datetime64("2025-03-08") + np.timedelta64(x, "D") for x in range(1, 7)],
+    [
+        np.datetime64("2025-03-08") + np.timedelta64(x, "D")
+        for x in range(1, 7)
+    ],
 )
 def test_validation(erroring_date):
     """
@@ -117,16 +120,28 @@ def test_to_forecast_data(
     assert forecast_data.first_ed_visits_date == data.first_data_date_overall
 
     ## hosp admit date should be the first Saturday
-    assert forecast_data.first_hospital_admissions_date >= data.first_data_date_overall
     assert (
-        forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
+        forecast_data.first_hospital_admissions_date
+        >= data.first_data_date_overall
     )
     assert (
-        forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
+        forecast_data.first_hospital_admissions_date.astype(
+            dt.datetime
+        ).weekday()
+        == 5
+    )
+    assert (
+        forecast_data.first_hospital_admissions_date.astype(
+            dt.datetime
+        ).weekday()
+        == 5
     )
 
     assert (
-        (forecast_data.first_hospital_admissions_date - data.first_data_date_overall)
+        (
+            forecast_data.first_hospital_admissions_date
+            - data.first_data_date_overall
+        )
         / np.timedelta64(1, "D")
     ).item() <= 6
 
@@ -207,8 +222,12 @@ def test_pyrenew_wastewater_data():
         data.data_observed_disease_wastewater_conc,
         ww_data["log_genome_copies_per_ml"],
     )
-    assert len(data.ww_censored) == len(ww_data.filter(pl.col("below_lod") == 1))
-    assert len(data.ww_uncensored) == len(ww_data.filter(pl.col("below_lod") == 0))
+    assert len(data.ww_censored) == len(
+        ww_data.filter(pl.col("below_lod") == 1)
+    )
+    assert len(data.ww_uncensored) == len(
+        ww_data.filter(pl.col("below_lod") == 0)
+    )
     assert np.array_equal(data.ww_log_lod, ww_data["log_lod"])
     assert data.n_ww_lab_sites == ww_data["lab_site_index"].n_unique()
 
