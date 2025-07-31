@@ -13,7 +13,7 @@ env:
   IMAGE_NAME: pyrenew-hew
 
 jobs:
-  setup-federated-login:
+  setup-federated-login:  
     runs-on: ubuntu-latest
     environment: |-
       ${{github.ref_name == 'main'               && 'production'
