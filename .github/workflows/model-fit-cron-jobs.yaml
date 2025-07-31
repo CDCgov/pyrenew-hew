@@ -59,8 +59,8 @@ jobs:
           print_logs: true
           script: |
             echo "Logging into Azure CLI"
-            
-            echo "The federated token is ${{ needs.setup-federated-login.outputs.id_token }}"
+
+            echo "The federated token is ${{ steps.idtoken.outputs.id_token }}"
             az login --service-principal \
                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
