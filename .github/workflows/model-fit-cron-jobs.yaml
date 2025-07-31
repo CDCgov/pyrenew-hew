@@ -13,7 +13,7 @@ env:
   IMAGE_NAME: pyrenew-hew
 
 jobs:
-  setup-oidc-token-for-federated-login:  
+  setup-federated-login:  
     runs-on: ubuntu-latest
     environment: |-
       ${{github.ref_name == 'main'               && 'production'
@@ -57,6 +57,7 @@ jobs:
       id-token: write
 
     needs: setup-federated-login
+    
     steps:
       - name: Submit timeseries-e Job
         id: create_batch_pool
