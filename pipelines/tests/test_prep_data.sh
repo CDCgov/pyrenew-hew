@@ -17,6 +17,7 @@ python pipelines/prep_data.py \
 	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
 	--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
 	--nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
+	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
 	--output-dir "$BASE_DIR/2024-12-21_forecasts" \
 	--n-training-days 90 \
 	--nhsn-data-path "$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"

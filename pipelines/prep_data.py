@@ -24,6 +24,22 @@ _disease_map = {
 
 _inverse_disease_map = {v: k for k, v in _disease_map.items()}
 
+nwss_data_disease_map = {
+    "COVID-19": "covid",
+    "Influenza": "flu",
+}
+
+
+def get_available_nwss_reports(
+    data_dir: str | Path,
+    disease: str,
+):
+    glob_pattern = f"NWSS-ETL-{nwss_data_disease_map[disease]}-"
+    return [
+        datetime.strptime(f.stem.removeprefix(glob_pattern), "%Y-%m-%d").date()
+        for f in Path(data_dir).glob(f"{glob_pattern}*")
+    ]
+
 
 def get_nhsn(
     start_date: dt.date,
@@ -179,6 +195,28 @@ def combine_surveillance_data(
     )
 
     return combined_dat
+
+
+def generate_epiweekly_data(
+    model_run_dir: Path, data_names: str = None
+) -> None:
+    command = [
+        "Rscript",
+        "pipelines/generate_epiweekly_data.R",
+        f"{model_run_dir}",
+    ]
+    if data_names is not None:
+        command.extend(["--data-names", f"{data_names}"])
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"generate_epiweekly_data: {result.stderr.decode('utf-8')}"
+        )
+    return None
 
 
 def aggregate_to_national(
@@ -462,7 +500,6 @@ def process_and_save_loc_data(
     first_training_date: dt.date,
     last_training_date: dt.date,
     model_run_dir: Path,
-    param_estimates: pl.LazyFrame = None,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     loc_level_nssp_data: pl.LazyFrame = None,
@@ -470,9 +507,6 @@ def process_and_save_loc_data(
     credentials_dict: dict = None,
     nhsn_data_path: Path | str = None,
 ) -> None:
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
             "Must provide at least one "
@@ -544,14 +578,13 @@ def process_and_save_loc_data(
 
     nwss_training_data = (
         loc_level_nwss_data.to_dict(as_series=False)
-        if loc_level_nwss_data is not None
+        if not loc_level_nwss_data.is_empty()
         else None
     )
 
     data_for_model_fit = {
         "loc_pop": loc_pop,
         "right_truncation_offset": right_truncation_offset,
-        "pop_fraction": pop_fraction.tolist(),
         "nwss_training_data": nwss_training_data,
         "nssp_training_data": nssp_training_data.to_dict(as_series=False),
         "nhsn_training_data": nhsn_training_data.to_dict(as_series=False),
@@ -586,14 +619,14 @@ def process_and_save_loc_param(
     loc_abb,
     disease,
     loc_level_nwss_data,
-    param_estimates,
-    fit_ed_visits,
+    param_data_dir,
     model_run_dir,
 ) -> None:
-    loc_pop_df = get_loc_pop_df()
-    loc_pop = loc_pop_df.filter(pl.col("abb") == loc_abb).item(0, "population")
+    loc_pop = (
+        get_loc_pop_df().filter(pl.col("abb") == loc_abb).item(0, "population")
+    )
 
-    if loc_level_nwss_data is None:
+    if loc_level_nwss_data.is_empty():
         pop_fraction = jnp.array([1])
     else:
         subpop_sizes = (
@@ -613,11 +646,12 @@ def process_and_save_loc_param(
         else:
             pop_fraction = subpop_sizes / sum(subpop_sizes)
 
+    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     pmfs = get_pmfs(
         param_estimates=param_estimates,
         loc_abb=loc_abb,
         disease=disease,
-        right_truncation_required=fit_ed_visits,
+        right_truncation_required=False,
     )
 
     inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
@@ -643,7 +677,9 @@ def process_and_save_loc_param(
     return None
 
 
-def get_training_dates(report_date, exclude_last_n_days, n_training_days):
+def get_training_dates_and_model_dir(
+    report_date, exclude_last_n_days, n_training_days, disease, loc, output_dir
+):
     # + 1 because max date in dataset is report_date - 1
     last_training_date = report_date - dt.timedelta(
         days=exclude_last_n_days + 1
@@ -657,7 +693,17 @@ def get_training_dates(report_date, exclude_last_n_days, n_training_days):
     first_training_date = last_training_date - dt.timedelta(
         days=n_training_days - 1
     )
-    return (last_training_date, first_training_date)
+
+    model_batch_dir_name = (
+        f"{disease.lower()}_r_{report_date}_f_"
+        f"{first_training_date}_t_{last_training_date}"
+    )
+
+    model_batch_dir = Path(output_dir, model_batch_dir_name)
+
+    model_run_dir = Path(model_batch_dir, "model_runs", loc)
+    os.makedirs(model_run_dir, exist_ok=True)
+    return (last_training_date, first_training_date, model_run_dir)
 
 
 def get_available_reports(
@@ -676,6 +722,7 @@ def main(
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     nwss_data_dir: Path | str,
+    param_data_dir: Path | str,
     output_dir: Path | str,
     n_training_days: int,
     credentials_path: Path = None,
@@ -702,15 +749,21 @@ def main(
 
     report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     logger.info(f"Report date: {report_date}")
-    (last_training_date, first_training_date) = get_training_dates(
-        report_date,
-        exclude_last_n_days,
-        n_training_days,
+    (last_training_date, first_training_date, model_run_dir) = (
+        get_training_dates_and_model_dir(
+            report_date,
+            exclude_last_n_days,
+            n_training_days,
+            disease,
+            loc,
+            output_dir,
+        )
     )
 
-    logger.info(f"First training date {first_training_date}")
-    logger.info(f"last training date: {last_training_date}")
-
+    logger.info(
+        f"last training date: {last_training_date}, "
+        f"first training date {first_training_date}"
+    )
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
@@ -759,23 +812,7 @@ def main(
             f"No data available for the requested report date {report_date}"
         )
 
-    nwss_data_disease_map = {
-        "COVID-19": "covid",
-        "Influenza": "flu",
-    }
-
-    def get_available_nwss_reports(
-        data_dir: str | Path,
-        glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
-    ):
-        return [
-            datetime.strptime(
-                f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
-            ).date()
-            for f in Path(data_dir).glob(f"{glob_pattern}*")
-        ]
-
-    available_nwss_reports = get_available_nwss_reports(nwss_data_dir)
+    available_nwss_reports = get_available_nwss_reports(nwss_data_dir, disease)
     if report_date in available_nwss_reports:
         nwss_data_raw = pl.scan_parquet(
             Path(
@@ -784,45 +821,49 @@ def main(
                 "bronze.parquet",
             )
         )
-        nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
-            (pl.col("location") == loc)
-            & (pl.col("date") >= first_training_date)
+        nwss_data_cleaned = (
+            clean_nwss_data(nwss_data_raw)
+            .filter(
+                (pl.col("location") == loc)
+                & (pl.col("date") >= first_training_date)
+            )
+            .collect()
         )
-        loc_level_nwss_data = preprocess_ww_data(nwss_data_cleaned.collect())
+        loc_level_nwss_data = preprocess_ww_data(nwss_data_cleaned)
     else:
         raise ValueError(
             "NWSS data not available for the requested report date "
             f"{report_date}"
         )
 
-    model_batch_dir_name = (
-        f"{disease.lower()}_r_{report_date}_f_"
-        f"{first_training_date}_t_{last_training_date}"
-    )
-
-    model_batch_dir = Path(output_dir, model_batch_dir_name)
-
-    model_run_dir = Path(model_batch_dir, "model_runs", loc)
-    os.makedirs(model_run_dir, exist_ok=True)
-
     logger.info(f"Processing {loc}")
-    process_and_save_loc(
+    process_and_save_loc_data(
         loc_abb=loc,
         disease=disease,
-        facility_level_nssp_data=facility_level_nssp_data,
-        loc_level_nssp_data=loc_level_nssp_data,
-        loc_level_nwss_data=loc_level_nwss_data,
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         model_run_dir=model_run_dir,
         logger=logger,
+        facility_level_nssp_data=facility_level_nssp_data,
+        loc_level_nssp_data=loc_level_nssp_data,
+        loc_level_nwss_data=loc_level_nwss_data,
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
 
     logger.info("Generating epiweekly datasets from daily datasets...")
     generate_epiweekly_data(model_run_dir)
+
+    logger.info(f"Preparing model parameeters for {loc}")
+
+    process_and_save_loc_param(
+        loc_abb=loc,
+        disease=disease,
+        loc_level_nwss_data=loc_level_nwss_data,
+        param_data_dir=param_data_dir,
+        model_run_dir=model_run_dir,
+    )
 
     logger.info(
         "Data preparation complete."
@@ -920,6 +961,17 @@ if __name__ == "__main__":
         type=Path,
         help=("Path to local NHSN data (for local testing)"),
         default=None,
+    )
+
+    parser.add_argument(
+        "--param-data-dir",
+        type=Path,
+        default=Path("private_data", "prod_param_estimates"),
+        help=(
+            "Directory in which to look for parameter estimates"
+            "such as delay PMFs."
+        ),
+        required=True,
     )
 
     args = parser.parse_args()
