@@ -13,7 +13,9 @@ env:
   IMAGE_NAME: pyrenew-hew
 
 jobs:
-  setup-federated-login:  
+
+  run-timeseries-e:
+
     runs-on: ubuntu-latest
     environment: |-
       ${{github.ref_name == 'main'               && 'production'
@@ -42,23 +44,10 @@ jobs:
         id: idtoken
         with:
           script: |
-            const coredemo = require('@actions/core')
-            const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
-            coredemo.setOutput('id_token', id_token)
-  
-  run-timeseries-e:
+            const core = require('@actions/core')
+            const id_token = await core.getIDToken('api://AzureADTokenExchange')
+            core.setOutput('id_token', id_token)
 
-    runs-on: ubuntu-latest
-    environment: |-
-      ${{github.ref_name == 'main'               && 'production'
-                                                 || 'test'      }}
-    permissions:
-      contents: read
-      id-token: write
-
-    needs: setup-federated-login
-    
-    steps:
       - name: Submit timeseries-e Job
         id: create_batch_pool
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
@@ -75,7 +64,7 @@ jobs:
             az login --service-principal \
                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                     --federated-token ${{ needs.setup-federated-login.outputs.id_token }} \
+                     --federated-token ${{ steps.idtoken.outputs.id_token }} \
                      --output none
 
             echo "Setting env vars for Azure Batch and azuretools compatibility."
@@ -112,7 +101,6 @@ jobs:
   #   permissions:
   #     contents: read
   #     id-token: write
-  #   needs: [ setup-federated-login, run-timeseries-e ]
   #   steps:
   #     - name: Submit Pyrenew-e Job
   #       id: create_batch_pool
