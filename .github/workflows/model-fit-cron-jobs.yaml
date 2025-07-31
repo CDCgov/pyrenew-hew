@@ -72,7 +72,7 @@ jobs:
               az login --service-principal \
               --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
               --tenant ${{ secrets.AZURE_TENANT_ID }} \
-              --federated-token ${{ steps.idtoken.outputs.id_token }} \
+              --federated-token ${{ needs.setup-federated-login.steps.idtoken.outputs.id_token }} \
               --output none
 
             echo "Setting env vars for Azure Batch and azuretools compatibility."
