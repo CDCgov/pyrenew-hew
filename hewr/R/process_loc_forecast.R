@@ -7,11 +7,12 @@ variable_resolution_key <-
   )
 
 load_and_aggregate_ts <- function(
-    model_run_dir,
-    timeseries_model_name,
-    daily_training_dat,
-    epiweekly_training_dat,
-    required_columns) {
+  model_run_dir,
+  timeseries_model_name,
+  daily_training_dat,
+  epiweekly_training_dat,
+  required_columns
+) {
   timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
 
   samples_file_names <- c(
