@@ -41,7 +41,7 @@ env:
 
 jobs:
 
-  generate-data:
+  generate-test-data:
     runs-on:  ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,9 +59,42 @@ jobs:
           path: ${{ env.DATA_DIR }}
           retention-days: 1
 
+  prepare-fit-data:
+    needs: generate-test-data
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        disease: [COVID-19, Influenza]
+        location: [US, CA, MT, DC]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Pyrenew-HEW via UV
+        uses: ./.github/actions/setup-pyrenew-hew
+
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
+
+      - name: Download test data
+        uses: actions/download-artifact@v4
+        with:
+          name: test-data
+          path: ${{ env.DATA_DIR }}
+
+      - name: Prepare model fit data
+        run: |
+          uv run bash pipelines/tests/test_prep_data.sh ${{ env.BASE_DIR }} \
+          ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
+
+      - name: Upload model fitting data
+        uses: actions/upload-artifact@v4
+        with:
+          name: |
+            prep-fit-data-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
+          path: ${{ env.BASE_DIR }}
 
   fit-timeseries-models:
-    needs: generate-data
+    needs: prepare-fit-data
     runs-on: ubuntu-latest
     strategy:
       matrix:
