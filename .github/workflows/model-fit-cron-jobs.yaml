@@ -59,15 +59,18 @@ jobs:
           print_logs: true
           script: |
             echo "Logging into Azure CLI"
-
+            echo "------------------------------------------------------------"
             echo "The federated token is ${{ steps.idtoken.outputs.id_token }}"
+            echo "------------------------------------------------------------"
             az login --service-principal \
                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
                      --federated-token ${{ steps.idtoken.outputs.id_token }} \
                      --output none
 
+            echo "--------------------------------------------------------------"
             echo "Setting env vars for Azure Batch and azuretools compatibility."
+            echo "--------------------------------------------------------------"
             az storage blob download \
                      --account-name "cfaazurebatchprd" \
                      --container-name "pyrenew-hew-config" \
@@ -76,11 +79,24 @@ jobs:
                      --auth-mode login \
                      --overwrite
 
-            cat ./azureconfig.sh >> $GITHUB_ENV
+            CURRENT_BRANCH="${{ steps.get-branch.outputs.branch }}"
+            echo "--------------------------------------------------------------"
+            echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
+            echo "--------------------------------------------------------------"
+            git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
+            cd pyrenew-hew
 
-            FORECAST_DATE=$(date +%Y-%m-%d)
+            echo "-------------------------------------------------"
+            echo "Setting environment variables from azureconfig.sh"
+            echo "-------------------------------------------------"
+            cat ./azureconfig.sh >> $GITHUB_ENV
+            source ./azureconfig.sh
 
             # Run timeseries-e
+            echo "------------------------------------------"
+            echo "Submitting timeseries e job to Azure Batch"
+            echo "------------------------------------------"
+            FORECAST_DATE=$(date +%Y-%m-%d)
             uv run python pipelines/batch/setup_job.py \
               --model-family timeseries \
               --output-subdir "${FORECAST_DATE}_forecasts" \
