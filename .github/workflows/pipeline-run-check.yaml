@@ -84,7 +84,7 @@ jobs:
       - name: Prepare model fit data
         run: |
           uv run bash pipelines/tests/test_prep_data.sh ${{ env.BASE_DIR }} \
-          ${{ matrix.disease }} ${{ matrix.location }} 
+          ${{ matrix.disease }} ${{ matrix.location }}
 
       - name: Upload model fitting data
         uses: actions/upload-artifact@v4
