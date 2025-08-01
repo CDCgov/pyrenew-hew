@@ -76,19 +76,18 @@ jobs:
                      --auth-mode login \
                      --overwrite
 
-  #           # Sourcing the azure config
-  #           source ./azureconfig.sh # TODO: Eventually we want to move away from needing this at all.
+            cat ./azureconfig.sh >> $GITHUB_ENV
 
-  #           FORECAST_DATE=$(date +%Y-%m-%d)
+            FORECAST_DATE=$(date +%Y-%m-%d)
 
-  #           # Run timeseries-e
-  #           uv run python pipelines/batch/setup_job.py \
-  #             --model-family timeseries \
-  #             --output-subdir "${FORECAST_DATE}_forecasts" \
-  #             --model-letters "e" \
-  #             --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
-  #             --pool-id pyrenew-pool \
-  #             --dry-run True
+            # Run timeseries-e
+            uv run python pipelines/batch/setup_job.py \
+              --model-family timeseries \
+              --output-subdir "${FORECAST_DATE}_forecasts" \
+              --model-letters "e" \
+              --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
+              --pool-id pyrenew-pool \
+              --dry-run True
 
    
   # run-pyrenew-e:
