@@ -59,7 +59,7 @@ jobs:
           path: ${{ env.DATA_DIR }}
           retention-days: 1
 
-  model-fit-data:
+  prepare-data:
     needs: generate-test-data
     runs-on: ubuntu-latest
     strategy:
@@ -84,17 +84,17 @@ jobs:
       - name: Prepare model fit data
         run: |
           uv run bash pipelines/tests/test_prep_data.sh ${{ env.BASE_DIR }} \
-          ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
+          ${{ matrix.disease }} ${{ matrix.location }} 
 
       - name: Upload model fitting data
         uses: actions/upload-artifact@v4
         with:
           name: |
-            model-fit-data-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
+            fit-data-${{ matrix.disease }}-${{ matrix.location }}
           path: ${{ env.BASE_DIR }}
 
   fit-timeseries-models:
-    needs: model-fit-data
+    needs: prepare-data
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -110,10 +110,10 @@ jobs:
       - name: Set up R with hewr package
         uses: ./.github/actions/setup-hewr
 
-      - name: Download test data
+      - name: Download data to fit
         uses: actions/download-artifact@v4
         with:
-          pattern: model-fit-data-*
+          pattern: fit-data-*
           path: ${{ env.BASE_DIR }}
           merge-multiple: true
 
@@ -163,11 +163,12 @@ jobs:
       - name: Set up R with hewr package
         uses: ./.github/actions/setup-hewr
 
-      - name: Download test data
+      - name: Download data to fit
         uses: actions/download-artifact@v4
         with:
-          name: test-data
-          path: ${{ env.DATA_DIR }}
+          pattern: fit-data-*
+          path: ${{ env.BASE_DIR }}
+          merge-multiple: true
 
       - name: Download timeseries output
         if: ${{ matrix.model != 'hw' && matrix.model != 'h' }}
