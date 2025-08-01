@@ -7,11 +7,12 @@ variable_resolution_key <-
   )
 
 load_and_aggregate_ts <- function(
-    model_run_dir,
-    timeseries_model_name,
-    daily_training_dat,
-    epiweekly_training_dat,
-    required_columns) {
+  model_run_dir,
+  timeseries_model_name,
+  daily_training_dat,
+  epiweekly_training_dat,
+  required_columns
+) {
   timeseries_model_dir <- fs::path(model_run_dir, timeseries_model_name)
 
   samples_file_names <- c(
@@ -76,9 +77,10 @@ load_and_aggregate_ts <- function(
 }
 
 prop_from_timeseries <- function(
-    e_denominator_samples,
-    e_numerator_samples,
-    required_columns) {
+  e_denominator_samples,
+  e_numerator_samples,
+  required_columns
+) {
   prop_disease_ed_visits_tbl <-
     dplyr::left_join(
       e_denominator_samples,
@@ -97,9 +99,10 @@ prop_from_timeseries <- function(
 }
 
 epiweekly_samples_from_daily <- function(
-    daily_samples,
-    variables_to_aggregate = "observed_ed_visits",
-    required_columns) {
+  daily_samples,
+  variables_to_aggregate = "observed_ed_visits",
+  required_columns
+) {
   aggregated_samples <-
     daily_samples |>
     dplyr::filter(.data$.variable %in% variables_to_aggregate) |>
@@ -218,12 +221,13 @@ read_and_combine_data <- function(model_run_dir) {
 #' @param epiweekly Is the timeseries epiweekly (as opposed
 #' to daily)? Boolean, default `FALSE` (i.e. daily timeseries).
 to_tidy_draws_timeseries <- function(
-    tidy_forecast,
-    observed,
-    date_colname = "date",
-    sample_id_colname = ".draw",
-    value_colname = ".value",
-    epiweekly = FALSE) {
+  tidy_forecast,
+  observed,
+  date_colname = "date",
+  sample_id_colname = ".draw",
+  value_colname = ".value",
+  epiweekly = FALSE
+) {
   first_forecast_date <- min(tidy_forecast[[date_colname]])
   resolution <- unique(tidy_forecast$resolution)
   day_count <- ifelse(resolution == "epiweekly", 7, 1)
@@ -269,12 +273,13 @@ to_tidy_draws_timeseries <- function(
 #'   "2024-01-01", "2024-01-01", "2024-01-01", 7
 #' )
 group_time_index_to_date <- function(
-    group_time_index,
-    variable,
-    first_nssp_date,
-    first_nhsn_date,
-    first_nwss_date,
-    nhsn_step_size) {
+  group_time_index,
+  variable,
+  first_nssp_date,
+  first_nhsn_date,
+  first_nwss_date,
+  nhsn_step_size
+) {
   first_date_key <- c(
     observed_hospital_admissions = first_nhsn_date,
     observed_ed_visits = first_nssp_date,
@@ -294,11 +299,12 @@ group_time_index_to_date <- function(
 }
 
 process_pyrenew_model <- function(
-    model_run_dir,
-    pyrenew_model_name,
-    ts_samples,
-    required_columns_e,
-    n_forecast_days) {
+  model_run_dir,
+  pyrenew_model_name,
+  ts_samples,
+  required_columns_e,
+  n_forecast_days
+) {
   model_info <- parse_model_run_dir_path(model_run_dir)
 
   pyrenew_model_components <- parse_pyrenew_model_name(pyrenew_model_name)
@@ -489,12 +495,13 @@ process_pyrenew_model <- function(
 #' `ci`,
 #' @export
 process_loc_forecast <- function(
-    model_run_dir,
-    n_forecast_days,
-    pyrenew_model_name = NA,
-    timeseries_model_name = NA,
-    ci_widths = c(0.5, 0.8, 0.95),
-    save = TRUE) {
+  model_run_dir,
+  n_forecast_days,
+  pyrenew_model_name = NA,
+  timeseries_model_name = NA,
+  ci_widths = c(0.5, 0.8, 0.95),
+  save = TRUE
+) {
   if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
     stop(
       "Either `pyrenew_model_name` or `timeseries_model_name`",

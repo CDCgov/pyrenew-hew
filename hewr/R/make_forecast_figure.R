@@ -24,20 +24,21 @@
 #' @return a ggplot object
 #' @export
 make_forecast_figure <- function(
-    dat,
-    geo_value,
-    disease,
-    .variable,
-    resolution,
-    aggregated_numerator,
-    aggregated_denominator,
-    y_transform,
-    ci,
-    data_vintage_date,
-    highlight_dates = NULL,
-    highlight_labels = NULL,
-    display_cutpoints = TRUE,
-    max_lab_site_index = 5) {
+  dat,
+  geo_value,
+  disease,
+  .variable,
+  resolution,
+  aggregated_numerator,
+  aggregated_denominator,
+  y_transform,
+  ci,
+  data_vintage_date,
+  highlight_dates = NULL,
+  highlight_labels = NULL,
+  display_cutpoints = TRUE,
+  max_lab_site_index = 5
+) {
   tbl_for_join <- tibble::tibble(
     geo_value = geo_value,
     disease = disease,
