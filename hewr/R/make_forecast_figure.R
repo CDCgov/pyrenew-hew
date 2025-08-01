@@ -24,21 +24,20 @@
 #' @return a ggplot object
 #' @export
 make_forecast_figure <- function(
-  dat,
-  geo_value,
-  disease,
-  .variable,
-  resolution,
-  aggregated_numerator,
-  aggregated_denominator,
-  y_transform,
-  ci,
-  data_vintage_date,
-  highlight_dates = NULL,
-  highlight_labels = NULL,
-  display_cutpoints = TRUE,
-  max_lab_site_index = 5
-) {
+    dat,
+    geo_value,
+    disease,
+    .variable,
+    resolution,
+    aggregated_numerator,
+    aggregated_denominator,
+    y_transform,
+    ci,
+    data_vintage_date,
+    highlight_dates = NULL,
+    highlight_labels = NULL,
+    display_cutpoints = TRUE,
+    max_lab_site_index = 5) {
   tbl_for_join <- tibble::tibble(
     geo_value = geo_value,
     disease = disease,
@@ -89,16 +88,12 @@ make_forecast_figure <- function(
   title <- glue::glue("{title_prefix} {core_name} in {geo_value}")
 
   last_training_date <- dat |>
-    dplyr::filter(.data$data_type == "train") |>
     dplyr::pull(date) |>
     max()
 
   lineribbon_dat <- fig_ci
 
-  point_dat <- fig_dat |>
-    dplyr::filter(.data$date <= max(lineribbon_dat$date)) |>
-    dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
-    dplyr::arrange(dplyr::desc(.data$data_type))
+  point_dat <- fig_dat
 
   ## Processing for wastewater plots
   if (.variable == "site_level_log_ww_conc") {
