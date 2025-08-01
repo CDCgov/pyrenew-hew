@@ -89,7 +89,7 @@ jobs:
             echo "-------------------------------------------------"
             echo "Setting environment variables from azureconfig.sh"
             echo "-------------------------------------------------"
-            cat ./azureconfig.sh >> $GITHUB_ENV
+            # cat ./azureconfig.sh >> $GITHUB_ENV
             source ./azureconfig.sh
 
             # Run timeseries-e
