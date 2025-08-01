@@ -59,7 +59,7 @@ jobs:
           path: ${{ env.DATA_DIR }}
           retention-days: 1
 
-  prepare-fit-data:
+  model-fit-data:
     needs: generate-test-data
     runs-on: ubuntu-latest
     strategy:
@@ -90,11 +90,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: |
-            prep-fit-data-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
+            model-fit-data-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
           path: ${{ env.BASE_DIR }}
 
   fit-timeseries-models:
-    needs: prepare-fit-data
+    needs: model-fit-data
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -113,10 +113,11 @@ jobs:
       - name: Download test data
         uses: actions/download-artifact@v4
         with:
-          name: test-data
-          path: ${{ env.DATA_DIR }}
+          pattern: model-fit-data-*
+          path: ${{ env.BASE_DIR }}
+          merge-multiple: true
 
-      - name: Fit model
+      - name: Fit timeseries model
         run: |
           uv run bash pipelines/tests/test_ts_fit.sh ${{ env.BASE_DIR }} \
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
@@ -176,7 +177,7 @@ jobs:
           path: ${{ env.BASE_DIR }}
           merge-multiple: true
 
-      - name: Fit model
+      - name: Fit pyrenew model
         run: |
           uv run bash pipelines/tests/test_pyrenew_fit.sh ${{ env.BASE_DIR }} \
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
