@@ -127,7 +127,12 @@ def main(
     report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     logger.info(f"Report date: {report_date}")
     (_, _, model_run_dir) = get_training_dates_and_model_dir(
-        report_date, exclude_last_n_days, n_training_days, disease, loc, output_dir
+        report_date,
+        exclude_last_n_days,
+        n_training_days,
+        disease,
+        loc,
+        output_dir,
     )
 
     logger.info("Performing baseline forecasting and postprocessing...")

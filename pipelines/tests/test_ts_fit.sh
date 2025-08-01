@@ -19,7 +19,7 @@ python pipelines/forecast_timeseries.py \
 	--n-training-days 90 \
 	--n-chains 2 \
 	--n-samples 250 \
-	--model-letters "$model_letters" 
+	--model-letters "$model_letters"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"
 	exit 1

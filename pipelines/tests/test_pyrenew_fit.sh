@@ -21,7 +21,7 @@ python pipelines/forecast_pyrenew.py \
 	--n-samples 250 \
 	--n-warmup 250 \
 	--model-letters "$model_letters" \
-	--additional-forecast-letters "$model_letters" 
+	--additional-forecast-letters "$model_letters"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"
 	exit 1

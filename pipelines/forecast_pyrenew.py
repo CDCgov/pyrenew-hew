@@ -50,7 +50,9 @@ def record_git_info(model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def convert_inferencedata_to_parquet(model_run_dir: Path, model_name: str) -> None:
+def convert_inferencedata_to_parquet(
+    model_run_dir: Path, model_name: str
+) -> None:
     result = subprocess.run(
         [
             "Rscript",
@@ -165,19 +167,27 @@ def main(
     any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
     if not any_fit:
         raise ValueError(
-            "pyrenew_null (fitting to no signals) " "is not supported by this pipeline"
+            "pyrenew_null (fitting to no signals) "
+            "is not supported by this pipeline"
         )
 
     report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     logger.info(f"Report date: {report_date}")
 
     (_, _, model_run_dir) = get_training_dates_and_model_dir(
-        report_date, exclude_last_n_days, n_training_days, disease, loc, output_dir
+        report_date,
+        exclude_last_n_days,
+        n_training_days,
+        disease,
+        loc,
+        output_dir,
     )
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 
-    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
+    if fit_ed_visits and not os.path.exists(
+        Path(model_run_dir, timeseries_model_name)
+    ):
         raise ValueError(
             f"{timeseries_model_name} model run not found. "
             "Please ensure that the timeseries forecasts "
@@ -311,7 +321,9 @@ if __name__ == "__main__":
         "--n-warmup",
         type=int,
         default=1000,
-        help=("Number of warmup iterations per chain for NUTS (default: 1000)."),
+        help=(
+            "Number of warmup iterations per chain for NUTS (default: 1000)."
+        ),
     )
 
     parser.add_argument(
