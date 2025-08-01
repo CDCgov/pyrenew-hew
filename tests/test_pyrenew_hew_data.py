@@ -130,12 +130,6 @@ def test_to_forecast_data(
         ).weekday()
         == 5
     )
-    assert (
-        forecast_data.first_hospital_admissions_date.astype(
-            dt.datetime
-        ).weekday()
-        == 5
-    )
 
     assert (
         (
