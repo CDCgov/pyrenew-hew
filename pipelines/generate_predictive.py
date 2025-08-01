@@ -3,7 +3,6 @@ import pickle
 from pathlib import Path
 
 import arviz as az
-from jax.typing import ArrayLike
 
 from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
@@ -16,11 +15,6 @@ def generate_and_save_predictions(
     model_run_dir: str | Path,
     model_name: str,
     n_forecast_points: int,
-    generation_interval_pmf: ArrayLike,
-    inf_to_hosp_admit_lognormal_loc: ArrayLike,
-    inf_to_hosp_admit_lognormal_scale: ArrayLike,
-    inf_to_hosp_admit_pmf: ArrayLike,
-    right_truncation_pmf: ArrayLike = None,
     predict_ed_visits: bool = False,
     predict_hospital_admissions: bool = False,
     predict_wastewater: bool = False,
@@ -31,9 +25,7 @@ def generate_and_save_predictions(
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
 
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir)
-        / "data"
-        / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
         **flags_from_pyrenew_model_name(model_name),
     )
 
@@ -61,13 +53,9 @@ def generate_and_save_predictions(
         sample_wastewater=predict_wastewater,
     )
 
-    idata = az.from_numpyro(
-        my_model.mcmc, posterior_predictive=posterior_predictive
-    )
+    idata = az.from_numpyro(my_model.mcmc, posterior_predictive=posterior_predictive)
 
-    idata.to_dataframe().to_parquet(
-        model_dir / "inference_data.parquet", index=False
-    )
+    idata.to_dataframe().to_parquet(model_dir / "inference_data.parquet", index=False)
 
     # Save one netcdf for reloading
     idata.to_netcdf(model_dir / "inference_data.nc")
@@ -111,8 +99,7 @@ if __name__ == "__main__":
         type=bool,
         action=argparse.BooleanOptionalAction,
         help=(
-            "If provided, generate posterior predictions "
-            "for hospital admissions."
+            "If provided, generate posterior predictions " "for hospital admissions."
         ),
     )
     parser.add_argument(

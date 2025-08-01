@@ -6,12 +6,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-import polars as pl
-from forecast_pyrenew import (
-    generate_epiweekly_data,
-    get_available_reports,
-)
-from prep_data import get_training_dates
+from prep_data import get_training_dates_and_model_dir
 
 
 def plot_and_save_loc_forecast(
@@ -131,20 +126,9 @@ def main(
 
     report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     logger.info(f"Report date: {report_date}")
-    (last_training_date, first_training_date) = get_training_dates(
-        report_date, exclude_last_n_days, n_training_days
+    (_, _, model_run_dir) = get_training_dates_and_model_dir(
+        report_date, exclude_last_n_days, n_training_days, disease, loc, output_dir
     )
-
-    logger.info(f"last training date: {last_training_date}")
-    logger.info(f"First training date {first_training_date}")
-    model_batch_dir_name = (
-        f"{disease.lower()}_r_{report_date}_f_"
-        f"{first_training_date}_t_{last_training_date}"
-    )
-    model_batch_dir = Path(output_dir, model_batch_dir_name)
-    model_run_dir = Path(model_batch_dir, "model_runs", loc)
-
-    os.makedirs(model_run_dir, exist_ok=True)
 
     logger.info("Performing baseline forecasting and postprocessing...")
 

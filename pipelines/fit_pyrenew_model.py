@@ -3,7 +3,6 @@ from pathlib import Path
 
 import jax
 import numpy as np
-from jax.typing import ArrayLike
 
 from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
@@ -12,11 +11,6 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 def fit_and_save_model(
     model_run_dir: str,
     model_name: str,
-    generation_interval_pmf: ArrayLike,
-    inf_to_hosp_admit_lognormal_loc: ArrayLike,
-    inf_to_hosp_admit_lognormal_scale: ArrayLike,
-    inf_to_hosp_admit_pmf: ArrayLike,
-    right_truncation_pmf: ArrayLike = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -31,14 +25,11 @@ def fit_and_save_model(
         rng_key = jax.random.key(rng_key)
     else:
         raise ValueError(
-            "rng_key must be an integer with which "
-            "to seed :func:`jax.random.key`"
+            "rng_key must be an integer with which " "to seed :func:`jax.random.key`"
         )
 
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir)
-        / "data"
-        / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
