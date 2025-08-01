@@ -68,23 +68,23 @@ jobs:
                      --federated-token ${{ steps.idtoken.outputs.id_token }} \
                      --output none
 
-            echo "--------------------------------------------------------------"
-            echo "Setting env vars for Azure Batch and azuretools compatibility."
-            echo "--------------------------------------------------------------"
-            az storage blob download \
-                     --account-name "cfaazurebatchprd" \
-                     --container-name "pyrenew-hew-config" \
-                     --name "azureconfig.sh" \
-                     --file "./azureconfig.sh" \
-                     --auth-mode login \
-                     --overwrite
-
             CURRENT_BRANCH="${{ steps.get-branch.outputs.branch }}"
             echo "--------------------------------------------------------------"
             echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
             echo "--------------------------------------------------------------"
             git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
             cd pyrenew-hew
+
+            echo "----------------------------------------------------------------------------"
+            echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
+            echo "----------------------------------------------------------------------------"
+            az storage blob download \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --file "./azureconfig.sh" \
+              --auth-mode login \
+              --overwrite
 
             echo "-------------------------------------------------"
             echo "Setting environment variables from azureconfig.sh"
