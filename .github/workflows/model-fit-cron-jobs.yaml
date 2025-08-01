@@ -48,8 +48,43 @@ jobs:
             const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
             coredemo.setOutput('id_token', id_token)
 
+      - name: Check for NSSP Latest Comprehensive
+        id: check-nssp-latest-comprehensive
+        # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "Logging into Azure CLI"
+            echo "------------------------------------------------------------"
+            echo "The federated token is ${{ steps.idtoken.outputs.id_token }}"
+            echo "------------------------------------------------------------"
+            az login --service-principal \
+                     --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+                     --tenant ${{ secrets.AZURE_TENANT_ID }} \
+                     --federated-token ${{ steps.idtoken.outputs.id_token }} \
+                     --output none
+
+            nssp_latest_comprehensive_last_modified=$(
+              az storage blob show \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --query "properties.lastModified" \
+              --auth-mode login \
+              --output tsv
+            )
+
+            echo "-----------------------------------------"
+            echo "Latest comprehensive last modified date:"
+            echo $nssp_latest_comprehensive_last_modified
+            echo "-----------------------------------------"
+
       - name: Submit timeseries-e Job
-        id: create_batch_pool
+        id: submit-timeseries-e
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
         uses: CDCgov/cfa-actions/runner-action@v1.4.0
         with:
