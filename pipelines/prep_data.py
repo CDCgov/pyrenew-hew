@@ -794,28 +794,6 @@ def main(
     available_loc_level_reports = get_available_reports(
         state_level_nssp_data_dir
     )
-    first_available_loc_report = min(available_loc_level_reports)
-    last_available_loc_report = max(available_loc_level_reports)
-
-    if report_date in available_loc_level_reports:
-        loc_report_date = report_date
-    elif report_date > last_available_loc_report:
-        loc_report_date = last_available_loc_report
-    elif report_date > first_available_loc_report:
-        raise ValueError(
-            "Dataset appear to be missing some state-level "
-            f"reports. First entry is {first_available_loc_report}, "
-            f"last is {last_available_loc_report}, but no entry "
-            f"for {report_date}"
-        )
-    else:
-        raise ValueError(
-            "Requested report date is earlier than the first "
-            "state-level vintage. This is not currently supported"
-        )
-
-    if loc_report_date is not None:
-        logger.info(f"Using location-level data as of: {loc_report_date}")
 
     facility_level_nssp_data, loc_level_nssp_data = None, None
 
@@ -825,9 +803,9 @@ def main(
         facility_level_nssp_data = pl.scan_parquet(
             Path(facility_level_nssp_data_dir, facility_datafile)
         )
-    if loc_report_date in available_loc_level_reports:
+    if report_date in available_loc_level_reports:
         logger.info("location-level data available for the given report date.")
-        loc_datafile = f"{loc_report_date}.parquet"
+        loc_datafile = f"{report_date}.parquet"
         loc_level_nssp_data = pl.scan_parquet(
             Path(state_level_nssp_data_dir, loc_datafile)
         )
