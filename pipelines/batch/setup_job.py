@@ -4,6 +4,7 @@ of pyrenew-hew on Azure Batch.
 """
 
 import argparse
+import datetime as dt
 import itertools
 from pathlib import Path
 
@@ -28,8 +29,8 @@ def main(
     model_letters: str,
     job_id: str,
     pool_id: str,
-    model_family: str,
     diseases: str | list[str],
+    run_script: str,
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
@@ -93,9 +94,9 @@ def main(
         exclusions (see DEFAULT_EXCLUDED_LOCATIONS). If ``None``,
         only the default locations will be excluded. Default ``None``.
 
-    model_family
-        The model family to use for the job. Default 'pyrenew'.
-        Supported values are 'pyrenew' and 'timeseries'.
+    run_script
+        Python script to run for the job. Supported values are
+        'prep_data', 'forecast_pyrenew' and 'forecast_timeseries'.
 
     test
         Is this a testing run? Default ``False``.
@@ -128,16 +129,29 @@ def main(
     # ========================
     # Model Letters Validation
     # ========================
-    validate_hew_letters(model_letters)
+    if model_letters is not None:
+        validate_hew_letters(model_letters)
     additional_forecast_letters = additional_forecast_letters or model_letters
-    validate_hew_letters(additional_forecast_letters)
+    if additional_forecast_letters is not None:
+        validate_hew_letters(additional_forecast_letters)
 
     # =======================
-    # Model Family Validation
+    # Script Type Validation
     # =======================
-    if model_family == "timeseries" and model_letters != "e":
+    supported_scripts = [
+        "forecast_pyrenew",
+        "forecast_timeseries",
+        "prep_data",
+    ]
+    if run_script not in supported_scripts:
         raise ValueError(
-            "Only model_letters 'e' is supported for the 'timeseries' model_family."
+            f"Unsupported script type: {run_script}; "
+            f"supported script types are: {', '.join(supported_scripts)}"
+        )
+
+    if run_script == "forecast_timeseries" and model_letters != "e":
+        raise ValueError(
+            "Only model_letters 'e' is supported for the 'forecast_timeseries' script type."
         )
 
     # ========================================
@@ -204,23 +218,34 @@ def main(
     )
 
     # =====================================
-    # Model Family and Run Script Selection
+    # Script Selection and Additional Args
     # =====================================
-    if model_family == "pyrenew":
-        run_script = "forecast_pyrenew.py"
+
+    if run_script == "prep_data":
         additional_args = (
-            f"--n-warmup {n_warmup} "
             "--nwss-data-dir nwss-vintages "
             "--priors-path pipelines/priors/prod_priors.py "
-            f"--additional-forecast-letters {additional_forecast_letters} "
+            "--facility-level-nssp-data-dir nssp-etl/gold "
+            "--state-level-nssp-data-dir "
+            "nssp-archival-vintages/gold "
+            "--param-data-dir params "
+            "--credentials-path config/creds.toml "
         )
-    elif model_family == "timeseries":
-        run_script = "forecast_timeseries.py"
-        additional_args = ""
+    elif run_script == "forecast_pyrenew":
+        additional_args = (
+            f"--n-warmup {n_warmup} "
+            f"--model-letters {model_letters} "
+            f"--additional-forecast-letters {additional_forecast_letters} "
+            f"--n-samples {n_samples} "
+        )
+    elif run_script == "forecast_timeseries":
+        additional_args = (
+            f"--n-samples {n_samples} --model-letters {model_letters} "
+        )
     else:
         raise ValueError(
-            f"Unsupported model family: {model_family}. "
-            "Supported values are 'pyrenew' and 'timeseries'."
+            f"Unsupported script type: {run_script}. "
+            f"Supported values are: {', '.join(supported_scripts)}"
         )
 
     # =======================================
@@ -228,22 +253,13 @@ def main(
     # =======================================
     base_call = (
         "/bin/bash -c '"
-        f"uv run python pipelines/{run_script} "
+        f"uv run python pipelines/{run_script}.py "
         "--disease {disease} "
         "--loc {loc} "
         f"--n-training-days {n_training_days} "
-        f"--n-samples {n_samples} "
-        "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--state-level-nssp-data-dir "
-        "nssp-archival-vintages/gold "
-        "--param-data-dir params "
         "--output-dir {output_dir} "
-        "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
-        f"--model-letters {model_letters} "
-        "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet "
         f"{additional_args}"
         "'"
     )
@@ -265,7 +281,7 @@ def main(
     table = Table(show_header=False, pad_edge=False)
     table.add_row("Job ID", str(job_id))
     table.add_row("Pool ID", str(pool_id))
-    table.add_row("Model Family", str(model_family))
+    table.add_row("Script", str(run_script + ".py"))
     table.add_row("Model Letters", str(model_letters))
     table.add_row(
         "Additional Forecast Letters", str(additional_forecast_letters)
@@ -336,7 +352,7 @@ def main(
             base_call=base_call.format(
                 loc=loc,
                 disease=disease,
-                report_date="latest",
+                report_date=dt.datetime.today().strftime("%Y-%m-%d"),
                 output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
@@ -453,14 +469,14 @@ if __name__ == "__main__":
         default=None,
     )
     parser.add_argument(
-        "--model-family",
+        "--run-script",
         type=str,
         help=(
-            "Model family to use for the job. "
-            "Supported values are 'pyrenew' and 'timeseries'. "
-            "Default 'pyrenew'."
+            "The python script to run. "
+            "Supported values are 'forecast_pyrenew', 'forecast_timeseries', and 'prep_data'. "
+            "Default 'forecast_pyrenew'."
         ),
-        default="pyrenew",
+        default=None,
     )
 
     # Function to convert string to boolean

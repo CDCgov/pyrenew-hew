@@ -40,11 +40,11 @@ def get_env_or_prompt(var_name: str, default: str = "") -> str:
 
 
 def setup_job_append_id(
-    model_letters: str,
     job_id: str,
     pool_id: str,
-    model_family: str,
+    run_script: str,
     diseases: str | list[str],
+    model_letters: str = "",
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
@@ -59,11 +59,11 @@ def setup_job_append_id(
     updated_job_id = job_id + append_id
     if Confirm.ask(f"Submit job {updated_job_id}?"):
         setup_job(
-            model_letters=model_letters,
             job_id=updated_job_id,
             pool_id=pool_id,
-            model_family=model_family,
+            run_script=run_script,
             diseases=diseases,
+            model_letters=model_letters,
             output_subdir=output_subdir,
             additional_forecast_letters=additional_forecast_letters,
             container_image_name=container_image_name,
@@ -76,12 +76,21 @@ def setup_job_append_id(
         )
 
 
+prepare_data = partial(
+    setup_job_append_id,
+    job_id="pyrenew-prod-data-",
+    pool_id="pyrenew-pool",
+    run_script="prep_data",
+    diseases=DISEASES,
+    output_subdir=output_subdir,
+)
+
 fit_timeseries_e = partial(
     setup_job_append_id,
     model_letters="e",
     job_id="timeseries-e-prod-",
     pool_id="pyrenew-pool",
-    model_family="timeseries",
+    run_script="forecast_timeseries",
     diseases=DISEASES,
     output_subdir=output_subdir,
 )
@@ -91,7 +100,7 @@ fit_pyrenew_e = partial(
     model_letters="e",
     job_id="pyrenew-e-prod-",
     pool_id="pyrenew-pool",
-    model_family="pyrenew",
+    run_script="forecast_pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
 )
@@ -101,7 +110,7 @@ fit_pyrenew_h = partial(
     model_letters="h",
     job_id="pyrenew-h-prod-",
     pool_id="pyrenew-pool",
-    model_family="pyrenew",
+    run_script="forecast_pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
 )
@@ -111,7 +120,7 @@ fit_pyrenew_he = partial(
     model_letters="he",
     job_id="pyrenew-he-prod-",
     pool_id="pyrenew-pool",
-    model_family="pyrenew",
+    run_script="forecast_pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
 )
@@ -121,7 +130,7 @@ fit_pyrenew_hw = partial(
     model_letters="hw",
     job_id="pyrenew-hw-prod-",
     pool_id="pyrenew-pool-32gb",
-    model_family="pyrenew",
+    run_script="forecast_pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
     locations_exclude=W_EXCLUDE_DEFAULT,
@@ -132,7 +141,7 @@ fit_pyrenew_hew = partial(
     model_letters="hew",
     job_id="pyrenew-hew-prod-",
     pool_id="pyrenew-pool-32gb",
-    model_family="pyrenew",
+    run_script="forecast_pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
     locations_exclude=W_EXCLUDE_DEFAULT,
@@ -161,6 +170,30 @@ def ask_about_reruns():
         "e_exclude_last_n_days": e_exclude_last_n_days,
         "h_exclude_last_n_days": h_exclude_last_n_days,
     }
+
+
+def do_data_prep_reruns(
+    locations_include: list[str] | None = None,
+    e_exclude_last_n_days: int = 1,
+    h_exclude_last_n_days: int = 1,
+    append_id: str = "",
+):
+    if e_exclude_last_n_days == 1:
+        print("Skipping data preparation re-run due to E")
+    else:
+        prepare_data(
+            append_id=append_id,
+            locations_include=locations_include,
+            exclude_last_n_days=e_exclude_last_n_days,
+        )
+    if h_exclude_last_n_days == 1:
+        print("Skipping data preparation re-run due to H")
+    else:
+        prepare_data(
+            append_id=append_id,
+            locations_include=locations_include,
+            exclude_last_n_days=h_exclude_last_n_days,
+        )
 
 
 def do_timeseries_reruns(
@@ -373,9 +406,11 @@ if __name__ == "__main__":
     nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
 
     choices = [
+        "Prepare Initial data to fit",
         "Fit initial Timeseries Models",
         "Fit initial PyRenew-E Models",
         "Fit initial PyRenew-H** models",
+        "Rerun data preparation",
         "Rerun Timeseries Models",
         "Rerun PyRenew Models",
         "Postprocess Forecast Batches",
@@ -395,6 +430,8 @@ if __name__ == "__main__":
         if selected_choice == "Exit":
             print("Exiting...")
             break
+        elif selected_choice == "Prepare Initial data to fit":
+            prepare_data(append_id=current_time)
         elif selected_choice == "Fit initial Timeseries Models":
             fit_timeseries_e(append_id=current_time)
         elif selected_choice == "Fit initial PyRenew-E Models":
@@ -404,6 +441,11 @@ if __name__ == "__main__":
             fit_pyrenew_he(append_id=current_time)
             fit_pyrenew_hw(append_id=current_time)
             fit_pyrenew_hew(append_id=current_time)
+        elif selected_choice == "Rerun data preparation":
+            ask_about_reruns_input = ask_about_reruns()
+            do_data_prep_reruns(
+                append_id=current_time, **ask_about_reruns_input
+            )
         elif selected_choice == "Rerun Timeseries Models":
             ask_about_reruns_input = ask_about_reruns()
             do_timeseries_reruns(
