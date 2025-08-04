@@ -2,20 +2,18 @@
 Set up a multi-location, multi-disease run
 of pyrenew-hew on Azure Batch.
 """
+
 # Basic Libraries
 import argparse
 import itertools
 from pathlib import Path
 
-# Rich printing
-from rich import print
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-
 # Azure
-from azure.batch import models, BatchServiceClient
-from azure.identity import ManagedIdentityCredential, WorkloadIdentityCredential
+from azure.batch import BatchServiceClient, models
+from azure.identity import (
+    ManagedIdentityCredential,
+    WorkloadIdentityCredential,
+)
 
 # Custom CFA Azure Libraries
 from azuretools.auth import EnvCredentialHandler
@@ -23,6 +21,12 @@ from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
+
+# Rich printing
+from rich import print
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 # Local library
 from pyrenew_hew.utils import validate_hew_letters
