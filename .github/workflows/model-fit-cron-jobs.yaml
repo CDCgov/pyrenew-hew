@@ -8,9 +8,6 @@ on:
     branches:
       - 'jk*' # For testing purposes; matches any branch starting with 'jk'
 
-env:
-  REGISTRY: cfaprdbatchcr.azurecr.io/
-  IMAGE_NAME: pyrenew-hew
 
 jobs:
 
