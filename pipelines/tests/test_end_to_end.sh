@@ -32,7 +32,7 @@ echo "TEST-MODE: Running data preparation for all locations, and diseases"
 for location in "${LOCATIONS[@]}"; do
 	for disease in "${DISEASES[@]}"; do
 		echo "TEST-MODE: Running data preparation for $disease, $location"
-		bash pipelines/tests/test_prep_data.sh "$BASE_DIR" "$disease" "$location" "e"
+		bash pipelines/tests/test_prep_data.sh "$BASE_DIR" "$disease" "$location"
 		if [ "$?" -ne 0 ]; then
 			echo "TEST-MODE FAIL: Data preparation failed"
 			exit 1

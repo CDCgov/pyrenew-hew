@@ -678,10 +678,8 @@ def save_nwss_etl_by_disease(dfs, disease):
     ).write_parquet(Path(nwss_etl_dir, "bronze.parquet"))
 
 
-[
+for disease in ["COVID-19", "Influenza"]:
     save_nwss_etl_by_disease(dfs, disease)
-    for disease in ["COVID-19", "Influenza"]
-]
 
 # %% nhsn_test_data/nhsn_test_data.parquet
 nhsn_data_sates = (
