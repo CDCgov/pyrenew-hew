@@ -1,9 +1,7 @@
 import argparse
 import datetime as dt
 import logging
-import os
 import subprocess
-from datetime import datetime
 from pathlib import Path
 
 from prep_data import get_training_dates_and_model_dir
@@ -187,13 +185,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--report-date",
-        type=str,
-        default=datetime.today().strftime("%Y-%m-%d"),
-        help="Report date in YYYY-MM-DD format",
-    )
-
-    parser.add_argument(
         "--model-letters",
         type=str,
         default="e",
@@ -201,6 +192,13 @@ if __name__ == "__main__":
             "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
         ),
         required=True,
+    )
+
+    parser.add_argument(
+        "--report-date",
+        type=str,
+        default=dt.datetime.today().strftime("%Y-%m-%d"),
+        help="Report date in YYYY-MM-DD format",
     )
 
     parser.add_argument(

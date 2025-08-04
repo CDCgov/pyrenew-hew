@@ -576,7 +576,7 @@ nssp_state_level_gold.select(cs.exclude("any_update_this_day")).write_parquet(
 
 
 # %% nwss_vinatges/NWSS-ETL-{disease}-2024-12-21/bronze.parquet
-def save_disease_level_nwss_etl(dfs, disease):
+def save_nwss_etl_by_disease(dfs, disease):
     nwss_etl_base = (
         dfs["site_level_log_ww_conc"]
         .filter(pl.col("disease") == disease)
@@ -679,7 +679,7 @@ def save_disease_level_nwss_etl(dfs, disease):
 
 
 [
-    save_disease_level_nwss_etl(dfs, disease)
+    save_nwss_etl_by_disease(dfs, disease)
     for disease in ["COVID-19", "Influenza"]
 ]
 

@@ -7,7 +7,6 @@ import shutil
 import subprocess
 import tempfile
 import tomllib
-from datetime import datetime
 from logging import Logger
 from pathlib import Path
 
@@ -38,7 +37,9 @@ def get_available_nwss_reports(
 ):
     glob_pattern = f"NWSS-ETL-{nwss_data_disease_map[disease]}-"
     return [
-        datetime.strptime(f.stem.removeprefix(glob_pattern), "%Y-%m-%d").date()
+        dt.datetime.strptime(
+            f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
+        ).date()
         for f in Path(data_dir).glob(f"{glob_pattern}*")
     ]
 
@@ -410,12 +411,12 @@ def get_pmfs(
     disease : str
         Name of the disease.
 
-    as_of : datetime.date, optional
+    as_of : dt.datetime.date, optional
         Date for which parameters must be valid
         (start_date <= as_of <= end_date). Defaults
         to the most recent estimates.
 
-    reference_date : datetime.date, optional
+    reference_date : dt.datetime.date, optional
         The reference date for right truncation estimates.
         Defaults to as_of value. Selects the most recent estimate
         with reference_date <= this value.
@@ -732,7 +733,7 @@ def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
     return [
-        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        dt.datetime.strptime(f.stem, "%Y-%m-%d").date()
         for f in Path(data_dir).glob(glob_pattern)
     ]
 
@@ -923,7 +924,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--report-date",
         type=str,
-        default=datetime.today().strftime("%Y-%m-%d"),
+        default=dt.datetime.today().strftime("%Y-%m-%d"),
         help="Report date in YYYY-MM-DD format",
     )
 

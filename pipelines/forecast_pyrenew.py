@@ -4,7 +4,6 @@ import logging
 import os
 import subprocess
 import tomllib
-from datetime import datetime
 from pathlib import Path
 
 import tomli_w
@@ -272,12 +271,7 @@ if __name__ == "__main__":
             "(e.g. 'AK', 'AL', 'AZ', etc.)."
         ),
     )
-    parser.add_argument(
-        "--report-date",
-        type=str,
-        default=datetime.today().strftime("%Y-%m-%d"),
-        help="Report date in YYYY-MM-DD format",
-    )
+
     parser.add_argument(
         "--model-letters",
         type=str,
@@ -286,6 +280,14 @@ if __name__ == "__main__":
         ),
         required=True,
     )
+
+    parser.add_argument(
+        "--report-date",
+        type=str,
+        default=dt.datetime.today().strftime("%Y-%m-%d"),
+        help="Report date in YYYY-MM-DD format",
+    )
+
     parser.add_argument(
         "--output-dir",
         type=Path,
