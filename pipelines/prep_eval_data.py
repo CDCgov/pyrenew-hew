@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import logging
 from pathlib import Path
 
@@ -18,7 +18,7 @@ def save_eval_data(
     last_training_date,
     latest_comprehensive_path: Path | str,
     output_data_dir: Path | str,
-    last_eval_date: datetime.date = None,
+    last_eval_date: dt.date = None,
     output_file_name: str = "eval_data.tsv",
     credentials_dict: dict = None,
     nhsn_data_path: Path | str = None,

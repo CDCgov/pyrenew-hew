@@ -1,19 +1,20 @@
 import argparse
+import datetime as dt
 import logging
 import os
 import shutil
 import subprocess
 import tomllib
-from datetime import datetime, timedelta
 from pathlib import Path
 
+import jax.numpy as jnp
 import polars as pl
 import tomli_w
 from fit_pyrenew_model import fit_and_save_model
 from generate_predictive import (
     generate_and_save_predictions,
 )
-from prep_data import process_and_save_loc
+from prep_data import process_and_save_loc_data, process_and_save_loc_param
 from prep_eval_data import save_eval_data
 from prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pygit2.repository import Repository
@@ -150,7 +151,7 @@ def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
     return [
-        datetime.strptime(f.stem, "%Y-%m-%d").date()
+        dt.datetime.strptime(f.stem, "%Y-%m-%d").date()
         for f in Path(data_dir).glob(glob_pattern)
     ]
 
@@ -261,7 +262,7 @@ def main(
     if report_date == "latest":
         report_date = max(available_facility_level_reports)
     else:
-        report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
+        report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
 
     if report_date in available_loc_level_reports:
         loc_report_date = report_date
@@ -285,7 +286,9 @@ def main(
         logger.info(f"Using location-level data as of: {loc_report_date}")
 
     # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - timedelta(days=exclude_last_n_days + 1)
+    last_training_date = report_date - dt.timedelta(
+        days=exclude_last_n_days + 1
+    )
 
     if last_training_date >= report_date:
         raise ValueError(
@@ -296,7 +299,7 @@ def main(
 
     logger.info(f"last training date: {last_training_date}")
 
-    first_training_date = last_training_date - timedelta(
+    first_training_date = last_training_date - dt.timedelta(
         days=n_training_days - 1
     )
 
@@ -331,7 +334,7 @@ def main(
         glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
     ):
         return [
-            datetime.strptime(
+            dt.datetime.strptime(
                 f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
             ).date()
             for f in Path(data_dir).glob(f"{glob_pattern}*")
@@ -363,6 +366,7 @@ def main(
         loc_level_nwss_data = None
 
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
+
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -394,7 +398,7 @@ def main(
     copy_and_record_priors(priors_path, model_run_dir)
 
     logger.info(f"Processing {loc}")
-    process_and_save_loc(
+    process_and_save_loc_data(
         loc_abb=loc,
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
@@ -403,11 +407,18 @@ def main(
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
-        param_estimates=param_estimates,
         model_run_dir=model_run_dir,
         logger=logger,
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
+    )
+    process_and_save_loc_param(
+        loc_abb=loc,
+        disease=disease,
+        loc_level_nwss_data=loc_level_nwss_data,
+        param_estimates=param_estimates,
+        fit_ed_visits=fit_ed_visits,
+        model_run_dir=model_run_dir,
     )
     logger.info("Getting eval data...")
     if eval_data_path is None:
@@ -419,7 +430,7 @@ def main(
         last_training_date=last_training_date,
         latest_comprehensive_path=eval_data_path,
         output_data_dir=Path(model_run_dir, "data"),
-        last_eval_date=report_date + timedelta(days=n_forecast_days),
+        last_eval_date=report_date + dt.timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
