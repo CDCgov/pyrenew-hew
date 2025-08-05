@@ -19,7 +19,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from pipelines.utils import get_training_dates_and_model_dir
+from pipelines.utils import get_training_dates_and_model_run_dir
 from pyrenew_hew.utils import validate_hew_letters
 
 # Locations that are always excluded due to lack of NSSP ED visit data
@@ -357,7 +357,7 @@ def main(
     # ===========================
     for disease, loc in itertools.product(disease_list, all_locations):
         (last_training_date, first_training_date, model_run_dir) = (
-            get_training_dates_and_model_dir(
+            get_training_dates_and_model_run_dir(
                 dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
                 exclude_last_n_days,
                 n_training_days,
