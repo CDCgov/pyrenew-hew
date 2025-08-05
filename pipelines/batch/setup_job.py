@@ -237,7 +237,7 @@ def main(
             "--credentials-path config/creds.toml "
             f"--report-date {report_date} "
             "--disease {disease} "
-            "--last-training-date {last_training_date}"
+            "--last-training-date {last_training_date} "
             "--first-training-date {first_training_date}"
         )
     elif run_script == "forecast_pyrenew":

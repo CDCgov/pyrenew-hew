@@ -55,6 +55,7 @@ def setup_job_append_id(
     locations_exclude: list[str] | None = None,
     test: bool = False,
     append_id: str = "",
+    report_date: str = dt.datetime.today().strftime("%Y-%m-%d"),
 ):
     updated_job_id = job_id + append_id
     if Confirm.ask(f"Submit job {updated_job_id}?"):
@@ -62,6 +63,7 @@ def setup_job_append_id(
             job_id=updated_job_id,
             pool_id=pool_id,
             run_script=run_script,
+            report_date=report_date,
             diseases=diseases,
             model_letters=model_letters,
             output_subdir=output_subdir,
