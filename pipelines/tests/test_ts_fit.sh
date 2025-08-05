@@ -12,13 +12,13 @@ location="$3"
 model_letters="$4"
 
 python pipelines/forecast_timeseries.py \
-	--disease "$disease" \
 	--loc "$location" \
-	--report-date "2024-12-21" \
-	--output-dir "$BASE_DIR/2024-12-21_forecasts" \
-	--n-training-days 90 \
+	--model-run-dir \
+	"$BASE_DIR/2024-12-21_forecasts/${disease,,}_r_2024-12-21_f_2024-09-22_t_2024-12-20/model_runs/${location}" \
 	--n-chains 2 \
 	--n-samples 250 \
+	--n-forecast-days 28 \
+	--exclude-last-n-days 0 \
 	--model-letters "$model_letters"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"

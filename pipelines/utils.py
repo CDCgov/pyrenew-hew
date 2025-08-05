@@ -4,7 +4,6 @@ pipeline.
 """
 
 import datetime as dt
-import json
 import os
 import re
 import runpy
@@ -12,7 +11,6 @@ from pathlib import Path
 
 from forecasttools import ensure_listlike, location_table
 
-from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 from pyrenew_hew.utils import build_pyrenew_hew_model
 

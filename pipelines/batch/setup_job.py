@@ -236,7 +236,6 @@ def main(
             "--param-data-dir params "
             "--credentials-path config/creds.toml "
             f"--report-date {report_date} "
-            f"--n-training-days {n_training_days} "
             "--disease {disease} "
             "--last-training-date {last_training_date}"
             "--first-training-date {first_training_date}"
@@ -363,7 +362,7 @@ def main(
                 n_training_days,
                 disease,
                 loc,
-                str(Path("output", output_subdir)),
+                Path("output", output_subdir),
             )
         )
         task = get_task_config(

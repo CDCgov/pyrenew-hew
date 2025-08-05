@@ -713,9 +713,9 @@ def main(
     disease: str,
     loc: str,
     report_date: str,
-    last_training_date,
-    first_training_date,
-    model_run_dir,
+    last_training_date: str | dt.date,
+    first_training_date: str | dt.date,
+    model_run_dir: Path | str,
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     nwss_data_dir: Path | str,
@@ -742,13 +742,23 @@ def main(
         logger.info("No credentials file given. Will proceed without one.")
         credentials_dict = None
 
-    report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
-    logger.info(f"Report date: {report_date}")
+    if isinstance(report_date, str):
+        report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
+    if isinstance(first_training_date, str):
+        first_training_date = dt.datetime.strptime(
+            first_training_date, "%Y-%m-%d"
+        ).date()
+    if isinstance(last_training_date, str):
+        last_training_date = dt.datetime.strptime(
+            last_training_date, "%Y-%m-%d"
+        ).date()
 
     logger.info(
+        f"Report date: {report_date}, "
         f"last training date: {last_training_date}, "
         f"first training date {first_training_date}"
     )
+
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
@@ -868,6 +878,20 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--last-training-date",
+        type=str,
+        required=True,
+        help="Last training date in YYYY-MM-DD format",
+    )
+
+    parser.add_argument(
+        "--first-training-date",
+        type=str,
+        required=True,
+        help="First training date in YYYY-MM-DD format",
+    )
+
+    parser.add_argument(
         "--facility-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_etl_gold"),
@@ -899,9 +923,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--output-dir",
+        "--model-run-dir",
         type=Path,
-        default="private_data",
+        required=True,
         help="Directory in which to save output.",
     )
 
@@ -913,13 +937,6 @@ if __name__ == "__main__":
             "that require priors as pyrenew RandomVariable objects."
         ),
         required=True,
-    )
-
-    parser.add_argument(
-        "--n-training-days",
-        type=int,
-        default=180,
-        help="Number of training days (default: 180).",
     )
 
     parser.add_argument(

@@ -11,7 +11,6 @@ from fit_pyrenew_model import fit_and_save_model
 from generate_predictive import (
     generate_and_save_predictions,
 )
-from prep_data import get_training_dates_and_model_dir
 from pygit2.repository import Repository
 
 from pyrenew_hew.utils import (
