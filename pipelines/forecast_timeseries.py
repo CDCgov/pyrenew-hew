@@ -4,8 +4,6 @@ import logging
 import subprocess
 from pathlib import Path
 
-from prep_data import get_training_dates_and_model_dir
-
 
 def plot_and_save_loc_forecast(
     model_run_dir: Path,
@@ -96,11 +94,8 @@ def create_hubverse_table(model_fit_path):
 
 
 def main(
-    disease: str,
     loc: str,
-    report_date: str,
-    output_dir: Path | str,
-    n_training_days: int,
+    model_run_dir: Path | str,
     n_forecast_days: int,
     n_denominator_samples: int,
     model_letters: str,
@@ -119,18 +114,7 @@ def main(
 
     logger.info(
         "Starting single-location timeseries forecasting pipeline for "
-        f"location {loc}, and report date {report_date}"
-    )
-
-    report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
-    logger.info(f"Report date: {report_date}")
-    (_, _, model_run_dir) = get_training_dates_and_model_dir(
-        report_date,
-        exclude_last_n_days,
-        n_training_days,
-        disease,
-        loc,
-        output_dir,
+        f"location {loc}."
     )
 
     logger.info("Performing baseline forecasting and postprocessing...")
@@ -156,9 +140,7 @@ def main(
     logger.info("Postprocessing complete.")
 
     logger.info(
-        "Single-location timeseries pipeline complete "
-        f"for location {loc}, and "
-        f"report date {report_date}."
+        f"Single-location timeseries pipeline complete for location {loc}."
     )
     return None
 
@@ -166,12 +148,6 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Create fit data for disease modeling."
-    )
-    parser.add_argument(
-        "--disease",
-        type=str,
-        required=True,
-        help="Disease to model (e.g., COVID-19, Influenza, RSV).",
     )
 
     parser.add_argument(
@@ -195,24 +171,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--report-date",
-        type=str,
-        default=dt.datetime.today().strftime("%Y-%m-%d"),
-        help="Report date in YYYY-MM-DD format",
-    )
-
-    parser.add_argument(
-        "--output-dir",
+        "--model-run-dir",
         type=Path,
-        default="private_data",
+        required=True,
         help="Directory in which to save output.",
-    )
-
-    parser.add_argument(
-        "--n-training-days",
-        type=int,
-        default=180,
-        help="Number of training days (default: 180).",
     )
 
     parser.add_argument(

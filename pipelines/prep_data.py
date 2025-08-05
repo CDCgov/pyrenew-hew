@@ -700,35 +700,6 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def get_training_dates_and_model_dir(
-    report_date, exclude_last_n_days, n_training_days, disease, loc, output_dir
-):
-    # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - dt.timedelta(
-        days=exclude_last_n_days + 1
-    )
-    if last_training_date >= report_date:
-        raise ValueError(
-            "Last training date must be before the report date. "
-            "Got a last training date of {last_training_date} "
-            "with a report date of {report_date}."
-        )
-    first_training_date = last_training_date - dt.timedelta(
-        days=n_training_days - 1
-    )
-
-    model_batch_dir_name = (
-        f"{disease.lower()}_r_{report_date}_f_"
-        f"{first_training_date}_t_{last_training_date}"
-    )
-
-    model_batch_dir = Path(output_dir, model_batch_dir_name)
-
-    model_run_dir = Path(model_batch_dir, "model_runs", loc)
-    os.makedirs(model_run_dir, exist_ok=True)
-    return (last_training_date, first_training_date, model_run_dir)
-
-
 def get_available_reports(
     data_dir: str | Path, glob_pattern: str = "*.parquet"
 ):
@@ -742,16 +713,16 @@ def main(
     disease: str,
     loc: str,
     report_date: str,
+    last_training_date,
+    first_training_date,
+    model_run_dir,
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     nwss_data_dir: Path | str,
     param_data_dir: Path | str,
     priors_path: Path | str,
-    output_dir: Path | str,
-    n_training_days: int,
     credentials_path: Path = None,
     nhsn_data_path: Path | str = None,
-    exclude_last_n_days: int = 0,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -773,16 +744,6 @@ def main(
 
     report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     logger.info(f"Report date: {report_date}")
-    (last_training_date, first_training_date, model_run_dir) = (
-        get_training_dates_and_model_dir(
-            report_date,
-            exclude_last_n_days,
-            n_training_days,
-            disease,
-            loc,
-            output_dir,
-        )
-    )
 
     logger.info(
         f"last training date: {last_training_date}, "
@@ -959,16 +920,6 @@ if __name__ == "__main__":
         type=int,
         default=180,
         help="Number of training days (default: 180).",
-    )
-
-    parser.add_argument(
-        "--exclude-last-n-days",
-        type=int,
-        default=0,
-        help=(
-            "Optionally exclude the final n days of available training "
-            "data (Default: 0, i.e. exclude no available data"
-        ),
     )
 
     parser.add_argument(

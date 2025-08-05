@@ -19,6 +19,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from pipelines.utils import get_training_dates_and_model_dir
 from pyrenew_hew.utils import validate_hew_letters
 
 # Locations that are always excluded due to lack of NSSP ED visit data
@@ -31,6 +32,7 @@ def main(
     pool_id: str,
     diseases: str | list[str],
     run_script: str,
+    report_date: str,
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
@@ -57,6 +59,9 @@ def main(
     output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
+
+    report_date
+        Report date in YYYY-MM-DD format.
 
     container_image_name
         Name of the container to use for the job.
@@ -230,6 +235,11 @@ def main(
             "nssp-archival-vintages/gold "
             "--param-data-dir params "
             "--credentials-path config/creds.toml "
+            f"--report-date {report_date} "
+            f"--n-training-days {n_training_days} "
+            "--disease {disease} "
+            "--last-training-date {last_training_date}"
+            "--first-training-date {first_training_date}"
         )
     elif run_script == "forecast_pyrenew":
         additional_args = (
@@ -237,10 +247,13 @@ def main(
             f"--model-letters {model_letters} "
             f"--additional-forecast-letters {additional_forecast_letters} "
             f"--n-samples {n_samples} "
+            f"--exclude-last-n-days {exclude_last_n_days} "
         )
     elif run_script == "forecast_timeseries":
         additional_args = (
-            f"--n-samples {n_samples} --model-letters {model_letters} "
+            f"--n-samples {n_samples} "
+            f"--model-letters {model_letters} "
+            f"--exclude-last-n-days {exclude_last_n_days} "
         )
     else:
         raise ValueError(
@@ -254,12 +267,8 @@ def main(
     base_call = (
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script}.py "
-        "--disease {disease} "
         "--loc {loc} "
-        f"--n-training-days {n_training_days} "
-        "--output-dir {output_dir} "
-        "--report-date {report_date} "
-        f"--exclude-last-n-days {exclude_last_n_days} "
+        "--model-run-dir {model_run_dir} "
         f"{additional_args}"
         "'"
     )
@@ -347,13 +356,24 @@ def main(
     # Azure Batch Task Submission
     # ===========================
     for disease, loc in itertools.product(disease_list, all_locations):
+        (last_training_date, first_training_date, model_run_dir) = (
+            get_training_dates_and_model_dir(
+                dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
+                exclude_last_n_days,
+                n_training_days,
+                disease,
+                loc,
+                str(Path("output", output_subdir)),
+            )
+        )
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-prod",
             base_call=base_call.format(
                 loc=loc,
                 disease=disease,
-                report_date=dt.datetime.today().strftime("%Y-%m-%d"),
-                output_dir=str(Path("output", output_subdir)),
+                model_run_dir=model_run_dir,
+                last_training_date=last_training_date,
+                first_training_date=first_training_date,
             ),
             container_settings=container_settings,
             log_blob_container="pyrenew-hew-logs",
@@ -405,6 +425,12 @@ if __name__ == "__main__":
             "in which to save results."
         ),
         default="./",
+    )
+    parser.add_argument(
+        "--report-date",
+        type=str,
+        default=dt.datetime.today().strftime("%Y-%m-%d"),
+        help="Report date in YYYY-MM-DD format",
     )
     parser.add_argument(
         "--container-image-name",
