@@ -3,18 +3,100 @@ name: Submit model fit jobs to Azure Batch via cron
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0,30 9-20 * * WED" # Every Wednesday, every 30 minutes from 9 AM to 8 PM UTC
+    - cron: "0,30 9-20 * * WED"  # Every Wednesday, every 30 minutes from 9 AM to 8 PM UTC
   push:
     branches:
       - 'jk*' # For testing purposes; matches any branch starting with 'jk'
 
 
 jobs:
-
+ 
   # TODO: Split into separate jobs for each model, and one for the oidc token
 
-  run-timeseries-e:
+  # generate-oidc-token:
+  #   runs-on: ubuntu-latest
+  #   environment: |-
+  #     ${{github.ref_name == 'main'               && 'production'
+  #                                                || 'test'      }}
+  #   permissions:
+  #     contents: read
+  #     id-token: write
 
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: npm install @actions/core@1.6.0 @actions/http-client
+  #     - uses: actions/github-script@v7
+  #       id: idtoken
+  #       with:
+  #         script: |
+  #           const coredemo = require('@actions/core')
+  #           const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
+  #           coredemo.setOutput('id_token', id_token)
+
+  # check-available-data:
+  #   runs-on: ubuntu-latest
+  #   needs: generate-oidc-token
+  #   environment: |-
+  #     ${{github.ref_name == 'main'               && 'production'
+  #                                                || 'test'      }}
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: npm install @actions/core@1.6.0 @actions/http-client
+  #     - name: Check for Available Data
+  #       id: check-available-data-step
+  #       uses: CDCgov/cfa-actions/runner-action@v1.4.0
+  #       with:
+  #         github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+  #         github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+  #         wait_for_completion: true
+  #         print_logs: true
+  #         script: |
+  #           echo "Logging into Azure CLI"
+  #           echo "------------------------------------------------------------"
+  #           echo "The federated token is ${{ steps.idtoken.outputs.id_token }}"
+  #           echo "------------------------------------------------------------"
+  #           az login --service-principal \
+  #                    --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+  #                    --tenant ${{ secrets.AZURE_TENANT_ID }} \
+  #                    --federated-token ${{ steps.idtoken.outputs.id_token }} \
+  #                    --output none
+
+  #           # TODO: actually check the latest comprehensive parquet, not the pyrenew-hew config
+  #           echo "Checking for Latest Comprehensive NSSP Data"
+  #           nssp_latest_comprehensive_last_modified=$(
+  #             az storage blob show \
+  #             --account-name "cfaazurebatchprd" \
+  #             --container-name "nssp-etl" \
+  #             --name "latest_comprehensive.parquet" \
+  #             --query "properties.lastModified" \
+  #             --auth-mode login \
+  #             --output tsv
+  #           )
+  #           echo 'nssp_latest_comprehensive_check' >> $GITHUB_OUTPUT
+
+  #           echo "Checking for NWSS ETL Data"
+  #           echo 'nwss_data_check' >> $GITHUB_OUTPUT
+
+  #           echo "Checking for NHSN Data"
+  #           echo 'nhsn_data_check' >> $GITHUB_OUTPUT
+            
+  #           echo "Checking for timeseries-e Data"
+  #           echo 'timeseries_e_data_check' >> $GITHUB_OUTPUT
+
+  #           echo "-----------------------------------------"
+  #           echo "Latest comprehensive last modified date:"
+  #           echo $nssp_latest_comprehensive_last_modified
+  #           echo "-----------------------------------------"
+
+
+
+  run-timeseries-e:
+    # needs: [ generate-oidc-token, check-available-data ] 
+    # if: ${{ needs.check-available-data.steps.outputs.nssp_latest_comprehensive_check == 'true' }}
     runs-on: ubuntu-latest
     environment: |-
       ${{github.ref_name == 'main'               && 'production'
@@ -68,20 +150,20 @@ jobs:
                      --output none
 
             # TODO: actually check the latest comprehensive parquet, not the pyrenew-hew config
-            nssp_latest_comprehensive_last_modified=$(
-              az storage blob show \
-              --account-name "cfaazurebatchprd" \
-              --container-name "pyrenew-hew-config" \
-              --name "azureconfig.sh" \
-              --query "properties.lastModified" \
-              --auth-mode login \
-              --output tsv
-            )
+            # nssp_latest_comprehensive_last_modified=$(
+            #   az storage blob show \
+            #   --account-name "cfaazurebatchprd" \
+            #   --container-name "pyrenew-hew-config" \
+            #   --name "azureconfig.sh" \
+            #   --query "properties.lastModified" \
+            #   --auth-mode login \
+            #   --output tsv
+            # )
 
-            echo "-----------------------------------------"
-            echo "Latest comprehensive last modified date:"
-            echo $nssp_latest_comprehensive_last_modified
-            echo "-----------------------------------------"
+            # echo "-----------------------------------------"
+            # echo "Latest comprehensive last modified date:"
+            # echo $nssp_latest_comprehensive_last_modified
+            # echo "-----------------------------------------"
 
       - name: Submit timeseries-e Job
         id: submit-timeseries-e
@@ -138,6 +220,7 @@ jobs:
               --model-letters "e" \
               --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
               --pool-id pyrenew-pool \
+              --test True \
               --dry-run True
 
    
