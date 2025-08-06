@@ -111,7 +111,8 @@ jobs:
 
 
   run-timeseries-e:
-    # needs: [ generate-oidc-token, check-available-data ]
+    # needs: [ generate-oidc-token, check-available-data, set-environment ]
+    needs: set-environment
     # if: ${{ needs.check-available-data.steps.outputs.nssp_latest_comprehensive_check == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ needs.set-environment.outputs.ENVIRONMENT_NAME }}
