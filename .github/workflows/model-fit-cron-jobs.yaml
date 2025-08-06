@@ -248,7 +248,7 @@ jobs:
               --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
               --pool-id pyrenew-pool \
               --test True \
-              --dry-run True
+              --dry-run False
 
 
   # run-pyrenew-e:
