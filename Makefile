@@ -32,6 +32,10 @@ ifndef DRY_RUN
 DRY_RUN = False
 endif
 
+ifndef ENVIRONMENT
+ENVIRONMENT = prod
+endif
+
 # ----------- #
 # Help Target #
 # ----------- #
@@ -96,7 +100,7 @@ run_timeseries:
 		--model-family timeseries \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "e" \
-		--job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
+		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}_t" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
@@ -107,7 +111,7 @@ run_e_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "e" \
-		--job-id "pyrenew-e-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
@@ -118,7 +122,7 @@ run_h_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "h" \
-		--job-id "pyrenew-h-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-h-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
@@ -129,7 +133,7 @@ run_he_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "he" \
-		--job-id "pyrenew-he-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-he-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
@@ -140,7 +144,7 @@ run_hw_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hw" \
-		--job-id "pyrenew-hw-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-hw-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
@@ -151,7 +155,7 @@ run_hew_model:
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
-		--job-id "pyrenew-hew-prod_${FORECAST_DATE}" \
+		--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
