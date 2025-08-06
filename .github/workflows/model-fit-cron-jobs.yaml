@@ -129,8 +129,8 @@ jobs:
             const id_token = await coredemo.getIDToken('api://AzureADTokenExchange')
             coredemo.setOutput('id_token', id_token)
 
-      - name: Check for NSSP Latest Comprehensive
-        id: check-nssp-latest-comprehensive
+      - name: Check for Dataset Availability
+        id: check-dataset-availability
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
         uses: CDCgov/cfa-actions/runner-action@v1.4.0
         with:
@@ -149,17 +149,44 @@ jobs:
                      --federated-token ${{ steps.idtoken.outputs.id_token }} \
                      --output none
 
-            # TODO: actually check the latest comprehensive parquet, not the pyrenew-hew config
+            # nssp
             # nssp_latest_comprehensive_last_modified=$(
             #   az storage blob show \
             #   --account-name "cfaazurebatchprd" \
-            #   --container-name "pyrenew-hew-config" \
-            #   --name "azureconfig.sh" \
+            #   --container-name "nssp-etl" \
+            #   --name "latest_comprehensive.parquet" \
             #   --query "properties.lastModified" \
             #   --auth-mode login \
             #   --output tsv
             # )
 
+            # timeseries-e
+            # TODO: check test output too, if the flag is set
+            # timseries_e_output=$(
+            #   az storage blob show \ 
+            #   --account-name "cfaazurebatchprd" \
+            #   --container-name "pyrenew-hew-prod-output" \
+            #   --name "" \
+            #   --query "properties.lastModified" \
+            #   --auth-mode login \
+            #   --output tsv
+            # )
+
+
+            # nwss
+            # nwss_gold_last_modified=$(
+            #   az storage blob show \
+            #   --account-name "cfaazurebatchprd" \
+            #   --container-name "nssp-etl" \
+            #   --name "latest_comprehensive.parquet" \
+            #   --query "properties.lastModified" \
+            #   --auth-mode login \
+            #   --output tsv
+            # )
+
+            # nhsn
+            # TODO: nshn api code
+            
             # echo "-----------------------------------------"
             # echo "Latest comprehensive last modified date:"
             # echo $nssp_latest_comprehensive_last_modified
