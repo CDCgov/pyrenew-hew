@@ -10,7 +10,7 @@ env:
 
 jobs:
   detect-environment:
-    environment: ${{ env.ENVIRONMENT_NAME }}
+    environment: ${{ vars.ENVIRONMENT_NAME }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "Deploying to ${{ env.ENVIRONMENT_NAME }}"
