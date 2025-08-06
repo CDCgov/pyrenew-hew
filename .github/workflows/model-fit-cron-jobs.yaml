@@ -10,7 +10,7 @@ on:
 
 
 jobs:
- 
+
   # TODO: Split into separate jobs for each model, and one for the oidc token
 
   # generate-oidc-token:
@@ -83,7 +83,7 @@ jobs:
 
   #           echo "Checking for NHSN Data"
   #           echo 'nhsn_data_check' >> $GITHUB_OUTPUT
-            
+
   #           echo "Checking for timeseries-e Data"
   #           echo 'timeseries_e_data_check' >> $GITHUB_OUTPUT
 
@@ -95,7 +95,7 @@ jobs:
 
 
   run-timeseries-e:
-    # needs: [ generate-oidc-token, check-available-data ] 
+    # needs: [ generate-oidc-token, check-available-data ]
     # if: ${{ needs.check-available-data.steps.outputs.nssp_latest_comprehensive_check == 'true' }}
     runs-on: ubuntu-latest
     environment: |-
