@@ -24,8 +24,8 @@ jobs:
     steps:
       - run: echo "Deploying to ${{ needs.set-environment.outputs.ENVIRONMENT_NAME }}"
 
-      - if: ${{ needs.set-environment.outputs.ENVIRONMENT_NAME }} == 'production'
+      - if: ${{ needs.set-environment.outputs.ENVIRONMENT_NAME == 'production' }}
         run: echo "This is a production deployment"
 
-      - if: ${{ needs.set-environment.outputs.ENVIRONMENT_NAME }} == 'test'
+      - if: ${{ needs.set-environment.outputs.ENVIRONMENT_NAME == 'test' }}
         run: echo "This is a test deployment"
