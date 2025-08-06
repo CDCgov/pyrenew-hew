@@ -23,8 +23,10 @@ jobs:
           # you could do 'ENVIRONMENT_NAME=${GITHUB_REF_NAME} >> $GITHUB_OUTPUT' for simplicity
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             echo "ENVIRONMENT_NAME=production" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_NAME=production" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT_NAME=test" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_NAME=test" >> $GITHUB_ENV
           fi
 
   # TODO: Split into separate jobs for each model, and one for the oidc token
@@ -262,7 +264,7 @@ jobs:
               --model-family timeseries \
               --output-subdir "${FORECAST_DATE}_forecasts" \
               --model-letters "e" \
-              --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
+              --job-id "pyrenew-e-${{ env.ENVIRONMENT_NAME }}_${FORECAST_DATE}_t" \
               --pool-id pyrenew-pool \
               --test True \
               --dry-run True
