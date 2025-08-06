@@ -163,7 +163,7 @@ jobs:
             # timeseries-e
             # TODO: check test output too, if the flag is set
             # timseries_e_output=$(
-            #   az storage blob show \ 
+            #   az storage blob show \
             #   --account-name "cfaazurebatchprd" \
             #   --container-name "pyrenew-hew-prod-output" \
             #   --name "" \
@@ -186,7 +186,7 @@ jobs:
 
             # nhsn
             # TODO: nshn api code
-            
+
             # echo "-----------------------------------------"
             # echo "Latest comprehensive last modified date:"
             # echo $nssp_latest_comprehensive_last_modified
