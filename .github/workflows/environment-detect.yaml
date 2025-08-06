@@ -10,10 +10,10 @@ env:
 
 jobs:
   detect-environment:
-    environment: $ENVIRONMENT_NAME
+    environment: ${{ env.ENVIRONMENT_NAME }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deploying to $ENVIRONMENT_NAME"
+      - run: echo "Deploying to ${{ env.ENVIRONMENT_NAME }}"
 
       - if: env.ENVIRONMENT_NAME == 'production'
         run: echo "This is a production deployment"
