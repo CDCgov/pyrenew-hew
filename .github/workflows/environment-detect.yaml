@@ -1,0 +1,22 @@
+name: My Sample Environment Detection Workflow
+on: 
+    push:
+    
+env:
+  # note the dynamic assignment block with && and || based on branch (github.ref_name)
+  ENVIRONMENT_NAME: |
+    ${{github.ref_name == 'main' && 'production'
+                                 || 'test'      }}
+
+jobs:
+  detect-environment:
+    environment: $ENVIRONMENT_NAME
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploying to $ENVIRONMENT_NAME"
+
+      - if: env.ENVIRONMENT_NAME == 'production'
+        run: echo "This is a production deployment"
+
+      - if: env.ENVIRONMENT_NAME == 'test'
+        run: echo "This is a test deployment"
