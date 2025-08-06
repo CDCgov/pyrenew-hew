@@ -1,7 +1,7 @@
 name: My Sample Environment Detection Workflow
-on: 
+on:
     push:
-    
+
 env:
   # note the dynamic assignment block with && and || based on branch (github.ref_name)
   ENVIRONMENT_NAME: |
