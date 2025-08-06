@@ -1,6 +1,6 @@
 name: My Sample Environment Detection Workflow
 on:
-    push:
+    workflow_dispatch:
 
 jobs:
 
@@ -11,6 +11,8 @@ jobs:
     steps:
       - id: set-env-step
         run: |
+          # or whatever logic you want to determine environment,
+          # you could do 'ENVIRONMENT_NAME=${GITHUB_REF_NAME} >> $GITHUB_OUTPUT' for simplicity
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             echo "ENVIRONMENT_NAME=production" >> $GITHUB_OUTPUT
           else

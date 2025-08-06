@@ -12,6 +12,21 @@ on:
 
 jobs:
 
+  set-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      ENVIRONMENT_NAME: ${{ steps.set-env-step.outputs.ENVIRONMENT_NAME }}
+    steps:
+      - id: set-env-step
+        run: |
+          # or whatever logic you want to determine environment,
+          # you could do 'ENVIRONMENT_NAME=${GITHUB_REF_NAME} >> $GITHUB_OUTPUT' for simplicity
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "ENVIRONMENT_NAME=production" >> $GITHUB_OUTPUT
+          else
+            echo "ENVIRONMENT_NAME=test" >> $GITHUB_OUTPUT
+          fi
+
   # TODO: Split into separate jobs for each model, and one for the oidc token
 
   # generate-oidc-token:
@@ -99,14 +114,14 @@ jobs:
     # needs: [ generate-oidc-token, check-available-data ]
     # if: ${{ needs.check-available-data.steps.outputs.nssp_latest_comprehensive_check == 'true' }}
     runs-on: ubuntu-latest
-    environment: |-
-      ${{github.ref_name == 'main'               && 'production'
-                                                 || 'test'      }}
+    environment: ${{ needs.set-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
       contents: read
       id-token: write
 
     steps:
+      - name: Announce deployment environment
+        run: echo "Deploying to ${{ needs.set-environment.outputs.ENVIRONMENT_NAME }}"
       - name: Checkout Repo
         id: checkout_repo
         uses: actions/checkout@v4
