@@ -7,7 +7,8 @@ on:
   push:
     branches:
       - 'jk*' # For testing purposes; matches any branch starting with 'jk'
-
+    paths:
+      - '.github/workflows/model-fit-cron-jobs.yaml'
 
 jobs:
 
@@ -248,7 +249,7 @@ jobs:
               --job-id "pyrenew-e-prod_${FORECAST_DATE}_t" \
               --pool-id pyrenew-pool \
               --test True \
-              --dry-run False
+              --dry-run True
 
 
   # run-pyrenew-e:
