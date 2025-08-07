@@ -2,8 +2,9 @@
 % Please edit documentation in R/process_loc_forecast.R
 \name{read_and_combine_data}
 \alias{read_and_combine_data}
-\title{Read in and combine training and evaluation
-data from a model run directory.}
+\title{Read in and combine daily and epiweekly training data
+from a model run directory and calculate
+proportion of ed visits}
 \usage{
 read_and_combine_data(model_run_dir)
 }
@@ -12,6 +13,7 @@ read_and_combine_data(model_run_dir)
 for data.}
 }
 \description{
-Read in and combine training and evaluation
-data from a model run directory.
+Read in and combine daily and epiweekly training data
+from a model run directory and calculate
+proportion of ed visits
 }
