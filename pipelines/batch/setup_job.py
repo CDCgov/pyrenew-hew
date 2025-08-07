@@ -143,16 +143,6 @@ def main(
     # =======================
     # Script Type Validation
     # =======================
-    supported_scripts = [
-        "forecast_pyrenew",
-        "forecast_timeseries",
-        "prep_data",
-    ]
-    if run_script not in supported_scripts:
-        raise ValueError(
-            f"Unsupported script type: {run_script}; "
-            f"supported script types are: {', '.join(supported_scripts)}"
-        )
 
     if run_script == "forecast_timeseries" and model_letters != "e":
         raise ValueError(
@@ -226,21 +216,7 @@ def main(
     # Script Selection and Additional Args
     # =====================================
 
-    if run_script == "prep_data":
-        additional_args = (
-            "--nwss-data-dir nwss-vintages "
-            "--priors-path pipelines/priors/prod_priors.py "
-            "--facility-level-nssp-data-dir nssp-etl/gold "
-            "--state-level-nssp-data-dir "
-            "nssp-archival-vintages/gold "
-            "--param-data-dir params "
-            "--credentials-path config/creds.toml "
-            f"--report-date {report_date} "
-            "--disease {disease} "
-            "--last-training-date {last_training_date} "
-            "--first-training-date {first_training_date}"
-        )
-    elif run_script == "forecast_pyrenew":
+    if run_script == "forecast_pyrenew":
         additional_args = (
             f"--n-warmup {n_warmup} "
             f"--model-letters {model_letters} "
@@ -255,9 +231,18 @@ def main(
             f"--exclude-last-n-days {exclude_last_n_days} "
         )
     else:
-        raise ValueError(
-            f"Unsupported script type: {run_script}. "
-            f"Supported values are: {', '.join(supported_scripts)}"
+        additional_args = (
+            "--nwss-data-dir nwss-vintages "
+            "--priors-path pipelines/priors/prod_priors.py "
+            "--facility-level-nssp-data-dir nssp-etl/gold "
+            "--state-level-nssp-data-dir "
+            "nssp-archival-vintages/gold "
+            "--param-data-dir params "
+            "--credentials-path config/creds.toml "
+            f"--report-date {report_date} "
+            "--disease {disease} "
+            "--last-training-date {last_training_date} "
+            "--first-training-date {first_training_date}"
         )
 
     # =======================================
@@ -495,12 +480,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--run-script",
-        type=str,
-        help=(
-            "The python script to run. "
-            "Supported values are 'forecast_pyrenew', 'forecast_timeseries', and 'prep_data'. "
-            "Default 'forecast_pyrenew'."
-        ),
+        choices=["forecast_pyrenew", "forecast_timeseries", "prep_data"],
+        help=("The python script to run."),
         default=None,
     )
 
