@@ -191,9 +191,6 @@ jobs:
     steps:
       - name: Announce deployment environment
         run: echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-      - name: Checkout Repo
-        id: checkout_repo
-        uses: actions/checkout@v4
 
       - name: Submit timeseries-e Job
         id: submit-timeseries-e
@@ -215,7 +212,7 @@ jobs:
                      --federated-token ${{ needs.generate-oidc-token.outputs.oidc_token }} \
                      --output none
 
-            CURRENT_BRANCH="${{ steps.get-branch.outputs.branch }}"
+            CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
             echo "--------------------------------------------------------------"
             echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
             echo "--------------------------------------------------------------"
