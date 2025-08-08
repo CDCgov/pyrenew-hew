@@ -48,7 +48,7 @@ jobs:
     # We define ahead-of-time what outputs will be set, then actually output within the check-dataset-availability step.
     outputs:
           # necessary for timeseries-e
-          nssp_latest_comprehensive_check: ${{ steps.check-dataset-availability.outputs.nssp_latest_comprehensive_check }}
+          nssp_gold_check: ${{ steps.check-dataset-availability.outputs.nssp_gold_check }}
           # necessary for pyrenew-e
           timseries_e_check: ${{ steps.check-dataset-availability.outputs.timseries_e_check }}
           # necessary for h models
