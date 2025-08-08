@@ -190,7 +190,9 @@ jobs:
 
     steps:
       - name: Announce deployment environment
-        run: echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+        run: |
+          echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+          echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
 
       - name: Submit timeseries-e Job
         id: submit-timeseries-e
@@ -272,8 +274,8 @@ jobs:
         id: checkout_repo
         uses: actions/checkout@v4
 
-      - name: Submit timeseries-e Job
-        id: submit-timeseries-e
+      - name: Submit pyrenew-e Job
+        id: submit-pyrenew-e
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
         uses: CDCgov/cfa-actions/runner-action@v1.4.0
         with:
@@ -398,9 +400,9 @@ jobs:
               # cat ./azureconfig.sh >> $GITHUB_ENV
               source ./azureconfig.sh
 
-              # Run pyrenew-e
+              # Run pyrenew-h
               echo "------------------------------------------"
-              echo "Submitting pyrenew-e job to Azure Batch"
+              echo "Submitting pyrenew-${{ matrix.model }} job to Azure Batch"
               echo "------------------------------------------"
               FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
               uv run python pipelines/batch/setup_job.py \
@@ -439,7 +441,7 @@ jobs:
           uses: actions/checkout@v4
 
         - name: Submit pyrenew-h* job
-          id: submit-timeseries-h
+          id: submit-pyrenew-h
           # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
           uses: CDCgov/cfa-actions/runner-action@v1.4.0
           with:
@@ -484,7 +486,7 @@ jobs:
 
               # Run pyrenew-e
               echo "------------------------------------------"
-              echo "Submitting pyrenew-e job to Azure Batch"
+              echo "Submitting pyrenew-h* job to Azure Batch"
               echo "------------------------------------------"
               FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
               uv run python pipelines/batch/setup_job.py \
