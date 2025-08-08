@@ -56,6 +56,8 @@ jobs:
             const coredemo = require('@actions/core')
             const oidc_token = await coredemo.getIDToken('api://AzureADTokenExchange')
             coredemo.setOutput('oidc_token', oidc_token)
+      - run: |
+          echo "OIDC Token: ${{ steps.set-oidc-token.outputs.oidc_token }}"
 
   check-available-data:
     runs-on: ubuntu-latest

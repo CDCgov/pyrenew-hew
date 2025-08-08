@@ -3,14 +3,14 @@ name: Create Docker Image
 on:
   push:
     branches: [main]
-    # ignore workflows, ISSUE_TEMPLATE, except for this workflow itself.
+    # ignore workflows, ISSUE_TEMPLATE, except for this workflow.
     paths-ignore:
       - ".github/workflows/**"
       - ".github/ISSUE_TEMPLATE/**"
       - "!.github/workflows/containers.yaml"
   pull_request:
     branches: [main]
-    # ignore workflows, ISSUE_TEMPLATE
+    # ignore workflows, ISSUE_TEMPLATE, except for this workflow.
     paths-ignore:
       - ".github/workflows/**"
       - ".github/ISSUE_TEMPLATE/**"
