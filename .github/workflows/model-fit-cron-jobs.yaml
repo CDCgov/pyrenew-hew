@@ -44,7 +44,7 @@ jobs:
     steps:
       - run: |
           echo "OIDC Token: ${{ needs.generate-oidc-token.outputs.oidc_token }}"
-          
+
   set-model-run-environment:
     runs-on: ubuntu-latest
     outputs:
