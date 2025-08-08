@@ -12,39 +12,6 @@ on:
 
 jobs:
 
-  generate-oidc-token:
-    runs-on: ubuntu-latest
-    outputs:
-      oidc_token: ${{ steps.set-oidc-token.outputs.oidc_token }}
-
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm install @actions/core@1.6.0 @actions/http-client
-      - uses: actions/github-script@v7
-        id: set-oidc-token
-        with:
-            script: |
-              const coredemo = require('@actions/core')
-              const oidc_token = await coredemo.getIDToken('api://AzureADTokenExchange')
-              coredemo.setOutput('oidc_token', oidc_token)
-              // Also echo to GITHUB_OUTPUT
-              if (process.env.GITHUB_OUTPUT) {
-                require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `oidc_token=${oidc_token}\n`)
-              }
-      - run: |
-          echo "OIDC Token: ${{ steps.set-oidc-token.outputs.oidc_token }}"
-
-  check-oidc-token:
-    runs-on: ubuntu-latest
-    needs: generate-oidc-token
-    steps:
-      - run: |
-          echo "OIDC Token: ${{ needs.generate-oidc-token.outputs.oidc_token }}"
-          
   set-model-run-environment:
     runs-on: ubuntu-latest
     outputs:
@@ -68,13 +35,10 @@ jobs:
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-  # TODO: Split into separate jobs for each model, and one for the oidc token
-
   check-available-data:
     runs-on: ubuntu-latest
     needs:
       - set-model-run-environment
-      - generate-oidc-token
     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
       contents: read
@@ -93,6 +57,23 @@ jobs:
           nwss_gold_check: ${{ steps.check-dataset-availability.outputs.nwss_gold_check }}
 
     steps:
+      - name: Announce deployment environment
+        run: |
+          echo "Running in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+
+      - name: Set OIDC Token for Federated Identity Login
+        uses: actions/github-script@v7
+        id: set-oidc-token
+        with:
+          # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
+          script: |
+            const coreapi = require('@actions/core')
+            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+            coreapi.setOutput('oidc_token', oidc_token)
+
       - name: Check for Dataset Availability
         id: check-dataset-availability
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
@@ -105,12 +86,12 @@ jobs:
           script: |
             echo "Logging into Azure CLI"
             echo "------------------------------------------------------------"
-            echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
             echo "------------------------------------------------------------"
             az login --service-principal \
                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                     --federated-token ${{ needs.generate-oidc-token.outputs.oidc_token }} \
+                     --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
                      --output none
 
             # nssp
@@ -189,7 +170,6 @@ jobs:
   run-timeseries-e:
     needs:
       - set-model-run-environment
-      - generate-oidc-token
       - check-available-data
 
     # TODO: configure this check
@@ -204,7 +184,19 @@ jobs:
       - name: Announce deployment environment
         run: |
           echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-          echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+
+      - name: Set OIDC Token for Federated Identity Login
+        uses: actions/github-script@v7
+        id: set-oidc-token
+        with:
+          # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
+          script: |
+            const coreapi = require('@actions/core')
+            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+            coreapi.setOutput('oidc_token', oidc_token)
 
       - name: Submit timeseries-e Job
         id: submit-timeseries-e
@@ -218,12 +210,12 @@ jobs:
           script: |
             echo "Logging into Azure CLI"
             echo "------------------------------------------------------------"
-            echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
             echo "------------------------------------------------------------"
             az login --service-principal \
                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                     --federated-token ${{ needs.generate-oidc-token.outputs.oidc_token }} \
+                     --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
                      --output none
 
             CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
@@ -267,7 +259,6 @@ jobs:
   run-pyrenew-e:
     needs:
       - set-model-run-environment
-      - generate-oidc-token
       - check-available-data
       - run-timeseries-e
 
@@ -282,10 +273,17 @@ jobs:
     steps:
       - name: Announce deployment environment
         run: echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-      - name: Checkout Repo
-        id: checkout_repo
-        uses: actions/checkout@v4
-
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+      - name: Set OIDC Token for Federated Identity Login
+        uses: actions/github-script@v7
+        id: set-oidc-token
+        with:
+          # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
+          script: |
+            const coreapi = require('@actions/core')
+            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+            coreapi.setOutput('oidc_token', oidc_token)
       - name: Submit pyrenew-e Job
         id: submit-pyrenew-e
         # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
@@ -298,12 +296,12 @@ jobs:
           script: |
             echo "Logging into Azure CLI"
             echo "------------------------------------------------------------"
-            echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
             echo "------------------------------------------------------------"
             az login --service-principal \
                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                     --federated-token ${{ needs.generate-oidc-token.outputs.oidc_token }} \
+                     --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
                      --output none
 
             CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
@@ -347,7 +345,6 @@ jobs:
   run-pyrenew-hw-matrix:
       needs:
         - set-model-run-environment
-        - generate-oidc-token
         - check-available-data
 
       # TODO: configure this check
@@ -363,10 +360,20 @@ jobs:
 
       steps:
         - name: Announce deployment environment
-          run: echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-        - name: Checkout Repo
-          id: checkout_repo
-          uses: actions/checkout@v4
+          run: |
+            echo "Running in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+
+        - name: Install OIDC Client from Core Package
+          run: npm install @actions/core@1.6.0 @actions/http-client
+        - name: Set OIDC Token for Federated Identity Login
+          uses: actions/github-script@v7
+          id: set-oidc-token
+          with:
+            # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
+            script: |
+              const coreapi = require('@actions/core')
+              const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+              coreapi.setOutput('oidc_token', oidc_token)
 
         - name: Submit pyrenew-h* job
           id: submit-timeseries-h
@@ -380,12 +387,12 @@ jobs:
             script: |
               echo "Logging into Azure CLI"
               echo "------------------------------------------------------------"
-              echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+              echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
               echo "------------------------------------------------------------"
               az login --service-principal \
                       --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                       --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                      --federated-token ${{ needs.generate-oidc-token.outputs.oidc_token }} \
+                      --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
                       --output none
 
               CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
@@ -430,7 +437,6 @@ jobs:
   run-pyrenew-hew-matrix:
       needs:
         - set-model-run-environment
-        - generate-oidc-token
         - check-available-data
         - run-timeseries-e
 
@@ -447,10 +453,20 @@ jobs:
 
       steps:
         - name: Announce deployment environment
-          run: echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-        - name: Checkout Repo
-          id: checkout_repo
-          uses: actions/checkout@v4
+          run: |
+            echo "Running in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+
+        - name: Install OIDC Client from Core Package
+          run: npm install @actions/core@1.6.0 @actions/http-client
+        - name: Set OIDC Token for Federated Identity Login
+          uses: actions/github-script@v7
+          id: set-oidc-token
+          with:
+            # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
+            script: |
+              const coreapi = require('@actions/core')
+              const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+              coreapi.setOutput('oidc_token', oidc_token)
 
         - name: Submit pyrenew-h* job
           id: submit-pyrenew-h
@@ -464,12 +480,12 @@ jobs:
             script: |
               echo "Logging into Azure CLI"
               echo "------------------------------------------------------------"
-              echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+              echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
               echo "------------------------------------------------------------"
               az login --service-principal \
                       --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
                       --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                      --federated-token ${{ needs.generate-oidc-token.outputs.oidc_token }} \
+                      --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
                       --output none
 
               CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"

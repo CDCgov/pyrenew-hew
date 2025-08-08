@@ -5,16 +5,14 @@ on:
     branches: [main]
     # ignore workflows, ISSUE_TEMPLATE, except for this workflow.
     paths-ignore:
-      - ".github/workflows/**"
+      - ".github/workflows/model-fit-cron-jobs.yaml"
       - ".github/ISSUE_TEMPLATE/**"
-      - "!.github/workflows/containers.yaml"
   pull_request:
     branches: [main]
     # ignore workflows, ISSUE_TEMPLATE, except for this workflow.
     paths-ignore:
-      - ".github/workflows/**"
+      - ".github/workflows/model-fit-cron-jobs.yaml"
       - ".github/ISSUE_TEMPLATE/**"
-      - "!.github/workflows/containers.yaml"
   workflow_dispatch:
 
 concurrency:
