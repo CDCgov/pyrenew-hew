@@ -12,31 +12,6 @@ on:
 
 jobs:
 
-  set-model-run-environment:
-    runs-on: ubuntu-latest
-    outputs:
-      ENVIRONMENT_NAME: ${{ steps.set-env-step.outputs.ENVIRONMENT_NAME }}
-      BRANCH_NAME: ${{ steps.get-branch-name.outputs.BRANCH_NAME }}
-    steps:
-
-      # Output these variables to both $GITHUB_OUTPUT (available to everything) and
-      # $GITHUB_ENV (easier syntax when available)
-      - id: set-env-step
-        run: |
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            echo "ENVIRONMENT_NAME=production" >> $GITHUB_OUTPUT
-            echo "ENVIRONMENT_NAME=production" >> $GITHUB_ENV
-          else
-            echo "ENVIRONMENT_NAME=test" >> $GITHUB_OUTPUT
-            echo "ENVIRONMENT_NAME=test" >> $GITHUB_ENV
-          fi
-      - id: get-branch-name
-        run: |
-          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
-          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-
-  # TODO: Split into separate jobs for each model, and one for the oidc token
-
   generate-oidc-token:
     runs-on: ubuntu-latest
     outputs:
@@ -69,6 +44,31 @@ jobs:
     steps:
       - run: |
           echo "OIDC Token: ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+          
+  set-model-run-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      ENVIRONMENT_NAME: ${{ steps.set-env-step.outputs.ENVIRONMENT_NAME }}
+      BRANCH_NAME: ${{ steps.get-branch-name.outputs.BRANCH_NAME }}
+    steps:
+
+      # Output these variables to both $GITHUB_OUTPUT (available to everything) and
+      # $GITHUB_ENV (easier syntax when available)
+      - id: set-env-step
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "ENVIRONMENT_NAME=production" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_NAME=production" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT_NAME=test" >> $GITHUB_OUTPUT
+            echo "ENVIRONMENT_NAME=test" >> $GITHUB_ENV
+          fi
+      - id: get-branch-name
+        run: |
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+  # TODO: Split into separate jobs for each model, and one for the oidc token
 
   check-available-data:
     runs-on: ubuntu-latest
