@@ -53,16 +53,13 @@ jobs:
         id: set-oidc-token
         with:
             script: |
-              const core = require('@actions/core');
-              async function write_oidc_token_to_github_output() {
-                const oidc_token = await core.getIDToken('api://AzureADTokenExchange');
-                core.setOutput('oidc_token', oidc_token);
-                // Also echo to GITHUB_OUTPUT
-                if (process.env.GITHUB_OUTPUT) {
-                  require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `oidc_token=${oidc_token}\n`);
-                }
+              const coredemo = require('@actions/core')
+              const oidc_token = await coredemo.getIDToken('api://AzureADTokenExchange')
+              coredemo.setOutput('oidc_token', oidc_token)
+              // Also echo to GITHUB_OUTPUT
+              if (process.env.GITHUB_OUTPUT) {
+                require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `oidc_token=${oidc_token}\n`)
               }
-              write_oidc_token_to_github_output();
       - run: |
           echo "OIDC Token: ${{ steps.set-oidc-token.outputs.oidc_token }}"
 
