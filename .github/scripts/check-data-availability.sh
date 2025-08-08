@@ -1,12 +1,12 @@
 # nssp
 nssp_gold_last_modified=$(
-    az storage blob show \
-    --account-name "cfaazurebatchprd" \
-    --container-name "nssp-etl" \
-    --name "gold.parquet" \
-    --query "properties.lastModified" \
-    --auth-mode login \
-    --output tsv
+	az storage blob show \
+		--account-name "cfaazurebatchprd" \
+		--container-name "nssp-etl" \
+		--name "gold.parquet" \
+		--query "properties.lastModified" \
+		--auth-mode login \
+		--output tsv
 )
 
 # convert to a simple date
@@ -26,9 +26,9 @@ echo "-----------------------------------------"
 # We modify both to fit utc timezone
 
 if [[ "$utc_nssp_gold_date" < "$current_date" ]]; then
-    echo "nssp_gold_check=true" >> $GITHUB_OUTPUT
+	echo "nssp_gold_check=true" >>$GITHUB_OUTPUT
 else
-    echo "nssp_gold_check=false" >> $GITHUB_OUTPUT
+	echo "nssp_gold_check=false" >>$GITHUB_OUTPUT
 fi
 
 # timeseries-e
@@ -45,9 +45,9 @@ fi
 
 # TODO: create boolean output variable for the check that we can check in later job
 if [[ "$timseries_e_output" < "$current_date" ]]; then
-    echo "timseries_e_check=true" >> $GITHUB_OUTPUT
+	echo "timseries_e_check=true" >>$GITHUB_OUTPUT
 else
-    echo "timseries_e_check=false" >> $GITHUB_OUTPUT
+	echo "timseries_e_check=false" >>$GITHUB_OUTPUT
 fi
 
 # nwss
@@ -63,9 +63,9 @@ fi
 
 # TODO: create boolean output variable for the check that we can check in later job
 if [[ "$nwss_gold_last_modified" < "$current_date" ]]; then
-    echo "nwss_gold_check=true" >> $GITHUB_OUTPUT
+	echo "nwss_gold_check=true" >>$GITHUB_OUTPUT
 else
-    echo "nwss_gold_check=false" >> $GITHUB_OUTPUT
+	echo "nwss_gold_check=false" >>$GITHUB_OUTPUT
 fi
 
 # nhsn
