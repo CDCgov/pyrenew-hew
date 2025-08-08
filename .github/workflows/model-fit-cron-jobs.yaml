@@ -329,3 +329,85 @@ jobs:
               --pool-id pyrenew-pool \
               --test True \
               --dry-run True
+
+  run-pyrenew-hew-matrix:
+      needs:
+        - set-model-run-environment
+        - generate-oidc-token
+        - check-available-data
+
+      # TODO: configure this check
+      # if: ${{ needs.check-available-data.outputs.nhsn_data_check == 'true' }}
+      runs-on: ubuntu-latest
+      environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+      permissions:
+        contents: read
+        id-token: write
+      strategy:
+        matrix: 
+          model: ['h','he','hw','hew']
+
+      steps:
+        - name: Announce deployment environment
+          run: echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+        - name: Checkout Repo
+          id: checkout_repo
+          uses: actions/checkout@v4
+
+        - name: Submit pyrenew-h* job
+          id: submit-timeseries-h
+          # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
+          uses: CDCgov/cfa-actions/runner-action@v1.4.0
+          with:
+            github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+            github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+            wait_for_completion: true
+            print_logs: true
+            script: |
+              echo "Logging into Azure CLI"
+              echo "------------------------------------------------------------"
+              echo "The federated token is ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+              echo "------------------------------------------------------------"
+              az login --service-principal \
+                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
+                      --federated-token ${{ needs.generate-oidc-token.outputs.oidc_token }} \
+                      --output none
+
+              CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
+              echo "--------------------------------------------------------------"
+              echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
+              echo "--------------------------------------------------------------"
+              git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
+              cd pyrenew-hew
+
+              echo "----------------------------------------------------------------------------"
+              echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
+              echo "----------------------------------------------------------------------------"
+              az storage blob download \
+                --account-name "cfaazurebatchprd" \
+                --container-name "pyrenew-hew-config" \
+                --name "azureconfig.sh" \
+                --file "./azureconfig.sh" \
+                --auth-mode login \
+                --overwrite
+
+              echo "-------------------------------------------------"
+              echo "Setting environment variables from azureconfig.sh"
+              echo "-------------------------------------------------"
+              # cat ./azureconfig.sh >> $GITHUB_ENV
+              source ./azureconfig.sh
+
+              # Run pyrenew-e
+              echo "------------------------------------------"
+              echo "Submitting pyrenew-e job to Azure Batch"
+              echo "------------------------------------------"
+              FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
+              uv run python pipelines/batch/setup_job.py \
+                --model-family pyrenew \
+                --output-subdir "${FORECAST_DATE}_forecasts" \
+                --model-letters "${{ matrix.model }}" \
+                --job-id "pyrenew-${{ matrix.model }}-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
+                --pool-id pyrenew-pool \
+                --test True \
+                --dry-run True
