@@ -59,6 +59,13 @@ jobs:
       - run: |
           echo "OIDC Token: ${{ steps.set-oidc-token.outputs.oidc_token }}"
 
+  check-oidc-token:
+    runs-on: ubuntu-latest
+    needs: generate-oidc-token
+    steps:
+      - run: |
+          echo "OIDC Token: ${{ needs.generate-oidc-token.outputs.oidc_token }}"
+
   check-available-data:
     runs-on: ubuntu-latest
     needs:
