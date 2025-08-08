@@ -95,36 +95,36 @@ jobs:
                      --output none
 
             # nssp
-            nssp_latest_comprehensive_last_modified=$(
+            nssp_gold_last_modified=$(
               az storage blob show \
               --account-name "cfaazurebatchprd" \
               --container-name "nssp-etl" \
-              --name "latest_comprehensive.parquet" \
+              --name "gold.parquet" \
               --query "properties.lastModified" \
               --auth-mode login \
               --output tsv
             )
 
             # convert to a simple date
-            raw_nssp_latest_comprehensive_date=$(echo $nssp_latest_comprehensive_last_modified | cut -d 'T' -f 1)
+            raw_nssp_gold_date=$(echo $nssp_gold_last_modified | cut -d 'T' -f 1)
 
             # NSSP in utc time
-            nssp_latest_comprehensive_date=$(date -u -d "$raw_nssp_latest_comprehensive_date" +%Y-%m-%d)
+            nssp_gold_date=$(date -u -d "$raw_nssp_gold_date" +%Y-%m-%d)
             current_date=$(date -u +%Y-%m-%d)
 
             echo "-----------------------------------------"
-            echo "Latest comprehensive last modified date:"
-            echo $nssp_latest_comprehensive_date
+            echo "Latest gold last modified date:"
+            echo $nssp_gold_date
             echo "-----------------------------------------"
 
-            # TODO: logic to compare nssp_latest_comprehensive_date with current date
+            # TODO: logic to compare nssp_gold_date with current date
             # TODO: create boolean output variable for the check that we can check in later job
             # We modify both to fit utc timezone
 
-            if [[ "$utc_nssp_latest_comprehensive_date" < "$current_date" ]]; then
-              echo "nssp_latest_comprehensive_check=true" >> $GITHUB_OUTPUT
+            if [[ "$utc_nssp_gold_date" < "$current_date" ]]; then
+              echo "nssp_gold_check=true" >> $GITHUB_OUTPUT
             else
-              echo "nssp_latest_comprehensive_check=false" >> $GITHUB_OUTPUT
+              echo "nssp_gold_check=false" >> $GITHUB_OUTPUT
             fi
 
             # timeseries-e
@@ -173,7 +173,7 @@ jobs:
       - check-available-data
 
     # TODO: configure this check
-    # if: ${{ needs.check-available-data.outputs.nssp_latest_comprehensive_check == 'true' }}
+    if: ${{ needs.check-available-data.outputs.nssp_gold_check == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
