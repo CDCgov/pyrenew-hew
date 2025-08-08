@@ -42,7 +42,6 @@ jobs:
     outputs:
       oidc_token: ${{ steps.set-oidc-token.outputs.oidc_token }}
 
-    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
       contents: read
       id-token: write
