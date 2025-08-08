@@ -344,7 +344,7 @@ jobs:
         contents: read
         id-token: write
       strategy:
-        matrix: 
+        matrix:
           model: ['h','he','hw','hew']
 
       steps:
