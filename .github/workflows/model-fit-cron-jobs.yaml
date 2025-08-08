@@ -59,7 +59,7 @@ jobs:
     steps:
       - name: Announce deployment environment
         run: |
-          echo "Running in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
 
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
@@ -183,7 +183,7 @@ jobs:
     steps:
       - name: Announce deployment environment
         run: |
-          echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
 
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
@@ -272,7 +272,8 @@ jobs:
 
     steps:
       - name: Announce deployment environment
-        run: echo "Deploying to ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+        run: |
+          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
       - name: Set OIDC Token for Federated Identity Login
@@ -361,7 +362,8 @@ jobs:
       steps:
         - name: Announce deployment environment
           run: |
-            echo "Running in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+            echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+            echo "Running with model letter: ${{ matrix.model }}"
 
         - name: Install OIDC Client from Core Package
           run: npm install @actions/core@1.6.0 @actions/http-client
@@ -454,7 +456,8 @@ jobs:
       steps:
         - name: Announce deployment environment
           run: |
-            echo "Running in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+            echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+            echo "Running with model letter: ${{ matrix.model }}"
 
         - name: Install OIDC Client from Core Package
           run: npm install @actions/core@1.6.0 @actions/http-client
