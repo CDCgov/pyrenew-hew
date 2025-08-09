@@ -35,7 +35,7 @@ jobs:
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-  check-available-data:
+  check-azure-data-availability:
     runs-on: ubuntu-latest
     needs:
       - set-model-run-environment
@@ -47,14 +47,15 @@ jobs:
     # Future job runs are conditioned on a combinatory logic of the following boolean outputs.
     # We define ahead-of-time what outputs will be set, then actually output within the check-dataset-availability step.
     outputs:
+      
           # necessary for timeseries-e
-          nssp_gold_check: ${{ steps.check-dataset-availability.outputs.nssp_gold_check }}
-          # necessary for pyrenew-e
-          timseries_e_check: ${{ steps.check-dataset-availability.outputs.timseries_e_check }}
+          NSSP_GOLD_CHECK: ${{ steps.check-dataset-availability.outputs.NSSP_GOLD_CHECK }}
+
           # necessary for h models
-          nhsn_check: ${{ steps.check-dataset-availability.outputs.nhsn_check }}
+          NHSN_CHECK: ${{ steps.check-dataset-availability.outputs.NHSN_CHECK }}
+
           # necessary for w models
-          nwss_gold_check: ${{ steps.check-dataset-availability.outputs.nwss_gold_check }}
+          NWSS_GOLD_CHECK: ${{ steps.check-dataset-availability.outputs.NWSS_GOLD_CHECK }}
 
     steps:
       - name: Announce deployment environment
@@ -93,87 +94,32 @@ jobs:
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
                      --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
                      --output none
+            
+            # Clone the repository at the current branch
+            git clone -b "${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}" https://github.com/${{ github.repository }}.git
+            cd pyrenew-hew
 
-            # nssp
-            nssp_gold_last_modified=$(
-              az storage blob show \
-              --account-name "cfaazurebatchprd" \
-              --container-name "nssp-etl" \
-              --name "gold.parquet" \
-              --query "properties.lastModified" \
-              --auth-mode login \
-              --output tsv
-            )
+            # Source the check-data-availability script
+            echo "------------------------------------------------------------"
+            echo "Sourcing check-data-availability.sh script"
+            echo "------------------------------------------------------------"
+            # This script checks the availability of necessary datasets and sets outputs accordingly.
+            # It should be sourced to expose its variables to the parent shell.
+            # This allows us to use the outputs in subsequent steps.
+            source .github/scripts/check-azure-data-availability.sh
 
-            # convert to a simple date
-            raw_nssp_gold_date=$(echo $nssp_gold_last_modified | cut -d 'T' -f 1)
-
-            # NSSP in utc time
-            nssp_gold_date=$(date -u -d "$raw_nssp_gold_date" +%Y-%m-%d)
-            current_date=$(date -u +%Y-%m-%d)
-
-            echo "-----------------------------------------"
-            echo "Latest gold last modified date:"
-            echo $nssp_gold_date
-            echo "-----------------------------------------"
-
-            # TODO: logic to compare nssp_gold_date with current date
-            # TODO: create boolean output variable for the check that we can check in later job
-            # We modify both to fit utc timezone
-
-            if [[ "$utc_nssp_gold_date" < "$current_date" ]]; then
-              echo "nssp_gold_check=true" >> $GITHUB_OUTPUT
-            else
-              echo "nssp_gold_check=false" >> $GITHUB_OUTPUT
-            fi
-
-            # timeseries-e
-            # TODO: check test output too, if the flag is set
-            # timseries_e_output=$(
-            #   az storage blob show \
-            #   --account-name "cfaazurebatchprd" \
-            #   --container-name "pyrenew-hew-prod-output" \
-            #   --name "" \
-            #   --query "properties.lastModified" \
-            #   --auth-mode login \
-            #   --output tsv
-            # )
-
-            # TODO: create boolean output variable for the check that we can check in later job
-            if [[ "$timseries_e_output" < "$current_date" ]]; then
-              echo "timseries_e_check=true" >> $GITHUB_OUTPUT
-            else
-              echo "timseries_e_check=false" >> $GITHUB_OUTPUT
-            fi
-
-            # nwss
-            # nwss_gold_last_modified=$(
-            #   az storage blob show \
-            #   --account-name "cfaazurebatchprd" \
-            #   --container-name "nssp-etl" \
-            #   --name "latest_comprehensive.parquet" \
-            #   --query "properties.lastModified" \
-            #   --auth-mode login \
-            #   --output tsv
-            # )
-
-            # TODO: create boolean output variable for the check that we can check in later job
-            if [[ "$nwss_gold_last_modified" < "$current_date" ]]; then
-              echo "nwss_gold_check=true" >> $GITHUB_OUTPUT
-            else
-              echo "nwss_gold_check=false" >> $GITHUB_OUTPUT
-            fi
-
-            # nhsn
-            # TODO: nshn api code
+            echo "------------------------------------------------------------"
+            echo "Setting outputs based on dataset availability checks"
+            echo "NSSP_GOLD_CHECK=$nssp_gold_check"         >> $GITHUB_OUTPUT
+            echo "NWSS_VINTAGES_CHECK=$nwss_vintages_check" >> $GITHUB_OUTPUT
+            echo "NHSN_CHECK=$nhsn_check"                   >> $GITHUB_OUTPUT
+            echo "------------------------------------------------------------"
 
   run-timeseries-e:
     needs:
       - set-model-run-environment
-      - check-available-data
-
-    # TODO: configure this check
-    if: ${{ needs.check-available-data.outputs.nssp_gold_check == 'true' }}
+      - check-azure-data-availability
+    if: ${{ needs.check-azure-data-availability.outputs.nssp_gold_check == true }}
     runs-on: ubuntu-latest
     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
@@ -259,11 +205,10 @@ jobs:
   run-pyrenew-e:
     needs:
       - set-model-run-environment
-      - check-available-data
+      - check-azure-data-availability
       - run-timeseries-e
 
-    # TODO: configure this check
-    # if: ${{ needs.check-available-data.outputs.nssp_latest_comprehensive_check == 'true' }}
+    if: ${{ needs.check-azure-data-availability.outputs.nssp_gold_check == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
@@ -274,8 +219,10 @@ jobs:
       - name: Announce deployment environment
         run: |
           echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
+
       - name: Set OIDC Token for Federated Identity Login
         uses: actions/github-script@v7
         id: set-oidc-token
@@ -285,9 +232,9 @@ jobs:
             const coreapi = require('@actions/core')
             const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
             coreapi.setOutput('oidc_token', oidc_token)
+
       - name: Submit pyrenew-e Job
         id: submit-pyrenew-e
-        # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
         uses: CDCgov/cfa-actions/runner-action@v1.4.0
         with:
           github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
@@ -343,107 +290,13 @@ jobs:
               --test True \
               --dry-run True
 
-  run-pyrenew-hw-matrix:
-      needs:
-        - set-model-run-environment
-        - check-available-data
-
-      # TODO: configure this check
-      # if: ${{ needs.check-available-data.outputs.nhsn_data_check == 'true' }}
-      runs-on: ubuntu-latest
-      environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
-      permissions:
-        contents: read
-        id-token: write
-      strategy:
-        matrix:
-          model: ['h','hw']
-
-      steps:
-        - name: Announce deployment environment
-          run: |
-            echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-            echo "Running with model letter: ${{ matrix.model }}"
-
-        - name: Install OIDC Client from Core Package
-          run: npm install @actions/core@1.6.0 @actions/http-client
-        - name: Set OIDC Token for Federated Identity Login
-          uses: actions/github-script@v7
-          id: set-oidc-token
-          with:
-            # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
-            script: |
-              const coreapi = require('@actions/core')
-              const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
-              coreapi.setOutput('oidc_token', oidc_token)
-
-        - name: Submit pyrenew-h* job
-          id: submit-timeseries-h
-          # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
-          uses: CDCgov/cfa-actions/runner-action@v1.4.0
-          with:
-            github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
-            github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
-            wait_for_completion: true
-            print_logs: true
-            script: |
-              echo "Logging into Azure CLI"
-              echo "------------------------------------------------------------"
-              echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
-              echo "------------------------------------------------------------"
-              az login --service-principal \
-                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
-                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                      --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
-                      --output none
-
-              CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
-              echo "--------------------------------------------------------------"
-              echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
-              echo "--------------------------------------------------------------"
-              git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
-              cd pyrenew-hew
-
-              echo "----------------------------------------------------------------------------"
-              echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
-              echo "----------------------------------------------------------------------------"
-              az storage blob download \
-                --account-name "cfaazurebatchprd" \
-                --container-name "pyrenew-hew-config" \
-                --name "azureconfig.sh" \
-                --file "./azureconfig.sh" \
-                --auth-mode login \
-                --overwrite
-
-              echo "-------------------------------------------------"
-              echo "Setting environment variables from azureconfig.sh"
-              echo "-------------------------------------------------"
-              # cat ./azureconfig.sh >> $GITHUB_ENV
-              source ./azureconfig.sh
-
-              # Run pyrenew-h
-              echo "------------------------------------------"
-              echo "Submitting pyrenew-${{ matrix.model }} job to Azure Batch"
-              echo "------------------------------------------"
-              FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
-              uv run python pipelines/batch/setup_job.py \
-                --model-family pyrenew \
-                --output-subdir "${FORECAST_DATE}_forecasts" \
-                --model-letters "${{ matrix.model }}" \
-                --job-id "pyrenew-${{ matrix.model }}-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
-                --pool-id pyrenew-pool \
-                --test True \
-                --dry-run True
-
-
   run-pyrenew-hew-matrix:
       needs:
         - set-model-run-environment
-        - check-available-data
+        - check-azure-data-availability
         - run-timeseries-e
 
-      # TODO: configure this check
-      # if: ${{ needs.check-available-data.outputs.nhsn_data_check == 'true' }}
+      if: ${{ needs.check-azure-data-availability.outputs.NHSN_DATA_CHECK == 'true' }}
       runs-on: ubuntu-latest
       environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
       permissions:
@@ -451,7 +304,7 @@ jobs:
         id-token: write
       strategy:
         matrix:
-          model: ['he','hew']
+          model: ["h","he","hw","hew"]
 
       steps:
         - name: Announce deployment environment
@@ -461,6 +314,7 @@ jobs:
 
         - name: Install OIDC Client from Core Package
           run: npm install @actions/core@1.6.0 @actions/http-client
+
         - name: Set OIDC Token for Federated Identity Login
           uses: actions/github-script@v7
           id: set-oidc-token
@@ -471,9 +325,8 @@ jobs:
               const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
               coreapi.setOutput('oidc_token', oidc_token)
 
-        - name: Submit pyrenew-h* job
-          id: submit-pyrenew-h
-          # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
+        - name: Submit pyrenew-hew matrix job
+          id: submit-pyrenew-hew-job
           uses: CDCgov/cfa-actions/runner-action@v1.4.0
           with:
             github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
@@ -511,11 +364,10 @@ jobs:
 
               echo "-------------------------------------------------"
               echo "Setting environment variables from azureconfig.sh"
-              echo "-------------------------------------------------"
-              # cat ./azureconfig.sh >> $GITHUB_ENV
+              echo "-------------------------------------------------""
               source ./azureconfig.sh
 
-              # Run pyrenew-e
+              # Run pyrenew-hew
               echo "------------------------------------------"
               echo "Submitting pyrenew-h* job to Azure Batch"
               echo "------------------------------------------"
