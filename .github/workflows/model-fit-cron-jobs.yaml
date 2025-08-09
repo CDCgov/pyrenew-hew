@@ -297,7 +297,7 @@ jobs:
         - run-timeseries-e
 
       if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' && needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK == 'true' && needs.check-azure-data-availability.outputs.NWSS_GOLD_CHECK == 'true' }}
-        
+
       runs-on: ubuntu-latest
       environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
       permissions:
