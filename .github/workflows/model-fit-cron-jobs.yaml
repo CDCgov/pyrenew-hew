@@ -208,7 +208,7 @@ jobs:
       - check-azure-data-availability
       - run-timeseries-e
 
-    if: ${{ needs.check-azure-data-availability.outputs.nssp_gold_check == 'true' }}
+    if: ${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
@@ -296,7 +296,8 @@ jobs:
         - check-azure-data-availability
         - run-timeseries-e
 
-      if: ${{ needs.check-azure-data-availability.outputs.NHSN_DATA_CHECK == 'true' }}
+      if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' && needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK == 'true' && needs.check-azure-data-availability.outputs.NWSS_GOLD_CHECK == 'true' }}
+        
       runs-on: ubuntu-latest
       environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
       permissions:
