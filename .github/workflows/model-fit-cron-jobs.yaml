@@ -47,7 +47,7 @@ jobs:
     # Future job runs are conditioned on a combinatory logic of the following boolean outputs.
     # We define ahead-of-time what outputs will be set, then actually output within the check-dataset-availability step.
     outputs:
-      
+
           # necessary for timeseries-e
           NSSP_GOLD_CHECK: ${{ steps.check-dataset-availability.outputs.NSSP_GOLD_CHECK }}
 
@@ -94,7 +94,7 @@ jobs:
                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
                      --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
                      --output none
-            
+
             # Clone the repository at the current branch
             git clone -b "${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}" https://github.com/${{ github.repository }}.git
             cd pyrenew-hew

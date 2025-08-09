@@ -14,14 +14,14 @@ echo "Checking nssp gold data availability..."
 echo "-----------------------------------------"
 nssp_gold_last_modified=$(
 	az storage blob list \
-	--account-name "cfaazurebatchprd" \
-	--container-name "nssp-etl" \
-	--prefix "gold/" \
-	--query "sort_by([?ends_with(name, '.parquet')], &properties.lastModified)[-1].properties.lastModified" \
-	--auth-mode login \
-	--output tsv \
-	| cut -d 'T' -f 1 \
-	| date -u -d "$1" +%Y-%m-%d
+		--account-name "cfaazurebatchprd" \
+		--container-name "nssp-etl" \
+		--prefix "gold/" \
+		--query "sort_by([?ends_with(name, '.parquet')], &properties.lastModified)[-1].properties.lastModified" \
+		--auth-mode login \
+		--output tsv |
+		cut -d 'T' -f 1 |
+		date -u -d "$1" +%Y-%m-%d
 )
 
 echo "-----------------------------------------"
