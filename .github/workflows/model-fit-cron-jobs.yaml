@@ -119,7 +119,7 @@ jobs:
     needs:
       - set-model-run-environment
       - check-azure-data-availability
-    if: ${{ needs.check-azure-data-availability.outputs.nssp_gold_check == true }}
+    if: ${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK == true }}
     runs-on: ubuntu-latest
     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
     permissions:
