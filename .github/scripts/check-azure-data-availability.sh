@@ -95,8 +95,19 @@ else
 fi
 
 echo "========================================="
-echo "Boolean check results:"
+echo "Basic data check results:"
 echo "nssp_gold_check: $nssp_gold_check"
 echo "nwss_vintages_check: $nwss_vintages_check"
 echo "nhsn_check: $nhsn_check"
+echo ""
+echo "Pyrenew Data Check Results (under construction)"
+echo "Timeseries-e data check:"
+echo "Pyrenew-e data check:"
+echo "Pyrenew-hew data check:"
 echo "========================================="
+
+echo "Explanation of data checks:"
+echo "If timeseries-e data is not available, but nssp-etl gold is, then run timeseries-e."
+echo "If timeseries-e data is available, but pyrenew-e data is not, then run pyrenew-e."
+echo "If timeseries-e data is available, and nssp-etl and nhsn and nwss are available, then run pyrenew-hew matrix (excludes e by itself)."
+echo "Future cron jobs can get more granular, allowing nssp/timeseries data to not block pyrenew-h and hw runs."
