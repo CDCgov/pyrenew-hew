@@ -624,6 +624,7 @@ def process_and_save_loc_param(
     loc_level_nwss_data,
     param_data_dir,
     model_run_dir,
+    right_truncation_required=False,
 ) -> None:
     loc_pop = (
         get_loc_pop_df().filter(pl.col("abb") == loc_abb).item(0, "population")
@@ -654,7 +655,7 @@ def process_and_save_loc_param(
         param_estimates=param_estimates,
         loc_abb=loc_abb,
         disease=disease,
-        right_truncation_required=False,
+        right_truncation_required=right_truncation_required,
     )
 
     inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
