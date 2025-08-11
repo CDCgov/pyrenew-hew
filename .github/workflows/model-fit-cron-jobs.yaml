@@ -368,7 +368,7 @@ jobs:
 
               echo "-------------------------------------------------"
               echo "Setting environment variables from azureconfig.sh"
-              echo "-------------------------------------------------""
+              echo "-------------------------------------------------"
               source ./azureconfig.sh
 
               # Run pyrenew-hew
