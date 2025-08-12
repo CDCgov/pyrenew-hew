@@ -291,100 +291,435 @@ jobs:
               --test True \
               --dry-run True
 
-  run-pyrenew-hew-matrix:
-      needs:
-        - set-model-run-environment
-        - check-azure-data-availability
-        - run-timeseries-e
+  # run-pyrenew-hew-matrix:
+  #     needs:
+  #       - set-model-run-environment
+  #       - check-azure-data-availability
+  #       - run-timeseries-e
+  #
+  #     # if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' }}
+  #
+  #     runs-on: ubuntu-latest
+  #     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+  #     permissions:
+  #       contents: read
+  #       id-token: write
+  #     strategy:
+  #       matrix:
+  #         model: 
+  #           - "h"
+  #           - "he"
+  #           - "hw"
+  #           - "hew"
+  #
+  #     steps:
+  #       - name: Announce deployment environment
+  #         run: |
+  #           echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+  #           echo "Running with model letter: ${{ matrix.model }}"
+  #
+  #       - name: Install OIDC Client from Core Package
+  #         run: npm install @actions/core@1.6.0 @actions/http-client
+  #
+  #       - name: Set OIDC Token for Federated Identity Login
+  #         uses: actions/github-script@v7
+  #         id: set-oidc-token
+  #         with:
+  #           # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
+  #           script: |
+  #             const coreapi = require('@actions/core')
+  #             const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+  #             coreapi.setOutput('oidc_token', oidc_token)
+  #
+  #       - name: Submit pyrenew-hew matrix job
+  #         id: submit-pyrenew-hew-job
+  #         uses: CDCgov/cfa-actions/runner-action@v1.4.0
+  #         with:
+  #           github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+  #           github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+  #           wait_for_completion: true
+  #           print_logs: true
+  #           script: |
+  #             echo "Logging into Azure CLI"
+  #             echo "------------------------------------------------------------"
+  #             echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
+  #             echo "------------------------------------------------------------"
+  #             az login --service-principal \
+  #                     --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+  #                     --tenant ${{ secrets.AZURE_TENANT_ID }} \
+  #                     --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
+  #                     --output none
+  #
+  #             CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
+  #             echo "--------------------------------------------------------------"
+  #             echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
+  #             echo "--------------------------------------------------------------"
+  #             git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
+  #             cd pyrenew-hew
+  #
+  #             echo "----------------------------------------------------------------------------"
+  #             echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
+  #             echo "----------------------------------------------------------------------------"
+  #             az storage blob download \
+  #               --account-name "cfaazurebatchprd" \
+  #               --container-name "pyrenew-hew-config" \
+  #               --name "azureconfig.sh" \
+  #               --file "./azureconfig.sh" \
+  #               --auth-mode login \
+  #               --overwrite
+  #
+  #             echo "-------------------------------------------------"
+  #             echo "Setting environment variables from azureconfig.sh"
+  #             echo "-------------------------------------------------"
+  #             source ./azureconfig.sh
+  #
+  #             echo "Running job for Model Letter(s): ${{ matrix.model }}"
+  #
+  #             # Run pyrenew-hew
+  #             echo "------------------------------------------"
+  #             echo "Submitting pyrenew-h* job to Azure Batch"
+  #             echo "------------------------------------------"
+  #             FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
+  #             uv run python pipelines/batch/setup_job.py \
+  #               --model-family pyrenew \
+  #               --output-subdir "${FORECAST_DATE}_forecasts" \
+  #               --model-letters "${{ matrix.model }}" \
+  #               --job-id "pyrenew-${{ matrix.model }}-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
+  #               --pool-id pyrenew-pool \
+  #               --test True \
+  #               --dry-run True
 
-      # if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' }}
+  run-pyrenew-h:
+    needs:
+      - set-model-run-environment
+      - check-azure-data-availability
 
-      runs-on: ubuntu-latest
-      environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
-      permissions:
-        contents: read
-        id-token: write
-      strategy:
-        matrix:
-          model: 
-            - "h"
-            - "he"
-            - "hw"
-            - "hew"
+    # if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Announce deployment environment
+        run: |
+          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+          echo "Running with model letter: h"
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+      - name: Set OIDC Token for Federated Identity Login
+        uses: actions/github-script@v7
+        id: set-oidc-token
+        with:
+          script: |
+            const coreapi = require('@actions/core')
+            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+            coreapi.setOutput('oidc_token', oidc_token)
+      - name: Submit pyrenew-h job
+        id: submit-pyrenew-h-job
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "Logging into Azure CLI"
+            echo "------------------------------------------------------------"
+            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
+            echo "------------------------------------------------------------"
+            az login --service-principal \
+                    --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+                    --tenant ${{ secrets.AZURE_TENANT_ID }} \
+                    --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
+                    --output none
 
-      steps:
-        - name: Announce deployment environment
-          run: |
-            echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-            echo "Running with model letter: ${{ matrix.model }}"
+            CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
+            echo "--------------------------------------------------------------"
+            echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
+            echo "--------------------------------------------------------------"
+            git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
+            cd pyrenew-hew
 
-        - name: Install OIDC Client from Core Package
-          run: npm install @actions/core@1.6.0 @actions/http-client
+            echo "----------------------------------------------------------------------------"
+            echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
+            echo "----------------------------------------------------------------------------"
+            az storage blob download \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --file "./azureconfig.sh" \
+              --auth-mode login \
+              --overwrite
 
-        - name: Set OIDC Token for Federated Identity Login
-          uses: actions/github-script@v7
-          id: set-oidc-token
-          with:
-            # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
-            script: |
-              const coreapi = require('@actions/core')
-              const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
-              coreapi.setOutput('oidc_token', oidc_token)
+            echo "-------------------------------------------------"
+            echo "Setting environment variables from azureconfig.sh"
+            echo "-------------------------------------------------"
+            source ./azureconfig.sh
 
-        - name: Submit pyrenew-hew matrix job
-          id: submit-pyrenew-hew-job
-          uses: CDCgov/cfa-actions/runner-action@v1.4.0
-          with:
-            github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
-            github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
-            wait_for_completion: true
-            print_logs: true
-            script: |
-              echo "Logging into Azure CLI"
-              echo "------------------------------------------------------------"
-              echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
-              echo "------------------------------------------------------------"
-              az login --service-principal \
-                      --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
-                      --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                      --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
-                      --output none
+            echo "Running job for Model Letter(s): h"
 
-              CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
-              echo "--------------------------------------------------------------"
-              echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
-              echo "--------------------------------------------------------------"
-              git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
-              cd pyrenew-hew
+            # Run pyrenew-h
+            echo "------------------------------------------"
+            echo "Submitting pyrenew-h job to Azure Batch"
+            echo "------------------------------------------"
+            FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
+            uv run python pipelines/batch/setup_job.py \
+              --model-family pyrenew \
+              --output-subdir "${FORECAST_DATE}_forecasts" \
+              --model-letters "h" \
+              --job-id "pyrenew-h-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
+              --pool-id pyrenew-pool \
+              --test True \
+              --dry-run True
 
-              echo "----------------------------------------------------------------------------"
-              echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
-              echo "----------------------------------------------------------------------------"
-              az storage blob download \
-                --account-name "cfaazurebatchprd" \
-                --container-name "pyrenew-hew-config" \
-                --name "azureconfig.sh" \
-                --file "./azureconfig.sh" \
-                --auth-mode login \
-                --overwrite
+  run-pyrenew-he:
+    needs:
+      - set-model-run-environment
+      - check-azure-data-availability
+      - run-timeseries-e
+    # if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Announce deployment environment
+        run: |
+          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+          echo "Running with model letter: he"
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+      - name: Set OIDC Token for Federated Identity Login
+        uses: actions/github-script@v7
+        id: set-oidc-token
+        with:
+          script: |
+            const coreapi = require('@actions/core')
+            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+            coreapi.setOutput('oidc_token', oidc_token)
+      - name: Submit pyrenew-he job
+        id: submit-pyrenew-he-job
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "Logging into Azure CLI"
+            echo "------------------------------------------------------------"
+            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
+            echo "------------------------------------------------------------"
+            az login --service-principal \
+                    --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+                    --tenant ${{ secrets.AZURE_TENANT_ID }} \
+                    --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
+                    --output none
 
-              echo "-------------------------------------------------"
-              echo "Setting environment variables from azureconfig.sh"
-              echo "-------------------------------------------------"
-              source ./azureconfig.sh
+            CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
+            echo "--------------------------------------------------------------"
+            echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
+            echo "--------------------------------------------------------------"
+            git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
+            cd pyrenew-hew
 
-              echo "Running job for Model Letter(s): ${{ matrix.model }}"
+            echo "----------------------------------------------------------------------------"
+            echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
+            echo "----------------------------------------------------------------------------"
+            az storage blob download \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --file "./azureconfig.sh" \
+              --auth-mode login \
+              --overwrite
 
-              # Run pyrenew-hew
-              echo "------------------------------------------"
-              echo "Submitting pyrenew-h* job to Azure Batch"
-              echo "------------------------------------------"
-              FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
-              uv run python pipelines/batch/setup_job.py \
-                --model-family pyrenew \
-                --output-subdir "${FORECAST_DATE}_forecasts" \
-                --model-letters "${{ matrix.model }}" \
-                --job-id "pyrenew-${{ matrix.model }}-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
-                --pool-id pyrenew-pool \
-                --test True \
-                --dry-run True
+            echo "-------------------------------------------------"
+            echo "Setting environment variables from azureconfig.sh"
+            echo "-------------------------------------------------"
+            source ./azureconfig.sh
+
+            echo "Running job for Model Letter(s): he"
+
+            # Run pyrenew-he
+            echo "------------------------------------------"
+            echo "Submitting pyrenew-he job to Azure Batch"
+            echo "------------------------------------------"
+            FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
+            uv run python pipelines/batch/setup_job.py \
+              --model-family pyrenew \
+              --output-subdir "${FORECAST_DATE}_forecasts" \
+              --model-letters "he" \
+              --job-id "pyrenew-he-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
+              --pool-id pyrenew-pool \
+              --test True \
+              --dry-run True
+
+  run-pyrenew-hw:
+    needs:
+      - set-model-run-environment
+      - check-azure-data-availability
+    # if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Announce deployment environment
+        run: |
+          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+          echo "Running with model letter: hw"
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+      - name: Set OIDC Token for Federated Identity Login
+        uses: actions/github-script@v7
+        id: set-oidc-token
+        with:
+          script: |
+            const coreapi = require('@actions/core')
+            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+            coreapi.setOutput('oidc_token', oidc_token)
+      - name: Submit pyrenew-hw job
+        id: submit-pyrenew-hw-job
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "Logging into Azure CLI"
+            echo "------------------------------------------------------------"
+            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
+            echo "------------------------------------------------------------"
+            az login --service-principal \
+                    --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+                    --tenant ${{ secrets.AZURE_TENANT_ID }} \
+                    --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
+                    --output none
+
+            CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
+            echo "--------------------------------------------------------------"
+            echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
+            echo "--------------------------------------------------------------"
+            git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
+            cd pyrenew-hew
+
+            echo "----------------------------------------------------------------------------"
+            echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
+            echo "----------------------------------------------------------------------------"
+            az storage blob download \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --file "./azureconfig.sh" \
+              --auth-mode login \
+              --overwrite
+
+            echo "-------------------------------------------------"
+            echo "Setting environment variables from azureconfig.sh"
+            echo "-------------------------------------------------"
+            source ./azureconfig.sh
+
+            echo "Running job for Model Letter(s): hw"
+
+            # Run pyrenew-hw
+            echo "------------------------------------------"
+            echo "Submitting pyrenew-hw job to Azure Batch"
+            echo "------------------------------------------"
+            FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
+            uv run python pipelines/batch/setup_job.py \
+              --model-family pyrenew \
+              --output-subdir "${FORECAST_DATE}_forecasts" \
+              --model-letters "hw" \
+              --job-id "pyrenew-hw-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
+              --pool-id pyrenew-pool \
+              --test True \
+              --dry-run True
+
+  run-pyrenew-hew:
+    needs:
+      - set-model-run-environment
+      - check-azure-data-availability
+      - run-timeseries-e
+    # if: ${{ needs.check-azure-data-availability.outputs.NHSN_CHECK == 'true' }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Announce deployment environment
+        run: |
+          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+          echo "Running with model letter: hew"
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+      - name: Set OIDC Token for Federated Identity Login
+        uses: actions/github-script@v7
+        id: set-oidc-token
+        with:
+          script: |
+            const coreapi = require('@actions/core')
+            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+            coreapi.setOutput('oidc_token', oidc_token)
+      - name: Submit pyrenew-hew job
+        id: submit-pyrenew-hew-job
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "Logging into Azure CLI"
+            echo "------------------------------------------------------------"
+            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
+            echo "------------------------------------------------------------"
+            az login --service-principal \
+                    --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+                    --tenant ${{ secrets.AZURE_TENANT_ID }} \
+                    --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
+                    --output none
+
+            CURRENT_BRANCH="${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}"
+            echo "--------------------------------------------------------------"
+            echo "Cloning repo at branch '$CURRENT_BRANCH', and switching to it."
+            echo "--------------------------------------------------------------"
+            git clone -b "$CURRENT_BRANCH" https://github.com/${{ github.repository }}.git
+            cd pyrenew-hew
+
+            echo "----------------------------------------------------------------------------"
+            echo "Downloading STF azureconfig.sh for Azure Batch and azuretools compatibility."
+            echo "----------------------------------------------------------------------------"
+            az storage blob download \
+              --account-name "cfaazurebatchprd" \
+              --container-name "pyrenew-hew-config" \
+              --name "azureconfig.sh" \
+              --file "./azureconfig.sh" \
+              --auth-mode login \
+              --overwrite
+
+            echo "-------------------------------------------------"
+            echo "Setting environment variables from azureconfig.sh"
+            echo "-------------------------------------------------"
+            source ./azureconfig.sh
+
+            echo "Running job for Model Letter(s): hew"
+
+            # Run pyrenew-hew
+            echo "------------------------------------------"
+            echo "Submitting pyrenew-hew job to Azure Batch"
+            echo "------------------------------------------"
+            FORECAST_DATE=$(TZ="America/New_York" date +%Y-%m-%d)
+            uv run python pipelines/batch/setup_job.py \
+              --model-family pyrenew \
+              --output-subdir "${FORECAST_DATE}_forecasts" \
+              --model-letters "hew" \
+              --job-id "pyrenew-hew-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
+              --pool-id pyrenew-pool \
+              --test True \
+              --dry-run True
