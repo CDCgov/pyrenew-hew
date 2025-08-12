@@ -303,8 +303,6 @@ jobs:
       permissions:
         contents: read
         id-token: write
-      env:
-        MODEL_LETTERS: ${{ matrix.model }}
       strategy:
         matrix:
           model: ["h","he","hw","hew"]
@@ -314,7 +312,7 @@ jobs:
         - name: Announce deployment environment
           run: |
             echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
-            echo "Running with model letter: ${{ env.MODEL_LETTERS }}"
+            echo "Running with model letter: ${{ matrix.model }}"
 
         - name: Install OIDC Client from Core Package
           run: npm install @actions/core@1.6.0 @actions/http-client
@@ -371,6 +369,8 @@ jobs:
               echo "-------------------------------------------------"
               source ./azureconfig.sh
 
+              echo "Running job for Model Letter(s): ${{ matrix.model }}"
+
               # Run pyrenew-hew
               echo "------------------------------------------"
               echo "Submitting pyrenew-h* job to Azure Batch"
@@ -379,8 +379,8 @@ jobs:
               uv run python pipelines/batch/setup_job.py \
                 --model-family pyrenew \
                 --output-subdir "${FORECAST_DATE}_forecasts" \
-                --model-letters "${{ env.MODEL_LETTERS }}" \
-                --job-id "pyrenew-${{ env.MODEL_LETTERS }}-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
+                --model-letters "${{ matrix.model }}" \
+                --job-id "pyrenew-${{ matrix.model }}-${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}_${FORECAST_DATE}" \
                 --pool-id pyrenew-pool \
                 --test True \
                 --dry-run True
