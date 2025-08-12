@@ -306,8 +306,11 @@ jobs:
         id-token: write
       strategy:
         matrix:
-          model: ["h","he","hw","hew"]
-          
+          model: 
+            - "h"
+            - "he"
+            - "hw"
+            - "hew"
 
       steps:
         - name: Announce deployment environment
