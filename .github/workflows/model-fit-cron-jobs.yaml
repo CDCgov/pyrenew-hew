@@ -9,6 +9,7 @@ on:
       - 'jk*' # For testing purposes; matches any branch starting with 'jk'
     paths:
       - '.github/workflows/model-fit-cron-jobs.yaml'
+      - '.github/scripts/check-azure-data-availability.sh'
 
 jobs:
 
