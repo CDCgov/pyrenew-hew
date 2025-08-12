@@ -116,6 +116,30 @@ jobs:
             echo "NHSN_CHECK=$nhsn_check"                   >> $GITHUB_OUTPUT
             echo "------------------------------------------------------------"
 
+  test-data-checks:
+    needs: check-azure-data-availability
+    runs-on: ubuntu-latest
+    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+    steps:
+      - name: Print out availabilities
+        run: |
+          echo "${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK }}"
+          echo "${{ needs.check-azure-data-availability.outputs.NWSS_VINTAGES_CHECK }}"
+          echo "${{ needs.check-azure-data-availability.outputs.NHSN_CHECK }}"
+
+      - name: Print out availabilities (runner action)
+        uses: CDCgov/cfa-actions/runner-action@v1.4.0
+        with:
+          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+          wait_for_completion: true
+          print_logs: true
+          script: |
+            echo "${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK }}"
+            echo "${{ needs.check-azure-data-availability.outputs.NWSS_VINTAGES_CHECK }}"
+            echo "${{ needs.check-azure-data-availability.outputs.NHSN_CHECK }}"
+      
+
   run-timeseries-e:
     needs:
       - set-model-run-environment
