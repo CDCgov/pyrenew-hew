@@ -180,9 +180,6 @@ def validate_ww_conc_data(
     """
     Checks nwss data for missing values and data types.
     """
-    if ww_data.is_empty():
-        raise ValueError("Input DataFrame 'ww_data' is empty.")
-
     required_cols = [
         conc_col_name,
         lod_col_name,
