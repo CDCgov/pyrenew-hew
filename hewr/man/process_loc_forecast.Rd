@@ -32,9 +32,15 @@ argument to \code{\link[ggdist:point_interval]{ggdist::median_qi()}}. Default \c
 to parquet files. Default \code{TRUE}.}
 }
 \value{
-a list of 2 tibbles:
-\code{samples},
-\code{ci},
+a list of 8 tibbles:
+\code{daily_combined_training_eval_data},
+\code{epiweekly_combined_training_eval_data},
+\code{daily_samples},
+\code{epiweekly_samples},
+\code{epiweekly_with_epiweekly_other_samples},
+\code{daily_ci},
+\code{epiweekly_ci},
+\code{epiweekly_with_epiweekly_other_ci}
 }
 \description{
 Process loc forecast

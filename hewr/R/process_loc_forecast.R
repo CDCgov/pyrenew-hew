@@ -123,9 +123,8 @@ epiweekly_samples_from_daily <- function(
   return(aggregated_samples)
 }
 
-#' Read in and combine daily and epiweekly training data
-#' from a model run directory and calculate
-#' proportion of ed visits
+#' Read in and combine training and evaluation
+#' data from a model run directory.
 #'
 #' @param model_run_dir model run directory in which to look
 #' for data.
@@ -143,7 +142,7 @@ read_and_combine_data <- function(model_run_dir) {
   dat <-
     tidyr::expand_grid(
       epiweekly = c(FALSE, TRUE),
-      root = c("combined_training_data")
+      root = c("combined_training_data", "combined_eval_data")
     ) |>
     dplyr::mutate(
       prefix = ifelse(.data$epiweekly, "epiweekly_", ""),
@@ -490,9 +489,15 @@ process_pyrenew_model <- function(
 #' argument to [ggdist::median_qi()]. Default `c(0.5, 0.8, 0.95)`.
 #' @param save Boolean indicating whether or not to save the output
 #' to parquet files. Default `TRUE`.
-#' @return a list of 2 tibbles:
-#' `samples`,
-#' `ci`,
+#' @return a list of 8 tibbles:
+#' `daily_combined_training_eval_data`,
+#' `epiweekly_combined_training_eval_data`,
+#' `daily_samples`,
+#' `epiweekly_samples`,
+#' `epiweekly_with_epiweekly_other_samples`,
+#' `daily_ci`,
+#' `epiweekly_ci`,
+#' `epiweekly_with_epiweekly_other_ci`
 #' @export
 process_loc_forecast <- function(
   model_run_dir,

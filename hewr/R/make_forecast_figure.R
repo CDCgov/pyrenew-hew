@@ -89,12 +89,16 @@ make_forecast_figure <- function(
   title <- glue::glue("{title_prefix} {core_name} in {geo_value}")
 
   last_training_date <- dat |>
+    dplyr::filter(.data$data_type == "train") |>
     dplyr::pull(date) |>
     max()
 
   lineribbon_dat <- fig_ci
 
-  point_dat <- fig_dat
+  point_dat <- fig_dat |>
+    dplyr::filter(.data$date <= max(lineribbon_dat$date)) |>
+    dplyr::mutate(data_type = forcats::fct_rev(.data$data_type)) |>
+    dplyr::arrange(dplyr::desc(.data$data_type))
 
   ## Processing for wastewater plots
   if (.variable == "site_level_log_ww_conc") {

@@ -4,7 +4,6 @@ of pyrenew-hew on Azure Batch.
 """
 
 import argparse
-import datetime as dt
 import itertools
 from pathlib import Path
 
@@ -19,7 +18,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from pipelines.utils import get_training_dates_and_model_run_dir
 from pyrenew_hew.utils import validate_hew_letters
 
 # Locations that are always excluded due to lack of NSSP ED visit data
@@ -30,9 +28,8 @@ def main(
     model_letters: str,
     job_id: str,
     pool_id: str,
+    model_family: str,
     diseases: str | list[str],
-    run_script: str,
-    report_date: str,
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
@@ -59,9 +56,6 @@ def main(
     output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
-
-    report_date
-        Report date in YYYY-MM-DD format.
 
     container_image_name
         Name of the container to use for the job.
@@ -99,9 +93,9 @@ def main(
         exclusions (see DEFAULT_EXCLUDED_LOCATIONS). If ``None``,
         only the default locations will be excluded. Default ``None``.
 
-    run_script
-        Python script to run for the job. Supported values are
-        'prep_data', 'forecast_pyrenew' and 'forecast_timeseries'.
+    model_family
+        The model family to use for the job. Default 'pyrenew'.
+        Supported values are 'pyrenew' and 'timeseries'.
 
     test
         Is this a testing run? Default ``False``.
@@ -134,19 +128,16 @@ def main(
     # ========================
     # Model Letters Validation
     # ========================
-    if model_letters is not None:
-        validate_hew_letters(model_letters)
+    validate_hew_letters(model_letters)
     additional_forecast_letters = additional_forecast_letters or model_letters
-    if additional_forecast_letters is not None:
-        validate_hew_letters(additional_forecast_letters)
+    validate_hew_letters(additional_forecast_letters)
 
     # =======================
-    # Script Type Validation
+    # Model Family Validation
     # =======================
-
-    if run_script == "forecast_timeseries" and model_letters != "e":
+    if model_family == "timeseries" and model_letters != "e":
         raise ValueError(
-            "Only model_letters 'e' is supported for the 'forecast_timeseries' script type."
+            "Only model_letters 'e' is supported for the 'timeseries' model_family."
         )
 
     # ========================================
@@ -213,36 +204,23 @@ def main(
     )
 
     # =====================================
-    # Script Selection and Additional Args
+    # Model Family and Run Script Selection
     # =====================================
-
-    if run_script == "forecast_pyrenew":
+    if model_family == "pyrenew":
+        run_script = "forecast_pyrenew.py"
         additional_args = (
             f"--n-warmup {n_warmup} "
-            f"--model-letters {model_letters} "
-            f"--additional-forecast-letters {additional_forecast_letters} "
-            f"--n-samples {n_samples} "
-            f"--exclude-last-n-days {exclude_last_n_days} "
-        )
-    elif run_script == "forecast_timeseries":
-        additional_args = (
-            f"--n-samples {n_samples} "
-            f"--model-letters {model_letters} "
-            f"--exclude-last-n-days {exclude_last_n_days} "
-        )
-    else:
-        additional_args = (
             "--nwss-data-dir nwss-vintages "
             "--priors-path pipelines/priors/prod_priors.py "
-            "--facility-level-nssp-data-dir nssp-etl/gold "
-            "--state-level-nssp-data-dir "
-            "nssp-archival-vintages/gold "
-            "--param-data-dir params "
-            "--credentials-path config/creds.toml "
-            f"--report-date {report_date} "
-            "--disease {disease} "
-            "--last-training-date {last_training_date} "
-            "--first-training-date {first_training_date}"
+            f"--additional-forecast-letters {additional_forecast_letters} "
+        )
+    elif model_family == "timeseries":
+        run_script = "forecast_timeseries.py"
+        additional_args = ""
+    else:
+        raise ValueError(
+            f"Unsupported model family: {model_family}. "
+            "Supported values are 'pyrenew' and 'timeseries'."
         )
 
     # =======================================
@@ -250,9 +228,22 @@ def main(
     # =======================================
     base_call = (
         "/bin/bash -c '"
-        f"uv run python pipelines/{run_script}.py "
+        f"uv run python pipelines/{run_script} "
+        "--disease {disease} "
         "--loc {loc} "
-        "--model-run-dir {model_run_dir} "
+        f"--n-training-days {n_training_days} "
+        f"--n-samples {n_samples} "
+        "--facility-level-nssp-data-dir nssp-etl/gold "
+        "--state-level-nssp-data-dir "
+        "nssp-archival-vintages/gold "
+        "--param-data-dir params "
+        "--output-dir {output_dir} "
+        "--credentials-path config/creds.toml "
+        "--report-date {report_date} "
+        f"--exclude-last-n-days {exclude_last_n_days} "
+        f"--model-letters {model_letters} "
+        "--eval-data-path "
+        "nssp-etl/latest_comprehensive.parquet "
         f"{additional_args}"
         "'"
     )
@@ -274,7 +265,7 @@ def main(
     table = Table(show_header=False, pad_edge=False)
     table.add_row("Job ID", str(job_id))
     table.add_row("Pool ID", str(pool_id))
-    table.add_row("Script", str(run_script + ".py"))
+    table.add_row("Model Family", str(model_family))
     table.add_row("Model Letters", str(model_letters))
     table.add_row(
         "Additional Forecast Letters", str(additional_forecast_letters)
@@ -340,24 +331,13 @@ def main(
     # Azure Batch Task Submission
     # ===========================
     for disease, loc in itertools.product(disease_list, all_locations):
-        (last_training_date, first_training_date, model_run_dir) = (
-            get_training_dates_and_model_run_dir(
-                dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
-                exclude_last_n_days,
-                n_training_days,
-                disease,
-                loc,
-                Path("output", output_subdir),
-            )
-        )
         task = get_task_config(
             f"{job_id}-{loc}-{disease}-prod",
             base_call=base_call.format(
                 loc=loc,
                 disease=disease,
-                model_run_dir=model_run_dir,
-                last_training_date=last_training_date,
-                first_training_date=first_training_date,
+                report_date="latest",
+                output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
             log_blob_container="pyrenew-hew-logs",
@@ -409,12 +389,6 @@ if __name__ == "__main__":
             "in which to save results."
         ),
         default="./",
-    )
-    parser.add_argument(
-        "--report-date",
-        type=str,
-        default=dt.datetime.today().strftime("%Y-%m-%d"),
-        help="Report date in YYYY-MM-DD format",
     )
     parser.add_argument(
         "--container-image-name",
@@ -479,10 +453,14 @@ if __name__ == "__main__":
         default=None,
     )
     parser.add_argument(
-        "--run-script",
-        choices=["forecast_pyrenew", "forecast_timeseries", "prep_data"],
-        help=("The python script to run."),
-        default=None,
+        "--model-family",
+        type=str,
+        help=(
+            "Model family to use for the job. "
+            "Supported values are 'pyrenew' and 'timeseries'. "
+            "Default 'pyrenew'."
+        ),
+        default="pyrenew",
     )
 
     # Function to convert string to boolean
