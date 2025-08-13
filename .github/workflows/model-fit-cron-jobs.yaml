@@ -135,7 +135,7 @@ jobs:
   #           echo "${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK }}"
   #           echo "${{ needs.check-azure-data-availability.outputs.NWSS_VINTAGES_CHECK }}"
   #           echo "${{ needs.check-azure-data-availability.outputs.NHSN_CHECK }}"
-      
+
 
   run-timeseries-e:
     needs:
@@ -327,7 +327,7 @@ jobs:
   #       id-token: write
   #     strategy:
   #       matrix:
-  #         model: 
+  #         model:
   #           - "h"
   #           - "he"
   #           - "hw"
