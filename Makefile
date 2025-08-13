@@ -49,6 +49,8 @@ help:
 	@echo "  ghcr_login          : Log in to the Github Container Registry. Requires GH_USERNAME and GH_PAT env vars"
 	@echo "  container_push      : Push the container image to the Azure Container Registry"
 	@echo ""
+	@echo "  prep_data           : Run the data preparation job"
+	@echo ""
 	@echo "Model Fit Targets: "
 	@echo "  run_timeseries      : Run the timeseries model fit job"
 	@echo "  run_e_model         : Run an e model fit job"
@@ -95,9 +97,19 @@ container_push: container_tag ghcr_login
 # Model Fit Targets
 # ---------------- #
 
+prep_data:
+	uv run python pipelines/batch/setup_job.py \
+		--run-script prep_data \
+		--output-subdir "${FORECAST_DATE}_forecasts" \
+		--job-id "pyrenew-prep-data_${FORECAST_DATE}" \
+		--pool-id pyrenew-pool \
+		--test "$(TEST)" \
+		--dry-run "$(DRY_RUN)" \
+		$(ARGS)
+
 run_timeseries:
 	uv run python pipelines/batch/setup_job.py \
-		--model-family timeseries \
+		--run-script forecast_timeseries \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "e" \
 		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}_t" \
@@ -108,7 +120,7 @@ run_timeseries:
 
 run_e_model:
 	uv run python pipelines/batch/setup_job.py \
-		--model-family pyrenew \
+		--run-script forecast_pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "e" \
 		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}" \
@@ -119,7 +131,7 @@ run_e_model:
 
 run_h_model:
 	uv run python pipelines/batch/setup_job.py \
-		--model-family pyrenew \
+		--run-script forecast_pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "h" \
 		--job-id "pyrenew-h-${ENVIRONMENT}_${FORECAST_DATE}" \
@@ -130,7 +142,7 @@ run_h_model:
 
 run_he_model:
 	uv run python pipelines/batch/setup_job.py \
-		--model-family pyrenew \
+		--run-script forecast_pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "he" \
 		--job-id "pyrenew-he-${ENVIRONMENT}_${FORECAST_DATE}" \
@@ -141,7 +153,7 @@ run_he_model:
 
 run_hw_model:
 	uv run python pipelines/batch/setup_job.py \
-		--model-family pyrenew \
+		--run-script forecast_pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hw" \
 		--job-id "pyrenew-hw-${ENVIRONMENT}_${FORECAST_DATE}" \
@@ -152,7 +164,7 @@ run_hw_model:
 
 run_hew_model:
 	uv run python pipelines/batch/setup_job.py \
-		--model-family pyrenew \
+		--run-script forecast_pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
 		--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}" \

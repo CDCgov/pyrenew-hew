@@ -4,7 +4,6 @@ pipeline.
 """
 
 import datetime as dt
-import json
 import os
 import re
 import runpy
@@ -12,12 +11,40 @@ from pathlib import Path
 
 from forecasttools import ensure_listlike, location_table
 
-from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 from pyrenew_hew.utils import build_pyrenew_hew_model
 
 disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
 loc_abbrs_ = location_table["short_name"].to_list()
+
+
+def get_training_dates_and_model_run_dir(
+    report_date, exclude_last_n_days, n_training_days, disease, loc, output_dir
+):
+    # + 1 because max date in dataset is report_date - 1
+    last_training_date = report_date - dt.timedelta(
+        days=exclude_last_n_days + 1
+    )
+    if last_training_date >= report_date:
+        raise ValueError(
+            "Last training date must be before the report date. "
+            "Got a last training date of {last_training_date} "
+            "with a report date of {report_date}."
+        )
+    first_training_date = last_training_date - dt.timedelta(
+        days=n_training_days - 1
+    )
+
+    model_batch_dir_name = (
+        f"{disease.lower()}_r_{report_date}_f_"
+        f"{first_training_date}_t_{last_training_date}"
+    )
+
+    model_batch_dir = Path(output_dir, model_batch_dir_name)
+
+    model_run_dir = Path(model_batch_dir, "model_runs", loc)
+    os.makedirs(model_run_dir, exist_ok=True)
+    return (last_training_date, first_training_date, model_run_dir)
 
 
 def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
