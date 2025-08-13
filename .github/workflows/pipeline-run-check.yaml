@@ -41,7 +41,7 @@ env:
 
 jobs:
 
-  generate-test-data:
+  generate-data:
     runs-on:  ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,11 +59,13 @@ jobs:
           path: ${{ env.DATA_DIR }}
           retention-days: 1
 
-  prepare-data:
-    needs: generate-test-data
+
+  fit-timeseries-models:
+    needs: generate-data
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        model: [e]
         disease: [COVID-19, Influenza]
         location: [US, CA, MT, DC]
     steps:
@@ -81,43 +83,7 @@ jobs:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
-      - name: Prepare model fit data
-        run: |
-          uv run bash pipelines/tests/test_prep_data.sh ${{ env.BASE_DIR }} \
-          ${{ matrix.disease }} ${{ matrix.location }}
-
-      - name: Upload model fitting data
-        uses: actions/upload-artifact@v4
-        with:
-          name: |
-            fit-data-${{ matrix.disease }}-${{ matrix.location }}
-          path: ${{ env.BASE_DIR }}
-
-  fit-timeseries-models:
-    needs: prepare-data
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        model: [e]
-        disease: [COVID-19, Influenza]
-        location: [US, CA, MT, DC]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Pyrenew-HEW via UV
-        uses: ./.github/actions/setup-pyrenew-hew
-
-      - name: Set up R with hewr package
-        uses: ./.github/actions/setup-hewr
-
-      - name: Download data to fit
-        uses: actions/download-artifact@v4
-        with:
-          pattern: fit-data-*
-          path: ${{ env.BASE_DIR }}
-          merge-multiple: true
-
-      - name: Fit timeseries model
+      - name: Fit model
         run: |
           uv run bash pipelines/tests/test_ts_fit.sh ${{ env.BASE_DIR }} \
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
@@ -163,12 +129,11 @@ jobs:
       - name: Set up R with hewr package
         uses: ./.github/actions/setup-hewr
 
-      - name: Download data to fit
+      - name: Download test data
         uses: actions/download-artifact@v4
         with:
-          pattern: fit-data-*
-          path: ${{ env.BASE_DIR }}
-          merge-multiple: true
+          name: test-data
+          path: ${{ env.DATA_DIR }}
 
       - name: Download timeseries output
         if: ${{ matrix.model != 'hw' && matrix.model != 'h' }}
@@ -178,7 +143,7 @@ jobs:
           path: ${{ env.BASE_DIR }}
           merge-multiple: true
 
-      - name: Fit pyrenew model
+      - name: Fit model
         run: |
           uv run bash pipelines/tests/test_pyrenew_fit.sh ${{ env.BASE_DIR }} \
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}

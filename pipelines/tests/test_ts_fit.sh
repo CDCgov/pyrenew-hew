@@ -12,14 +12,17 @@ location="$3"
 model_letters="$4"
 
 python pipelines/forecast_timeseries.py \
+	--disease "$disease" \
 	--loc "$location" \
-	--model-run-dir \
-	"$BASE_DIR/2024-12-21_forecasts/${disease,,}_r_2024-12-21_f_2024-09-22_t_2024-12-20/model_runs/${location}" \
+	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
+	--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
+	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
+	--output-dir "$BASE_DIR/2024-12-21_forecasts" \
+	--n-training-days 90 \
 	--n-chains 2 \
 	--n-samples 250 \
-	--n-forecast-days 28 \
-	--exclude-last-n-days 0 \
-	--model-letters "$model_letters"
+	--model-letters "$model_letters" \
+	--eval-data-path "$BASE_DIR/private_data/nssp-etl"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"
 	exit 1
