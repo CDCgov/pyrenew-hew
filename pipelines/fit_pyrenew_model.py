@@ -51,7 +51,7 @@ def fit_and_save_model(
         num_warmup=n_warmup,
         num_samples=n_samples,
         rng_key=rng_key,
-        extra_fields=("potential_energy", "num_steps", "z_grad", "accept_prob",)
+        extra_fields=("potential_energy", "num_steps", "z_grad", "accept_prob",),
         mcmc_args=dict(num_chains=n_chains, progress_bar=True),
         nuts_args=dict(find_heuristic_step_size=True),
     )
