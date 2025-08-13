@@ -2,14 +2,14 @@ name: Submit model fit jobs to Azure Batch via cron
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0,30 9-20 * * WED"  # Every Wednesday, every 30 minutes from 9 AM to 8 PM UTC
-  push:
-    branches:
-      - 'jk*' # For testing purposes; matches any branch starting with 'jk'
-    paths:
-      - '.github/workflows/model-fit-cron-jobs.yaml'
-      - '.github/scripts/check-azure-data-availability.sh'
+  # schedule:
+  #   - cron: "0,30 9-20 * * WED"  # Every Wednesday, every 30 minutes from 9 AM to 8 PM UTC
+  # push:
+  #   branches:
+  #     - 'jk*' # For testing purposes; matches any branch starting with 'jk'
+  #   paths:
+  #     - '.github/workflows/model-fit-cron-jobs.yaml'
+  #     - '.github/scripts/check-azure-data-availability.sh'
 
 jobs:
 
@@ -26,124 +26,121 @@ jobs:
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             echo "ENVIRONMENT_NAME=production" >> $GITHUB_OUTPUT
-            echo "ENVIRONMENT_NAME=production" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT_NAME=test" >> $GITHUB_OUTPUT
-            echo "ENVIRONMENT_NAME=test" >> $GITHUB_ENV
           fi
       - id: get-branch-name
         run: |
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
-          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-  check-azure-data-availability:
-    runs-on: ubuntu-latest
-    needs:
-      - set-model-run-environment
-    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
-    permissions:
-      contents: read
-      id-token: write
+  # check-azure-data-availability:
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - set-model-run-environment
+  #   environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+  #   permissions:
+  #     contents: read
+  #     id-token: write
 
-    # Future job runs are conditioned on a combinatory logic of the following boolean outputs.
-    # We define ahead-of-time what outputs will be set, then actually output within the check-dataset-availability step.
-    outputs:
+  #   # Future job runs are conditioned on a combinatory logic of the following boolean outputs.
+  #   # We define ahead-of-time what outputs will be set, then actually output within the check-dataset-availability step.
+  #   outputs:
 
-          # necessary for timeseries-e
-          NSSP_GOLD_CHECK: ${{ steps.check-dataset-availability.outputs.NSSP_GOLD_CHECK }}
+  #         # necessary for timeseries-e
+  #         NSSP_GOLD_CHECK: ${{ steps.check-dataset-availability.outputs.NSSP_GOLD_CHECK }}
 
-          # necessary for h models
-          NHSN_CHECK: ${{ steps.check-dataset-availability.outputs.NHSN_CHECK }}
+  #         # necessary for h models
+  #         NHSN_CHECK: ${{ steps.check-dataset-availability.outputs.NHSN_CHECK }}
 
-          # necessary for w models
-          NWSS_GOLD_CHECK: ${{ steps.check-dataset-availability.outputs.NWSS_GOLD_CHECK }}
+  #         # necessary for w models
+  #         NWSS_GOLD_CHECK: ${{ steps.check-dataset-availability.outputs.NWSS_GOLD_CHECK }}
 
-    steps:
-      - name: Announce deployment environment
-        run: |
-          echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
+  #   steps:
+  #     - name: Announce deployment environment
+  #       run: |
+  #         echo "Running '${{ github.job }}' in environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}"
 
-      - name: Install OIDC Client from Core Package
-        run: npm install @actions/core@1.6.0 @actions/http-client
+  #     - name: Install OIDC Client from Core Package
+  #       run: npm install @actions/core@1.6.0 @actions/http-client
 
-      - name: Set OIDC Token for Federated Identity Login
-        uses: actions/github-script@v7
-        id: set-oidc-token
-        with:
-          # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
-          script: |
-            const coreapi = require('@actions/core')
-            const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
-            coreapi.setOutput('oidc_token', oidc_token)
+  #     - name: Set OIDC Token for Federated Identity Login
+  #       uses: actions/github-script@v7
+  #       id: set-oidc-token
+  #       with:
+  #         # This step retrieves an OIDC token for use in Azure authentication - we can then pass to az login
+  #         script: |
+  #           const coreapi = require('@actions/core')
+  #           const oidc_token = await coreapi.getIDToken('api://AzureADTokenExchange')
+  #           coreapi.setOutput('oidc_token', oidc_token)
 
-      - name: Check for Dataset Availability
-        id: check-dataset-availability
-        # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
-        uses: CDCgov/cfa-actions/runner-action@v1.4.0
-        with:
-          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
-          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
-          wait_for_completion: true
-          print_logs: true
-          script: |
-            echo "Logging into Azure CLI"
-            echo "------------------------------------------------------------"
-            echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
-            echo "------------------------------------------------------------"
-            az login --service-principal \
-                     --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
-                     --tenant ${{ secrets.AZURE_TENANT_ID }} \
-                     --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
-                     --output none
+  #     - name: Check for Dataset Availability
+  #       id: check-dataset-availability
+  #       # Removed invalid condition referencing steps.check_pool_id.outputs.pool-exists
+  #       uses: CDCgov/cfa-actions/runner-action@v1.4.0
+  #       with:
+  #         github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+  #         github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+  #         wait_for_completion: true
+  #         print_logs: true
+  #         script: |
+  #           echo "Logging into Azure CLI"
+  #           echo "------------------------------------------------------------"
+  #           echo "The federated token is ${{ steps.set-oidc-token.outputs.oidc_token }}"
+  #           echo "------------------------------------------------------------"
+  #           az login --service-principal \
+  #                    --username ${{ secrets.AZURE_STFT_SP_CLIENT_ID }} \
+  #                    --tenant ${{ secrets.AZURE_TENANT_ID }} \
+  #                    --federated-token ${{ steps.set-oidc-token.outputs.oidc_token }} \
+  #                    --output none
 
-            # Clone the repository at the current branch
-            git clone -b "${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}" https://github.com/${{ github.repository }}.git
-            cd pyrenew-hew
+  #           # Clone the repository at the current branch
+  #           git clone -b "${{ needs.set-model-run-environment.outputs.BRANCH_NAME }}" https://github.com/${{ github.repository }}.git
+  #           cd pyrenew-hew
 
-            # Source the check-data-availability script
-            echo "------------------------------------------------------------"
-            echo "Sourcing check-data-availability.sh script"
-            echo "------------------------------------------------------------"
-            # This script checks the availability of necessary datasets and sets outputs accordingly.
-            # It should be sourced to expose its variables to the parent shell.
-            # This allows us to use the outputs in subsequent steps.
-            source .github/scripts/check-azure-data-availability.sh
+  #           # Source the check-data-availability script
+  #           echo "------------------------------------------------------------"
+  #           echo "Sourcing check-data-availability.sh script"
+  #           echo "------------------------------------------------------------"
+  #           # This script checks the availability of necessary datasets and sets outputs accordingly.
+  #           # It should be sourced to expose its variables to the parent shell.
+  #           # This allows us to use the outputs in subsequent steps.
+  #           source .github/scripts/check-azure-data-availability.sh
 
-            echo "------------------------------------------------------------"
-            echo "Setting outputs based on dataset availability checks"
-            echo "NSSP_GOLD_CHECK=$nssp_gold_check"         >> $GITHUB_OUTPUT
-            echo "NWSS_VINTAGES_CHECK=$nwss_vintages_check" >> $GITHUB_OUTPUT
-            echo "NHSN_CHECK=$nhsn_check"                   >> $GITHUB_OUTPUT
-            echo "------------------------------------------------------------"
+  #           echo "------------------------------------------------------------"
+  #           echo "Setting outputs based on dataset availability checks"
+  #           echo "NSSP_GOLD_CHECK=$nssp_gold_check"         >> $GITHUB_OUTPUT
+  #           echo "NWSS_VINTAGES_CHECK=$nwss_vintages_check" >> $GITHUB_OUTPUT
+  #           echo "NHSN_CHECK=$nhsn_check"                   >> $GITHUB_OUTPUT
+  #           echo "------------------------------------------------------------"
 
-  test-data-checks:
-    needs: check-azure-data-availability
-    runs-on: ubuntu-latest
-    environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
-    steps:
-      - name: Print out availabilities
-        run: |
-          echo "${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK }}"
-          echo "${{ needs.check-azure-data-availability.outputs.NWSS_VINTAGES_CHECK }}"
-          echo "${{ needs.check-azure-data-availability.outputs.NHSN_CHECK }}"
+  # test-data-checks:
+  #   needs: check-azure-data-availability
+  #   runs-on: ubuntu-latest
+  #   environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
+  #   steps:
+  #     - name: Print out availabilities
+  #       run: |
+  #         echo "${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK }}"
+  #         echo "${{ needs.check-azure-data-availability.outputs.NWSS_VINTAGES_CHECK }}"
+  #         echo "${{ needs.check-azure-data-availability.outputs.NHSN_CHECK }}"
 
-      - name: Print out availabilities (runner action)
-        uses: CDCgov/cfa-actions/runner-action@v1.4.0
-        with:
-          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
-          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
-          wait_for_completion: true
-          print_logs: true
-          script: |
-            echo "${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK }}"
-            echo "${{ needs.check-azure-data-availability.outputs.NWSS_VINTAGES_CHECK }}"
-            echo "${{ needs.check-azure-data-availability.outputs.NHSN_CHECK }}"
+  #     - name: Print out availabilities (runner action)
+  #       uses: CDCgov/cfa-actions/runner-action@v1.4.0
+  #       with:
+  #         github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+  #         github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
+  #         wait_for_completion: true
+  #         print_logs: true
+  #         script: |
+  #           echo "${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK }}"
+  #           echo "${{ needs.check-azure-data-availability.outputs.NWSS_VINTAGES_CHECK }}"
+  #           echo "${{ needs.check-azure-data-availability.outputs.NHSN_CHECK }}"
       
 
   run-timeseries-e:
     needs:
       - set-model-run-environment
-      - check-azure-data-availability
+      # - check-azure-data-availability
     # if: ${{ needs.check-azure-data-availability.outputs.NSSP_GOLD_CHECK == true }}
     runs-on: ubuntu-latest
     environment: ${{ needs.set-model-run-environment.outputs.ENVIRONMENT_NAME }}
