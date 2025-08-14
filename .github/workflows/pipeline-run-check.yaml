@@ -109,11 +109,11 @@ jobs:
         location: [US, CA, MT, DC]
         exclude:
           - model: hw
-            disease: [Influenza RSV]
+            disease: [Influenza, RSV]
           - model: ew
-            disease: [Influenza RSV]
+            disease: [Influenza, RSV]
           - model: hew
-            disease: [Influenza RSV]
+            disease: [Influenza, RSV]
           - model: hw
             location: US
           - model: ew
