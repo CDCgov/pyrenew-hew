@@ -78,7 +78,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download test data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
@@ -130,14 +130,14 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download test data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
       - name: Download timeseries output
         if: ${{ matrix.model != 'hw' && matrix.model != 'h' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: test-fit-ts-*
           path: ${{ env.BASE_DIR }}
@@ -168,7 +168,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download model fitting output
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: test-fit-*
           path: ${{ env.BASE_DIR }}
