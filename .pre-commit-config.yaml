@@ -27,6 +27,10 @@ repos:
     rev: 0.8.8
     hooks:
       - id: uv-lock
+  - repo: https://github.com/northisup/pyright-pretty
+    rev: v0.1.0
+    hooks:
+      - id: pyright-pretty
   #####
   # R
   - repo: https://github.com/lorenzwalthert/precommit
