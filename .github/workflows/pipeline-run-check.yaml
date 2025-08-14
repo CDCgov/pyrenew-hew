@@ -105,7 +105,7 @@ jobs:
     strategy:
       matrix:
         model: [h, e, he, hw, ew, hew]
-        disease: [COVID-19, Influenza RSV]
+        disease: [COVID-19, Influenza, RSV]
         location: [US, CA, MT, DC]
         exclude:
           - model: hw
