@@ -327,6 +327,7 @@ def main(
     nwss_data_disease_map = {
         "COVID-19": "covid",
         "Influenza": "flu",
+        "RSV": "rsv",
     }
 
     def get_available_nwss_reports(
@@ -654,7 +655,7 @@ if __name__ == "__main__":
             "Forecast the following signals even if they were not fit. "
             "Fit signals are always forecast."
         ),
-        default="he",
+        default=None,
     )
     parser.add_argument(
         "--nhsn-data-path",
@@ -666,9 +667,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     fit_flags = flags_from_hew_letters(args.model_letters)
     forecast_flags = flags_from_hew_letters(
-        args.model_letters + args.additional_forecast_letters,
+        args.model_letters + (args.additional_forecast_letters or ""),
         flag_prefix="forecast",
     )
-    delattr(args, "model_letters")
     delattr(args, "additional_forecast_letters")
+    delattr(args, "model_letters")
     main(**vars(args), **fit_flags, **forecast_flags)

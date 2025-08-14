@@ -100,7 +100,11 @@ test_that("get_all_model_batch_dirs() returns expected output.", {
       "influenza_r_2022-11-12_f_2022-11-01_t_2022_11_10",
       "influenza_r"
     )
-    valid_dirs <- c(valid_flu, valid_covid)
+    valid_rsv <- c(
+      "rsv_r_2022-11-12_f_2022-11-01_t_2022_11_10",
+      "rsv_r"
+    )
+    valid_dirs <- c(valid_flu, valid_covid, valid_rsv)
 
     invalid_dirs <- c(
       "this_is_not_valid",
@@ -114,7 +118,8 @@ test_that("get_all_model_batch_dirs() returns expected output.", {
 
     invalid_files <- c(
       "covid-19_r.txt",
-      "influenza_r.txt"
+      "influenza_r.txt",
+      "rsv_r.txt"
     )
     fs::dir_create(c(valid_dirs, invalid_dirs))
     fs::file_create(invalid_files)
@@ -128,12 +133,12 @@ test_that("get_all_model_batch_dirs() returns expected output.", {
 
     result_valid <- get_all_model_batch_dirs(
       ".",
-      c("COVID-19", "Influenza")
+      c("COVID-19", "Influenza", "RSV")
     )
 
     result_valid_alt <- get_all_model_batch_dirs(
       ".",
-      c("Influenza", "COVID-19")
+      c("Influenza", "RSV", "COVID-19")
     )
 
     result_valid_covid <- get_all_model_batch_dirs(
@@ -146,10 +151,16 @@ test_that("get_all_model_batch_dirs() returns expected output.", {
       "Influenza"
     )
 
+    result_valid_rsv <- get_all_model_batch_dirs(
+      ".",
+      "RSV"
+    )
+
     expect_setequal(result_all, expected_all_files)
-    expect_setequal(result_valid, c(valid_flu, valid_covid))
-    expect_setequal(result_valid_alt, c(valid_flu, valid_covid))
+    expect_setequal(result_valid, c(valid_flu, valid_covid, valid_rsv))
+    expect_setequal(result_valid_alt, c(valid_flu, valid_covid, valid_rsv))
     expect_setequal(result_valid_covid, valid_covid)
     expect_setequal(result_valid_flu, valid_flu)
+    expect_setequal(result_valid_rsv, valid_rsv)
   })
 })
