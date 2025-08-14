@@ -425,7 +425,13 @@ process_pyrenew_model <- function(
       )
     ) |>
     dplyr::filter(.data$predicted_last_date != .data$expected_last_date)
-  stopifnot("Date mismatch for variables" = nrow(mismatch) == 0)
+
+  if (nrow(mismatch) != 0) {
+    stop(sprintf(
+      "Date mismatch for variables:\n%s",
+      paste(capture.output(print(mismatch)), collapse = "\n")
+    ))
+  }
 
   # For the E model, do epiweekly and process denominator
   if (pyrenew_model_components["e"]) {

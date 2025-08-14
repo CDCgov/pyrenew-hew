@@ -3,7 +3,8 @@
 
 disease_map_lower <- c(
   "covid-19" = "COVID-19",
-  "influenza" = "Influenza"
+  "influenza" = "Influenza",
+  "rsv" = "RSV"
 )
 
 #' Parse model batch directory name.

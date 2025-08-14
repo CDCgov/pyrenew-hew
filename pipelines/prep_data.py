@@ -46,6 +46,7 @@ def get_nhsn(
         disease_nhsn_key = {
             "COVID-19": "totalconfc19newadm",
             "Influenza": "totalconfflunewadm",
+            "RSV": "totalconfrsvnewadm",
         }
 
         columns = disease_nhsn_key[disease]
