@@ -16,7 +16,11 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
 from pyrenew_hew.utils import build_pyrenew_hew_model
 
-disease_map_lower_ = {"influenza": "Influenza", "covid-19": "COVID-19"}
+disease_map_lower_ = {
+    "influenza": "Influenza",
+    "covid-19": "COVID-19",
+    "rsv": "RSV",
+}
 loc_abbrs_ = location_table["short_name"].to_list()
 
 
