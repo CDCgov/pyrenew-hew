@@ -114,7 +114,7 @@ def main(
     # ==================
     # Disease Validation
     # ==================
-    supported_diseases = ["COVID-19", "Influenza"]
+    supported_diseases = ["COVID-19", "Influenza", "RSV"]
 
     disease_list = diseases
 
