@@ -7,7 +7,6 @@ import subprocess
 import tomllib
 from pathlib import Path
 
-import jax.numpy as jnp
 import polars as pl
 import tomli_w
 from fit_pyrenew_model import fit_and_save_model

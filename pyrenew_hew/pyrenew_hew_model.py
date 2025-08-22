@@ -13,7 +13,7 @@ from numpyro.handlers import scope
 from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.arrayutils import tile_until_n
 from pyrenew.convolve import compute_delay_ascertained_incidence
-from pyrenew.deterministic import DeterministicPMF, DeterministicVariable
+from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
     InfectionsWithFeedback,

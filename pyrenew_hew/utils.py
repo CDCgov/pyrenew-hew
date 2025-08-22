@@ -7,7 +7,6 @@ from typing import Iterable
 
 import jax.numpy as jnp
 import numpyro.distributions as dist
-import polars as pl
 from jax.scipy.special import logsumexp
 from jax.typing import ArrayLike
 from pyrenew.deterministic import DeterministicPMF
