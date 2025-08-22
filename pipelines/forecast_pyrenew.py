@@ -74,9 +74,7 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly_data(
-    model_run_dir: Path, data_names: str = None
-) -> None:
+def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
     command = [
         "Rscript",
         "pipelines/generate_epiweekly_data.R",
@@ -90,15 +88,11 @@ def generate_epiweekly_data(
         capture_output=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(
-            f"generate_epiweekly_data: {result.stderr.decode('utf-8')}"
-        )
+        raise RuntimeError(f"generate_epiweekly_data: {result.stderr.decode('utf-8')}")
     return None
 
 
-def convert_inferencedata_to_parquet(
-    model_run_dir: Path, model_name: str
-) -> None:
+def convert_inferencedata_to_parquet(model_run_dir: Path, model_name: str) -> None:
     result = subprocess.run(
         [
             "Rscript",
@@ -147,9 +141,7 @@ def plot_and_save_loc_forecast(
     return None
 
 
-def get_available_reports(
-    data_dir: str | Path, glob_pattern: str = "*.parquet"
-):
+def get_available_reports(data_dir: str | Path, glob_pattern: str = "*.parquet"):
     return [
         dt.datetime.strptime(f.stem, "%Y-%m-%d").date()
         for f in Path(data_dir).glob(glob_pattern)
@@ -230,8 +222,7 @@ def main(
     any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
     if not any_fit:
         raise ValueError(
-            "pyrenew_null (fitting to no signals) "
-            "is not supported by this pipeline"
+            "pyrenew_null (fitting to no signals) is not supported by this pipeline"
         )
 
     if credentials_path is not None:
@@ -253,9 +244,7 @@ def main(
         facility_level_nssp_data_dir
     )
 
-    available_loc_level_reports = get_available_reports(
-        state_level_nssp_data_dir
-    )
+    available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
     first_available_loc_report = min(available_loc_level_reports)
     last_available_loc_report = max(available_loc_level_reports)
 
@@ -286,9 +275,7 @@ def main(
         logger.info(f"Using location-level data as of: {loc_report_date}")
 
     # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - dt.timedelta(
-        days=exclude_last_n_days + 1
-    )
+    last_training_date = report_date - dt.timedelta(days=exclude_last_n_days + 1)
 
     if last_training_date >= report_date:
         raise ValueError(
@@ -299,9 +286,7 @@ def main(
 
     logger.info(f"last training date: {last_training_date}")
 
-    first_training_date = last_training_date - dt.timedelta(
-        days=n_training_days - 1
-    )
+    first_training_date = last_training_date - dt.timedelta(days=n_training_days - 1)
 
     logger.info(f"First training date {first_training_date}")
 
@@ -335,9 +320,7 @@ def main(
         glob_pattern: str = f"NWSS-ETL-{nwss_data_disease_map[disease]}-",
     ):
         return [
-            dt.datetime.strptime(
-                f.stem.removeprefix(glob_pattern), "%Y-%m-%d"
-            ).date()
+            dt.datetime.strptime(f.stem.removeprefix(glob_pattern), "%Y-%m-%d").date()
             for f in Path(data_dir).glob(f"{glob_pattern}*")
         ]
 
@@ -352,16 +335,12 @@ def main(
                 )
             )
             nwss_data_cleaned = clean_nwss_data(nwss_data_raw).filter(
-                (pl.col("location") == loc)
-                & (pl.col("date") >= first_training_date)
+                (pl.col("location") == loc) & (pl.col("date") >= first_training_date)
             )
-            loc_level_nwss_data = preprocess_ww_data(
-                nwss_data_cleaned.collect()
-            )
+            loc_level_nwss_data = preprocess_ww_data(nwss_data_cleaned.collect())
         else:
             raise ValueError(
-                "NWSS data not available for the requested report date "
-                f"{report_date}"
+                f"NWSS data not available for the requested report date {report_date}"
             )
     else:
         loc_level_nwss_data = None
@@ -380,9 +359,7 @@ def main(
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 
-    if fit_ed_visits and not os.path.exists(
-        Path(model_run_dir, timeseries_model_name)
-    ):
+    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
         raise ValueError(
             f"{timeseries_model_name} model run not found. "
             "Please ensure that the timeseries forecasts "
@@ -535,18 +512,14 @@ if __name__ == "__main__":
         "--facility-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_etl_gold"),
-        help=(
-            "Directory in which to look for facility-level NSSP ED visit data"
-        ),
+        help=("Directory in which to look for facility-level NSSP ED visit data"),
     )
 
     parser.add_argument(
         "--state-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_state_level_gold"),
-        help=(
-            "Directory in which to look for state-level NSSP ED visit data."
-        ),
+        help=("Directory in which to look for state-level NSSP ED visit data."),
     )
 
     parser.add_argument(
@@ -560,10 +533,7 @@ if __name__ == "__main__":
         "--param-data-dir",
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
-        help=(
-            "Directory in which to look for parameter estimates"
-            "such as delay PMFs."
-        ),
+        help=("Directory in which to look for parameter estimatessuch as delay PMFs."),
         required=True,
     )
 
@@ -618,9 +588,7 @@ if __name__ == "__main__":
         "--n-warmup",
         type=int,
         default=1000,
-        help=(
-            "Number of warmup iterations per chain for NUTS (default: 1000)."
-        ),
+        help=("Number of warmup iterations per chain for NUTS (default: 1000)."),
     )
 
     parser.add_argument(
@@ -628,8 +596,7 @@ if __name__ == "__main__":
         type=int,
         default=1000,
         help=(
-            "Number of posterior samples to draw per "
-            "chain using NUTS (default: 1000)."
+            "Number of posterior samples to draw per chain using NUTS (default: 1000)."
         ),
     )
 

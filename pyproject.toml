@@ -45,7 +45,6 @@ test = [
 
 [tool.ruff]
 fix = true
-line-length = 79
 
 [tool.ruff.lint]
 select = ["I"]

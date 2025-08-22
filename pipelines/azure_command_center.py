@@ -265,9 +265,7 @@ def get_data_status(
         raise ValueError(
             f"Filename does not contain a valid date: {latest_nwss_path.name}"
         )
-    nwss_update_date = dt.datetime.strptime(
-        date_match.group(), "%Y-%m-%d"
-    ).date()
+    nwss_update_date = dt.datetime.strptime(date_match.group(), "%Y-%m-%d").date()
 
     latest_comprehensive_update_date = (
         pl.read_parquet(latest_comprehensive_path)
@@ -281,12 +279,8 @@ def get_data_status(
         nhsn_data = response.json()
         nhsn_update_date_raw = nhsn_data.get("rowsUpdatedAt")
         if nhsn_update_date_raw is None:
-            raise ValueError(
-                "Key 'rowsUpdatedAt' not found in NHSN API response."
-            )
-        nhsn_update_date = dt.datetime.fromtimestamp(
-            nhsn_update_date_raw
-        ).date()
+            raise ValueError("Key 'rowsUpdatedAt' not found in NHSN API response.")
+        nhsn_update_date = dt.datetime.fromtimestamp(nhsn_update_date_raw).date()
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Failed to fetch data from NHSN API: {e}")
     except (ValueError, KeyError, TypeError) as e:
@@ -359,9 +353,7 @@ def ask_integer_choice(choices):
         if choice >= 1 and choice <= len(choices):
             return choices[choice - 1]
         else:
-            print(
-                f"[prompt.invalid]Number must be between 1 and {len(choices)}"
-            )
+            print(f"[prompt.invalid]Number must be between 1 and {len(choices)}")
 
 
 if __name__ == "__main__":
@@ -383,9 +375,7 @@ if __name__ == "__main__":
     ]
 
     # Get and print data status
-    datasets = get_data_status(
-        nssp_etl_path, nwss_vintages_path, nhsn_target_url
-    )
+    datasets = get_data_status(nssp_etl_path, nwss_vintages_path, nhsn_target_url)
     print_data_status(datasets)
 
     while True:
@@ -406,9 +396,7 @@ if __name__ == "__main__":
             fit_pyrenew_hew(append_id=current_time)
         elif selected_choice == "Rerun Timeseries Models":
             ask_about_reruns_input = ask_about_reruns()
-            do_timeseries_reruns(
-                append_id=current_time, **ask_about_reruns_input
-            )
+            do_timeseries_reruns(append_id=current_time, **ask_about_reruns_input)
         elif selected_choice == "Rerun PyRenew Models":
             ask_about_reruns_input = ask_about_reruns()
             do_pyrenew_reruns(append_id=current_time, **ask_about_reruns_input)

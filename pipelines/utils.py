@@ -47,8 +47,7 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
         )
     else:
         raise ValueError(
-            "Invalid model batch directory name format: "
-            f"{model_batch_dir_name}"
+            f"Invalid model batch directory name format: {model_batch_dir_name}"
         )
     return dict(
         disease=disease_map_lower_[disease],
@@ -56,9 +55,7 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
         first_training_date=dt.datetime.strptime(
             first_training_date, "%Y-%m-%d"
         ).date(),
-        last_training_date=dt.datetime.strptime(
-            last_training_date, "%Y-%m-%d"
-        ).date(),
+        last_training_date=dt.datetime.strptime(last_training_date, "%Y-%m-%d").date(),
     )
 
 
@@ -139,9 +136,7 @@ def get_all_model_run_dirs(parent_dir: Path) -> list[str]:
     """
 
     return [
-        f.name
-        for f in os.scandir(parent_dir)
-        if f.is_dir() and f.name in loc_abbrs_
+        f.name for f in os.scandir(parent_dir) if f.is_dir() and f.name in loc_abbrs_
     ]
 
 

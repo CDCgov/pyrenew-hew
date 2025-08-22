@@ -21,17 +21,13 @@ def main(
         total="Total",
     )
 
-    diseases_to_pull = [
-        diseases_to_column_names.get(disease) for disease in diseases
-    ]
+    diseases_to_pull = [diseases_to_column_names.get(disease) for disease in diseases]
 
     col_names_to_pull = diseases_to_pull + ["Total"]
 
     if isinstance(report_date, str):
         if report_date == "latest":
-            report_date = max(
-                f.stem for f in Path(nssp_data_dir).glob("*.parquet")
-            )
+            report_date = max(f.stem for f in Path(nssp_data_dir).glob("*.parquet"))
         report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
     elif not isinstance(report_date, dt.date):
         raise ValueError(
@@ -43,15 +39,12 @@ def main(
     if first_date_to_pull is None:
         first_date_to_pull = pl.col("reference_date").min()
     elif isinstance(first_date_to_pull, str):
-        first_date_to_pull = dt.datetime.strptime(
-            first_date_to_pull, "%Y-%m-%d"
-        ).date()
+        first_date_to_pull = dt.datetime.strptime(first_date_to_pull, "%Y-%m-%d").date()
     elif not isinstance(first_date_to_pull, dt.date):
         raise ValueError(
             "`first_date_to_pull` must be `None` "
             "in which case all available dates are pulled, ",
-            "a `datetime.date` object, or a string "
-            "giving a date in IS08601 format.",
+            "a `datetime.date` object, or a string giving a date in IS08601 format.",
         )
 
     logging.basicConfig(level=logging.INFO)
@@ -88,9 +81,7 @@ def main(
                 for x in diseases
             }
         )
-        .with_columns(
-            **{f"pct_{x}": (100.0 * pl.col(f"frac_{x}")) for x in diseases}
-        )
+        .with_columns(**{f"pct_{x}": (100.0 * pl.col(f"frac_{x}")) for x in diseases})
         .select(
             [
                 pl.col("reference_date").alias("date"),
@@ -114,15 +105,11 @@ def main(
     logger.info("Data preparation complete.")
 
 
-parser = argparse.ArgumentParser(
-    description="Pull NSSP data across pathogens."
-)
+parser = argparse.ArgumentParser(description="Pull NSSP data across pathogens.")
 parser.add_argument(
     "nssp_data_dir",
     type=Path,
-    help=(
-        "Directory in which to look for NSSP data gold table .parquet files."
-    ),
+    help=("Directory in which to look for NSSP data gold table .parquet files."),
 )
 parser.add_argument(
     "output_path",

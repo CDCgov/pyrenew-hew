@@ -48,9 +48,7 @@ def combine_hubverse_tables(model_batch_dir_path: str | Path) -> None:
     return None
 
 
-def process_model_batch_dir(
-    model_batch_dir_path: Path, plot_ext: str = "pdf"
-) -> None:
+def process_model_batch_dir(model_batch_dir_path: Path, plot_ext: str = "pdf") -> None:
     logger = logging.getLogger(__name__)
     logger.info("Collating plots...")
     cp.merge_and_save_pdfs(model_batch_dir_path)

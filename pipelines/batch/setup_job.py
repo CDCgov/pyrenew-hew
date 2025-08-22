@@ -169,9 +169,7 @@ def main(
     # ===============
     # Container Setup
     # ===============
-    container_image = (
-        f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
-    )
+    container_image = f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
     container_settings = get_container_settings(
         container_image,
         working_directory="containerImageDefault",
@@ -267,9 +265,7 @@ def main(
     table.add_row("Pool ID", str(pool_id))
     table.add_row("Model Family", str(model_family))
     table.add_row("Model Letters", str(model_letters))
-    table.add_row(
-        "Additional Forecast Letters", str(additional_forecast_letters)
-    )
+    table.add_row("Additional Forecast Letters", str(additional_forecast_letters))
     table.add_row("Diseases", ", ".join(disease_list))
     table.add_row("Output Subdirectory", str(output_subdir))
     table.add_row("Container Image", str(container_image))
@@ -279,8 +275,7 @@ def main(
 
     # Locations included (5 per line)
     loc_lines = [
-        ", ".join(all_locations[i : i + 5])
-        for i in range(0, len(all_locations), 5)
+        ", ".join(all_locations[i : i + 5]) for i in range(0, len(all_locations), 5)
     ]
     table.add_row("Locations Included", loc_lines[0] if loc_lines else "")
     for loc_line in loc_lines[1:]:
@@ -290,11 +285,7 @@ def main(
     table.add_row("Excluded Locations", ", ".join(all_exclusions))
 
     def style_bool(val):
-        return (
-            f"[bold green]True[/bold green]"
-            if val
-            else "[grey50]False[/grey50]"
-        )
+        return f"[bold green]True[/bold green]" if val else "[grey50]False[/grey50]"
 
     table.add_row("Test Mode", style_bool(test))
     table.add_row("Dry Run", style_bool(dry_run))
@@ -343,9 +334,7 @@ def main(
             log_blob_container="pyrenew-hew-logs",
             log_blob_account=creds.azure_blob_storage_account,
             log_subdir=job_id,
-            log_compute_node_identity_reference=(
-                creds.compute_node_identity_reference
-            ),
+            log_compute_node_identity_reference=(creds.compute_node_identity_reference),
         )
         client.task.add(job_id, task)
 
@@ -361,9 +350,7 @@ if __name__ == "__main__":
             "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
         ),
     )
-    parser.add_argument(
-        "--job-id", type=str, help="Name for the Azure batch job"
-    )
+    parser.add_argument("--job-id", type=str, help="Name for the Azure batch job")
     parser.add_argument(
         "--pool-id",
         type=str,
@@ -405,10 +392,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--n-training-days",
         type=int,
-        help=(
-            "Number of 'training days' of observed data "
-            "to use for model fitting."
-        ),
+        help=("Number of 'training days' of observed data to use for model fitting."),
         default=150,
     )
     parser.add_argument(
