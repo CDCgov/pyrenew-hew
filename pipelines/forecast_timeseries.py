@@ -218,7 +218,6 @@ def main(
             f"No data available for the requested report date {report_date}"
         )
 
-    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"

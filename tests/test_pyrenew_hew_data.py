@@ -18,14 +18,12 @@ def test_validation(erroring_date):
     first_hospital_admissions_date(s)
     """
     with pytest.raises(ValueError, match="Saturdays"):
-        data = (
-            PyrenewHEWData(
-                n_ed_visits_data_days=5,
-                n_hospital_admissions_data_days=10,
-                first_ed_visits_date=np.datetime64("2025-03-05"),
-                first_hospital_admissions_date=erroring_date,
-                right_truncation_offset=0,
-            ),
+        PyrenewHEWData(
+            n_ed_visits_data_days=5,
+            n_hospital_admissions_data_days=10,
+            first_ed_visits_date=np.datetime64("2025-03-05"),
+            first_hospital_admissions_date=erroring_date,
+            right_truncation_offset=0,
         )
 
 

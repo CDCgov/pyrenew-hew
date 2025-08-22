@@ -285,7 +285,7 @@ def main(
     table.add_row("Excluded Locations", ", ".join(all_exclusions))
 
     def style_bool(val):
-        return f"[bold green]True[/bold green]" if val else "[grey50]False[/grey50]"
+        return "[bold green]True[/bold green]" if val else "[grey50]False[/grey50]"
 
     table.add_row("Test Mode", style_bool(test))
     table.add_row("Dry Run", style_bool(dry_run))

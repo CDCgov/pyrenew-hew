@@ -37,7 +37,7 @@ def record_git_info(model_run_dir: Path):
         repo = Repository(os.getcwd())
         branch_name = repo.head.shorthand
         commit_sha = str(repo.head.target)
-    except Exception as e:
+    except Exception:
         branch_name = os.environ.get("GIT_BRANCH_NAME", "unknown")
         commit_sha = os.environ.get("GIT_COMMIT_SHA", "unknown")
 
