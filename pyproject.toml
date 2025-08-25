@@ -27,6 +27,7 @@ dependencies = [
     "rich>=14.0.0",
     "dotenv>=0.9.9",
     "arviz",
+    "polarbayes",
 ]
 
 [build-system]
@@ -51,3 +52,4 @@ select = ["I", "E4", "E7", "E9", "F"]
 
 [tool.uv.sources]
 arviz = { git = "https://github.com/arviz-devs/arviz.git" }
+polarbayes = { git = "https://github.com/CDCgov/polarbayes.git" }

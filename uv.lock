@@ -1894,6 +1894,15 @@ wheels = [
 ]
 
 [[package]]
+name = "polarbayes"
+version = "0.1.0"
+source = { git = "https://github.com/CDCgov/polarbayes.git#58658df3cf9244765e04b05cf064c4fc4d808e77" }
+dependencies = [
+    { name = "arviz" },
+    { name = "polars" },
+]
+
+[[package]]
 name = "polars"
 version = "1.32.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2075,6 +2084,7 @@ dependencies = [
     { name = "ipykernel" },
     { name = "ipywidgets" },
     { name = "jupyter" },
+    { name = "polarbayes" },
     { name = "polars" },
     { name = "pyarrow" },
     { name = "pygit2" },
@@ -2101,6 +2111,7 @@ requires-dist = [
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "ipywidgets", specifier = ">=8.1.5" },
     { name = "jupyter", specifier = ">=1.0.0" },
+    { name = "polarbayes", git = "https://github.com/CDCgov/polarbayes.git" },
     { name = "polars", specifier = ">=1.5.0" },
     { name = "pyarrow", specifier = ">=18.0.0" },
     { name = "pygit2", specifier = ">=1.17.0" },
