@@ -20,9 +20,7 @@ from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
-parser = argparse.ArgumentParser(
-    description="Create fit data for disease modeling."
-)
+parser = argparse.ArgumentParser(description="Create fit data for disease modeling.")
 
 parser.add_argument(
     "base_dir",
@@ -99,9 +97,7 @@ def dirichlet_integer_split(n, k, alpha=1.0):
     return counts
 
 
-def create_var_df(
-    idata: az.InferenceData, var: str, state_disease_key: pl.DataFrame
-):
+def create_var_df(idata: az.InferenceData, var: str, state_disease_key: pl.DataFrame):
     df = (
         pl.from_pandas(
             idata.prior[var].to_dataframe(),
@@ -253,9 +249,7 @@ def simulate_data_from_bootstrap(
             pl.lit("n").alias("quality_flag"),
         )
         .with_columns(
-            pl.col("site_level_log_ww_conc")
-            .exp()
-            .alias("pcr_target_avg_conc"),
+            pl.col("site_level_log_ww_conc").exp().alias("pcr_target_avg_conc"),
             pl.col("site").alias("lab_id"),
             pl.col("site").alias("wwtp_id"),
         )
@@ -321,9 +315,7 @@ def simulate_data_from_bootstrap(
 
     # replace with tempfile utilities
     # https://docs.python.org/3/library/tempfile.html
-    bootstrap_nhsn_data_path = Path(
-        bootstrap_private_data_dir, "nhsn_data.parquet"
-    )
+    bootstrap_nhsn_data_path = Path(bootstrap_private_data_dir, "nhsn_data.parquet")
     bootstrap_nhsn_data.write_parquet(bootstrap_nhsn_data_path)
 
     model_run_dir = Path(bootstrap_private_data_dir, bootstrap_loc)
@@ -355,9 +347,7 @@ def simulate_data_from_bootstrap(
         model_run_dir=model_run_dir,
     )
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir)
-        / "data"
-        / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
         fit_ed_visits=True,
         fit_hospital_admissions=True,
         fit_wastewater=True,
@@ -558,9 +548,9 @@ nssp_state_level_gold = (
 
 nssp_state_level_gold_dir = Path(private_data_dir, "nssp_state_level_gold")
 nssp_state_level_gold_dir.mkdir(parents=True, exist_ok=True)
-nssp_state_level_gold.filter(
-    pl.col("reference_date") <= max_train_date
-).write_parquet(Path(nssp_state_level_gold_dir, f"{max_train_date}.parquet"))
+nssp_state_level_gold.filter(pl.col("reference_date") <= max_train_date).write_parquet(
+    Path(nssp_state_level_gold_dir, f"{max_train_date}.parquet")
+)
 
 
 # %% nssp-etl/latest_comprehensive.parquet
@@ -626,9 +616,9 @@ nwss_site_pop = (
     .group_by("wwtp_jurisdiction")
     .agg("wwtp_id")
     .join(
-        forecasttools.location_table.rename(
-            {"short_name": "wwtp_jurisdiction"}
-        ).select("wwtp_jurisdiction", "population"),
+        forecasttools.location_table.rename({"short_name": "wwtp_jurisdiction"}).select(
+            "wwtp_jurisdiction", "population"
+        ),
         on="wwtp_jurisdiction",
     )
     .with_columns(
@@ -666,9 +656,7 @@ nhsn_data_sates = (
         (
             pl.lit(max_train_date)
             + pl.duration(
-                weeks=(
-                    pl.col("time") - pl.col("time").max() + n_forecast_weeks
-                )
+                weeks=(pl.col("time") - pl.col("time").max() + n_forecast_weeks)
             )
         ).alias("weekendingdate")
     )

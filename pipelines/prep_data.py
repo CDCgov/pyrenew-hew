@@ -10,7 +10,6 @@ from pathlib import Path
 
 import forecasttools
 import jax.numpy as jnp
-import numpy as np
 import polars as pl
 import polars.selectors as cs
 
@@ -86,13 +85,9 @@ def get_nhsn(
         result = subprocess.run(r_command)
 
         if result.returncode != 0:
-            raise RuntimeError(
-                f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}"
-            )
+            raise RuntimeError(f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}")
     raw_dat = pl.read_parquet(local_data_file)
-    dat = raw_dat.with_columns(
-        weekendingdate=pl.col("weekendingdate").cast(pl.Date)
-    )
+    dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
     return dat
 
 
@@ -251,9 +246,7 @@ def process_loc_level_data(
             ]
         )
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
         .collect(engine="streaming")
@@ -304,9 +297,7 @@ def aggregate_facility_level_nssp_to_loc(
         .group_by(["reference_date", "disease"])
         .agg(pl.col("value").sum().alias("ed_visits"))
         .with_columns(
-            disease=pl.col("disease")
-            .cast(pl.Utf8)
-            .replace(_inverse_disease_map),
+            disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
             geo_value=pl.lit(loc_abb).cast(pl.Utf8),
         )
         .rename({"reference_date": "date"})
@@ -437,10 +428,7 @@ def get_pmfs(
         pl.col("geo_value") == loc_abb
     ).filter(pl.col("reference_date") == pl.col("reference_date").max())
 
-    if (
-        right_truncation_df.collect().height == 0
-        and not right_truncation_required
-    ):
+    if right_truncation_df.collect().height == 0 and not right_truncation_required:
         right_truncation_pmf = [1]
     else:
         right_truncation_pmf = _validate_and_extract(
@@ -473,9 +461,7 @@ def process_and_save_loc_data(
 
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
-            "Must provide at least one "
-            "of facility-level and state-level"
-            "NSSP data"
+            "Must provide at least one of facility-level and state-levelNSSP data"
         )
 
     loc_pop_df = get_loc_pop_df()
@@ -617,12 +603,10 @@ def process_and_save_loc_param(
         right_truncation_required=fit_ed_visits,
     )
 
-    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = (
-        approx_lognorm(
-            jnp.array(pmfs["delay_pmf"])[1:],  # only fit the non-zero delays
-            loc_guess=0,
-            scale_guess=0.5,
-        )
+    inf_to_hosp_admit_lognormal_loc, inf_to_hosp_admit_lognormal_scale = approx_lognorm(
+        jnp.array(pmfs["delay_pmf"])[1:],  # only fit the non-zero delays
+        loc_guess=0,
+        scale_guess=0.5,
     )
 
     model_params = {

@@ -42,13 +42,9 @@ class PyrenewHEWParam:
         return cls(
             population_size=param_dict["population_size"],
             pop_fraction=jnp.array(param_dict["pop_fraction"]),
-            generation_interval_pmf=jnp.array(
-                param_dict["generation_interval_pmf"]
-            ),
+            generation_interval_pmf=jnp.array(param_dict["generation_interval_pmf"]),
             right_truncation_pmf=jnp.array(param_dict["right_truncation_pmf"]),
-            inf_to_hosp_admit_pmf=jnp.array(
-                param_dict["inf_to_hosp_admit_pmf"]
-            ),
+            inf_to_hosp_admit_pmf=jnp.array(param_dict["inf_to_hosp_admit_pmf"]),
             inf_to_hosp_admit_lognormal_loc=param_dict[
                 "inf_to_hosp_admit_lognormal_loc"
             ],

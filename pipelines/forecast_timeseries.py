@@ -153,9 +153,7 @@ def main(
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
-    available_loc_level_reports = get_available_reports(
-        state_level_nssp_data_dir
-    )
+    available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
     first_available_loc_report = min(available_loc_level_reports)
     last_available_loc_report = max(available_loc_level_reports)
 
@@ -197,9 +195,7 @@ def main(
 
     logger.info(f"last training date: {last_training_date}")
 
-    first_training_date = last_training_date - timedelta(
-        days=n_training_days - 1
-    )
+    first_training_date = last_training_date - timedelta(days=n_training_days - 1)
 
     logger.info(f"First training date {first_training_date}")
 
@@ -222,7 +218,6 @@ def main(
             f"No data available for the requested report date {report_date}"
         )
 
-    param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date}_f_"
         f"{first_training_date}_t_{last_training_date}"
@@ -346,28 +341,21 @@ if __name__ == "__main__":
         "--facility-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_etl_gold"),
-        help=(
-            "Directory in which to look for facility-level NSSP ED visit data"
-        ),
+        help=("Directory in which to look for facility-level NSSP ED visit data"),
     )
 
     parser.add_argument(
         "--state-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_state_level_gold"),
-        help=(
-            "Directory in which to look for state-level NSSP ED visit data."
-        ),
+        help=("Directory in which to look for state-level NSSP ED visit data."),
     )
 
     parser.add_argument(
         "--param-data-dir",
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
-        help=(
-            "Directory in which to look for parameter estimates"
-            "such as delay PMFs."
-        ),
+        help=("Directory in which to look for parameter estimatessuch as delay PMFs."),
         required=True,
     )
 
@@ -407,8 +395,7 @@ if __name__ == "__main__":
         type=int,
         default=1000,
         help=(
-            "Number of posterior samples to draw per "
-            "chain using NUTS (default: 1000)."
+            "Number of posterior samples to draw per chain using NUTS (default: 1000)."
         ),
     )
 

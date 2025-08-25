@@ -20,9 +20,7 @@ log_r_mu_intercept_rv = DistributionalVariable(
     "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
 )
 
-eta_sd_rv = DistributionalVariable(
-    "eta_sd", dist.TruncatedNormal(0.1, 0.05, low=0)
-)
+eta_sd_rv = DistributionalVariable("eta_sd", dist.TruncatedNormal(0.1, 0.05, low=0))
 
 autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(2, 2))
 

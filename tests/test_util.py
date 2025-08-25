@@ -36,9 +36,7 @@ def test_hew_naming_from_flags(
 ):
     expected_model_name = f"pyrenew_{expected_letters}"
     assert (
-        hew_letters_from_flags(
-            fit_ed_visits, fit_hospital_admissions, fit_wastewater
-        )
+        hew_letters_from_flags(fit_ed_visits, fit_hospital_admissions, fit_wastewater)
         == expected_letters
     )
 
@@ -54,9 +52,7 @@ def test_hew_naming_from_flags(
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
     )
-    assert flags_from_hew_letters(
-        expected_letters, flag_prefix="other_prefix"
-    ) == dict(
+    assert flags_from_hew_letters(expected_letters, flag_prefix="other_prefix") == dict(
         other_prefix_ed_visits=fit_ed_visits,
         other_prefix_hospital_admissions=fit_hospital_admissions,
         other_prefix_wastewater=fit_wastewater,

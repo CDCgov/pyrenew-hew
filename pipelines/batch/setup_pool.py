@@ -67,9 +67,7 @@ def main(pool_name: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=(
-            "Set up an Azure batch pool using the azuretools defaults"
-        )
+        description=("Set up an Azure batch pool using the azuretools defaults")
     )
     parser.add_argument(
         "pool_name",

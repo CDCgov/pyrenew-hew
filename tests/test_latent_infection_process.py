@@ -80,9 +80,7 @@ def test_LatentInfectionProcess():
 
         rt_init_rate_of_change = DistributionalVariable(
             "rt_init_rate_of_change",
-            dist.Normal(
-                0, eta_sd_rv() / jnp.sqrt(1 - jnp.pow(autoreg_rt_rv(), 2))
-            ),
+            dist.Normal(0, eta_sd_rv() / jnp.sqrt(1 - jnp.pow(autoreg_rt_rv(), 2))),
         )()
 
         log_rtu_weekly = ar_diff(
