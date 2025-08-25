@@ -319,28 +319,6 @@ process_pyrenew_model <- function(
     simplifyVector = TRUE
   )
 
-  data_dates <- c(
-    if (pyrenew_model_components["e"]) {
-      data_for_model_fit$nssp_training_data$date
-    },
-    if (pyrenew_model_components["h"]) {
-      data_for_model_fit$nhsn_training_data$weekendingdate
-    },
-    if (pyrenew_model_components["w"]) {
-      data_for_model_fit$nwss_training_data$date
-    }
-  )
-
-  first_data_date_overall <- as.Date(min(data_dates))
-  last_data_date_overall <- as.Date(max(data_dates))
-  first_nssp_date <- first_data_date_overall
-  first_nwss_date <- first_data_date_overall
-  first_nhsn_date <- forecasttools::ceiling_mmwr_epiweek(
-    first_data_date_overall
-  )
-
-  nhsn_step_size <- data_for_model_fit$nhsn_step_size
-
   ## Process PyRenew posterior
   pyrenew_model_dir <- fs::path(
     model_run_dir,
@@ -351,52 +329,24 @@ process_pyrenew_model <- function(
     forecasttools::read_tabular(
       fs::path(
         pyrenew_model_dir,
-        "mcmc_tidy",
-        "pyrenew_posterior_predictive",
+        "mcmc_output",
+        "tidy_posterior_predictive",
         ext = "parquet"
       )
-    )
-
-  # posterior predictive variables are expected to be of the form
-  # "observed_zzzzz[n]". This creates tidybayes::gather_draws()
-  # compatible expression for each variable.
-  post_pred_var_prefix <- pyrenew_posterior_predictive |>
-    colnames() |>
-    stringr::str_remove("\\[.+\\]$") |>
-    unique() |>
-    purrr::keep(\(x) {
-      stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
-    })
-
-  post_pred_vars_exp <-
-    dplyr::case_when(
-      stringr::str_starts(post_pred_var_prefix, "observed_") ~
-        stringr::str_c(post_pred_var_prefix, "[group_time_index]"),
-      stringr::str_starts(post_pred_var_prefix, "site_") ~
-        stringr::str_c(
-          post_pred_var_prefix,
-          "[group_time_index,lab_site_index]"
-        )
     ) |>
-    purrr::map(rlang::parse_expr)
+    dplyr::rename("iteration" = "draw") |>
+    dplyr::mutate(dplyr::across(dplyr::where(lubridate::is.POSIXct), \(x) {
+      lubridate::with_tz(x, tzone = "UTC")
+    })) |>
+    dplyr::mutate("date" = lubridate::as_date(.data$date)) |>
+    dplyr::mutate(dplyr::across(
+      c("chain", "iteration"),
+      \(x) x + 1L
+    )) |>
+    dplyr::rename_with(\(x) glue::glue(".{x}"), -"date")
 
-  # must use gather_draws
-  # use of spread_draws results in indices being dropped
   model_samples_tidy <-
     pyrenew_posterior_predictive |>
-    tidybayes::gather_draws(!!!post_pred_vars_exp) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(
-      date = group_time_index_to_date(
-        group_time_index = .data$group_time_index,
-        variable = .data$.variable,
-        first_nssp_date = first_nssp_date,
-        first_nhsn_date = first_nhsn_date,
-        first_nwss_date = first_nwss_date,
-        nhsn_step_size = nhsn_step_size
-      )
-    ) |>
-    dplyr::select(-"group_time_index") |>
     dplyr::mutate(
       geo_value = model_info$location,
       disease = model_info$disease,
@@ -404,6 +354,7 @@ process_pyrenew_model <- function(
       aggregated_numerator = FALSE,
       aggregated_denominator = NA,
     ) |>
+    tidybayes::combine_chains() |>
     dplyr::select(tidyselect::all_of(required_columns))
 
   mismatch <- model_samples_tidy |>
