@@ -90,7 +90,7 @@ def generate_and_save_predictions(
                 dt.timedelta(days=my_data.nwss_step_size),
             ],
         }
-    )
+    ).filter(pl.col("dim_name").is_in(ft.arviz.get_all_dims(idata)))
 
     for row in date_details_df.iter_rows(named=True):
         ft.arviz.assign_coords_from_start_step(idata, **row, inplace=True)
