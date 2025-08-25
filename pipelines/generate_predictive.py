@@ -1,8 +1,12 @@
 import argparse
+import datetime as dt
 import pickle
 from pathlib import Path
 
 import arviz as az
+import forecasttools as ft
+import polarbayes as pb
+import polars as pl
 
 from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
@@ -23,6 +27,8 @@ def generate_and_save_predictions(
     model_dir = Path(model_run_dir, model_name)
     if not model_dir.exists():
         raise FileNotFoundError(f"The directory {model_dir} does not exist.")
+    mcmc_output_dir = model_dir / "mcmc_output"
+    mcmc_output_dir.mkdir(parents=True, exist_ok=True)
 
     my_data = PyrenewHEWData.from_json(
         json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
@@ -55,10 +61,57 @@ def generate_and_save_predictions(
 
     idata = az.from_numpyro(my_model.mcmc, posterior_predictive=posterior_predictive)
 
-    idata.to_dataframe().to_parquet(model_dir / "inference_data.parquet", index=False)
+    # Coerce observed variables to float type, needed because of https://github.com/CDCgov/polarbayes/issues/9
+    for var_name in ["observed_ed_visits", "observed_hospital_admissions"]:
+        if var_name in idata["posterior_predictive"]:
+            idata["posterior_predictive"][var_name] = idata["posterior_predictive"][
+                var_name
+            ].astype("float32")
+
+    ft.arviz.replace_all_dim_suffix(idata, ["time", "site_id"], inplace=True)
+
+    date_details_df = pl.DataFrame(
+        {
+            "dim_name": [
+                "observed_ed_visits_time",
+                "observed_hospital_admissions_time",
+                "site_level_log_ww_conc_time",
+            ],
+            "start_date": [
+                forecast_data.first_data_dates["ed_visits"].astype(dt.datetime),
+                forecast_data.first_data_dates["hospital_admissions"].astype(
+                    dt.datetime
+                ),
+                forecast_data.first_data_dates["wastewater"].astype(dt.datetime),
+            ],
+            "interval": [
+                dt.timedelta(days=my_data.nssp_step_size),
+                dt.timedelta(days=my_data.nhsn_step_size),
+                dt.timedelta(days=my_data.nwss_step_size),
+            ],
+        }
+    )
+
+    for row in date_details_df.iter_rows(named=True):
+        ft.arviz.assign_coords_from_start_step(idata, **row, inplace=True)
 
     # Save one netcdf for reloading
-    idata.to_netcdf(model_dir / "inference_data.nc")
+    idata.to_netcdf(str(mcmc_output_dir / "original_inference_data.nc"))
+    ft.arviz.prune_chains_by_rel_diff(idata, rel_diff_thresh=0.9, inplace=True)
+
+    idata.to_netcdf(str(mcmc_output_dir / "inference_data.nc"))
+
+    tidy_posterior_predictive = pb.gather_draws(
+        idata,
+        group="posterior_predictive",
+        var_names=date_details_df.get_column("dim_name")
+        .str.strip_suffix("_time")
+        .to_list(),
+    ).pipe(ft.coalesce_common_columns, "_time", "date")
+
+    tidy_posterior_predictive.write_parquet(
+        mcmc_output_dir / "tidy_posterior_predictive.parquet"
+    )
 
     return None
 
