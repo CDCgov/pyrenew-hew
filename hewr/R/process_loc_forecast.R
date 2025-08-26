@@ -287,7 +287,7 @@ process_pyrenew_model <- function(
         ext = "parquet"
       )
     ) |>
-    dplyr::rename("iteration" = "draw") |> # arviz nomenclature -> tidybayes nomenclature
+    dplyr::rename("iteration" = "draw") |> # arviz -> tidybayes nomenclature
     dplyr::mutate("date" = as.Date(.data$date)) |>
     dplyr::rename_with(\(x) glue::glue(".{x}"), -"date")
 
