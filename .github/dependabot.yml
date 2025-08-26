@@ -7,6 +7,8 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every week
       interval: "weekly"
+    pull-request-branch-name:
+      separator: "-"
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
