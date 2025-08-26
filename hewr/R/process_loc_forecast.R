@@ -289,10 +289,6 @@ process_pyrenew_model <- function(
     ) |>
     dplyr::rename("iteration" = "draw") |>
     dplyr::mutate("date" = as.Date(.data$date)) |>
-    dplyr::mutate(dplyr::across(
-      c("chain", "iteration"),
-      \(x) x + 1L
-    )) |>
     dplyr::rename_with(\(x) glue::glue(".{x}"), -"date")
 
   model_samples_tidy <-
