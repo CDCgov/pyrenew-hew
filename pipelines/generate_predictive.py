@@ -61,13 +61,6 @@ def generate_and_save_predictions(
 
     idata = az.from_numpyro(my_model.mcmc, posterior_predictive=posterior_predictive)
 
-    # Coerce observed variables to float type, needed because of https://github.com/CDCgov/polarbayes/issues/9
-    for var_name in ["observed_ed_visits", "observed_hospital_admissions"]:
-        if var_name in idata["posterior_predictive"]:
-            idata["posterior_predictive"][var_name] = idata["posterior_predictive"][
-                var_name
-            ].astype("float32")
-
     ft.arviz.replace_all_dim_suffix(idata, ["time", "site_id"], inplace=True)
 
     date_details_df = pl.DataFrame(

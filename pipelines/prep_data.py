@@ -72,7 +72,7 @@ def get_nhsn(
                 columns = {py_scalar_to_r_scalar(columns)},
                 jurisdictions = {py_scalar_to_r_scalar(loc_abb_for_query)}
             ) |>
-            dplyr::mutate(weekendingdate = lubridate::as_date(weekendingdate)) |>
+            dplyr::mutate(weekendingdate = as.Date(weekendingdate)) |>
             dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
             jurisdiction
             )) |>

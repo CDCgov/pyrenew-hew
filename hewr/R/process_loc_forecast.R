@@ -255,48 +255,6 @@ to_tidy_draws_timeseries <- function(
 }
 
 
-#' Convert group time index to date
-#'
-#' @param group_time_index integer vector of group time indices
-#' @param variable variable name
-#' @param first_nssp_date first date in the nssp training data
-#' @param first_nhsn_date first date in the nhsn training data
-#' @param first_nwss_date first date in the nwss training data
-#' @param nhsn_step_size step size for nhsn data
-#'
-#' @returns a vector of dates
-#' @export
-#'
-#' @examples group_time_index_to_date(
-#'   3, "observed_hospital_admissions",
-#'   "2024-01-01", "2024-01-01", "2024-01-01", 7
-#' )
-group_time_index_to_date <- function(
-  group_time_index,
-  variable,
-  first_nssp_date,
-  first_nhsn_date,
-  first_nwss_date,
-  nhsn_step_size
-) {
-  first_date_key <- c(
-    observed_hospital_admissions = first_nhsn_date,
-    observed_ed_visits = first_nssp_date,
-    site_level_log_ww_conc = first_nwss_date
-  ) |>
-    purrr::map_vec(as.Date)
-
-  step_size_key <- c(
-    observed_hospital_admissions = nhsn_step_size,
-    observed_ed_visits = 1,
-    site_level_log_ww_conc = 1
-  )
-
-  first_date_key[variable] +
-    lubridate::days(step_size_key[variable]) *
-      group_time_index
-}
-
 process_pyrenew_model <- function(
   model_run_dir,
   pyrenew_model_name,
@@ -314,11 +272,6 @@ process_pyrenew_model <- function(
     required_columns <- required_columns_e
   }
 
-  data_for_model_fit <- jsonlite::read_json(
-    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json"),
-    simplifyVector = TRUE
-  )
-
   ## Process PyRenew posterior
   pyrenew_model_dir <- fs::path(
     model_run_dir,
@@ -335,10 +288,7 @@ process_pyrenew_model <- function(
       )
     ) |>
     dplyr::rename("iteration" = "draw") |>
-    dplyr::mutate(dplyr::across(dplyr::where(lubridate::is.POSIXct), \(x) {
-      lubridate::with_tz(x, tzone = "UTC")
-    })) |>
-    dplyr::mutate("date" = lubridate::as_date(.data$date)) |>
+    dplyr::mutate("date" = as.Date(.data$date)) |>
     dplyr::mutate(dplyr::across(
       c("chain", "iteration"),
       \(x) x + 1L
@@ -356,33 +306,6 @@ process_pyrenew_model <- function(
     ) |>
     tidybayes::combine_chains() |>
     dplyr::select(tidyselect::all_of(required_columns))
-
-  mismatch <- model_samples_tidy |>
-    dplyr::group_by(.data$.variable) |>
-    dplyr::summarise(predicted_last_date = max(.data$date)) |>
-    dplyr::mutate(
-      expected_last_date = dplyr::case_when(
-        stringr::str_ends(.data$.variable, "ed_visits") ~
-          last_data_date_overall + n_forecast_days,
-        .variable == "site_level_log_ww_conc" ~
-          last_data_date_overall + n_forecast_days,
-        stringr::str_ends(.variable, "hospital_admissions") ~
-          lubridate::floor_date(
-            last_data_date_overall + lubridate::days(n_forecast_days),
-            unit = "week",
-            week_start = forecasttools::epiweek_end("MMWR")
-          ),
-        TRUE ~ NA
-      )
-    ) |>
-    dplyr::filter(.data$predicted_last_date != .data$expected_last_date)
-
-  if (nrow(mismatch) != 0) {
-    stop(sprintf(
-      "Date mismatch for variables:\n%s",
-      paste(capture.output(print(mismatch)), collapse = "\n")
-    ))
-  }
 
   # For the E model, do epiweekly and process denominator
   if (pyrenew_model_components["e"]) {
