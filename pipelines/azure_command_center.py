@@ -20,10 +20,9 @@ console = Console()
 
 # TODO: work with specific diseases
 DISEASES = ["COVID-19"]  # not forecasting flu currently
-# NY: Postprocessing contingent on https://github.com/CDCgov/pyrenew-hew/issues/539
 # ND: wastewater data not available
 # TN: wastewater data unusable (dry sludge)
-W_EXCLUDE_DEFAULT = ["US", "NY", "TN", "ND"]
+W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
 
 today = dt.date.today()
 today_str = today.strftime("%Y-%m-%d")
