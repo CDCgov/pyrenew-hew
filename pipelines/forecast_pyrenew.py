@@ -91,24 +91,6 @@ def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None
     return None
 
 
-def convert_inferencedata_to_parquet(model_run_dir: Path, model_name: str) -> None:
-    result = subprocess.run(
-        [
-            "Rscript",
-            "pipelines/convert_inferencedata_to_parquet.R",
-            f"{model_run_dir}",
-            "--model-name",
-            f"{model_name}",
-        ],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"convert_inferencedata_to_parquet: {result.stderr.decode('utf-8')}"
-        )
-    return None
-
-
 def plot_and_save_loc_forecast(
     model_run_dir: Path,
     n_forecast_days: int,
@@ -443,10 +425,6 @@ def main(
         predict_wastewater=forecast_wastewater,
     )
     logger.info("All forecasting complete.")
-
-    logger.info("Converting inferencedata to parquet...")
-    convert_inferencedata_to_parquet(model_run_dir, pyrenew_model_name)
-    logger.info("Conversion complete.")
 
     logger.info("Postprocessing forecast...")
 

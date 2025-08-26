@@ -255,48 +255,6 @@ to_tidy_draws_timeseries <- function(
 }
 
 
-#' Convert group time index to date
-#'
-#' @param group_time_index integer vector of group time indices
-#' @param variable variable name
-#' @param first_nssp_date first date in the nssp training data
-#' @param first_nhsn_date first date in the nhsn training data
-#' @param first_nwss_date first date in the nwss training data
-#' @param nhsn_step_size step size for nhsn data
-#'
-#' @returns a vector of dates
-#' @export
-#'
-#' @examples group_time_index_to_date(
-#'   3, "observed_hospital_admissions",
-#'   "2024-01-01", "2024-01-01", "2024-01-01", 7
-#' )
-group_time_index_to_date <- function(
-  group_time_index,
-  variable,
-  first_nssp_date,
-  first_nhsn_date,
-  first_nwss_date,
-  nhsn_step_size
-) {
-  first_date_key <- c(
-    observed_hospital_admissions = first_nhsn_date,
-    observed_ed_visits = first_nssp_date,
-    site_level_log_ww_conc = first_nwss_date
-  ) |>
-    purrr::map_vec(as.Date)
-
-  step_size_key <- c(
-    observed_hospital_admissions = nhsn_step_size,
-    observed_ed_visits = 1,
-    site_level_log_ww_conc = 1
-  )
-
-  first_date_key[variable] +
-    lubridate::days(step_size_key[variable]) *
-      group_time_index
-}
-
 process_pyrenew_model <- function(
   model_run_dir,
   pyrenew_model_name,
@@ -314,33 +272,6 @@ process_pyrenew_model <- function(
     required_columns <- required_columns_e
   }
 
-  data_for_model_fit <- jsonlite::read_json(
-    fs::path(model_run_dir, "data", "data_for_model_fit", ext = "json"),
-    simplifyVector = TRUE
-  )
-
-  data_dates <- c(
-    if (pyrenew_model_components["e"]) {
-      data_for_model_fit$nssp_training_data$date
-    },
-    if (pyrenew_model_components["h"]) {
-      data_for_model_fit$nhsn_training_data$weekendingdate
-    },
-    if (pyrenew_model_components["w"]) {
-      data_for_model_fit$nwss_training_data$date
-    }
-  )
-
-  first_data_date_overall <- as.Date(min(data_dates))
-  last_data_date_overall <- as.Date(max(data_dates))
-  first_nssp_date <- first_data_date_overall
-  first_nwss_date <- first_data_date_overall
-  first_nhsn_date <- forecasttools::ceiling_mmwr_epiweek(
-    first_data_date_overall
-  )
-
-  nhsn_step_size <- data_for_model_fit$nhsn_step_size
-
   ## Process PyRenew posterior
   pyrenew_model_dir <- fs::path(
     model_run_dir,
@@ -351,52 +282,17 @@ process_pyrenew_model <- function(
     forecasttools::read_tabular(
       fs::path(
         pyrenew_model_dir,
-        "mcmc_tidy",
-        "pyrenew_posterior_predictive",
+        "mcmc_output",
+        "tidy_posterior_predictive",
         ext = "parquet"
       )
-    )
-
-  # posterior predictive variables are expected to be of the form
-  # "observed_zzzzz[n]". This creates tidybayes::gather_draws()
-  # compatible expression for each variable.
-  post_pred_var_prefix <- pyrenew_posterior_predictive |>
-    colnames() |>
-    stringr::str_remove("\\[.+\\]$") |>
-    unique() |>
-    purrr::keep(\(x) {
-      stringr::str_starts(x, "observed_") | stringr::str_starts(x, "site_")
-    })
-
-  post_pred_vars_exp <-
-    dplyr::case_when(
-      stringr::str_starts(post_pred_var_prefix, "observed_") ~
-        stringr::str_c(post_pred_var_prefix, "[group_time_index]"),
-      stringr::str_starts(post_pred_var_prefix, "site_") ~
-        stringr::str_c(
-          post_pred_var_prefix,
-          "[group_time_index,lab_site_index]"
-        )
     ) |>
-    purrr::map(rlang::parse_expr)
+    dplyr::rename("iteration" = "draw") |> # arviz -> tidybayes nomenclature
+    dplyr::mutate("date" = as.Date(.data$date)) |>
+    dplyr::rename_with(\(x) glue::glue(".{x}"), -"date")
 
-  # must use gather_draws
-  # use of spread_draws results in indices being dropped
   model_samples_tidy <-
     pyrenew_posterior_predictive |>
-    tidybayes::gather_draws(!!!post_pred_vars_exp) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(
-      date = group_time_index_to_date(
-        group_time_index = .data$group_time_index,
-        variable = .data$.variable,
-        first_nssp_date = first_nssp_date,
-        first_nhsn_date = first_nhsn_date,
-        first_nwss_date = first_nwss_date,
-        nhsn_step_size = nhsn_step_size
-      )
-    ) |>
-    dplyr::select(-"group_time_index") |>
     dplyr::mutate(
       geo_value = model_info$location,
       disease = model_info$disease,
@@ -404,34 +300,8 @@ process_pyrenew_model <- function(
       aggregated_numerator = FALSE,
       aggregated_denominator = NA,
     ) |>
+    tidybayes::combine_chains() |>
     dplyr::select(tidyselect::all_of(required_columns))
-
-  mismatch <- model_samples_tidy |>
-    dplyr::group_by(.data$.variable) |>
-    dplyr::summarise(predicted_last_date = max(.data$date)) |>
-    dplyr::mutate(
-      expected_last_date = dplyr::case_when(
-        stringr::str_ends(.data$.variable, "ed_visits") ~
-          last_data_date_overall + n_forecast_days,
-        .variable == "site_level_log_ww_conc" ~
-          last_data_date_overall + n_forecast_days,
-        stringr::str_ends(.variable, "hospital_admissions") ~
-          lubridate::floor_date(
-            last_data_date_overall + lubridate::days(n_forecast_days),
-            unit = "week",
-            week_start = forecasttools::epiweek_end("MMWR")
-          ),
-        TRUE ~ NA
-      )
-    ) |>
-    dplyr::filter(.data$predicted_last_date != .data$expected_last_date)
-
-  if (nrow(mismatch) != 0) {
-    stop(sprintf(
-      "Date mismatch for variables:\n%s",
-      paste(capture.output(print(mismatch)), collapse = "\n")
-    ))
-  }
 
   # For the E model, do epiweekly and process denominator
   if (pyrenew_model_components["e"]) {

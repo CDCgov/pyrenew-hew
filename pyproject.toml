@@ -15,7 +15,6 @@ dependencies = [
     "pyrenew @ git+https://github.com/cdcgov/PyRenew/",
     "forecasttools @ git+https://github.com/cdcgov/forecasttools-py",
     "ipywidgets>=8.1.5",
-    "arviz>=0.20.0",
     "pyyaml>=6.0.2",
     "jupyter>=1.0.0",
     "ipykernel>=6.29.5",
@@ -27,6 +26,8 @@ dependencies = [
     "azuretools @ git+https://github.com/cdcgov/cfa-azuretools",
     "rich>=14.0.0",
     "dotenv>=0.9.9",
+    "arviz",
+    "polarbayes",
 ]
 
 [build-system]
@@ -48,3 +49,7 @@ fix = true
 
 [tool.ruff.lint]
 select = ["I", "E4", "E7", "E9", "F"]
+
+[tool.uv.sources]
+arviz = { git = "https://github.com/arviz-devs/arviz.git" }
+polarbayes = { git = "https://github.com/CDCgov/polarbayes.git" }
