@@ -3,7 +3,16 @@ name: Create Docker Image
 on:
   push:
     branches: [main]
+    # ignore workflows, ISSUE_TEMPLATE, except for this workflow.
+    paths-ignore:
+      - ".github/workflows/model-fit-cron-jobs.yaml"
+      - ".github/ISSUE_TEMPLATE/**"
   pull_request:
+    branches: [main]
+    # ignore workflows, ISSUE_TEMPLATE, except for this workflow.
+    paths-ignore:
+      - ".github/workflows/model-fit-cron-jobs.yaml"
+      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
 
 concurrency:
