@@ -289,7 +289,10 @@ process_pyrenew_model <- function(
     ) |>
     dplyr::rename("iteration" = "draw") |> # arviz -> tidybayes nomenclature
     dplyr::mutate("date" = as.Date(.data$date)) |>
-    dplyr::rename_with(\(x) glue::glue(".{x}"), -"date")
+    dplyr::rename_with(
+      \(x) glue::glue(".{x}"),
+      c("chain", "iteration", "variable", "value")
+    )
 
   model_samples_tidy <-
     pyrenew_posterior_predictive |>
