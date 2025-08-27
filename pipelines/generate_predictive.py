@@ -94,13 +94,17 @@ def generate_and_save_predictions(
 
     idata.to_netcdf(str(mcmc_output_dir / "inference_data.nc"))
 
-    tidy_posterior_predictive = pb.gather_draws(
-        idata,
-        group="posterior_predictive",
-        var_names=date_details_df.get_column("dim_name")
-        .str.strip_suffix("_time")
-        .to_list(),
-    ).pipe(ft.coalesce_common_columns, "_time", "date")
+    tidy_posterior_predictive = (
+        pb.gather_draws(
+            idata,
+            group="posterior_predictive",
+            var_names=date_details_df.get_column("dim_name")
+            .str.strip_suffix("_time")
+            .to_list(),
+        )
+        .pipe(ft.coalesce_common_columns, "_time", "date")
+        .rename({"site_level_log_ww_conc_site_id": "lab_site_index"}, strict=False)
+    )
 
     tidy_posterior_predictive.write_parquet(
         mcmc_output_dir / "tidy_posterior_predictive.parquet"
