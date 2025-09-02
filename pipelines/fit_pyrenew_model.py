@@ -25,14 +25,11 @@ def fit_and_save_model(
         rng_key = jax.random.key(rng_key)
     else:
         raise ValueError(
-            "rng_key must be an integer with which "
-            "to seed :func:`jax.random.key`"
+            "rng_key must be an integer with which to seed :func:`jax.random.key`"
         )
 
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir)
-        / "data"
-        / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
@@ -51,6 +48,12 @@ def fit_and_save_model(
         num_warmup=n_warmup,
         num_samples=n_samples,
         rng_key=rng_key,
+        extra_fields=(
+            "potential_energy",
+            "num_steps",
+            "z_grad",
+            "accept_prob",
+        ),
         mcmc_args=dict(num_chains=n_chains, progress_bar=True),
         nuts_args=dict(find_heuristic_step_size=True),
     )

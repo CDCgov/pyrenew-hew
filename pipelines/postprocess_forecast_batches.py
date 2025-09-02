@@ -48,9 +48,7 @@ def combine_hubverse_tables(model_batch_dir_path: str | Path) -> None:
     return None
 
 
-def process_model_batch_dir(
-    model_batch_dir_path: Path, plot_ext: str = "pdf"
-) -> None:
+def process_model_batch_dir(model_batch_dir_path: Path, plot_ext: str = "pdf") -> None:
     logger = logging.getLogger(__name__)
     logger.info("Collating plots...")
     cp.merge_and_save_pdfs(model_batch_dir_path)
@@ -60,7 +58,7 @@ def process_model_batch_dir(
 
 def main(
     base_forecast_dir: Path | str,
-    diseases: list[str] = ["COVID-19", "Influenza"],
+    diseases: list[str] = ["COVID-19", "Influenza", "RSV"],
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -85,12 +83,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--diseases",
         type=str,
-        default="COVID-19 Influenza",
+        default="COVID-19 Influenza RSV",
         help=(
             "Name(s) of disease(s) to postprocess, "
             "as a whitespace-separated string. Supported "
-            "values are 'COVID-19' and 'Influenza'. "
-            "Default 'COVID-19 Influenza' (i.e. postprocess both)."
+            "values are 'COVID-19' , 'RSV' and 'Influenza'. "
+            "Default 'COVID-19 Influenza RSV' (i.e. postprocess all)."
         ),
     )
 

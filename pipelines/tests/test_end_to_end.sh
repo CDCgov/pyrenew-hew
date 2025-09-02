@@ -2,7 +2,7 @@
 
 BASE_DIR=pipelines/tests/end_to_end_test_output
 LOCATIONS=(US CA MT DC)
-DISEASES=(Influenza COVID-19)
+DISEASES=(Influenza COVID-19 RSV)
 
 echo "TEST-MODE: Running forecast_pyrenew.py in test mode with base directory $BASE_DIR"
 
@@ -27,23 +27,6 @@ else
 	echo "TEST-MODE: Finished generating test data"
 fi
 
-echo "TEST-MODE: Running data preparation for all locations, and diseases"
-
-for location in "${LOCATIONS[@]}"; do
-	for disease in "${DISEASES[@]}"; do
-		echo "TEST-MODE: Running data preparation for $disease, $location"
-		bash pipelines/tests/test_prep_data.sh "$BASE_DIR" "$disease" "$location"
-		if [ "$?" -ne 0 ]; then
-			echo "TEST-MODE FAIL: Data preparation failed"
-			exit 1
-		else
-			echo "TEST-MODE: Finished data preparation for location $location, disease $disease."
-		fi
-	done
-done
-
-echo "TEST-MODE: Finished data preparation for all locations and diseases."
-
 echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and diseases"
 
 for location in "${LOCATIONS[@]}"; do
@@ -66,10 +49,10 @@ for location in "${LOCATIONS[@]}"; do
 	for model in {,h}{,e}{,w}; do
 		for disease in "${DISEASES[@]}"; do
 
-			if [[ ($model == *w* && ($disease == "Influenza" || $location == "US")) || $model == "w" ]]; then
+			if [[ ($model == *w* && ($disease == "Influenza" || $disease == "RSV" || $location == "US")) || $model == "w" ]]; then
 				echo "TEST-MODE: Skipping forecasting pipeline for $model, $disease, $location. " \
-					"W-only models, US-level wastewater models, and Influenza wastewater models " \
-					"are not yet supported."
+					"W-only models, US-level wastewater models, RSV wastewater models and " \
+					"Influenza wastewater models are not yet supported."
 			else
 				echo "TEST-MODE: Running forecasting pipeline for $model, $disease, $location"
 				bash pipelines/tests/test_pyrenew_fit.sh "$BASE_DIR" "$disease" "$location" "$model"

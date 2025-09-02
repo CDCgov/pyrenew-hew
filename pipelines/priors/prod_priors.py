@@ -20,9 +20,7 @@ log_r_mu_intercept_rv = DistributionalVariable(
     "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
 )
 
-eta_sd_rv = DistributionalVariable(
-    "eta_sd", dist.TruncatedNormal(0.15, 0.05, low=0)
-)
+eta_sd_rv = DistributionalVariable("eta_sd", dist.TruncatedNormal(0.15, 0.05, low=0))
 
 autoreg_rt_rv = DistributionalVariable("autoreg_rt", dist.Beta(2, 40))
 
@@ -37,9 +35,7 @@ inf_feedback_strength_rv = TransformedVariable(
 )
 # Could be reparameterized?
 
-delay_offset_loc_rv = DistributionalVariable(
-    "delay_offset_loc", dist.Normal(0.75, 0.5)
-)
+delay_offset_loc_rv = DistributionalVariable("delay_offset_loc", dist.Normal(0.75, 0.5))
 delay_log_offset_scale_rv = DistributionalVariable(
     "delay_log_offset_scale", dist.Normal(0, 0.5)
 )
@@ -124,12 +120,8 @@ mode_sd_ww_site_rv = DistributionalVariable(
     "mode_sd_ww_site", dist.TruncatedNormal(0, 0.25, low=0)
 )
 
-autoreg_rt_subpop_rv = DistributionalVariable(
-    "autoreg_rt_subpop", dist.Beta(1, 4)
-)
-sigma_rt_rv = DistributionalVariable(
-    "sigma_rt", dist.TruncatedNormal(0, 0.1, low=0)
-)
+autoreg_rt_subpop_rv = DistributionalVariable("autoreg_rt_subpop", dist.Beta(1, 4))
+sigma_rt_rv = DistributionalVariable("sigma_rt", dist.TruncatedNormal(0, 0.1, low=0))
 
 sigma_i_first_obs_rv = DistributionalVariable(
     "sigma_i_first_obs",

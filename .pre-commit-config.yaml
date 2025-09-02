@@ -2,7 +2,7 @@ repos:
   #####
   # Basic file cleanliness
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-yaml
@@ -13,24 +13,20 @@ repos:
   #####
   # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.7
+    rev: v0.12.11
     hooks:
       # Sort imports
-      - id: ruff
-        args: ["check", "--select", "I", "--fix"]
-        # Run the linter
-      - id: ruff
+      - id: ruff-check
         # Run the formatter
       - id: ruff-format
-        args: ["--line-length", "79"]
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.8.4
+    rev: 0.8.14
     hooks:
       - id: uv-lock
   #####
   # R
   - repo: https://github.com/lorenzwalthert/precommit
-    rev: v0.4.3.9012
+    rev: v0.4.3.9014
     hooks:
       - id: lintr
   #####

@@ -41,10 +41,10 @@ env:
 
 jobs:
 
-  generate-test-data:
+  generate-data:
     runs-on:  ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -59,15 +59,17 @@ jobs:
           path: ${{ env.DATA_DIR }}
           retention-days: 1
 
-  prepare-data:
-    needs: generate-test-data
+
+  fit-timeseries-models:
+    needs: generate-data
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        disease: [COVID-19, Influenza]
+        model: [e]
+        disease: [COVID-19, Influenza, RSV]
         location: [US, CA, MT, DC]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -76,48 +78,12 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download test data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
-      - name: Prepare model fit data
-        run: |
-          uv run bash pipelines/tests/test_prep_data.sh ${{ env.BASE_DIR }} \
-          ${{ matrix.disease }} ${{ matrix.location }}
-
-      - name: Upload model fitting data
-        uses: actions/upload-artifact@v4
-        with:
-          name: |
-            fit-data-${{ matrix.disease }}-${{ matrix.location }}
-          path: ${{ env.BASE_DIR }}
-
-  fit-timeseries-models:
-    needs: prepare-data
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        model: [e]
-        disease: [COVID-19, Influenza]
-        location: [US, CA, MT, DC]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Pyrenew-HEW via UV
-        uses: ./.github/actions/setup-pyrenew-hew
-
-      - name: Set up R with hewr package
-        uses: ./.github/actions/setup-hewr
-
-      - name: Download data to fit
-        uses: actions/download-artifact@v4
-        with:
-          pattern: fit-data-*
-          path: ${{ env.BASE_DIR }}
-          merge-multiple: true
-
-      - name: Fit timeseries model
+      - name: Fit model
         run: |
           uv run bash pipelines/tests/test_ts_fit.sh ${{ env.BASE_DIR }} \
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
@@ -139,15 +105,21 @@ jobs:
     strategy:
       matrix:
         model: [h, e, he, hw, ew, hew]
-        disease: [COVID-19, Influenza]
+        disease: [COVID-19, Influenza, RSV]
         location: [US, CA, MT, DC]
         exclude:
           - model: hw
             disease: Influenza
+          - model: hw
+            disease: RSV
           - model: ew
             disease: Influenza
+          - model: ew
+            disease: RSV
           - model: hew
             disease: Influenza
+          - model: hew
+            disease: RSV
           - model: hw
             location: US
           - model: ew
@@ -155,7 +127,7 @@ jobs:
           - model: hew
             location: US
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -163,22 +135,21 @@ jobs:
       - name: Set up R with hewr package
         uses: ./.github/actions/setup-hewr
 
-      - name: Download data to fit
-        uses: actions/download-artifact@v4
+      - name: Download test data
+        uses: actions/download-artifact@v5
         with:
-          pattern: fit-data-*
-          path: ${{ env.BASE_DIR }}
-          merge-multiple: true
+          name: test-data
+          path: ${{ env.DATA_DIR }}
 
       - name: Download timeseries output
         if: ${{ matrix.model != 'hw' && matrix.model != 'h' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: test-fit-ts-*
           path: ${{ env.BASE_DIR }}
           merge-multiple: true
 
-      - name: Fit pyrenew model
+      - name: Fit model
         run: |
           uv run bash pipelines/tests/test_pyrenew_fit.sh ${{ env.BASE_DIR }} \
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
@@ -194,7 +165,7 @@ jobs:
     needs: fit-pyrenew-models
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -203,7 +174,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download model fitting output
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: test-fit-*
           path: ${{ env.BASE_DIR }}

@@ -86,6 +86,10 @@ main <- function(model_run_dir) {
     model_run_dir,
     data_name = "combined_training_data.tsv"
   )
+  convert_daily_to_epiweekly(
+    model_run_dir,
+    data_name = "combined_eval_data.tsv"
+  )
 }
 
 # Create a parser
