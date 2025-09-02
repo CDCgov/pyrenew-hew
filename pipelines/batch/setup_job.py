@@ -9,11 +9,7 @@ import itertools
 from pathlib import Path
 
 # Azure
-from azure.batch import BatchServiceClient, models
-from azure.identity import (
-    ManagedIdentityCredential,
-    WorkloadIdentityCredential,
-)
+from azure.batch import models
 
 # Custom CFA Azure Libraries
 from azuretools.auth import EnvCredentialHandler
