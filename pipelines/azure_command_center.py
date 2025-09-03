@@ -19,7 +19,8 @@ load_dotenv()
 console = Console()
 
 # TODO: work with specific diseases
-DISEASES = ["COVID-19"]  # not forecasting flu currently
+DISEASES = ["COVID-19", "Influenza"]
+WASTEWATER_DISEASES = ["COVID-19"]
 # ND: wastewater data not available
 # TN: wastewater data unusable (dry sludge)
 W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
@@ -121,7 +122,7 @@ fit_pyrenew_hw = partial(
     job_id="pyrenew-hw-prod-",
     pool_id="pyrenew-pool-32gb",
     model_family="pyrenew",
-    diseases=DISEASES,
+    diseases=WASTEWATER_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=W_EXCLUDE_DEFAULT,
 )
@@ -132,7 +133,7 @@ fit_pyrenew_hew = partial(
     job_id="pyrenew-hew-prod-",
     pool_id="pyrenew-pool-32gb",
     model_family="pyrenew",
-    diseases=DISEASES,
+    diseases=WASTEWATER_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=W_EXCLUDE_DEFAULT,
 )
