@@ -20,7 +20,7 @@ console = Console()
 
 # TODO: work with specific diseases
 DISEASES = ["COVID-19", "Influenza"]
-WASTEWATER_DISEASES = [d for d in DISEASES if d != "Influenza"]
+WASTEWATER_DISEASES = ["COVID-19"]
 # ND: wastewater data not available
 # TN: wastewater data unusable (dry sludge)
 W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
