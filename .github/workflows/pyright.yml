@@ -1,0 +1,28 @@
+name: Pyright Type Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install the project
+        run: uv sync --all-extras
+        shell: bash
+
+      - uses: jakebailey/pyright-action@v2
