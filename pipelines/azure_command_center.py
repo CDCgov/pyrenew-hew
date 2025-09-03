@@ -20,6 +20,7 @@ console = Console()
 
 # TODO: work with specific diseases
 DISEASES = ["COVID-19"]  # not forecasting flu currently
+WASTEWATER_DISEASES = [d for d in DISEASES if d != "Influenza"]
 # ND: wastewater data not available
 # TN: wastewater data unusable (dry sludge)
 W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
@@ -210,11 +211,14 @@ def do_pyrenew_reruns(
             locations_include=locations_include,
             exclude_last_n_days=h_exclude_last_n_days,
         )
-        fit_pyrenew_hw(
-            append_id=append_id,
-            locations_include=locations_include,
-            exclude_last_n_days=h_exclude_last_n_days,
-        )
+
+        if WASTEWATER_DISEASES:
+            fit_pyrenew_hw(
+                append_id=append_id,
+                locations_include=locations_include,
+                exclude_last_n_days=h_exclude_last_n_days,
+                diseases=WASTEWATER_DISEASES,
+            )
 
     if he_exclude_last_n_days == 1:
         print("Skipping PyRenew-HE and HEW re-fitting")
@@ -225,11 +229,13 @@ def do_pyrenew_reruns(
             exclude_last_n_days=he_exclude_last_n_days,
         )
 
-        fit_pyrenew_hew(
-            append_id=append_id,
-            locations_include=locations_include,
-            exclude_last_n_days=he_exclude_last_n_days,
-        )
+        if WASTEWATER_DISEASES:
+            fit_pyrenew_hew(
+                append_id=append_id,
+                locations_include=locations_include,
+                exclude_last_n_days=he_exclude_last_n_days,
+                diseases=WASTEWATER_DISEASES,
+            )
 
 
 def get_data_status(
@@ -391,8 +397,10 @@ if __name__ == "__main__":
         elif selected_choice == "Fit initial PyRenew-H** models":
             fit_pyrenew_h(append_id=current_time)
             fit_pyrenew_he(append_id=current_time)
-            fit_pyrenew_hw(append_id=current_time)
-            fit_pyrenew_hew(append_id=current_time)
+
+            if WASTEWATER_DISEASES:
+                fit_pyrenew_hw(append_id=current_time, diseases=WASTEWATER_DISEASES)
+                fit_pyrenew_hew(append_id=current_time, diseases=WASTEWATER_DISEASES)
         elif selected_choice == "Rerun Timeseries Models":
             ask_about_reruns_input = ask_about_reruns()
             do_timeseries_reruns(append_id=current_time, **ask_about_reruns_input)
