@@ -19,7 +19,7 @@ load_dotenv()
 console = Console()
 
 # TODO: work with specific diseases
-DISEASES = ["COVID-19"]  # not forecasting flu currently
+DISEASES = ["COVID-19", "Influenza"]
 WASTEWATER_DISEASES = [d for d in DISEASES if d != "Influenza"]
 # ND: wastewater data not available
 # TN: wastewater data unusable (dry sludge)
