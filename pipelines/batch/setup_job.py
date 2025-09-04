@@ -3,16 +3,22 @@ Set up a multi-location, multi-disease run
 of pyrenew-hew on Azure Batch.
 """
 
+# Basic Libraries
 import argparse
 import itertools
 from pathlib import Path
 
+# Azure
 from azure.batch import models
+
+# Custom CFA Azure Libraries
 from azuretools.auth import EnvCredentialHandler
 from azuretools.client import get_batch_service_client
 from azuretools.job import create_job
 from azuretools.task import get_container_settings, get_task_config
 from forecasttools import location_table
+
+# Rich printing
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
@@ -305,6 +311,7 @@ def main(
     # ==========================
     # TODO: Use VM managed identity (or Federated Identity in GH Actions) with DefaultAzureCredential(), output the BatchServiceClient with the Azure SDK instead.
     # We can do an error handling step explicitly defined here to tell the users if their environment needs to be added to an RBAC group or federated identity whitelist.
+
     print("")
     print("Using environment credentials to authenticate with Azure Batch...")
     creds = EnvCredentialHandler()  # TODO: Jon note: azuretools class. I would love to use DefaultAzureCredential() instead with OIDC and VM identities.
