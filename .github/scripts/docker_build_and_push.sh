@@ -17,7 +17,7 @@ docker buildx create --name "$BUILDER" --driver=docker-container || true
 # 	--cache-to "type=registry,ref=$IMAGE:$TAG-cache,mode=max" \
 # 	-f Containerfile .
 
-# attempt without registry cache - we care less about speed 
+# attempt without registry cache - we care less about speed
 # and more about deterministic rebuilds
 time docker buildx build --push -t "$IMAGE:$TAG" \
 	--builder "$BUILDER" \
