@@ -76,6 +76,11 @@ load_and_aggregate_ts <- function(
   )
 }
 
+
+#' Calculate proportion of disease ED visits by combining numerator
+#' and denominator samples
+#'
+#' @export
 prop_from_timeseries <- function(
   e_denominator_samples,
   e_numerator_samples,
@@ -98,6 +103,19 @@ prop_from_timeseries <- function(
   return(prop_disease_ed_visits_tbl)
 }
 
+
+#' Aggregate daily samples to epiweekly samples
+#'
+#' Filters daily samples for specified variables,
+#' aggregates them to epiweekly resolution,
+#' and returns a tidy table with required columns.
+#'
+#' @param daily_samples Tibble of daily samples
+#' @param variables_to_aggregate Name of variable to aggregate.
+#' Defaults to "observed_ed_visits"
+#' @param required_columns Character vector of required columns
+#' @return Tibble of aggregated epiweekly samples
+#' @export
 epiweekly_samples_from_daily <- function(
   daily_samples,
   variables_to_aggregate = "observed_ed_visits",
@@ -219,6 +237,7 @@ read_and_combine_data <- function(model_run_dir) {
 #' Default `".value"`.
 #' @param epiweekly Is the timeseries epiweekly (as opposed
 #' to daily)? Boolean, default `FALSE` (i.e. daily timeseries).
+#' @export
 to_tidy_draws_timeseries <- function(
   tidy_forecast,
   observed,
