@@ -80,6 +80,10 @@ load_and_aggregate_ts <- function(
 #' Calculate proportion of disease ED visits by combining numerator
 #' and denominator samples
 #'
+#' @param e_denominator_samples A df with denominator samples
+#' @param e_numerator_samples A df with numerator samples
+#' @param required_columns Character vector of required columns for output
+#' @return A df with proportion of disease ED visits and required columns
 #' @export
 prop_from_timeseries <- function(
   e_denominator_samples,
