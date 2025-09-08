@@ -11,6 +11,16 @@ prop_from_timeseries(
   required_columns
 )
 }
+\arguments{
+\item{e_denominator_samples}{A df with denominator samples}
+
+\item{e_numerator_samples}{A df with numerator samples}
+
+\item{required_columns}{Character vector of required columns for output}
+}
+\value{
+A df with proportion of disease ED visits and required columns
+}
 \description{
 Calculate proportion of disease ED visits by combining numerator
 and denominator samples
