@@ -132,7 +132,6 @@ fit_pyrenew_hw = partial(
     locations_exclude=W_EXCLUDE_DEFAULT,
 )
 
-
 fit_pyrenew_hew = partial(
     setup_job_append_id,
     model_letters="hew",
