@@ -118,7 +118,7 @@ fit_pyrenew_he = partial(
     model_family="pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
-    locations_exclude=E_EXCLUDE_DEFAULT + W_EXCLUDE_DEFAULT,
+    locations_exclude=E_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_hw = partial(
