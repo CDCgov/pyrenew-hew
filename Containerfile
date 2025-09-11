@@ -10,17 +10,6 @@ ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
 
 ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 
-# Python from https://docs.astral.sh/uv/guides/integration/docker/
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-# Some handy uv environment variables
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_LINK_MODE=copy
-ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync
-RUN uv tool install quarto-cli
-
 # R from https://cran.r-project.org/bin/linux/ubuntu/
 RUN apt update -qq
 RUN apt install --no-install-recommends software-properties-common dirmngr
@@ -41,3 +30,14 @@ RUN Rscript -e "pak::local_install('hewr', upgrade = FALSE)"
 
 COPY --exclude=pipelines/priors . .
 COPY pipelines/priors pipelines/priors
+
+# Python from https://docs.astral.sh/uv/guides/integration/docker/
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Some handy uv environment variables
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync
+RUN uv tool install quarto-cli
