@@ -1,3 +1,5 @@
+#syntax=docker/dockerfile:1-labs
+
 FROM rocker/rstudio
 
 ARG GIT_COMMIT_SHA
