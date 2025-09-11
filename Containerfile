@@ -31,4 +31,3 @@ ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
-RUN uv tool install quarto-cli
