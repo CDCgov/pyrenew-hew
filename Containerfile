@@ -1,6 +1,6 @@
 #syntax=docker/dockerfile:1-labs
 
-FROM rocker/rstudio
+FROM rocker/tidyverse
 
 ARG GIT_COMMIT_SHA
 ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
