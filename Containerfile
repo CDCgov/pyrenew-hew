@@ -12,10 +12,10 @@ ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 
 # R from https://cran.r-project.org/bin/linux/ubuntu/
 RUN apt update -qq
-RUN apt install --no-install-recommends software-properties-common dirmngr
+RUN apt install -y --no-install-recommends software-properties-common dirmngr
 RUN wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
 RUN add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
-RUN sudo apt install --no-install-recommends r-base
+RUN apt install -y --no-install-recommends r-base
 
 COPY ./hewr /pyrenew-hew/hewr
 
