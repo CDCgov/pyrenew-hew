@@ -24,6 +24,8 @@ WASTEWATER_DISEASES = ["COVID-19"]
 # ND: wastewater data not available
 # TN: wastewater data unusable (dry sludge)
 W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
+# WY: no E data available
+E_EXCLUDE_DEFAULT = ["WY"]
 
 today = dt.date.today()
 today_str = today.strftime("%Y-%m-%d")
@@ -84,6 +86,7 @@ fit_timeseries_e = partial(
     model_family="timeseries",
     diseases=DISEASES,
     output_subdir=output_subdir,
+    locations_exclude=E_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_e = partial(
@@ -94,6 +97,7 @@ fit_pyrenew_e = partial(
     model_family="pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
+    locations_exclude=E_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_h = partial(
@@ -114,6 +118,7 @@ fit_pyrenew_he = partial(
     model_family="pyrenew",
     diseases=DISEASES,
     output_subdir=output_subdir,
+    locations_exclude=E_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_hw = partial(
@@ -135,7 +140,7 @@ fit_pyrenew_hew = partial(
     model_family="pyrenew",
     diseases=WASTEWATER_DISEASES,
     output_subdir=output_subdir,
-    locations_exclude=W_EXCLUDE_DEFAULT,
+    locations_exclude=E_EXCLUDE_DEFAULT + W_EXCLUDE_DEFAULT,
 )
 
 
