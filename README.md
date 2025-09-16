@@ -32,7 +32,7 @@ Container images pushed to the Azure Container Registry are automatically tagged
 >
 > Please contact a project maintainer if you believe you need access to pipelines.
 
-> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-team-materials/routine_forecast_sop.html).
+> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
 
 > Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
 
