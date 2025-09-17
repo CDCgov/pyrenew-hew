@@ -139,9 +139,9 @@ class PyrenewHEWData:
             nwss_training_data=nwss_training_data,
             population_size=jnp.array(model_data["loc_pop"]).item(),
             right_truncation_offset=model_data["right_truncation_offset"],
-            nhsn_step_size=model_data["nhsn_step_size"],
-            nssp_step_size=model_data["nssp_step_size"],
-            nwss_step_size=model_data["nwss_step_size"],
+            nhsn_step_size=model_data["nhsn_step_size"] if fit_hospital_admissions else None,
+            nssp_step_size=model_data["nssp_step_size"] if fit_ed_visits else None,
+            nwss_step_size=model_data["nwss_step_size"] if fit_wastewater else None,
         )
 
     @property
