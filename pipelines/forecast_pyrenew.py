@@ -73,6 +73,27 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
+def record_rng_key(model_run_dir: Path, rng_key: int):
+    """Record the RNG key used for model fitting in metadata for reproducibility."""
+    metadata_file = Path(model_run_dir, "metadata.toml")
+
+    if metadata_file.exists():
+        with open(metadata_file, "rb") as file:
+            metadata = tomllib.load(file)
+    else:
+        metadata = {}
+
+    new_metadata = {
+        "rng_key": rng_key,
+    }
+
+    metadata.update(new_metadata)
+
+    metadata_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(metadata_file, "wb") as file:
+        tomli_w.dump(metadata, file)
+
+
 def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
     command = [
         "Rscript",
@@ -164,6 +185,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
+    rng_key: int = 12345,
     nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
@@ -356,6 +378,9 @@ def main(
     logger.info(f"Copying and recording priors from {priors_path}...")
     copy_and_record_priors(priors_path, model_run_dir)
 
+    logger.info(f"Recording RNG key: {rng_key}...")
+    record_rng_key(model_run_dir, rng_key)
+
     logger.info(f"Processing {loc}")
     process_and_save_loc_data(
         loc_abb=loc,
@@ -407,6 +432,7 @@ def main(
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
+        rng_key=rng_key,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
@@ -606,6 +632,13 @@ if __name__ == "__main__":
         type=Path,
         help=("Path to local NHSN data (for local testing)"),
         default=None,
+    )
+    
+    parser.add_argument(
+        "--rng-key",
+        type=int,
+        default=12345,
+        help=("Random number generator seed for reproducibility (default: 12345)."),
     )
 
     args = parser.parse_args()

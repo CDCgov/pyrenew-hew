@@ -20,7 +20,7 @@ def fit_and_save_model(
     rng_key: int = None,
 ) -> None:
     if rng_key is None:
-        rng_key = np.random.randint(0, 10000)
+        rng_key = 12345  # Fixed default RNG seed for reproducibility
     if isinstance(rng_key, int):
         rng_key = jax.random.key(rng_key)
     else:
