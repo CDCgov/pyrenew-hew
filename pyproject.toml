@@ -50,6 +50,9 @@ fix = true
 [tool.ruff.lint]
 select = ["I", "E4", "E7", "E9", "F"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests", "pipelines/tests"]
+
 [tool.uv.sources]
 arviz = { git = "https://github.com/arviz-devs/arviz.git" }
 polarbayes = { git = "https://github.com/CDCgov/polarbayes.git" }
