@@ -635,7 +635,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--rng-key",
+        "--seed",
         type=int,
         default=12345,
         help=("Random number generator seed for reproducibility (default: 12345)."),
