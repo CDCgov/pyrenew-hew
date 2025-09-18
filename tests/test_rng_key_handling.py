@@ -18,8 +18,8 @@ def test_fit_and_save_model_default_rng_key():
             "pipelines.fit_pyrenew_model.build_pyrenew_hew_model_from_dir"
         ) as mock_build,
         patch("pipelines.fit_pyrenew_model.Path") as mock_path,
-        patch("builtins.open", create=True) as mock_open,
-        patch("pickle.dump") as mock_pickle,
+        patch("builtins.open", create=True),
+        patch("pickle.dump"),
     ):
         # Setup mocks
         mock_model = MagicMock()
@@ -50,8 +50,8 @@ def test_fit_and_save_model_custom_rng_key():
             "pipelines.fit_pyrenew_model.build_pyrenew_hew_model_from_dir"
         ) as mock_build,
         patch("pipelines.fit_pyrenew_model.Path") as mock_path,
-        patch("builtins.open", create=True) as mock_open,
-        patch("pickle.dump") as mock_pickle,
+        patch("builtins.open", create=True),
+        patch("pickle.dump"),
     ):
         # Setup mocks
         mock_model = MagicMock()
