@@ -36,7 +36,7 @@ jobs:
             if [ "${{ steps.branch-name.outputs.branch }}" = "main" ]; then
               echo "tag=latest" >> $GITHUB_OUTPUT
             else
-              echo "tag=${{ steps.branch-name.outputs.branch }}" >> $GITHUB_OUTPUT
+              echo "tag=$(echo "${{ steps.branch-name.outputs.branch }}" | tr '/' '-')" >> $GITHUB_OUTPUT
             fi
 
         - name: Docker Login
