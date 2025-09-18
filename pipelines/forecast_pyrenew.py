@@ -185,7 +185,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
-    rng_key: int = 12345,
+    seed: int = 12345,
     nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
@@ -378,8 +378,8 @@ def main(
     logger.info(f"Copying and recording priors from {priors_path}...")
     copy_and_record_priors(priors_path, model_run_dir)
 
-    logger.info(f"Recording RNG key: {rng_key}...")
-    record_rng_key(model_run_dir, rng_key)
+    logger.info(f"Recording RNG key: {seed}...")
+    record_rng_key(model_run_dir, seed)
 
     logger.info(f"Processing {loc}")
     process_and_save_loc_data(
@@ -432,7 +432,7 @@ def main(
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
-        rng_key=rng_key,
+        seed=seed,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
