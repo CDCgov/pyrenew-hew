@@ -162,9 +162,7 @@ def ask_about_reruns():
     h_exclude_last_n_days = IntPrompt.ask(
         "How many days to exclude for H signal?", default=1
     )
-    rng_key = IntPrompt.ask(
-        "RNG seed for reproducibility?", default=12345
-    )
+    rng_key = IntPrompt.ask("RNG seed for reproducibility?", default=12345)
 
     return {
         "locations_include": locations_include,

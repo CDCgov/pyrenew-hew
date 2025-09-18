@@ -633,7 +633,7 @@ if __name__ == "__main__":
         help=("Path to local NHSN data (for local testing)"),
         default=None,
     )
-    
+
     parser.add_argument(
         "--rng-key",
         type=int,
