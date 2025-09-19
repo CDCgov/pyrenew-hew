@@ -53,45 +53,28 @@ def record_git_info(model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
+def update_metadata(model_run_dir: Path, **kwargs):
+    """Update the metadata.toml file in model_run_dir with provided key-value pairs."""
     metadata_file = Path(model_run_dir, "metadata.toml")
-    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
-
     if metadata_file.exists():
         with open(metadata_file, "rb") as file:
             metadata = tomllib.load(file)
     else:
         metadata = {}
-
-    new_metadata = {
-        "priors_path": str(priors_path),
-    }
-
-    metadata.update(new_metadata)
-
+    metadata.update(kwargs)
+    metadata_file.parent.mkdir(parents=True, exist_ok=True)
     with open(metadata_file, "wb") as file:
         tomli_w.dump(metadata, file)
+
+
+def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
+    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
+    update_metadata(model_run_dir, priors_path=str(priors_path))
 
 
 def record_rng_key(model_run_dir: Path, rng_key: int):
     """Record the RNG key used for model fitting in metadata for reproducibility."""
-    metadata_file = Path(model_run_dir, "metadata.toml")
-
-    if metadata_file.exists():
-        with open(metadata_file, "rb") as file:
-            metadata = tomllib.load(file)
-    else:
-        metadata = {}
-
-    new_metadata = {
-        "rng_key": rng_key,
-    }
-
-    metadata.update(new_metadata)
-
-    metadata_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(metadata_file, "wb") as file:
-        tomli_w.dump(metadata, file)
+    update_metadata(model_run_dir, rng_key=rng_key)
 
 
 def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
