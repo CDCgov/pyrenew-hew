@@ -326,6 +326,7 @@ process_pyrenew_model <- function(
       aggregated_numerator = FALSE,
       aggregated_denominator = NA,
     ) |>
+    dplyr::mutate(dplyr::across(c(".chain", ".iteration"), \(x) x + 1)) |>
     tidybayes::combine_chains() |>
     dplyr::select(tidyselect::all_of(required_columns))
 
