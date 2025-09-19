@@ -2,6 +2,7 @@ import pickle
 from pathlib import Path
 
 import jax
+import numpy as np
 
 from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
@@ -18,6 +19,8 @@ def fit_and_save_model(
     n_chains: int = 4,
     rng_key: int = 12345,
 ) -> None:
+    if rng_key is None:
+        rng_key = np.random.randint(0, 10000)
     if isinstance(rng_key, int):
         rng_key = jax.random.key(rng_key)
     else:
