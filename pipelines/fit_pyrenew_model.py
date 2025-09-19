@@ -16,12 +16,14 @@ def fit_and_save_model(
     n_warmup: int = 1000,
     n_samples: int = 1000,
     n_chains: int = 4,
-    seed: int = 12345,
+    rng_key: int = 12345,
 ) -> None:
-    if isinstance(seed, int):
-        rng_key = jax.random.key(seed)
+    if isinstance(rng_key, int):
+        rng_key = jax.random.key(rng_key)
     else:
-        raise ValueError("seed must be an integer with which to seed `jax.random.key`")
+        raise ValueError(
+            "rng_key must be an integer with which to seed `jax.random.key`"
+        )
 
     my_data = PyrenewHEWData.from_json(
         json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
