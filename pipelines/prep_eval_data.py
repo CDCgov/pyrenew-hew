@@ -3,7 +3,8 @@ import logging
 from pathlib import Path
 
 import polars as pl
-from prep_data import (
+
+from pipelines.prep_data import (
     combine_surveillance_data,
     get_loc_pop_df,
     get_nhsn,
