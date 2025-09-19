@@ -42,6 +42,7 @@ def main(
     container_image_version: str = "latest",
     n_training_days: int = 150,
     exclude_last_n_days: int = 1,
+    rng_key: int = 12345,
     locations_include: list[str] | None = None,
     locations_exclude: list[str] | None = None,
     test: bool = False,
@@ -217,6 +218,7 @@ def main(
             "--nwss-data-dir nwss-vintages "
             "--priors-path pipelines/priors/prod_priors.py "
             f"--additional-forecast-letters {additional_forecast_letters} "
+            f"--rng-key {rng_key} "
         )
     elif model_family == "timeseries":
         run_script = "forecast_timeseries.py"
@@ -278,6 +280,7 @@ def main(
     table.add_row("Container Version", str(container_image_version))
     table.add_row("Training Days", str(n_training_days))
     table.add_row("Exclude Last N Days", str(exclude_last_n_days))
+    table.add_row("RNG Key", str(rng_key))
 
     # Locations included (5 per line)
     loc_lines = [
@@ -410,6 +413,12 @@ if __name__ == "__main__":
             "of observed data when constructing the training data."
         ),
         default=1,
+    )
+    parser.add_argument(
+        "--rng-key",
+        type=int,
+        help=("Random number generator seed for reproducibility (default: 12345)."),
+        default=12345,
     )
     parser.add_argument(
         "--locations-include",

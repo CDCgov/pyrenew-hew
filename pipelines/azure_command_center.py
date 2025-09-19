@@ -6,7 +6,6 @@ from pathlib import Path
 
 import polars as pl
 import requests
-from batch.setup_job import main as setup_job
 from dotenv import load_dotenv
 from postprocess_forecast_batches import main as postprocess
 from rich import print
@@ -14,6 +13,8 @@ from rich.console import Console
 from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
+
+from pipelines.batch.setup_job import main as setup_job
 
 load_dotenv()
 console = Console()
@@ -53,6 +54,7 @@ def setup_job_append_id(
     container_image_version: str = "latest",
     n_training_days: int = 150,
     exclude_last_n_days: int = 1,
+    rng_key: int = 12345,
     locations_include: list[str] | None = None,
     locations_exclude: list[str] | None = None,
     test: bool = False,
@@ -72,6 +74,7 @@ def setup_job_append_id(
             container_image_version=container_image_version,
             n_training_days=n_training_days,
             exclude_last_n_days=exclude_last_n_days,
+            rng_key=rng_key,
             locations_include=locations_include,
             locations_exclude=locations_exclude,
             test=test,
@@ -160,11 +163,13 @@ def ask_about_reruns():
     h_exclude_last_n_days = IntPrompt.ask(
         "How many days to exclude for H signal?", default=1
     )
+    rng_key = IntPrompt.ask("RNG seed for reproducibility?", default=12345)
 
     return {
         "locations_include": locations_include,
         "e_exclude_last_n_days": e_exclude_last_n_days,
         "h_exclude_last_n_days": h_exclude_last_n_days,
+        "rng_key": rng_key,
     }
 
 
@@ -172,6 +177,7 @@ def do_timeseries_reruns(
     locations_include: list[str] | None = None,
     e_exclude_last_n_days: int = 1,
     h_exclude_last_n_days: int = 1,
+    rng_key: int = 12345,  # not used, but kept for interface consistency
     append_id: str = "",
 ):
     if e_exclude_last_n_days == 1:
@@ -196,6 +202,7 @@ def do_pyrenew_reruns(
     locations_include: list[str] | None = None,
     e_exclude_last_n_days: int = 1,
     h_exclude_last_n_days: int = 1,
+    rng_key: int = 12345,
     append_id: str = "",
 ):
     he_exclude_last_n_days = max(e_exclude_last_n_days, h_exclude_last_n_days)
@@ -206,6 +213,7 @@ def do_pyrenew_reruns(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=e_exclude_last_n_days,
+            rng_key=rng_key,
         )
 
     if h_exclude_last_n_days == 1:
@@ -215,11 +223,13 @@ def do_pyrenew_reruns(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=h_exclude_last_n_days,
+            rng_key=rng_key,
         )
         fit_pyrenew_hw(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=h_exclude_last_n_days,
+            rng_key=rng_key,
         )
 
     if he_exclude_last_n_days == 1:
@@ -229,12 +239,14 @@ def do_pyrenew_reruns(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=he_exclude_last_n_days,
+            rng_key=rng_key,
         )
 
         fit_pyrenew_hew(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=he_exclude_last_n_days,
+            rng_key=rng_key,
         )
 
 
