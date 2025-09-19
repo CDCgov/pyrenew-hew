@@ -177,7 +177,7 @@ def do_timeseries_reruns(
     locations_include: list[str] | None = None,
     e_exclude_last_n_days: int = 1,
     h_exclude_last_n_days: int = 1,
-    rng_key: int = 12345,
+    rng_key: int = 12345,  # not used, but kept for interface consistency
     append_id: str = "",
 ):
     if e_exclude_last_n_days == 1:
