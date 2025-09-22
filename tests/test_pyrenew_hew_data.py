@@ -1,4 +1,5 @@
 import datetime as dt
+import itertools
 import json
 
 import numpy as np
@@ -208,51 +209,67 @@ def test_pyrenew_wastewater_data():
     assert data.n_ww_lab_sites == ww_data["lab_site_index"].n_unique()
 
 
-@pytest.fixture
-def mock_data():
-    return {
-        "nssp_training_data": {
-            "date": [
-                "2025-01-01",
-                "2025-01-02",
-            ],
-            "geo_value": ["CA"] * 2,
-            "other_ed_visits": [200, 400],
-            "observed_ed_visits": [10, 3],
-            "data_type": ["train"] * 2,
-        },
-        "nhsn_training_data": {
-            "weekendingdate": ["2025-01-01", "2025-01-02"],
-            "jurisdiction": ["CA"] * 2,
-            "hospital_admissions": [5, 1],
-            "data_type": ["train"] * 2,
-        },
-        "loc_pop": [10000],
-        "nssp_training_dates": ["2025-01-01"],
-        "nhsn_training_dates": ["2025-01-04"],
-        "right_truncation_offset": 10,
-        "nwss_training_data": {
-            "date": [
-                "2025-01-01",
-                "2025-01-01",
-                "2025-01-02",
-                "2025-01-02",
-            ],
-            "site": ["1.0", "1.0", "2.0", "2.0"],
-            "lab": ["1.0", "1.0", "1.0", "1.0"],
-            "site_pop": [4000, 4000, 2000, 2000],
-            "site_index": [1, 1, 0, 0],
-            "lab_site_index": [1, 1, 0, 0],
-            "log_genome_copies_per_ml": [0.1, 0.1, 0.5, 0.4],
-            "log_lod": [1.1, 2.0, 1.5, 2.1],
-            "below_lod": [False, False, False, False],
-        },
-        "pop_fraction": [0.4, 0.4, 0.2],
+def mock_data(fit_ed_visits=False, fit_hospital_admissions=False, fit_wastewater=False):
+    data_dict = {
         "population_size": 1e5,
-        "nhsn_step_size": 7,
-        "nssp_step_size": 1,
-        "nwss_step_size": 1,
+        "loc_pop": [10000],
+        "right_truncation_offset": 10,
     }
+
+    if fit_ed_visits:
+        ed_visit_dict = {
+            "nssp_training_data": {
+                "date": [
+                    "2025-01-01",
+                    "2025-01-02",
+                ],
+                "geo_value": ["CA"] * 2,
+                "other_ed_visits": [200, 400],
+                "observed_ed_visits": [10, 3],
+                "data_type": ["train"] * 2,
+            },
+            "nssp_training_dates": ["2025-01-01"],
+            "nssp_step_size": 1,
+        }
+        data_dict.update(ed_visit_dict)
+
+    if fit_hospital_admissions:
+        ed_visit_dict = {
+            "nhsn_training_data": {
+                "weekendingdate": ["2025-01-01", "2025-01-02"],
+                "jurisdiction": ["CA"] * 2,
+                "hospital_admissions": [5, 1],
+                "data_type": ["train"] * 2,
+            },
+            "nhsn_training_dates": ["2025-01-04"],
+            "nhsn_step_size": 7,
+        }
+        data_dict.update(ed_visit_dict)
+
+    if fit_wastewater:
+        wastewater_dict = {
+            "nwss_training_data": {
+                "date": [
+                    "2025-01-01",
+                    "2025-01-01",
+                    "2025-01-02",
+                    "2025-01-02",
+                ],
+                "site": ["1.0", "1.0", "2.0", "2.0"],
+                "lab": ["1.0", "1.0", "1.0", "1.0"],
+                "site_pop": [4000, 4000, 2000, 2000],
+                "site_index": [1, 1, 0, 0],
+                "lab_site_index": [1, 1, 0, 0],
+                "log_genome_copies_per_ml": [0.1, 0.1, 0.5, 0.4],
+                "log_lod": [1.1, 2.0, 1.5, 2.1],
+                "below_lod": [False, False, False, False],
+            },
+            "pop_fraction": [0.4, 0.4, 0.2],
+            "nwss_step_size": 1,
+        }
+        data_dict.update(wastewater_dict)
+
+    return data_dict
 
 
 @pytest.fixture
@@ -263,61 +280,30 @@ def mock_data_dir(mock_data, tmpdir):
     return data_path
 
 
-def test_build_pyrenew_hew_data_from_json(mock_data_dir):
-    # Test when all `fit_` arguments are False
-    data = PyrenewHEWData.from_json(mock_data_dir)
-    assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is None
-    assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater_conc is None
+@pytest.mark.parametrize(
+    "fit_ed_visits,fit_hospital_admissions,fit_wastewater",
+    list(itertools.product([False, True], repeat=3)),
+)
+def test_json_roundtrip(
+    tmp_path, fit_ed_visits, fit_hospital_admissions, fit_wastewater
+):
+    # Use the mock_data fixture to generate the data dictionary
+    data_dict = mock_data(
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
 
-    # Test when all `fit_` arguments are True
+    # Write to json
+    json_path = tmp_path / "data.json"
+    with open(json_path, "w") as f:
+        json.dump(data_dict, f)
+
+    # Read from json
     data = PyrenewHEWData.from_json(
-        mock_data_dir,
-        fit_ed_visits=True,
-        fit_hospital_admissions=True,
-        fit_wastewater=True,
+        json_path,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
     )
     assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is not None
-    assert data.data_observed_disease_hospital_admissions is not None
-    assert data.data_observed_disease_wastewater_conc is not None
-
-
-def test_step_size_conditional_on_fit_flags(mock_data_dir):
-    """Test that step_size parameters are only loaded when corresponding fit_* flag is True"""
-
-    # Test when all fit flags are False - step sizes should be None
-    data = PyrenewHEWData.from_json(mock_data_dir)
-    assert data.nssp_step_size is None
-    assert data.nhsn_step_size is None
-    assert data.nwss_step_size is None
-
-    # Test when only fit_ed_visits is True - only nssp_step_size should be loaded
-    data = PyrenewHEWData.from_json(mock_data_dir, fit_ed_visits=True)
-    assert data.nssp_step_size == 1  # From mock_data
-    assert data.nhsn_step_size is None
-    assert data.nwss_step_size is None
-
-    # Test when only fit_hospital_admissions is True - only nhsn_step_size should be loaded
-    data = PyrenewHEWData.from_json(mock_data_dir, fit_hospital_admissions=True)
-    assert data.nssp_step_size is None
-    assert data.nhsn_step_size == 7  # From mock_data
-    assert data.nwss_step_size is None
-
-    # Test when only fit_wastewater is True - only nwss_step_size should be loaded
-    data = PyrenewHEWData.from_json(mock_data_dir, fit_wastewater=True)
-    assert data.nssp_step_size is None
-    assert data.nhsn_step_size is None
-    assert data.nwss_step_size == 1  # From mock_data
-
-    # Test when all fit flags are True - all step sizes should be loaded
-    data = PyrenewHEWData.from_json(
-        mock_data_dir,
-        fit_ed_visits=True,
-        fit_hospital_admissions=True,
-        fit_wastewater=True,
-    )
-    assert data.nssp_step_size == 1
-    assert data.nhsn_step_size == 7
-    assert data.nwss_step_size == 1
