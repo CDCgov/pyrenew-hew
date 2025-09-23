@@ -31,7 +31,10 @@ def generate_and_save_predictions(
     mcmc_output_dir.mkdir(parents=True, exist_ok=True)
 
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir) / model_name / "data" / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir)
+        / model_name
+        / "data"
+        / "data_for_model_fit.json",
         **flags_from_pyrenew_model_name(model_name),
     )
 
