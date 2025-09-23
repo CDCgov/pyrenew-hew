@@ -48,6 +48,7 @@ include("../parse_arguments.jl")
             @test parsed["n-hmc"] == 50
             @test parsed["n-forecast-draws"] == 2000
             @test parsed["n-redact"] == 1
+            @test parsed["transformation"] == "boxcox"
 
         finally
             # Restore original ARGS
@@ -69,7 +70,8 @@ include("../parse_arguments.jl")
             "--n-mcmc", "200",
             "--n-hmc", "100",
             "--n-forecast-draws", "3000",
-            "--n-redact", "2"
+            "--n-redact", "2",
+            "--transformation", "positive"
         ]
 
         old_args = copy(ARGS)
@@ -88,6 +90,7 @@ include("../parse_arguments.jl")
             @test parsed["n-hmc"] == 100
             @test parsed["n-forecast-draws"] == 3000
             @test parsed["n-redact"] == 2
+            @test parsed["transformation"] == "positive"
 
         finally
             empty!(ARGS)
@@ -123,10 +126,40 @@ include("../parse_arguments.jl")
             @test parsed["n-hmc"] isa Int
             @test parsed["n-forecast-draws"] isa Int
             @test parsed["n-redact"] isa Int
+            @test parsed["transformation"] isa String
 
         finally
             empty!(ARGS)
             append!(ARGS, old_args)
+        end
+    end
+
+    @testset "transformation argument options" begin
+        # Test different transformation options
+        transformation_options = ["boxcox", "positive", "percentage"]
+        
+        for transform in transformation_options
+            test_args = [
+                "--json-input", "/test.json",
+                "--output-dir", "/test",
+                "--disease", "COVID-19",
+                "--location", "ca",
+                "--forecast-date", "2024-10-01",
+                "--transformation", transform
+            ]
+
+            old_args = copy(ARGS)
+            try
+                empty!(ARGS)
+                append!(ARGS, test_args)
+
+                parsed = parse_arguments()
+                @test parsed["transformation"] == transform
+
+            finally
+                empty!(ARGS)
+                append!(ARGS, old_args)
+            end
         end
     end
 end

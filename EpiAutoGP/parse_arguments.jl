@@ -16,6 +16,7 @@ Parses command-line arguments for the EpiAutoGP model.
 - `--n-hmc::Int` (default: 50): Number of HMC steps for GP kernel hyperparameters.
 - `--n-forecast-draws::Int` (default: 2000): Number of forecast draws.
 - `--n-redact::Int` (default: 1): Number of weeks to redact for nowcasting.
+- `--transformation::String` (default: "boxcox"): Data transformation type ("boxcox", "positive", "percentage").
 
 # Returns
 
@@ -69,6 +70,10 @@ function parse_arguments()
             help = "Number of weeks to redact for nowcasting"
             arg_type = Int
             default = 1
+        "--transformation"
+            help = "Data transformation type (boxcox, positive, percentage)"
+            arg_type = String
+            default = "boxcox"
     end
 
     return parse_args(s)
