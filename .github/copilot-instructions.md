@@ -79,7 +79,7 @@ class MyProcess(RandomVariable):
         # Implementation with scope naming
         with scope(prefix=self.name, divider="_"):
             return result
-    
+
     def validate(self):
         pass
 ```

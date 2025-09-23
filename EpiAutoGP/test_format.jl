@@ -39,19 +39,19 @@ try
     dates = nwss_data["date"]
     values = nwss_data["log_genome_copies_per_ml"]
     below_lod = nwss_data["below_lod"]
-    
+
     println("  Successfully accessed arrays:")
     println("    Dates: $(length(dates)) elements")
-    println("    Values: $(length(values)) elements") 
+    println("    Values: $(length(values)) elements")
     println("    Below LOD: $(length(below_lod)) elements")
-    
+
     # Check consistency
     if length(dates) == length(values) == length(below_lod)
         println("  ✓ All arrays have consistent lengths")
     else
         println("  ✗ Array length mismatch!")
     end
-    
+
 catch e
     println("  ✗ Error: $e")
 end

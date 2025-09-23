@@ -127,7 +127,7 @@ include("../parse_arguments.jl")
     @testset "transformation argument options" begin
         # Test different transformation options
         transformation_options = ["boxcox", "positive", "percentage"]
-        
+
         for transform in transformation_options
             test_args = [
                 "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",

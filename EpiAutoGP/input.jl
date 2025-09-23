@@ -22,7 +22,7 @@ Infer location from JSON data by checking common location fields in surveillance
 # Notes
 Searches for location information in the following priority order:
 1. `nwss_training_data.location` field
-2. `nssp_training_data.geo_value` field  
+2. `nssp_training_data.geo_value` field
 3. `nhsn_training_data.jurisdiction` field
 """
 function infer_location_from_json(json_data)
@@ -40,7 +40,7 @@ function infer_location_from_json(json_data)
             end
         end
     end
-    
+
     # Try NSSP data (ED visits)
     if haskey(json_data, "nssp_training_data") && !isnothing(json_data["nssp_training_data"])
         nssp_data = json_data["nssp_training_data"]
@@ -55,7 +55,7 @@ function infer_location_from_json(json_data)
             end
         end
     end
-    
+
     # Try NHSN data (hospital admissions)
     if haskey(json_data, "nhsn_training_data") && !isnothing(json_data["nhsn_training_data"])
         nhsn_data = json_data["nhsn_training_data"]
@@ -70,7 +70,7 @@ function infer_location_from_json(json_data)
             end
         end
     end
-    
+
     error("Could not infer location from JSON data. No valid location information found in any surveillance data stream.")
 end
 
@@ -91,7 +91,7 @@ based on the specific data structure patterns in the PyRenew-HEW pipeline.
 For now, suggests using a default disease or implementing custom logic.
 """
 function infer_disease_from_json(json_data)
-    # For now, we'll return a placeholder since disease inference 
+    # For now, we'll return a placeholder since disease inference
     # depends on specific conventions in the PyRenew-HEW pipeline
     # This could be enhanced to look for disease-specific indicators
     @warn "Disease inference from JSON data not yet implemented. Please specify --disease explicitly or implement custom inference logic."
@@ -115,11 +115,11 @@ Load and parse JSON input data compatible with PyRenew-HEW format.
 """
 function load_json_data(json_file_path::String)
     @info "Loading JSON data from $json_file_path"
-    
+
     if !isfile(json_file_path)
         error("JSON input file not found: $json_file_path")
     end
-    
+
     try
         data = JSON3.read(read(json_file_path, String))
         @info "Successfully loaded JSON data"
@@ -143,23 +143,23 @@ Extract time series data from JSON input for the specified data key.
 """
 function extract_time_series_data(json_data, data_key::String)
     @assert data_key ∈ VALID_DATA_KEYS "Invalid data_key: $data_key. Must be one of $VALID_DATA_KEYS"
-    
+
     if !haskey(json_data, data_key) || isnothing(json_data[data_key])
         @warn "No data found for $data_key"
         return nothing
     end
-    
+
     data_dict = json_data[data_key]
     if isempty(data_dict)
         @warn "Empty data dictionary for $data_key"
         return nothing
     end
-    
+
     # Convert dictionary format (keys=columns, values=lists) to DataFrame
     # This matches the Polars .to_dict(as_series=False) format
     df = DataFrame(data_dict)
     @info "Extracted $(nrow(df)) rows for $data_key with columns: $(names(df))"
-    
+
     return df
 end
 
@@ -182,22 +182,22 @@ Requires "nssp_training_data" with "observed_ed_visits" column to be present.
 """
 function prepare_epiautogp_data(json_data, disease::String, location::String)
     @info "Preparing EpiAutoGP data for $disease in $location"
-    
+
     # Extract different data streams
     ed_data = extract_time_series_data(json_data, "nssp_training_data")
-    hosp_data = extract_time_series_data(json_data, "nhsn_training_data") 
+    hosp_data = extract_time_series_data(json_data, "nhsn_training_data")
     ww_data = extract_time_series_data(json_data, "nwss_training_data")
-    
+
     # For EpiAutoGP, we'll focus on ED visit data as the primary signal
     if isnothing(ed_data)
         error("No ED visit data available - required for EpiAutoGP model")
     end
-    
+
     # Convert date column if present
     if "date" in names(ed_data)
         ed_data.date = Date.(ed_data.date)
     end
-    
+
     # Filter for disease-specific ED visits if available
     if "observed_ed_visits" in names(ed_data)
         # Create standardized format expected by EpiAutoGP using TidierData
@@ -210,12 +210,12 @@ function prepare_epiautogp_data(json_data, disease::String, location::String)
     else
         error("No 'observed_ed_visits' column found in ED data")
     end
-    
+
     # Sort by date
     sort!(time_series_df, :date)
-    
+
     @info "Prepared time series with $(nrow(time_series_df)) observations from $(minimum(time_series_df.date)) to $(maximum(time_series_df.date))"
-    
+
     return time_series_df
 end
 
@@ -247,40 +247,40 @@ Each inner vector represents one nowcast scenario across time points.
 function extract_nowcast_data(json_data)
     # Check if nowcast data is present using same pattern as other functions
     @assert all(key -> haskey(json_data, key), VALID_NOWCAST_KEYS) "Missing nowcast data keys. Required: $VALID_NOWCAST_KEYS"
-    
+
     raw_samples = json_data["nowcast_samples"]
     raw_dates = json_data["nowcast_dates"]
-    
+
     if isnothing(raw_samples) || isnothing(raw_dates) || isempty(raw_samples) || isempty(raw_dates)
         @info "Empty nowcast data in JSON input"
         return nothing
     end
-    
+
     # Convert dates
     dates = Date.(raw_dates)
-    
+
     # Validate vector of vectors format
     if !(raw_samples isa AbstractVector) || !all(x -> x isa AbstractVector, raw_samples)
         error("nowcast_samples must be a vector of vectors format: [[scenario1], [scenario2], ...]")
     end
-    
+
     # Convert to proper vector of vectors with Float64 values
     samples = [Vector{Float64}(scenario) for scenario in raw_samples]
     n_scenarios = length(samples)
     n_timepoints = length(samples[1])
-    
+
     # Validate all scenarios have same length
     if !all(length(scenario) == n_timepoints for scenario in samples)
         error("All nowcast scenarios must have the same number of time points")
     end
-    
+
     # Validate dates match sample dimensions
     if length(dates) != n_timepoints
         error("Number of nowcast dates ($(length(dates))) must match number of time points per scenario ($n_timepoints)")
     end
-    
+
     @info "Extracted $n_scenarios nowcast scenarios with $n_timepoints time points each"
     @info "Successfully extracted nowcast data for dates from $(minimum(dates)) to $(maximum(dates))"
-    
+
     return (samples = samples, dates = dates)
 end

@@ -7,7 +7,7 @@ using DataFrames
 # Load our implementation
 include("../input.jl")
 
-# Test with real PyRenew-HEW data  
+# Test with real PyRenew-HEW data
 test_data_file = "test/data/bootstrap_private_data/MT/data/data_for_model_fit.json"
 
 println("Testing with real PyRenew-HEW data from: $test_data_file")
@@ -26,7 +26,7 @@ println("Date range: $(minimum(time_series_data.date)) to $(maximum(time_series_
 # Test data types and structure
 println("\nData types:")
 println("- NHSN data rows: $(sum(time_series_data.data_source .== "nhsn"))")
-println("- NSSP data rows: $(sum(time_series_data.data_source .== "nssp"))")  
+println("- NSSP data rows: $(sum(time_series_data.data_source .== "nssp"))")
 println("- NWSS data rows: $(sum(time_series_data.data_source .== "nwss"))")
 
 println("\nNWSS data sample (first 5 rows):")
