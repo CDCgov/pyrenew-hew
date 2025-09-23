@@ -35,9 +35,15 @@ convert_daily_to_epiweekly <- function(
   model_run_dir,
   data_name,
   strict = TRUE,
-  day_of_week = 7
+  day_of_week = 7,
+  model_name = NULL
 ) {
-  data_path <- path(model_run_dir, "data", data_name)
+  # Use model-specific data directory if model_name is provided
+  if (!is.null(model_name)) {
+    data_path <- path(model_run_dir, "data", model_name, data_name)
+  } else {
+    data_path <- path(model_run_dir, "data", data_name)
+  }
 
   daily_data <- read_tsv(
     data_path,
@@ -72,23 +78,35 @@ convert_daily_to_epiweekly <- function(
   epiweekly_data <- bind_rows(epiweekly_ed_data, epiweekly_hosp_data) |>
     arrange(date, .variable)
 
-  output_file <- path(
-    model_run_dir,
-    "data",
-    glue::glue("epiweekly_{data_name}")
-  )
+  # Use model-specific data directory for output if model_name is provided
+  if (!is.null(model_name)) {
+    output_file <- path(
+      model_run_dir,
+      "data",
+      model_name,
+      glue::glue("epiweekly_{data_name}")
+    )
+  } else {
+    output_file <- path(
+      model_run_dir,
+      "data",
+      glue::glue("epiweekly_{data_name}")
+    )
+  }
 
   write_tsv(epiweekly_data, output_file)
 }
 
-main <- function(model_run_dir) {
+main <- function(model_run_dir, model_name = NULL) {
   convert_daily_to_epiweekly(
     model_run_dir,
-    data_name = "combined_training_data.tsv"
+    data_name = "combined_training_data.tsv",
+    model_name = model_name
   )
   convert_daily_to_epiweekly(
     model_run_dir,
-    data_name = "combined_eval_data.tsv"
+    data_name = "combined_eval_data.tsv",
+    model_name = model_name
   )
 }
 
@@ -97,7 +115,12 @@ p <- arg_parser("Create epiweekly data") |>
   add_argument(
     "model_run_dir",
     help = "Directory containing the model data and output."
+  ) |>
+  add_argument(
+    "--model-name",
+    help = "Model name for model-specific data directory (optional)",
+    default = NULL
   )
 
 argv <- parse_args(p)
-main(argv$model_run_dir)
+main(argv$model_run_dir, argv$model_name)

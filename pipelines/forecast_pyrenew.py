@@ -73,12 +73,14 @@ def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
+def generate_epiweekly_data(model_run_dir: Path, data_names: str = None, model_name: str = None) -> None:
     command = [
         "Rscript",
         "pipelines/generate_epiweekly_data.R",
         f"{model_run_dir}",
     ]
+    if model_name is not None:
+        command.extend(["--model-name", f"{model_name}"])
     if data_names is not None:
         command.extend(["--data-names", f"{data_names}"])
 
@@ -397,7 +399,7 @@ def main(
     logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(model_run_dir)
+    generate_epiweekly_data(model_run_dir, model_name=pyrenew_model_name)
 
     logger.info("Data preparation complete.")
 
