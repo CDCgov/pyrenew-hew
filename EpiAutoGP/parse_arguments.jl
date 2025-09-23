@@ -23,14 +23,14 @@ A dictionary containing the parsed command-line arguments.
 """
 function parse_arguments()
     s = ArgParseSettings()
-    
+
     @add_arg_table! s begin
         "--json-input"
             help = "Path to JSON file containing model input data"
             arg_type = String
             required = true
         "--output-dir"
-            help = "Directory for saving model outputs"  
+            help = "Directory for saving model outputs"
             arg_type = String
             required = true
         "--disease"
@@ -70,6 +70,6 @@ function parse_arguments()
             arg_type = Int
             default = 1
     end
-    
+
     return parse_args(s)
 end
