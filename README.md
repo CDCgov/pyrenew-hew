@@ -30,7 +30,7 @@ Container images pushed to the Azure Container Registry are automatically tagged
 ## Running Model Pipelines
 > [!NOTE]
 >
-> Please contact a project maintainer if you believe you need access to pipelines.  
+> Please contact a project maintainer if you believe you need access to pipelines.
 > CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
 
 > Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
