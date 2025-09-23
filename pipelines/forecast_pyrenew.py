@@ -370,6 +370,7 @@ def main(
         logger=logger,
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
+        model_name=pyrenew_model_name,
     )
     process_and_save_loc_param(
         loc_abb=loc,

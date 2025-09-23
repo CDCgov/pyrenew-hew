@@ -29,7 +29,7 @@ def fit_and_save_model(
         )
 
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
+        json_file_path=Path(model_run_dir) / "data" / model_name / "data_for_model_fit.json",
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,

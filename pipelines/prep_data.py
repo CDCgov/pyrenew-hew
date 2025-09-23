@@ -456,6 +456,7 @@ def process_and_save_loc_data(
     loc_level_nwss_data: pl.LazyFrame = None,
     credentials_dict: dict = None,
     nhsn_data_path: Path | str = None,
+    model_name: str = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -544,7 +545,12 @@ def process_and_save_loc_data(
         "nwss_step_size": 1,
     }
 
-    data_dir = Path(model_run_dir, "data")
+    # Create model-specific data directory to avoid race conditions
+    if model_name is not None:
+        data_dir = Path(model_run_dir, "data", model_name)
+    else:
+        # Fallback to shared directory for backward compatibility
+        data_dir = Path(model_run_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
 
     with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
