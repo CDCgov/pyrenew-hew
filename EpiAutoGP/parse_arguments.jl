@@ -1,3 +1,6 @@
+using ArgParse
+using Dates
+
 """
     parse_arguments()
 
@@ -7,8 +10,6 @@ Parses command-line arguments for the EpiAutoGP model.
 
 - `--json-input::String` (required): Path to JSON file containing model input data.
 - `--output-dir::String` (required): Directory for saving model outputs.
-- `--disease::String` (required): Disease name (e.g., "COVID-19", "Influenza", "RSV").
-- `--location::String` (required): Two-letter state/territory abbreviation.
 - `--forecast-date::Date` (required): Reference date for forecasting in `YYYY-MM-DD` format.
 - `--n-forecast-weeks::Int` (default: 4): Number of weeks to forecast.
 - `--n-particles::Int` (default: 24): Number of particles for SMC.
@@ -32,14 +33,6 @@ function parse_arguments()
             required = true
         "--output-dir"
             help = "Directory for saving model outputs"
-            arg_type = String
-            required = true
-        "--disease"
-            help = "Disease name (COVID-19, Influenza, RSV)"
-            arg_type = String
-            required = true
-        "--location"
-            help = "Two-letter state/territory abbreviation"
             arg_type = String
             required = true
         "--forecast-date"

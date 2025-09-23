@@ -16,13 +16,11 @@ include("../parse_arguments.jl")
         @test parse_arguments isa Function
     end
 
-    @testset "argument parsing with mock ARGS" begin
-        # Mock command line arguments
+    @testset "argument parsing with required arguments" begin
+        # Mock command line arguments with only required arguments
         test_args = [
-            "--json-input", "/path/to/input.json",
+            "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
             "--output-dir", "/path/to/output",
-            "--disease", "COVID-19",
-            "--location", "CA",
             "--forecast-date", "2024-12-21"
         ]
 
@@ -35,10 +33,8 @@ include("../parse_arguments.jl")
             parsed = parse_arguments()
 
             # Test required arguments
-            @test parsed["json-input"] == "/path/to/input.json"
+            @test parsed["json-input"] == "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json"
             @test parsed["output-dir"] == "/path/to/output"
-            @test parsed["disease"] == "COVID-19"
-            @test parsed["location"] == "CA"
             @test parsed["forecast-date"] == Date("2024-12-21")
 
             # Test default values
@@ -57,13 +53,12 @@ include("../parse_arguments.jl")
         end
     end
 
+
     @testset "custom argument values" begin
         # Test with custom values for optional arguments
         test_args = [
-            "--json-input", "/test/input.json",
+            "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
             "--output-dir", "/test/output",
-            "--disease", "Influenza",
-            "--location", "NY",
             "--forecast-date", "2024-11-15",
             "--n-forecast-weeks", "6",
             "--n-particles", "48",
@@ -81,8 +76,6 @@ include("../parse_arguments.jl")
 
             parsed = parse_arguments()
 
-            @test parsed["disease"] == "Influenza"
-            @test parsed["location"] == "NY"
             @test parsed["forecast-date"] == Date("2024-11-15")
             @test parsed["n-forecast-weeks"] == 6
             @test parsed["n-particles"] == 48
@@ -100,10 +93,8 @@ include("../parse_arguments.jl")
 
     @testset "argument types" begin
         test_args = [
-            "--json-input", "/test.json",
+            "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
             "--output-dir", "/test",
-            "--disease", "RSV",
-            "--location", "TX",
             "--forecast-date", "2024-10-01"
         ]
 
@@ -117,8 +108,6 @@ include("../parse_arguments.jl")
             # Test argument types
             @test parsed["json-input"] isa String
             @test parsed["output-dir"] isa String
-            @test parsed["disease"] isa String
-            @test parsed["location"] isa String
             @test parsed["forecast-date"] isa Date
             @test parsed["n-forecast-weeks"] isa Int
             @test parsed["n-particles"] isa Int
@@ -134,16 +123,15 @@ include("../parse_arguments.jl")
         end
     end
 
+
     @testset "transformation argument options" begin
         # Test different transformation options
         transformation_options = ["boxcox", "positive", "percentage"]
         
         for transform in transformation_options
             test_args = [
-                "--json-input", "/test.json",
+                "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
                 "--output-dir", "/test",
-                "--disease", "COVID-19",
-                "--location", "ca",
                 "--forecast-date", "2024-10-01",
                 "--transformation", transform
             ]
