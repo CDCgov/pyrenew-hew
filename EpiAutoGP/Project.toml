@@ -1,0 +1,10 @@
+[deps]
+NowcastAutoGP = "7e9f7f4b-f590-4c14-8324-de4fcbed18f7"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+
+[sources]
+NowcastAutoGP = {url="https://github.com/CDCgov/NowcastAutoGP", rev= "v0.2.0"}
