@@ -13,27 +13,40 @@ include("../input.jl")
     temp_dir = mktempdir()
     
     try
-        # Define test data sets
+        # Define test data sets - matching Polars .to_dict(as_series=False) format
         comprehensive_data = Dict(
-            "nssp_training_data" => [
-                Dict("date" => "2024-01-01", "observed_ed_visits" => 100),
-                Dict("date" => "2024-01-03", "observed_ed_visits" => 120),
-                Dict("date" => "2024-01-02", "observed_ed_visits" => 110)
-            ],
-            "nhsn_training_data" => [
-                Dict("date" => "2024-01-01", "hospital_admissions" => 50)
-            ],
-            "nwss_training_data" => [
-                Dict("date" => "2024-01-01", "wastewater_conc" => 1000)
-            ]
+            "nssp_training_data" => Dict(
+                "date" => ["2024-01-01", "2024-01-02", "2024-01-03"],
+                "observed_ed_visits" => [100, 110, 120],
+                "other_ed_visits" => [50, 55, 60],
+                "geo_value" => ["NY", "NY", "NY"],
+                "data_type" => ["train", "train", "train"]
+            ),
+            "nhsn_training_data" => Dict(
+                "weekendingdate" => ["2024-01-01"],
+                "hospital_admissions" => [50],
+                "jurisdiction" => ["NY"],
+                "data_type" => ["train"]
+            ),
+            "nwss_training_data" => Dict(
+                "date" => ["2024-01-01"],
+                "site_level_log_ww_conc" => [3.0],
+                "location" => ["NY"],
+                "data_type" => ["train"]
+            )
         )
         
-        partial_data = Dict("other_data" => [Dict("value" => 1)])
+        partial_data = Dict("other_data" => Dict("value" => [1]))
         null_data = Dict("nssp_training_data" => nothing)
-        empty_data = Dict("nssp_training_data" => [])
-        no_ed_data = Dict("nhsn_training_data" => [Dict("date" => "2024-01-01", "hospital_admissions" => 50)])
-        wrong_ed_column = Dict("nssp_training_data" => [Dict("date" => "2024-01-01", "other_column" => 100)])
-        single_point_data = Dict("nssp_training_data" => [Dict("date" => "2024-01-01", "observed_ed_visits" => 100)])
+        empty_data = Dict("nssp_training_data" => Dict())
+        no_ed_data = Dict("nhsn_training_data" => Dict(
+            "weekendingdate" => ["2024-01-01"], 
+            "hospital_admissions" => [50],
+            "jurisdiction" => ["NY"],
+            "data_type" => ["train"]
+        ))
+        wrong_ed_column = Dict("nssp_training_data" => Dict("date" => ["2024-01-01"], "other_column" => [100]))
+        single_point_data = Dict("nssp_training_data" => Dict("date" => ["2024-01-01"], "observed_ed_visits" => [100]))
         simple_valid_data = Dict("test_key" => "test_value", "number" => 42)
         
         # Create JSON files using JSON3.write
@@ -185,6 +198,112 @@ include("../input.jl")
                 @test all(result.disease .== "COVID-19")
                 @test minimum(result.count) == 100
                 @test maximum(result.count) == 120
+            end
+        end
+        
+        @testset "extract_nowcast_data" begin
+            # Create nowcast test data files
+            valid_nowcast_data = Dict(
+                "nowcast_samples" => [
+                    [10.5, 11.2, 12.1],
+                    [9.8, 10.9, 11.5],
+                    [10.2, 11.1, 12.0]
+                ],
+                "nowcast_dates" => ["2024-01-01", "2024-01-02", "2024-01-03"]
+            )
+            
+            missing_samples_data = Dict("nowcast_dates" => ["2024-01-01"])
+            missing_dates_data = Dict("nowcast_samples" => [[10.5]])
+            empty_samples_data = Dict("nowcast_samples" => [], "nowcast_dates" => [])
+            null_samples_data = Dict("nowcast_samples" => nothing, "nowcast_dates" => ["2024-01-01"])
+            
+            invalid_format_data = Dict(
+                "nowcast_samples" => [1.0, 2.0, 3.0],  # Not vector of vectors
+                "nowcast_dates" => ["2024-01-01", "2024-01-02", "2024-01-03"]
+            )
+            
+            mismatched_length_data = Dict(
+                "nowcast_samples" => [[10.5, 11.2], [9.8]],  # Different lengths
+                "nowcast_dates" => ["2024-01-01", "2024-01-02"]
+            )
+            
+            date_mismatch_data = Dict(
+                "nowcast_samples" => [[10.5, 11.2], [9.8, 10.9]],
+                "nowcast_dates" => ["2024-01-01"]  # Wrong number of dates
+            )
+            
+            # Write test files
+            valid_nowcast_file = joinpath(temp_dir, "valid_nowcast.json")
+            missing_samples_file = joinpath(temp_dir, "missing_samples.json")
+            missing_dates_file = joinpath(temp_dir, "missing_dates.json")
+            empty_nowcast_file = joinpath(temp_dir, "empty_nowcast.json")
+            null_nowcast_file = joinpath(temp_dir, "null_nowcast.json")
+            invalid_format_file = joinpath(temp_dir, "invalid_format.json")
+            mismatched_length_file = joinpath(temp_dir, "mismatched_length.json")
+            date_mismatch_file = joinpath(temp_dir, "date_mismatch.json")
+            
+            open(valid_nowcast_file, "w") do io; JSON3.write(io, valid_nowcast_data); end
+            open(missing_samples_file, "w") do io; JSON3.write(io, missing_samples_data); end
+            open(missing_dates_file, "w") do io; JSON3.write(io, missing_dates_data); end
+            open(empty_nowcast_file, "w") do io; JSON3.write(io, empty_samples_data); end
+            open(null_nowcast_file, "w") do io; JSON3.write(io, null_samples_data); end
+            open(invalid_format_file, "w") do io; JSON3.write(io, invalid_format_data); end
+            open(mismatched_length_file, "w") do io; JSON3.write(io, mismatched_length_data); end
+            open(date_mismatch_file, "w") do io; JSON3.write(io, date_mismatch_data); end
+            
+            @testset "Valid nowcast data extraction" begin
+                json_data = load_json_data(valid_nowcast_file)
+                result = extract_nowcast_data(json_data)
+                
+                @test result !== nothing
+                @test haskey(result, :samples)
+                @test haskey(result, :dates)
+                
+                # Check samples structure
+                @test length(result.samples) == 3  # 3 scenarios
+                @test length(result.samples[1]) == 3  # 3 time points each
+                @test all(length(scenario) == 3 for scenario in result.samples)
+                
+                # Check date conversion
+                @test length(result.dates) == 3
+                @test result.dates[1] == Date("2024-01-01")
+                @test result.dates[3] == Date("2024-01-03")
+                
+                # Check values
+                @test result.samples[1] == [10.5, 11.2, 12.1]
+                @test result.samples[2] == [9.8, 10.9, 11.5]
+                @test result.samples[3] == [10.2, 11.1, 12.0]
+            end
+            
+            @testset "Missing nowcast keys" begin
+                json_data_missing_samples = load_json_data(missing_samples_file)
+                @test_throws AssertionError extract_nowcast_data(json_data_missing_samples)
+                
+                json_data_missing_dates = load_json_data(missing_dates_file)
+                @test_throws AssertionError extract_nowcast_data(json_data_missing_dates)
+            end
+            
+            @testset "Empty or null nowcast data" begin
+                json_data_empty = load_json_data(empty_nowcast_file)
+                result_empty = extract_nowcast_data(json_data_empty)
+                @test result_empty === nothing
+                
+                json_data_null = load_json_data(null_nowcast_file)
+                result_null = extract_nowcast_data(json_data_null)
+                @test result_null === nothing
+            end
+            
+            @testset "Invalid nowcast format" begin
+                json_data_invalid = load_json_data(invalid_format_file)
+                @test_throws ErrorException extract_nowcast_data(json_data_invalid)
+            end
+            
+            @testset "Dimension validation" begin
+                json_data_mismatched = load_json_data(mismatched_length_file)
+                @test_throws ErrorException extract_nowcast_data(json_data_mismatched)
+                
+                json_data_date_mismatch = load_json_data(date_mismatch_file)
+                @test_throws ErrorException extract_nowcast_data(json_data_date_mismatch)
             end
         end
         

@@ -9,6 +9,96 @@ const VALID_DATA_KEYS = ["nssp_training_data", "nhsn_training_data", "nwss_train
 const VALID_NOWCAST_KEYS = ["nowcast_samples", "nowcast_dates"]
 
 """
+    infer_location_from_json(json_data)
+
+Infer location from JSON data by checking common location fields in surveillance data.
+
+# Arguments
+- `json_data`: Parsed JSON data object from PyRenew-HEW
+
+# Returns
+- `String`: Location identifier (e.g., state abbreviation) or throws error if not found
+
+# Notes
+Searches for location information in the following priority order:
+1. `nwss_training_data.location` field
+2. `nssp_training_data.geo_value` field  
+3. `nhsn_training_data.jurisdiction` field
+"""
+function infer_location_from_json(json_data)
+    # Try NWSS data first (most likely to have clean location field)
+    if haskey(json_data, "nwss_training_data") && !isnothing(json_data["nwss_training_data"])
+        nwss_data = json_data["nwss_training_data"]
+        if haskey(nwss_data, "location") && !isempty(nwss_data["location"])
+            locations = unique(nwss_data["location"])
+            if length(locations) == 1
+                @info "Inferred location from NWSS data: $(locations[1])"
+                return String(locations[1])
+            elseif length(locations) > 1
+                @warn "Multiple locations found in NWSS data: $locations, using first: $(locations[1])"
+                return String(locations[1])
+            end
+        end
+    end
+    
+    # Try NSSP data (ED visits)
+    if haskey(json_data, "nssp_training_data") && !isnothing(json_data["nssp_training_data"])
+        nssp_data = json_data["nssp_training_data"]
+        if haskey(nssp_data, "geo_value") && !isempty(nssp_data["geo_value"])
+            geo_values = unique(nssp_data["geo_value"])
+            if length(geo_values) == 1
+                @info "Inferred location from NSSP data: $(geo_values[1])"
+                return String(geo_values[1])
+            elseif length(geo_values) > 1
+                @warn "Multiple geo_values found in NSSP data: $geo_values, using first: $(geo_values[1])"
+                return String(geo_values[1])
+            end
+        end
+    end
+    
+    # Try NHSN data (hospital admissions)
+    if haskey(json_data, "nhsn_training_data") && !isnothing(json_data["nhsn_training_data"])
+        nhsn_data = json_data["nhsn_training_data"]
+        if haskey(nhsn_data, "jurisdiction") && !isempty(nhsn_data["jurisdiction"])
+            jurisdictions = unique(nhsn_data["jurisdiction"])
+            if length(jurisdictions) == 1
+                @info "Inferred location from NHSN data: $(jurisdictions[1])"
+                return String(jurisdictions[1])
+            elseif length(jurisdictions) > 1
+                @warn "Multiple jurisdictions found in NHSN data: $jurisdictions, using first: $(jurisdictions[1])"
+                return String(jurisdictions[1])
+            end
+        end
+    end
+    
+    error("Could not infer location from JSON data. No valid location information found in any surveillance data stream.")
+end
+
+"""
+    infer_disease_from_json(json_data)
+
+Infer disease from JSON data by checking disease-specific fields in surveillance data.
+
+# Arguments
+- `json_data`: Parsed JSON data object from PyRenew-HEW
+
+# Returns
+- `String`: Disease identifier (e.g., "COVID-19", "influenza") or throws error if not found
+
+# Notes
+Currently returns a placeholder since disease inference logic needs to be developed
+based on the specific data structure patterns in the PyRenew-HEW pipeline.
+For now, suggests using a default disease or implementing custom logic.
+"""
+function infer_disease_from_json(json_data)
+    # For now, we'll return a placeholder since disease inference 
+    # depends on specific conventions in the PyRenew-HEW pipeline
+    # This could be enhanced to look for disease-specific indicators
+    @warn "Disease inference from JSON data not yet implemented. Please specify --disease explicitly or implement custom inference logic."
+    return "COVID-19"  # Default fallback
+end
+
+"""
     load_json_data(json_file_path::String)
 
 Load and parse JSON input data compatible with PyRenew-HEW format.
@@ -59,15 +149,16 @@ function extract_time_series_data(json_data, data_key::String)
         return nothing
     end
     
-    data_array = json_data[data_key]
-    if isempty(data_array)
-        @warn "Empty data array for $data_key"
+    data_dict = json_data[data_key]
+    if isempty(data_dict)
+        @warn "Empty data dictionary for $data_key"
         return nothing
     end
     
-    # Convert to DataFrame using TidierData
-    df = DataFrame(data_array)
-    @info "Extracted $(nrow(df)) rows for $data_key"
+    # Convert dictionary format (keys=columns, values=lists) to DataFrame
+    # This matches the Polars .to_dict(as_series=False) format
+    df = DataFrame(data_dict)
+    @info "Extracted $(nrow(df)) rows for $data_key with columns: $(names(df))"
     
     return df
 end
