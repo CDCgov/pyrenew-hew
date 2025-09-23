@@ -40,7 +40,7 @@ convert_daily_to_epiweekly <- function(
 ) {
   # Use model-specific data directory if model_name is provided
   if (!is.null(model_name)) {
-    data_path <- path(model_run_dir, "data", model_name, data_name)
+    data_path <- path(model_run_dir, model_name, "data", data_name)
   } else {
     data_path <- path(model_run_dir, "data", data_name)
   }
@@ -82,8 +82,8 @@ convert_daily_to_epiweekly <- function(
   if (!is.null(model_name)) {
     output_file <- path(
       model_run_dir,
-      "data",
       model_name,
+      "data",
       glue::glue("epiweekly_{data_name}")
     )
   } else {

@@ -547,7 +547,7 @@ def process_and_save_loc_data(
 
     # Create model-specific data directory to avoid race conditions
     if model_name is not None:
-        data_dir = Path(model_run_dir, "data", model_name)
+        data_dir = Path(model_run_dir, model_name, "data")
     else:
         # Fallback to shared directory for backward compatibility
         data_dir = Path(model_run_dir, "data")

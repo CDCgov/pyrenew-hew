@@ -17,7 +17,7 @@ def test_model_specific_data_directory_structure():
         
         for model_name in model_names:
             # Create the model-specific data directory structure
-            model_data_dir = model_run_dir / "data" / model_name
+            model_data_dir = model_run_dir / model_name / "data"
             model_data_dir.mkdir(parents=True, exist_ok=True)
             
             # Create a sample data file
@@ -34,7 +34,7 @@ def test_model_specific_data_directory_structure():
         
         # Verify all directories were created separately
         for model_name in model_names:
-            model_data_dir = model_run_dir / "data" / model_name
+            model_data_dir = model_run_dir / model_name / "data"
             assert model_data_dir.exists(), f"Model-specific data directory {model_data_dir} does not exist"
             
             data_file = model_data_dir / "data_for_model_fit.json"
@@ -82,18 +82,18 @@ def test_path_construction():
     model_name = "test_model"
     
     # Test the path construction used in fit_pyrenew_model.py
-    fit_data_path = model_run_dir / "data" / model_name / "data_for_model_fit.json"
-    expected_fit_path = Path("/some/model/run/dir/data/test_model/data_for_model_fit.json")
+    fit_data_path = model_run_dir / model_name / "data" / "data_for_model_fit.json"
+    expected_fit_path = Path("/some/model/run/dir/test_model/data/data_for_model_fit.json")
     assert fit_data_path == expected_fit_path, f"Fit data path construction incorrect: {fit_data_path}"
     
     # Test the path construction used in generate_predictive.py  
-    predictive_data_path = model_run_dir / "data" / model_name / "data_for_model_fit.json"
-    expected_predictive_path = Path("/some/model/run/dir/data/test_model/data_for_model_fit.json")
+    predictive_data_path = model_run_dir / model_name / "data" / "data_for_model_fit.json"
+    expected_predictive_path = Path("/some/model/run/dir/test_model/data/data_for_model_fit.json")
     assert predictive_data_path == expected_predictive_path, f"Predictive data path construction incorrect: {predictive_data_path}"
     
     # Test the path construction for data preparation
-    prep_data_dir = model_run_dir / "data" / model_name
-    expected_prep_dir = Path("/some/model/run/dir/data/test_model")
+    prep_data_dir = model_run_dir / model_name / "data"
+    expected_prep_dir = Path("/some/model/run/dir/test_model/data")
     assert prep_data_dir == expected_prep_dir, f"Prep data directory construction incorrect: {prep_data_dir}"
 
 
@@ -112,7 +112,7 @@ def test_concurrent_model_isolation():
         
         # Create data directories for each model
         for model in models:
-            model_data_dir = model_run_dir / "data" / model["name"]
+            model_data_dir = model_run_dir / model["name"] / "data"
             model_data_dir.mkdir(parents=True, exist_ok=True)
             
             # Create model-specific data
@@ -132,7 +132,7 @@ def test_concurrent_model_isolation():
         
         # Verify each model has its own isolated data
         for model in models:
-            model_data_dir = model_run_dir / "data" / model["name"]
+            model_data_dir = model_run_dir / model["name"] / "data"
             data_file = model_data_dir / "data_for_model_fit.json"
             
             assert model_data_dir.exists(), f"Model directory for {model['name']} does not exist"
