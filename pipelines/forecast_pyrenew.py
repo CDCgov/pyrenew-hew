@@ -9,15 +9,15 @@ from pathlib import Path
 
 import polars as pl
 import tomli_w
-from fit_pyrenew_model import fit_and_save_model
-from generate_predictive import (
-    generate_and_save_predictions,
-)
-from prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pygit2.repository import Repository
 
+from pipelines.fit_pyrenew_model import fit_and_save_model
+from pipelines.generate_predictive import (
+    generate_and_save_predictions,
+)
 from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
 from pipelines.prep_eval_data import save_eval_data
+from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pyrenew_hew.utils import (
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
@@ -53,24 +53,28 @@ def record_git_info(model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
+def update_metadata(model_run_dir: Path, **kwargs):
+    """Update the metadata.toml file in model_run_dir with provided key-value pairs."""
     metadata_file = Path(model_run_dir, "metadata.toml")
-    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
-
     if metadata_file.exists():
         with open(metadata_file, "rb") as file:
             metadata = tomllib.load(file)
     else:
         metadata = {}
-
-    new_metadata = {
-        "priors_path": str(priors_path),
-    }
-
-    metadata.update(new_metadata)
-
+    metadata.update(kwargs)
+    metadata_file.parent.mkdir(parents=True, exist_ok=True)
     with open(metadata_file, "wb") as file:
         tomli_w.dump(metadata, file)
+
+
+def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
+    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
+    update_metadata(model_run_dir, priors_path=str(priors_path))
+
+
+def record_rng_key(model_run_dir: Path, rng_key: int):
+    """Record the RNG key used for model fitting in metadata for reproducibility."""
+    update_metadata(model_run_dir, rng_key=rng_key)
 
 
 def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
@@ -164,6 +168,7 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
+    rng_key: int = None,
     nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
@@ -356,6 +361,9 @@ def main(
     logger.info(f"Copying and recording priors from {priors_path}...")
     copy_and_record_priors(priors_path, model_run_dir)
 
+    logger.info(f"Recording RNG key: {rng_key}...")
+    record_rng_key(model_run_dir, rng_key)
+
     logger.info(f"Processing {loc}")
     process_and_save_loc_data(
         loc_abb=loc,
@@ -410,6 +418,7 @@ def main(
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
+        rng_key=rng_key,
     )
     logger.info("Model fitting complete")
 
@@ -605,6 +614,15 @@ if __name__ == "__main__":
         "--nhsn-data-path",
         type=Path,
         help=("Path to local NHSN data (for local testing)"),
+        default=None,
+    )
+    parser.add_argument(
+        "--rng-key",
+        type=int,
+        help=(
+            "Integer seed for a JAX random number generator. "
+            "If not provided, a random integer will be chosen."
+        ),
         default=None,
     )
 
