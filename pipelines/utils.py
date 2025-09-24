@@ -59,7 +59,7 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
 
 def get_all_forecast_dirs(
     parent_dir: Path | str,
-    diseases: str | list[str],
+    diseases: str | set[str],
     report_date: str | dt.date = None,
 ) -> list[str]:
     """
@@ -73,7 +73,7 @@ def get_all_forecast_dirs(
        Directory in which to look for forecast subdirectories.
 
     diseases
-       Name of the diseases to match, as a list of strings,
+       Name of the diseases to match, as a set of strings,
        or a single disease as a string.
 
     Returns
@@ -87,7 +87,7 @@ def get_all_forecast_dirs(
     ValueError
         Given an invalid ``report_date``.
     """
-    diseases = ensure_listlike(diseases)
+    diseases = ensure_listlike(list(diseases))
 
     if report_date is None:
         report_date_str = ""
