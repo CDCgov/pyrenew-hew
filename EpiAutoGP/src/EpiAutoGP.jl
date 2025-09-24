@@ -1,10 +1,7 @@
 module EpiAutoGP
-using NowcastAutoGP
-using JSON3
-using CSV
-using TidierData
-using Dates
-using ArgParse
+using NowcastAutoGP # Core modeling package
+using CSV, Dates, JSON3, StructTypes, TidierData # Data handling packages
+using ArgParse # Command-line argument parsing
 
 # Export command line argument parsing
 export parse_arguments
