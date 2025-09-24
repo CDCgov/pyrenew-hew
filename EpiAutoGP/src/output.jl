@@ -4,7 +4,7 @@ function create_hubverse_table(
 )
     """
     Convert EpiAutoGP results to hubverse-compatible quantile table format.
-    
+
     Expected format matches CFA-EpiAutoGP CSV structure:
     target_end_date, value, output_type_id, horizon, output_type, reference_date, location, target
     """
@@ -23,8 +23,8 @@ function create_hubverse_table(
     hubverse_rows = []
 
     # Create target name based on disease
-    disease_abbr = disease == "COVID-19" ? "covid" : 
-                  disease == "Influenza" ? "flu" : 
+    disease_abbr = disease == "COVID-19" ? "covid" :
+                  disease == "Influenza" ? "flu" :
                   lowercase(disease)
     target = "wk inc $disease_abbr hosp"
 
@@ -115,7 +115,7 @@ function save_model_outputs(
     summary_rows = []
     for (date_idx, date) in enumerate(forecast_dates)
         date_samples = forecast_samples[date_idx, :]
-        
+
         row = (
             date = date,
             variable = "forecast_value",

@@ -49,16 +49,16 @@ function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::Strin
     forecast_dates = [input.forecast_date + Week(i) for i in 1:n_forecast_weeks]
 
     # Calculate number of forecasts per nowcast sample
-    n_forecasts_per_nowcast = length(nowcast_data) > 0 ? 
+    n_forecasts_per_nowcast = length(nowcast_data) > 0 ?
                               max(1, n_forecasts ÷ length(nowcast_data)) :
                               n_forecasts
-                                
+
 
     return (; stable_data_dates, stable_data_values, nowcast_data, forecast_dates, n_forecasts_per_nowcast, transformation, inv_transformation)
 end
 
 """
-    fit_base_model(dates::Vector{Date}, values::Vector{<:Real}; 
+    fit_base_model(dates::Vector{Date}, values::Vector{<:Real};
                    transformation::Function,
                    n_particles::Int=24,
                    smc_data_proportion::Float64=0.1,
@@ -112,7 +112,7 @@ function fit_base_model(dates::Vector{Date}, values::Vector{<:Real};
 end
 
 """
-    forecast_with_epiautogp(input::EpiAutoGPInput; 
+    forecast_with_epiautogp(input::EpiAutoGPInput;
                            n_forecast_weeks::Int=8,
                            n_forecasts::Int=20,
                            transformation_name::String="boxcox",
@@ -143,7 +143,7 @@ A NamedTuple containing:
 - `forecast_dates::Vector{Date}`: Dates for which forecasts were generated
 - `forecasts::Matrix`: Forecast samples matrix (dates × samples)
 - `forecast_date::Date`: The reference date for forecasting (from input.forecast_date)
-- `location::String`: The location identifier (from input.location)  
+- `location::String`: The location identifier (from input.location)
 - `disease::String`: The disease name (from input.disease)
 
 # Examples
@@ -154,8 +154,8 @@ results = forecast_with_epiautogp(input)
 forecast_dates, forecasts = results.forecast_dates, results.forecasts
 
 # Custom parameters
-results = forecast_with_epiautogp(input; 
-                                 n_forecast_weeks=4, 
+results = forecast_with_epiautogp(input;
+                                 n_forecast_weeks=4,
                                  n_forecasts=1000,
                                  transformation_name="positive")
 ```
@@ -192,8 +192,8 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
             inv_transformation = model_info.inv_transformation)
     end
 
-    return (; 
-        forecast_dates = model_info.forecast_dates, 
+    return (;
+        forecast_dates = model_info.forecast_dates,
         forecasts = forecasts,
         forecast_date = input.forecast_date,
         location = input.location,
