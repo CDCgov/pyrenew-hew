@@ -1,10 +1,3 @@
-using Test
-using ArgParse
-using Dates
-
-# Include the parse_arguments function
-include("../parse_arguments.jl")
-
 @testset "parse_arguments tests" begin
 
     @testset "required arguments validation" begin
@@ -19,9 +12,8 @@ include("../parse_arguments.jl")
     @testset "argument parsing with required arguments" begin
         # Mock command line arguments with only required arguments
         test_args = [
-            "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
-            "--output-dir", "/path/to/output",
-            "--forecast-date", "2024-12-21"
+            "--json-input", "path/to/json",
+            "--output-dir", "/path/to/output"
         ]
 
         # Parse arguments by temporarily setting ARGS
@@ -33,17 +25,15 @@ include("../parse_arguments.jl")
             parsed = parse_arguments()
 
             # Test required arguments
-            @test parsed["json-input"] == "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json"
+            @test parsed["json-input"] == "path/to/json"
             @test parsed["output-dir"] == "/path/to/output"
-            @test parsed["forecast-date"] == Date("2024-12-21")
 
             # Test default values
-            @test parsed["n-forecast-weeks"] == 4
+            @test parsed["n-forecast-weeks"] == 8
             @test parsed["n-particles"] == 24
             @test parsed["n-mcmc"] == 100
             @test parsed["n-hmc"] == 50
             @test parsed["n-forecast-draws"] == 2000
-            @test parsed["n-redact"] == 1
             @test parsed["transformation"] == "boxcox"
 
         finally
@@ -57,15 +47,13 @@ include("../parse_arguments.jl")
     @testset "custom argument values" begin
         # Test with custom values for optional arguments
         test_args = [
-            "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
+            "--json-input", "path/to/json",
             "--output-dir", "/test/output",
-            "--forecast-date", "2024-11-15",
             "--n-forecast-weeks", "6",
             "--n-particles", "48",
             "--n-mcmc", "200",
             "--n-hmc", "100",
             "--n-forecast-draws", "3000",
-            "--n-redact", "2",
             "--transformation", "positive"
         ]
 
@@ -76,13 +64,11 @@ include("../parse_arguments.jl")
 
             parsed = parse_arguments()
 
-            @test parsed["forecast-date"] == Date("2024-11-15")
             @test parsed["n-forecast-weeks"] == 6
             @test parsed["n-particles"] == 48
             @test parsed["n-mcmc"] == 200
             @test parsed["n-hmc"] == 100
             @test parsed["n-forecast-draws"] == 3000
-            @test parsed["n-redact"] == 2
             @test parsed["transformation"] == "positive"
 
         finally
@@ -93,9 +79,8 @@ include("../parse_arguments.jl")
 
     @testset "argument types" begin
         test_args = [
-            "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
-            "--output-dir", "/test",
-            "--forecast-date", "2024-10-01"
+            "--json-input", "path/to/json",
+            "--output-dir", "/test"
         ]
 
         old_args = copy(ARGS)
@@ -108,13 +93,11 @@ include("../parse_arguments.jl")
             # Test argument types
             @test parsed["json-input"] isa String
             @test parsed["output-dir"] isa String
-            @test parsed["forecast-date"] isa Date
             @test parsed["n-forecast-weeks"] isa Int
             @test parsed["n-particles"] isa Int
             @test parsed["n-mcmc"] isa Int
             @test parsed["n-hmc"] isa Int
             @test parsed["n-forecast-draws"] isa Int
-            @test parsed["n-redact"] isa Int
             @test parsed["transformation"] isa String
 
         finally
@@ -130,9 +113,8 @@ include("../parse_arguments.jl")
 
         for transform in transformation_options
             test_args = [
-                "--json-input", "/Users/samandfi/Documents/GitHub/CFA/pyrenew-hew/EpiAutoGP/test/data/bootstrap_private_data/MT/data/data_for_model_fit.json",
+                "--json-input", "path/to/json",
                 "--output-dir", "/test",
-                "--forecast-date", "2024-10-01",
                 "--transformation", transform
             ]
 

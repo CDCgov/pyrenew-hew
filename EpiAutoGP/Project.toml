@@ -1,4 +1,7 @@
-authors = ["Sam Brand (USI1) usi1@cdc.gov"]
+name = "EpiAutoGP"
+uuid = "c2940010-6b35-4be1-8bbf-9fa0d9979e50"
+authors = ["Sam Brand (USI1) <usi1@cdc.gov>"]
+version = "0.1.0"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -8,6 +11,7 @@ JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 NowcastAutoGP = "7e9f7f4b-f590-4c14-8324-de4fcbed18f7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TidierData = "fe2206b3-d496-4ee9-a338-6a095c4ece80"
 
