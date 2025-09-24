@@ -9,7 +9,7 @@ EpiAutoGPInput
 A structured input data type for EpiAutoGP epidemiological modeling.
 
 # Fields
-- `dates`: Vector of observation dates  
+- `dates`: Vector of observation dates
 - `reports`: Vector of case counts/measurements
 - `pathogen`: Disease identifier (e.g., "COVID-19")
 - `location`: Geographic location (e.g., "CA", "NY")
@@ -41,43 +41,43 @@ function validate_input(data::EpiAutoGPInput)
     if length(data.dates) != length(data.reports)
         throw(ArgumentError("Length mismatch: dates ($(length(data.dates))) and reports ($(length(data.reports))) must have the same length"))
     end
-    
+
     # Check for non-empty essential data
     if length(data.dates) == 0
         throw(ArgumentError("Empty data: dates and reports cannot be empty"))
     end
-    
+
     # Check date ordering
     if !issorted(data.dates)
         throw(ArgumentError("Date ordering: dates must be sorted chronologically"))
     end
-    
+
     # Check nowcast data consistency
     if length(data.nowcast_dates) != length(data.nowcast_reports)
         throw(ArgumentError("Nowcast length mismatch: nowcast_dates ($(length(data.nowcast_dates))) and nowcast_reports ($(length(data.nowcast_reports))) must have the same length"))
     end
-    
+
     # Check nowcast date ordering
     if !isempty(data.nowcast_dates) && !issorted(data.nowcast_dates)
         throw(ArgumentError("Nowcast date ordering: nowcast_dates must be sorted chronologically"))
     end
-    
+
     # Check string identifiers
     if isempty(strip(data.pathogen))
         throw(ArgumentError("Invalid pathogen: pathogen cannot be empty or whitespace"))
     end
-    
+
     if isempty(strip(data.location))
         throw(ArgumentError("Invalid location: location cannot be empty or whitespace"))
     end
-    
+
     # Check numerical validity
     for (i, report) in enumerate(data.reports)
         if !isfinite(report) || report < 0
             throw(ArgumentError("Invalid report value at index $i: reports must be non-negative finite numbers (got $report)"))
         end
     end
-    
+
     # Check nowcast reports validity
     for (i, report_vec) in enumerate(data.nowcast_reports)
         if isempty(report_vec)
@@ -89,21 +89,21 @@ function validate_input(data::EpiAutoGPInput)
             end
         end
     end
-    
+
     # Check forecast date reasonableness
     if !isempty(data.dates)
         date_range = maximum(data.dates) - minimum(data.dates)
         days_buffer = max(30, Int(ceil(date_range.value / 10)))
-        
+
         if data.forecast_date < minimum(data.dates) - Day(days_buffer)
             throw(ArgumentError("Forecast date ($(data.forecast_date)) is too far before the data range ($(minimum(data.dates)) to $(maximum(data.dates)))"))
         end
-        
+
         if data.forecast_date > maximum(data.dates) + Day(days_buffer)
             throw(ArgumentError("Forecast date ($(data.forecast_date)) is too far after the data range ($(minimum(data.dates)) to $(maximum(data.dates)))"))
         end
     end
-    
+
     return true
 end
 
@@ -161,9 +161,9 @@ function validate_and_report(data::EpiAutoGPInput)
 end
 
 """
-create_sample_input(; 
-    n_days::Int=30, 
-    pathogen::String="COVID-19", 
+create_sample_input(;
+    n_days::Int=30,
+    pathogen::String="COVID-19",
     location::String="CA"
 ) -> EpiAutoGPInput
 
@@ -173,13 +173,13 @@ function create_sample_input(; n_days::Int=30, pathogen::String="COVID-19", loca
     start_date = Date("2024-01-01")
     dates = [start_date + Day(i) for i in 0:(n_days-1)]
     reports = [rand(20:100) + 10*sin(2π*i/7) + rand() * 5 for i in 1:n_days]  # Weekly pattern with noise
-    
+
     forecast_date = dates[end]
     nowcast_dates = dates[max(1, end-2):end]  # Last 3 days
     nowcast_reports = [[r + rand(-5:5) for _ in 1:3] for r in reports[max(1, end-2):end]]
-    
+
     return EpiAutoGPInput(
-        dates, reports, pathogen, location, 
+        dates, reports, pathogen, location,
         forecast_date, nowcast_dates, nowcast_reports
     )
 end
