@@ -1,16 +1,37 @@
 """
-EpiAutoGPInput
+    struct EpiAutoGPInput
 
 A structured input data type for EpiAutoGP epidemiological modeling.
 
+This struct represents the complete input dataset required for running epidemiological
+forecasting models in combination with nowcasting using `NowcastAutoGP.jl`. It combines historical observation data
+with nowcasting requirements and forecast parameters.
+
 # Fields
-- `dates`: Vector of observation dates
-- `reports`: Vector of case counts/measurements
-- `pathogen`: Disease identifier (e.g., "COVID-19")
-- `location`: Geographic location (e.g., "CA", "NY")
-- `forecast_date`: Reference date for forecasting
-- `nowcast_dates`: Dates requiring nowcasting
-- `nowcast_reports`: Uncertainty bounds for nowcast dates
+- `dates::Vector{Date}`: Vector of observation dates in chronological order
+- `reports::Vector{Real}`: Vector of case counts/measurements corresponding to each date
+- `pathogen::String`: Disease identifier (e.g., "COVID-19", "Influenza", "RSV")
+- `location::String`: Geographic location identifier (e.g., "CA", "NY", "US")
+- `forecast_date::Date`: Reference date from which forecasting begins
+- `nowcast_dates::Vector{Date}`: Dates requiring nowcasting (typically recent dates with incomplete data)
+- `nowcast_reports::Vector{Vector{Real}}`: Uncertainty bounds or samples for nowcast dates
+
+# Examples
+```julia
+# Create a simple input dataset
+data = EpiAutoGPInput(
+    [Date("2024-01-01"), Date("2024-01-02"), Date("2024-01-03")],
+    [45.0, 52.0, 38.0],
+    "COVID-19",
+    "CA",
+    Date("2024-01-03"),
+    [Date("2024-01-02"), Date("2024-01-03")],
+    [[50.0, 52.0, 54.0], [36.0, 38.0, 40.0]]
+)
+
+# Validate the input
+validate_input(data)  # returns true if valid
+```
 """
 struct EpiAutoGPInput
     dates::Vector{Date}
@@ -26,10 +47,47 @@ end
 StructTypes.StructType(::Type{EpiAutoGPInput}) = StructTypes.Struct()
 
 """
-validate_input(data::EpiAutoGPInput) -> Bool
+    function validate_input(data::EpiAutoGPInput)
 
-Validate EpiAutoGPInput data structure for consistency and correctness.
-Returns true if valid, throws ArgumentError if invalid.
+Validate an `EpiAutoGPInput` data structure for consistency and correctness.
+
+Performs comprehensive validation including:
+- Array length consistency between dates and reports
+- Chronological ordering of dates and nowcast dates
+- Non-negative finite values for all reports
+- Non-empty string identifiers for pathogen and location
+- Reasonable forecast date relative to data range
+- Proper structure of nowcast data
+
+# Arguments
+- `data::EpiAutoGPInput`: The input data structure to validate
+
+# Returns
+- `Bool`: Returns `true` if validation passes
+
+# Throws
+- `ArgumentError`: If any validation check fails, with descriptive error message
+
+# Examples
+```julia
+# Valid data passes validation
+valid_data = EpiAutoGPInput(
+    [Date("2024-01-01"), Date("2024-01-02")],
+    [45.0, 52.0],
+    "COVID-19", "CA", Date("2024-01-02"),
+    Date[], Vector{Real}[]
+)
+validate_input(valid_data)  # returns true
+
+# Invalid data throws ArgumentError
+invalid_data = EpiAutoGPInput(
+    [Date("2024-01-01")],
+    [-5.0],  # negative values not allowed
+    "COVID-19", "CA", Date("2024-01-01"),
+    Date[], Vector{Real}[]
+)
+validate_input(invalid_data)  # throws ArgumentError
+```
 """
 function validate_input(data::EpiAutoGPInput)
     # Check array length consistency
@@ -103,9 +161,45 @@ function validate_input(data::EpiAutoGPInput)
 end
 
 """
-read_data(path_to_json::String) -> EpiAutoGPInput
+    function read_data(path_to_json::String)
 
 Read and parse epidemiological input data from a JSON file.
+
+This function reads a JSON file and deserializes it into an `EpiAutoGPInput` struct
+using JSON3.jl. The JSON file should contain all required fields matching the
+struct definition.
+
+# Arguments
+- `path_to_json::String`: Path to the JSON file containing input data
+
+# Returns
+- `EpiAutoGPInput`: Parsed data structure ready for model input
+
+# Throws
+- `SystemError`: If the file cannot be read (e.g., file not found)
+- `JSON3.StructuralError`: If JSON structure doesn't match expected format
+- `ArgumentError`: If date parsing fails or data types are incompatible
+
+# Examples
+```julia
+# Read data from a JSON file
+data = read_data("path/to/input_data.json")
+
+# The JSON file should have structure like:
+# {
+#   "dates": ["2024-01-01", "2024-01-02"],
+#   "reports": [45.0, 52.0],
+#   "pathogen": "COVID-19",
+#   "location": "CA",
+#   "forecast_date": "2024-01-02",
+#   "nowcast_dates": [],
+#   "nowcast_reports": []
+# }
+```
+
+!!! note
+    This function does not validate the data. Use [`read_and_validate_data`](@ref)
+    for automatic validation, or call [`validate_input`](@ref) separately.
 """
 function read_data(path_to_json::String)
     json_string = read(path_to_json, String)
@@ -114,67 +208,51 @@ function read_data(path_to_json::String)
 end
 
 """
-read_and_validate_data(path_to_json::String) -> EpiAutoGPInput
+    read_and_validate_data(path_to_json::String) -> EpiAutoGPInput
 
 Read epidemiological data from JSON file with automatic validation.
-Combines read_data and validate_input for production use.
+
+This is the recommended function for loading input data in production workflows.
+It combines [`read_data`](@ref) and [`validate_input`](@ref) to ensure that
+loaded data is both structurally correct and passes all validation checks.
+
+# Arguments
+- `path_to_json::String`: Path to the JSON file containing input data
+
+# Returns
+- `EpiAutoGPInput`: Validated data structure ready for modeling
+
+# Throws
+- `SystemError`: If the file cannot be read
+- `JSON3.StructuralError`: If JSON structure is invalid
+- `ArgumentError`: If data fails validation checks
+
+# Examples
+```julia
+# Load and validate data in one step
+data = read_and_validate_data("epidata.json")
+
+# This is equivalent to:
+data = read_data("epidata.json")
+validate_input(data)
+
+# Use in a try-catch block for error handling
+try
+    data = read_and_validate_data("uncertain_data.json")
+    println("Data loaded successfully")
+catch e
+    @error "Failed to load data" exception=e
+end
+```
+
+!!! tip "Production Usage"
+    This function is preferred over [`read_data`](@ref) for production workflows
+    as it ensures data integrity before model execution.
+
+See also: [`read_data`](@ref), [`validate_input`](@ref), [`EpiAutoGPInput`](@ref)
 """
 function read_and_validate_data(path_to_json::String)
     data = read_data(path_to_json)
     validate_input(data)
     return data
-end
-
-"""
-safe_read_data(path_to_json::String) -> Union{EpiAutoGPInput, Nothing}
-
-Safely read data from JSON file, returning Nothing on any error.
-Useful for optional data loading or when errors should be handled silently.
-"""
-function safe_read_data(path_to_json::String)
-    try
-        return read_and_validate_data(path_to_json)
-    catch e
-        @warn "Failed to read data from $path_to_json: $(e)"
-        return nothing
-    end
-end
-
-"""
-validate_and_report(data::EpiAutoGPInput) -> Tuple{Bool, String}
-
-Validate data and return both success status and detailed message.
-Returns (true, "Validation passed") on success or (false, error_message) on failure.
-"""
-function validate_and_report(data::EpiAutoGPInput)
-    try
-        validate_input(data)
-        return (true, "Validation passed")
-    catch e
-        return (false, string(e))
-    end
-end
-
-"""
-create_sample_input(;
-    n_days::Int=30,
-    pathogen::String="COVID-19",
-    location::String="CA"
-) -> EpiAutoGPInput
-
-Create a sample EpiAutoGPInput for testing and demonstration purposes.
-"""
-function create_sample_input(; n_days::Int=30, pathogen::String="COVID-19", location::String="CA")
-    start_date = Date("2024-01-01")
-    dates = [start_date + Day(i) for i in 0:(n_days-1)]
-    reports = [rand(20:100) + 10*sin(2π*i/7) + rand() * 5 for i in 1:n_days]  # Weekly pattern with noise
-
-    forecast_date = dates[end]
-    nowcast_dates = dates[max(1, end-2):end]  # Last 3 days
-    nowcast_reports = [[r + rand(-5:5) for _ in 1:3] for r in reports[max(1, end-2):end]]
-
-    return EpiAutoGPInput(
-        dates, reports, pathogen, location,
-        forecast_date, nowcast_dates, nowcast_reports
-    )
 end

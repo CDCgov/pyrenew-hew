@@ -1,3 +1,42 @@
+"""
+    create_sample_input(output_path::String; n_weeks::Int=30, pathogen::String="COVID-19", location::String="CA")
+
+Create a sample EpiAutoGPInput for testing and write it to a JSON file.
+
+Creates realistic epidemiological data with weekly observations, seasonal patterns,
+and nowcasting requirements, then serializes it to JSON format.
+
+# Arguments
+- `output_path::String`: Path where the JSON file will be written
+- `n_weeks::Int=30`: Number of weeks of data to generate
+- `pathogen::String="COVID-19"`: Disease identifier
+- `location::String="CA"`: Geographic location
+
+# Returns
+- `EpiAutoGPInput`: The created data structure (also written to file)
+"""
+function create_sample_input(output_path::String; n_weeks::Int=30, pathogen::String="COVID-19", location::String="CA")
+    start_date = Date("2024-01-01")
+    dates = [start_date + Week(i) for i in 0:(n_weeks-1)]
+    reports = [rand(20:100) + 10*sin(2π*i/7) + rand() * 5 for i in 1:n_weeks]  # Weekly pattern with noise
+
+    forecast_date = dates[end]
+    nowcast_dates = dates[max(1, end-2):end]  # Last 3 days
+    nowcast_reports = [[r + rand(-5:5) for _ in 1:3] for r in reports[max(1, end-2):end]]
+
+    input_data = EpiAutoGPInput(
+        dates, reports, pathogen, location,
+        forecast_date, nowcast_dates, nowcast_reports
+    )
+
+    # Write to JSON file
+    open(output_path, "w") do f
+        JSON3.write(f, input_data)
+    end
+
+    return input_data
+end
+
 @testset "EpiAutoGPInput Tests" begin
 
     @testset "EpiAutoGPInput Construction" begin
@@ -278,5 +317,63 @@
         @test reconstructed.pathogen == realistic_data.pathogen
         @test reconstructed.location == realistic_data.location
         @test length(reconstructed.dates) == length(realistic_data.dates)
+    end
+
+    @testset "Sample Input Creation and JSON Round-trip" begin
+        # Create temporary directory for test files
+        tmpdir = mktempdir()
+
+        try
+            # Test create_sample_input with default parameters
+            default_json_path = joinpath(tmpdir, "default_sample.json")
+            default_sample = create_sample_input(default_json_path)
+
+            @test validate_input(default_sample) == true
+            @test default_sample.pathogen == "COVID-19"
+            @test default_sample.location == "CA"
+            @test length(default_sample.dates) == 30
+            @test isfile(default_json_path)
+
+            # Test loading the written JSON file
+            loaded_default = read_and_validate_data(default_json_path)
+            @test loaded_default.dates == default_sample.dates
+            @test loaded_default.reports == default_sample.reports
+            @test loaded_default.pathogen == default_sample.pathogen
+            @test loaded_default.location == default_sample.location
+            @test loaded_default.forecast_date == default_sample.forecast_date
+            @test loaded_default.nowcast_dates == default_sample.nowcast_dates
+            @test loaded_default.nowcast_reports == default_sample.nowcast_reports
+
+            # Test create_sample_input with custom parameters
+            custom_json_path = joinpath(tmpdir, "custom_sample.json")
+            custom_sample = create_sample_input(custom_json_path; n_weeks=14, pathogen="Influenza", location="NY")
+
+            @test validate_input(custom_sample) == true
+            @test custom_sample.pathogen == "Influenza"
+            @test custom_sample.location == "NY"
+            @test length(custom_sample.dates) == 14
+            @test length(custom_sample.reports) == 14
+            @test isfile(custom_json_path)
+
+            # Test loading the custom JSON file
+            loaded_custom = read_and_validate_data(custom_json_path)
+            @test loaded_custom.dates == custom_sample.dates
+            @test loaded_custom.reports == custom_sample.reports
+            @test loaded_custom.pathogen == custom_sample.pathogen
+            @test loaded_custom.location == custom_sample.location
+
+            # Test that nowcast dates are properly set (last 3 days)
+            @test length(custom_sample.nowcast_dates) == 3
+            @test custom_sample.nowcast_dates == custom_sample.dates[end-2:end]
+            @test length(custom_sample.nowcast_reports) == 3
+
+            # Verify nowcast data round-trip
+            @test loaded_custom.nowcast_dates == custom_sample.nowcast_dates
+            @test loaded_custom.nowcast_reports == custom_sample.nowcast_reports
+
+        finally
+            # Clean up temporary directory
+            rm(tmpdir, recursive=true)
+        end
     end
 end
