@@ -6,5 +6,6 @@ using Dates
 # Run all tests in the test directory
 include("test_parse_arguments.jl")
 include("test_input.jl")
+include("test_modelling.jl")
 
 println("All EpiAutoGP tests completed!")

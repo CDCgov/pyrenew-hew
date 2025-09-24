@@ -15,14 +15,15 @@ and nowcasting requirements, then serializes it to JSON format.
 # Returns
 - `EpiAutoGPInput`: The created data structure (also written to file)
 """
-function create_sample_input(output_path::String; n_weeks::Int=30, pathogen::String="COVID-19", location::String="CA")
+function create_sample_input(output_path::String; n_weeks::Int = 30,
+        pathogen::String = "COVID-19", location::String = "CA")
     start_date = Date("2024-01-01")
-    dates = [start_date + Week(i) for i in 0:(n_weeks-1)]
+    dates = [start_date + Week(i) for i in 0:(n_weeks - 1)]
     reports = [rand(20:100) + 10*sin(2π*i/7) + rand() * 5 for i in 1:n_weeks]  # Weekly pattern with noise
 
     forecast_date = dates[end]
-    nowcast_dates = dates[max(1, end-2):end]  # Last 3 days
-    nowcast_reports = [[r + rand(-5:5) for _ in 1:3] for r in reports[max(1, end-2):end]]
+    nowcast_dates = dates[max(1, end - 2):end]  # Last 3 days
+    nowcast_reports = [[r + rand(-5:5) for _ in 1:3] for r in reports[max(1, end - 2):end]]
 
     input_data = EpiAutoGPInput(
         dates, reports, pathogen, location,
@@ -38,7 +39,6 @@ function create_sample_input(output_path::String; n_weeks::Int=30, pathogen::Str
 end
 
 @testset "EpiAutoGPInput Tests" begin
-
     @testset "EpiAutoGPInput Construction" begin
         # Test valid construction
         dates = [Date("2024-01-01"), Date("2024-01-02"), Date("2024-01-03")]
@@ -188,11 +188,11 @@ end
             [Date("2024-01-01")], [NaN], "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
-        # Test empty nowcast reports vector
-        @test_throws ArgumentError validate_input(EpiAutoGPInput(
+        # Test empty nowcast reports vector - this should be allowed (empty nowcast means just forecast)
+        @test validate_input(EpiAutoGPInput(
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", Date("2024-01-01"),
-            [Date("2024-01-01")], [Real[]]  # Empty inner vector
-        ))
+            [Date("2024-01-01")], [Real[]]  # Empty inner vector should be allowed
+        )) == true
 
         # Test invalid nowcast report values
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
@@ -304,8 +304,8 @@ end
             "COVID-19",
             "NY",
             Date("2024-01-30"),
-            realistic_dates[end-2:end],  # Last 3 days for nowcasting
-            [rand(3) .+ realistic_reports[end-2:end] for _ in 1:3]  # Nowcast uncertainty
+            realistic_dates[(end - 2):end],  # Last 3 days for nowcasting
+            [rand(3) .+ realistic_reports[(end - 2):end] for _ in 1:3]  # Nowcast uncertainty
         )
 
         @test validate_input(realistic_data) == true
@@ -346,7 +346,8 @@ end
 
             # Test create_sample_input with custom parameters
             custom_json_path = joinpath(tmpdir, "custom_sample.json")
-            custom_sample = create_sample_input(custom_json_path; n_weeks=14, pathogen="Influenza", location="NY")
+            custom_sample = create_sample_input(
+                custom_json_path; n_weeks = 14, pathogen = "Influenza", location = "NY")
 
             @test validate_input(custom_sample) == true
             @test custom_sample.pathogen == "Influenza"
@@ -364,7 +365,7 @@ end
 
             # Test that nowcast dates are properly set (last 3 days)
             @test length(custom_sample.nowcast_dates) == 3
-            @test custom_sample.nowcast_dates == custom_sample.dates[end-2:end]
+            @test custom_sample.nowcast_dates == custom_sample.dates[(end - 2):end]
             @test length(custom_sample.nowcast_reports) == 3
 
             # Verify nowcast data round-trip
@@ -373,7 +374,7 @@ end
 
         finally
             # Clean up temporary directory
-            rm(tmpdir, recursive=true)
+            rm(tmpdir, recursive = true)
         end
     end
 end

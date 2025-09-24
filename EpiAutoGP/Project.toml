@@ -11,9 +11,13 @@ JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 NowcastAutoGP = "7e9f7f4b-f590-4c14-8324-de4fcbed18f7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TidierData = "fe2206b3-d496-4ee9-a338-6a095c4ece80"
 
 [sources]
 NowcastAutoGP = {rev = "v0.2.0", url = "https://github.com/CDCgov/NowcastAutoGP"}
+
+[compat]
+Statistics = "1.11.1"

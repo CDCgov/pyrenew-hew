@@ -133,9 +133,6 @@ function validate_input(data::EpiAutoGPInput)
 
     # Check nowcast reports validity
     for (i, report_vec) in enumerate(data.nowcast_reports)
-        if isempty(report_vec)
-            throw(ArgumentError("Empty nowcast reports at index $i: each nowcast_reports entry must contain at least one value"))
-        end
         for (j, report) in enumerate(report_vec)
             if !isfinite(report) || report < 0
                 throw(ArgumentError("Invalid nowcast report value at index [$i][$j]: must be non-negative finite number (got $report)"))

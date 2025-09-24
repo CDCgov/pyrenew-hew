@@ -1,5 +1,4 @@
 @testset "parse_arguments tests" begin
-
     @testset "required arguments validation" begin
         # Test that parse_arguments function exists and returns an ArgParseSettings
         s = ArgParseSettings()
@@ -42,7 +41,6 @@
             append!(ARGS, old_args)
         end
     end
-
 
     @testset "custom argument values" begin
         # Test with custom values for optional arguments
@@ -105,7 +103,6 @@
             append!(ARGS, old_args)
         end
     end
-
 
     @testset "transformation argument options" begin
         # Test different transformation options
