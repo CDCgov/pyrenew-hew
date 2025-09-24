@@ -119,7 +119,7 @@ end
                            n_particles::Int=24,
                            smc_data_proportion::Float64=0.1,
                            n_mcmc::Int=50,
-                           n_hmc::Int=50) -> (forecast_dates, forecasts)
+                           n_hmc::Int=50) -> NamedTuple
 
 Main forecasting function that combines EpiAutoGP input with NowcastAutoGP modeling.
 
@@ -139,20 +139,25 @@ This function implements the complete nowcasting and forecasting workflow:
 - `n_hmc::Int=50`: Number of HMC samples for GP parameter updates
 
 # Returns
+A NamedTuple containing:
 - `forecast_dates::Vector{Date}`: Dates for which forecasts were generated
 - `forecasts::Matrix`: Forecast samples matrix (dates × samples)
+- `forecast_date::Date`: The reference date for forecasting (from input.forecast_date)
+- `location::String`: The location identifier (from input.location)  
+- `disease::String`: The disease name (from input.disease)
 
 # Examples
 ```julia
 # Basic forecasting
 input = EpiAutoGPInput(...)
-forecast_dates, forecasts = forecast_with_epiautogp(input)
+results = forecast_with_epiautogp(input)
+forecast_dates, forecasts = results.forecast_dates, results.forecasts
 
 # Custom parameters
-forecast_dates, forecasts = forecast_with_epiautogp(input; 
-                                                   n_forecast_weeks=4, 
-                                                   n_forecasts=1000,
-                                                   transformation_name="positive")
+results = forecast_with_epiautogp(input; 
+                                 n_forecast_weeks=4, 
+                                 n_forecasts=1000,
+                                 transformation_name="positive")
 ```
 """
 function forecast_with_epiautogp(input::EpiAutoGPInput;
@@ -187,12 +192,18 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
             inv_transformation = model_info.inv_transformation)
     end
 
-    return model_info.forecast_dates, forecasts
+    return (; 
+        forecast_dates = model_info.forecast_dates, 
+        forecasts = forecasts,
+        forecast_date = input.forecast_date,
+        location = input.location,
+        disease = input.pathogen
+    )
 end
 
 
 """
-    run_epiautogp_pipeline(input::EpiAutoGPInput, args::Dict{String, Any}) -> (forecast_dates, forecasts)
+    run_epiautogp_pipeline(input::EpiAutoGPInput, args::Dict{String, Any}) -> NamedTuple
 
 Run the complete EpiAutoGP modeling pipeline using parsed command-line arguments.
 
@@ -204,7 +215,7 @@ with parsed command-line arguments to execute the full nowcasting and forecastin
 - `args::Dict{String, Any}`: Parsed command-line arguments from parse_arguments()
 
 # Returns
-- Same as forecast_with_epiautogp(): (forecast_dates, forecasts)
+- Same as forecast_with_epiautogp(): NamedTuple with forecast results and metadata
 
 # Expected command-line arguments
 - `"n-forecast-weeks"`: Number of weeks to forecast
@@ -220,7 +231,8 @@ with parsed command-line arguments to execute the full nowcasting and forecastin
 # Typical usage pattern
 args = parse_arguments()
 input_data = read_and_validate_data(args["json-input"])
-forecast_dates, forecasts = run_epiautogp_pipeline(input_data, args)
+results = run_epiautogp_pipeline(input_data, args)
+forecast_dates, forecasts = results.forecast_dates, results.forecasts
 ```
 """
 function run_epiautogp_pipeline(input::EpiAutoGPInput, args::Dict{String, Any})

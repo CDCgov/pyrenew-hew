@@ -3,6 +3,7 @@ using NowcastAutoGP # Core modeling package
 using CSV, Dates, JSON3, StructTypes # Data handling packages
 using ArgParse # Command-line argument parsing
 using Statistics # For modeling functions
+using TidierData # For DataFrame and data manipulation
 
 # Export command line argument parsing
 export parse_arguments
@@ -19,8 +20,16 @@ export prepare_for_modelling,
        forecast_with_epiautogp,
        run_epiautogp_pipeline
 
+# Export output functions
+export create_hubverse_table,
+       save_model_outputs,
+       load_json_data,
+       prepare_epiautogp_data,
+       run_epiautogp_model
+
 include("parse_arguments.jl") # Function to parse command line arguments
 include("input.jl")           # Functions to load and process input JSON data
 include("modelling.jl")        # Main modeling and forecasting functions
+include("output.jl")           # Functions for generating hubverse outputs
 
 end
