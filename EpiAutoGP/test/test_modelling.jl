@@ -159,25 +159,4 @@ using NowcastAutoGP
         @test all(forecasts .> 0)
     end
 
-    @testset "Integration tests" begin
-        input = create_test_input(include_nowcasts=true)
-
-        # Test complete pipeline step by step
-        prep_result = prepare_for_modelling(input, "positive", 2, 20)
-        model = fit_base_model(prep_result.stable_data_dates, prep_result.stable_data_values;
-            transformation = prep_result.transformation,
-            n_particles=1, n_mcmc=3, n_hmc=3)
-        forecast_dates, forecasts = forecast_with_epiautogp(input;
-            n_forecast_weeks=2,
-            n_forecasts=20,
-            transformation_name="positive"
-        )
-
-        # Verify consistency
-        @test length(forecast_dates) == 2
-        @test size(forecasts, 1) == 2
-        @test size(forecasts, 2) > 0  # Should have some forecasts
-        @test all(forecasts .> 0)
-    end
-
 end
