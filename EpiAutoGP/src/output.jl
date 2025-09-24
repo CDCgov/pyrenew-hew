@@ -1,13 +1,10 @@
 function create_hubverse_table(
+        input::EpiAutoGPInput,
         results::NamedTuple,
-        output_dir::String
+        output_dir::String,
+        quantile_levels = [0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
+                      0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99]
 )
-    """
-    Convert EpiAutoGP results to hubverse-compatible quantile table format.
-
-    Expected format matches CFA-EpiAutoGP CSV structure:
-    target_end_date, value, output_type_id, horizon, output_type, reference_date, location, target
-    """
     @info "Creating hubverse table for $(results.disease) in $(results.location)"
 
     forecast_dates = results.forecast_dates
@@ -16,9 +13,6 @@ function create_hubverse_table(
     location = results.location
     disease = results.disease
 
-    # Define quantile levels to match CDC hub format
-    quantile_levels = [0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
-                      0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99]
 
     hubverse_rows = []
 

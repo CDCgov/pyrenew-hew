@@ -26,6 +26,7 @@ using NowcastAutoGP
             reports,
             "COVID-19",
             "US",
+            "nhsn",
             dates[end],  # forecast from last date
             nowcast_dates,
             nowcast_reports

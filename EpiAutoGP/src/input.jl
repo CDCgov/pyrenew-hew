@@ -12,6 +12,7 @@ with nowcasting requirements and forecast parameters.
 - `reports::Vector{Real}`: Vector of case counts/measurements corresponding to each date
 - `pathogen::String`: Disease identifier (e.g., "COVID-19", "Influenza", "RSV")
 - `location::String`: Geographic location identifier (e.g., "CA", "NY", "US")
+- `target::String`: Data source target ("nhsn" for hospital admissions or "nssp" for ED visits)
 - `forecast_date::Date`: Reference date from which forecasting begins
 - `nowcast_dates::Vector{Date}`: Dates requiring nowcasting (typically recent dates with incomplete data)
 - `nowcast_reports::Vector{Vector{Real}}`: Uncertainty bounds or samples for nowcast dates
@@ -24,6 +25,7 @@ data = EpiAutoGPInput(
     [45.0, 52.0, 38.0],
     "COVID-19",
     "CA",
+    "nhsn",
     Date("2024-01-03"),
     [Date("2024-01-02"), Date("2024-01-03")],
     [[50.0, 52.0, 54.0], [36.0, 38.0, 40.0]]
@@ -38,6 +40,7 @@ struct EpiAutoGPInput
     reports::Vector{Real}
     pathogen::String
     location::String
+    target::String
     forecast_date::Date
     nowcast_dates::Vector{Date}
     nowcast_reports::Vector{Vector{Real}}
@@ -74,7 +77,7 @@ Performs comprehensive validation including:
 valid_data = EpiAutoGPInput(
     [Date("2024-01-01"), Date("2024-01-02")],
     [45.0, 52.0],
-    "COVID-19", "CA", Date("2024-01-02"),
+    "COVID-19", "CA", "nhsn", Date("2024-01-02"),
     Date[], Vector{Real}[]
 )
 validate_input(valid_data)  # returns true
@@ -83,13 +86,14 @@ validate_input(valid_data)  # returns true
 invalid_data = EpiAutoGPInput(
     [Date("2024-01-01")],
     [-5.0],  # negative values not allowed
-    "COVID-19", "CA", Date("2024-01-01"),
+    "COVID-19", "CA", "nhsn", Date("2024-01-01"),
     Date[], Vector{Real}[]
 )
 validate_input(invalid_data)  # throws ArgumentError
 ```
 """
-function validate_input(data::EpiAutoGPInput)
+function validate_input(data::EpiAutoGPInput; valid_targets=["nhsn", "nssp"])
+    @assert data.target in valid_targets "Target must be one of $(valid_targets), got '$(data.target)'"
     # Check array length consistency
     if length(data.dates) != length(data.reports)
         throw(ArgumentError("Length mismatch: dates ($(length(data.dates))) and reports ($(length(data.reports))) must have the same length"))
@@ -122,6 +126,10 @@ function validate_input(data::EpiAutoGPInput)
 
     if isempty(strip(data.location))
         throw(ArgumentError("Invalid location: location cannot be empty or whitespace"))
+    end
+
+    if isempty(strip(data.target))
+        throw(ArgumentError("Invalid target: target cannot be empty or whitespace"))
     end
 
     # Check numerical validity
@@ -188,6 +196,7 @@ data = read_data("path/to/input_data.json")
 #   "reports": [45.0, 52.0],
 #   "pathogen": "COVID-19",
 #   "location": "CA",
+#   "target": "nhsn",
 #   "forecast_date": "2024-01-02",
 #   "nowcast_dates": [],
 #   "nowcast_reports": []

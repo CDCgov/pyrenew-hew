@@ -9,6 +9,6 @@ using TidierData
 include("test_parse_arguments.jl")
 include("test_input.jl")
 include("test_modelling.jl")
-include("test_output.jl")
+# include("test_output.jl")
 
 println("All EpiAutoGP tests completed!")

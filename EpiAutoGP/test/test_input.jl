@@ -26,7 +26,7 @@ function create_sample_input(output_path::String; n_weeks::Int = 30,
     nowcast_reports = [[r + rand(-5:5) for _ in 1:3] for r in reports[max(1, end - 2):end]]
 
     input_data = EpiAutoGPInput(
-        dates, reports, pathogen, location,
+        dates, reports, pathogen, location, "nhsn",
         forecast_date, nowcast_dates, nowcast_reports
     )
 
@@ -50,7 +50,7 @@ end
         nowcast_reports = [[50.0, 52.0, 54.0], [36.0, 38.0, 40.0]]
 
         input_data = EpiAutoGPInput(
-            dates, reports, pathogen, location,
+            dates, reports, pathogen, location, "nhsn",
             forecast_date, nowcast_dates, nowcast_reports
         )
 
@@ -70,6 +70,7 @@ end
             [45.0, 52.0],
             "Influenza",
             "NY",
+            "nssp",
             Date("2024-01-02"),
             [Date("2024-01-02")],
             [[50.0, 55.0]]
@@ -99,6 +100,7 @@ end
             [10.0],
             "COVID-19",
             "TX",
+            "nhsn",
             Date("2024-01-01"),
             Date[],
             Vector{Real}[]
@@ -111,6 +113,7 @@ end
             [45.0, 52.0, 38.0],
             "Influenza",
             "CA",
+            "nhsn",
             Date("2024-01-03"),
             [Date("2024-01-02"), Date("2024-01-03")],
             [[50.0, 52.0], [36.0, 40.0]]
@@ -123,6 +126,7 @@ end
             [0.0, 0.0],
             "RSV",
             "FL",
+            "nssp",
             Date("2024-01-02"),
             Date[],
             Vector{Real}[]
@@ -135,81 +139,81 @@ end
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-02")],
             [45.0],  # Wrong length
-            "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
         # Test empty essential data
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            Date[], Real[], "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            Date[], Real[], "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
         # Test unsorted dates
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
             [Date("2024-01-02"), Date("2024-01-01")],  # Wrong order
             [45.0, 52.0],
-            "COVID-19", "CA", Date("2024-01-02"), Date[], Vector{Real}[]
+            "COVID-19", "CA", "nhsn", Date("2024-01-02"), Date[], Vector{Real}[]
         ))
 
         # Test mismatched nowcast lengths
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [45.0], "COVID-19", "CA", Date("2024-01-01"),
+            [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
             [Date("2024-01-01")], Vector{Real}[]  # Mismatched lengths
         ))
 
         # Test unsorted nowcast dates
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01"), Date("2024-01-02")], [45.0, 52.0], "COVID-19", "CA", Date("2024-01-02"),
+            [Date("2024-01-01"), Date("2024-01-02")], [45.0, 52.0], "COVID-19", "CA", "nhsn", Date("2024-01-02"),
             [Date("2024-01-02"), Date("2024-01-01")],  # Wrong order
             [[50.0], [45.0]]
         ))
 
         # Test empty pathogen
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [45.0], "", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            [Date("2024-01-01")], [45.0], "", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
         # Test empty location
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [45.0], "COVID-19", "  ", Date("2024-01-01"), Date[], Vector{Real}[]
+            [Date("2024-01-01")], [45.0], "COVID-19", "  ", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
         # Test negative reports
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [-5.0], "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            [Date("2024-01-01")], [-5.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
         # Test infinite reports
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [Inf], "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            [Date("2024-01-01")], [Inf], "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
         # Test NaN reports
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [NaN], "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            [Date("2024-01-01")], [NaN], "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
         # Test empty nowcast reports vector - this should be allowed (empty nowcast means just forecast)
         @test validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [45.0], "COVID-19", "CA", Date("2024-01-01"),
+            [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
             [Date("2024-01-01")], [Real[]]  # Empty inner vector should be allowed
         )) == true
 
         # Test invalid nowcast report values
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
-            [Date("2024-01-01")], [45.0], "COVID-19", "CA", Date("2024-01-01"),
+            [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
             [Date("2024-01-01")], [[-5.0]]  # Negative nowcast value
         ))
 
         # Test forecast date too far in past
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-31")], [45.0, 52.0],
-            "COVID-19", "CA", Date("2023-01-01"), Date[], Vector{Real}[]  # Way too early
+            "COVID-19", "CA", "nhsn", Date("2023-01-01"), Date[], Vector{Real}[]  # Way too early
         ))
 
         # Test forecast date too far in future
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-31")], [45.0, 52.0],
-            "COVID-19", "CA", Date("2025-01-01"), Date[], Vector{Real}[]  # Way too late
+            "COVID-19", "CA", "nhsn", Date("2025-01-01"), Date[], Vector{Real}[]  # Way too late
         ))
     end
 
@@ -220,6 +224,7 @@ end
             "reports" => [45.0, 52.0],
             "pathogen" => "COVID-19",
             "location" => "CA",
+            "target" => "nhsn",
             "forecast_date" => "2024-01-02",
             "nowcast_dates" => ["2024-01-02"],
             "nowcast_reports" => [[50.0, 55.0]]
@@ -260,34 +265,34 @@ end
     @testset "Edge Cases and Special Values" begin
         # Test with integer reports (should work as Real)
         int_data = EpiAutoGPInput(
-            [Date("2024-01-01")], [45], "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            [Date("2024-01-01")], [45], "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         )
         @test validate_input(int_data) == true
 
         # Test with mixed integer/float reports
         mixed_data = EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-02")], [45, 52.5],
-            "COVID-19", "CA", Date("2024-01-02"), Date[], Vector{Real}[]
+            "COVID-19", "CA", "nhsn", Date("2024-01-02"), Date[], Vector{Real}[]
         )
         @test validate_input(mixed_data) == true
 
         # Test with very large valid numbers
         large_data = EpiAutoGPInput(
-            [Date("2024-01-01")], [1e6], "COVID-19", "CA", Date("2024-01-01"), Date[], Vector{Real}[]
+            [Date("2024-01-01")], [1e6], "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         )
         @test validate_input(large_data) == true
 
         # Test forecast date edge cases (boundary conditions)
         boundary_data = EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-31")], [45.0, 52.0],
-            "COVID-19", "CA", Date("2024-01-31"), Date[], Vector{Real}[]  # Exactly at max date
+            "COVID-19", "CA", "nhsn", Date("2024-01-31"), Date[], Vector{Real}[]  # Exactly at max date
         )
         @test validate_input(boundary_data) == true
 
         # Test single nowcast entry
         single_nowcast = EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-02")], [45.0, 52.0],
-            "COVID-19", "CA", Date("2024-01-02"),
+            "COVID-19", "CA", "nhsn", Date("2024-01-02"),
             [Date("2024-01-02")], [[50.0]]  # Single value in nowcast
         )
         @test validate_input(single_nowcast) == true
@@ -303,6 +308,7 @@ end
             realistic_reports,
             "COVID-19",
             "NY",
+            "nhsn",
             Date("2024-01-30"),
             realistic_dates[(end - 2):end],  # Last 3 days for nowcasting
             [rand(3) .+ realistic_reports[(end - 2):end] for _ in 1:3]  # Nowcast uncertainty
