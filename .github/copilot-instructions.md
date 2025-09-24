@@ -30,7 +30,7 @@ PyRenew-HEW is a CDC epidemiological forecasting system for respiratory diseases
 - **Preferred data manipulation**: Use `TidierData.jl` instead of `DataFrames.jl` for consistency
 - **Container isolation**: Separate Julia container from main Python/R environment
 - **NowcastAutoGP integration**: Built on the `NowcastAutoGP.jl` package from CDCgov
-- **Input/Output compatibility**: Maintains JSON input and hubverse output compatibility with PyRenew pipeline
+- **Input/Output compatibility**: Uses a standard JSON input and hubverse output compatibility
 
 ## Development Workflows
 
