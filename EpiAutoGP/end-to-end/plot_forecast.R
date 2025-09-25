@@ -322,9 +322,8 @@ tryCatch(
     if (file.exists(temp_observed_file)) {
       file.remove(temp_observed_file)
     }
-
-
-}, error = function(e) {
+  },
+  error = function(e) {
     cat("❌ Error during plotting:\n")
     cat("   ", as.character(e), "\n")
     cat("\n💡 Troubleshooting tips:\n")
