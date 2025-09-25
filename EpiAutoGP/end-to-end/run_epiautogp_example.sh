@@ -46,13 +46,24 @@ done
 # Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-JSON_INPUT="$SCRIPT_DIR/epiautogp_input_2025-08-16.json"
-OUTPUT_DIR="$SCRIPT_DIR/output"
+
+# Handle running from different directories
+if [[ "$(basename "$(pwd)")" == "EpiAutoGP" ]]; then
+	# Running from /EpiAutoGP directory
+	END_TO_END_DIR="$PWD/end-to-end"
+else
+	# Running from end-to-end directory or elsewhere
+	END_TO_END_DIR="$SCRIPT_DIR"
+fi
+
+JSON_INPUT="$END_TO_END_DIR/epiautogp_input_2025-08-16.json"
+OUTPUT_DIR="$END_TO_END_DIR/output"
 RUN_SCRIPT="$PROJECT_DIR/run.jl"
 
 echo "=== EpiAutoGP End-to-End Example ==="
 echo "Script directory: $SCRIPT_DIR"
 echo "Project directory: $PROJECT_DIR"
+echo "End-to-end directory: $END_TO_END_DIR"
 echo "JSON input file: $JSON_INPUT"
 echo "Output directory: $OUTPUT_DIR"
 echo "Run script: $RUN_SCRIPT"
@@ -62,7 +73,8 @@ echo ""
 # Check that required files exist
 if [[ ! -f "$JSON_INPUT" ]]; then
 	echo "❌ Error: JSON input file not found: $JSON_INPUT"
-	echo "Please run the Python script first: uv run python create_epiautogp_input.py"
+	echo "Please run the Python script first from the end-to-end directory:"
+	echo "  cd $END_TO_END_DIR && uv run python create_epiautogp_input.py"
 	exit 1
 fi
 
@@ -136,7 +148,7 @@ if [[ -d "$OUTPUT_DIR" ]]; then
 			echo ""
 			echo "🎨 Generating forecast plots using forecasttools..."
 			PLOT_OUTPUT_DIR="$OUTPUT_DIR/plots"
-			R_SCRIPT="$SCRIPT_DIR/plot_forecast.R"
+			R_SCRIPT="$END_TO_END_DIR/plot_forecast.R"
 
 			if [[ -f "$R_SCRIPT" ]]; then
 				Rscript "$R_SCRIPT" "$FIRST_CSV" "$PLOT_OUTPUT_DIR"
