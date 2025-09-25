@@ -67,8 +67,15 @@ nowcast_samples <- sapply(json_data$nowcast_reports, function(x) x[[1]])
 nowcast_median <- median(nowcast_samples)
 nowcast_q25 <- quantile(nowcast_samples, 0.25)
 nowcast_q75 <- quantile(nowcast_samples, 0.75)
-cat("Nowcast uncertainty: median =", round(nowcast_median, 1),
-    ", IQR = [", round(nowcast_q25, 1), ",", round(nowcast_q75, 1), "]\n")
+cat(
+  "Nowcast uncertainty: median =",
+  round(nowcast_median, 1),
+  ", IQR = [",
+  round(nowcast_q25, 1),
+  ",",
+  round(nowcast_q75, 1),
+  "]\n"
+)
 
 # Find the most recent report_date
 most_recent_report_date <- max(vintaged_data$report_date)
