@@ -77,7 +77,6 @@ function create_forecast_output(
 
         @info "Saved hubverse forecast table to $csv_path"
     end
-    
+
     return forecast_df
 end
-

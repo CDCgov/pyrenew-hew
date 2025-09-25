@@ -448,7 +448,7 @@ end
         # Create test results data
         forecast_dates = [Date("2024-01-08"), Date("2024-01-15"), Date("2024-01-22")]
         forecasts = [80.0 85.0 75.0; 70.0 75.0 65.0; 60.0 65.0 55.0]  # 3 dates × 3 samples
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -460,10 +460,11 @@ end
 
         # Create temporary directory for output
         temp_dir = mktempdir()
-        
+
         try
             # Test the function with save_output=true
-            result_df = create_forecast_output(input, results, temp_dir, output_type, save_output=true)
+            result_df = create_forecast_output(
+                input, results, temp_dir, output_type, save_output = true)
 
             # Test basic structure
             @test isa(result_df, DataFrame)
@@ -472,7 +473,7 @@ end
 
             # Test required columns are present
             expected_columns = [
-                "output_type", "output_type_id", "value", "reference_date", 
+                "output_type", "output_type_id", "value", "reference_date",
                 "target", "horizon", "target_end_date", "location"
             ]
             @test Set(names(result_df)) == Set(expected_columns)
@@ -508,7 +509,7 @@ end
 
         finally
             # Clean up temporary directory
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
@@ -525,13 +526,13 @@ end
         location = "CA"
         forecast_dates = [Date("2024-01-08")]
         forecasts = reshape([50.0, 60.0, 70.0], 1, 3)  # 1 date × 3 samples
-        
+
         output_type = QuantileOutput(quantile_levels = [0.5])
 
         for (pathogen, target, expected_target_string) in test_cases
             input = EpiAutoGPInput(
                 [Date("2023-12-01")],  # dates
-                [100.0],               # reports  
+                [100.0],               # reports
                 pathogen,              # pathogen
                 location,              # location
                 target,                # target
@@ -548,16 +549,17 @@ end
             )
 
             temp_dir = mktempdir()
-            
+
             try
-                result_df = create_forecast_output(input, results, temp_dir, output_type, save_output=false)
-                
+                result_df = create_forecast_output(
+                    input, results, temp_dir, output_type, save_output = false)
+
                 @test all(result_df.target .== expected_target_string)
                 @test all(result_df.location .== location)
                 @test size(result_df, 1) == 1  # 1 date × 1 quantile
 
             finally
-                rm(temp_dir, recursive=true)
+                rm(temp_dir, recursive = true)
             end
         end
     end
@@ -575,7 +577,7 @@ end
         input = EpiAutoGPInput(
             [Date("2023-12-01")],  # dates
             [100.0],               # reports
-            pathogen,              # pathogen  
+            pathogen,              # pathogen
             location,              # location
             target,                # target
             forecast_date,         # forecast_date
@@ -585,7 +587,7 @@ end
 
         forecast_dates = [Date("2024-01-08")]
         forecasts = reshape([30.0, 40.0, 50.0], 1, 3)
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -595,7 +597,7 @@ end
 
         output_type = QuantileOutput(quantile_levels = [0.5])
         temp_dir = mktempdir()
-        
+
         try
             result_df = create_forecast_output(
                 input, results, temp_dir, output_type;
@@ -603,11 +605,11 @@ end
                 disease_abbr = custom_disease_abbr,
                 target_abbr = custom_target_abbr
             )
-            
+
             @test all(result_df.target .== "wk inc test test visits")
 
         finally
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
@@ -622,7 +624,7 @@ end
             [Date("2023-12-01"), Date("2023-12-08"), Date("2023-12-15")],  # dates
             [200.0, 180.0, 160.0],                                           # reports
             pathogen,                                                         # pathogen
-            location,                                                         # location  
+            location,                                                         # location
             target,                                                           # target
             forecast_date,                                                    # forecast_date
             Date[],                                                           # nowcast_dates
@@ -631,16 +633,16 @@ end
 
         # 4 weeks of forecasts with declining trend
         forecast_dates = [
-            Date("2024-01-08"), Date("2024-01-15"), 
+            Date("2024-01-08"), Date("2024-01-15"),
             Date("2024-01-22"), Date("2024-01-29")
         ]
-        
+
         # Generate realistic forecast samples
         Random.seed!(42)
         n_samples = 100
         forecasts = Matrix{Float64}(undef, 4, n_samples)
         base_values = [140.0, 120.0, 100.0, 85.0]  # Declining trend
-        
+
         for (i, base) in enumerate(base_values)
             forecasts[i, :] = base .+ randn(n_samples) .* 10  # Add noise
         end
@@ -655,10 +657,11 @@ end
         # Use default quantiles (23 levels)
         output_type = QuantileOutput()
         temp_dir = mktempdir()
-        
+
         try
-            result_df = create_forecast_output(input, results, temp_dir, output_type, save_output=false)
-            
+            result_df = create_forecast_output(
+                input, results, temp_dir, output_type, save_output = false)
+
             # Test dimensions
             @test size(result_df, 1) == 4 * 23  # 4 dates × 23 quantiles = 92 rows
             @test size(result_df, 2) == 8
@@ -670,8 +673,9 @@ end
 
             # Test that values are reasonable (declining trend in medians)
             median_rows = result_df[result_df.output_type_id .== 0.5, :]
-            median_values = [median_rows[median_rows.target_end_date .== d, :].value[1] for d in forecast_dates]
-            
+            median_values = [median_rows[median_rows.target_end_date .== d, :].value[1]
+                             for d in forecast_dates]
+
             # Should generally decline (allowing some noise)
             @test median_values[1] > median_values[4]
 
@@ -679,15 +683,15 @@ end
             for date in forecast_dates
                 date_data = result_df[result_df.target_end_date .== date, :]
                 sorted_data = sort(date_data, :output_type_id)
-                
+
                 # Values should be non-decreasing as quantile levels increase
                 for i in 2:nrow(sorted_data)
-                    @test sorted_data.value[i] >= sorted_data.value[i-1]
+                    @test sorted_data.value[i] >= sorted_data.value[i - 1]
                 end
             end
 
         finally
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
@@ -703,7 +707,7 @@ end
             [50.0],                # reports
             pathogen,              # pathogen
             location,              # location
-            target,                # target  
+            target,                # target
             forecast_date,         # forecast_date
             Date[],                # nowcast_dates
             Vector{Real}[]         # nowcast_reports
@@ -711,7 +715,7 @@ end
 
         forecast_dates = [Date("2024-01-08")]
         forecasts = reshape([25.0, 30.0, 35.0], 1, 3)
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -720,26 +724,27 @@ end
         )
 
         output_type = QuantileOutput(quantile_levels = [0.5])
-        
+
         # Test with nested directory that doesn't exist
         base_temp_dir = mktempdir()
         nested_output_dir = joinpath(base_temp_dir, "forecast_outputs", "2024", "january")
-        
+
         try
             @test !isdir(nested_output_dir)  # Directory doesn't exist yet
-            
-            result_df = create_forecast_output(input, results, nested_output_dir, output_type, save_output=true)
-            
+
+            result_df = create_forecast_output(
+                input, results, nested_output_dir, output_type, save_output = true)
+
             # Test that directory was created
             @test isdir(nested_output_dir)
-            
+
             # Test that file exists in the nested directory with correct filename
             expected_filename = "2024-01-01-CFA-EpiAutoGP-FL-rsv-nhsn.csv"
             csv_path = joinpath(nested_output_dir, expected_filename)
             @test isfile(csv_path)
 
         finally
-            rm(base_temp_dir, recursive=true)
+            rm(base_temp_dir, recursive = true)
         end
     end
 
@@ -764,7 +769,7 @@ end
         # Single date, single sample
         forecast_dates = [Date("2024-01-08")]
         forecasts = reshape([42.0], 1, 1)  # 1 date × 1 sample
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -774,16 +779,17 @@ end
 
         output_type = QuantileOutput(quantile_levels = [0.0, 0.5, 1.0])
         temp_dir = mktempdir()
-        
+
         try
-            result_df = create_forecast_output(input, results, temp_dir, output_type, save_output=false)
-            
+            result_df = create_forecast_output(
+                input, results, temp_dir, output_type, save_output = false)
+
             @test size(result_df, 1) == 3  # 1 date × 3 quantiles
             @test all(result_df.value .== 42.0)  # All quantiles should equal the single value
             @test result_df.horizon[1] == 1  # One week ahead
 
         finally
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
@@ -807,7 +813,7 @@ end
 
         forecast_dates = [Date("2024-01-08"), Date("2024-01-15")]
         forecasts = [80.0 85.0 90.0; 70.0 75.0 80.0]  # 2 dates × 3 samples
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -817,10 +823,11 @@ end
 
         output_type = QuantileOutput(quantile_levels = [0.25, 0.5, 0.75])
         temp_dir = mktempdir()
-        
+
         try
-            result_df = create_forecast_output(input, results, temp_dir, output_type, save_output=false)
-            
+            result_df = create_forecast_output(
+                input, results, temp_dir, output_type, save_output = false)
+
             # Test column types
             @test eltype(result_df.output_type) == String
             @test eltype(result_df.output_type_id) == Float64
@@ -836,7 +843,7 @@ end
             @test all(r -> r > 0, result_df.horizon)  # All horizons should be positive
 
         finally
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
@@ -861,11 +868,11 @@ end
         # Test various target dates relative to forecast date
         forecast_dates = [
             Date("2024-02-22"),  # 1 week later
-            Date("2024-03-07"),  # 3 weeks later  
+            Date("2024-03-07"),  # 3 weeks later
             Date("2024-03-28")   # 6 weeks later
         ]
         forecasts = [20.0 25.0; 18.0 22.0; 15.0 18.0]  # 3 dates × 2 samples
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -875,23 +882,24 @@ end
 
         output_type = QuantileOutput(quantile_levels = [0.5])
         temp_dir = mktempdir()
-        
+
         try
-            result_df = create_forecast_output(input, results, temp_dir, output_type, save_output=false)
-            
+            result_df = create_forecast_output(
+                input, results, temp_dir, output_type, save_output = false)
+
             # Check horizon calculations
             horizons_by_date = Dict()
             for (i, date) in enumerate(forecast_dates)
                 date_rows = result_df[result_df.target_end_date .== date, :]
                 horizons_by_date[date] = date_rows.horizon[1]
             end
-            
+
             @test horizons_by_date[Date("2024-02-22")] == 1
             @test horizons_by_date[Date("2024-03-07")] == 3
             @test horizons_by_date[Date("2024-03-28")] == 6
 
         finally
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
@@ -915,7 +923,7 @@ end
 
         forecast_dates = [Date("2024-03-22")]
         forecasts = reshape([45.0, 50.0, 55.0], 1, 3)
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -925,24 +933,26 @@ end
 
         output_type = QuantileOutput(quantile_levels = [0.5])
         temp_dir = mktempdir()
-        
+
         try
             # Test with save_output=false
-            result_df = create_forecast_output(input, results, temp_dir, output_type, save_output=false)
-            
+            result_df = create_forecast_output(
+                input, results, temp_dir, output_type, save_output = false)
+
             # DataFrame should still be returned
             @test isa(result_df, DataFrame)
             @test size(result_df, 1) == 1
-            
+
             # No files should be created in the directory
             @test isempty(readdir(temp_dir))
 
             # Test with save_output=true
-            result_df_saved = create_forecast_output(input, results, temp_dir, output_type, save_output=true)
-            
+            result_df_saved = create_forecast_output(
+                input, results, temp_dir, output_type, save_output = true)
+
             # DataFrame should be identical
             @test result_df == result_df_saved
-            
+
             # File should now exist with correct name
             expected_filename = "2024-03-15-CFA-EpiAutoGP-MA-covid-nhsn.csv"
             csv_path = joinpath(temp_dir, expected_filename)
@@ -950,7 +960,7 @@ end
             @test length(readdir(temp_dir)) == 1
 
         finally
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
@@ -974,7 +984,7 @@ end
 
         forecast_dates = [Date("2024-06-08")]
         forecasts = reshape([70.0, 75.0, 80.0], 1, 3)
-        
+
         results = (
             forecast_dates = forecast_dates,
             forecasts = forecasts,
@@ -984,7 +994,7 @@ end
 
         output_type = QuantileOutput(quantile_levels = [0.5])
         temp_dir = mktempdir()
-        
+
         try
             # Test with custom group and model names
             result_df = create_forecast_output(
@@ -993,26 +1003,31 @@ end
                 group_name = "TestGroup",
                 model_name = "TestModel"
             )
-            
+
             # Check filename includes custom names
             expected_filename = "2024-06-01-TestGroup-TestModel-TX-flu-nssp.csv"
             csv_path = joinpath(temp_dir, expected_filename)
             @test isfile(csv_path)
 
         finally
-            rm(temp_dir, recursive=true)
+            rm(temp_dir, recursive = true)
         end
     end
 
     @testset "Filename Format Validation" begin
         # Test that filenames are generated correctly for different combinations
         test_cases = [
-            (Date("2024-01-01"), "US", "COVID-19", "nhsn", "CFA", "EpiAutoGP", "2024-01-01-CFA-EpiAutoGP-US-covid-nhsn.csv"),
-            (Date("2024-12-31"), "CA", "Influenza", "nssp", "CDC", "TestModel", "2024-12-31-CDC-TestModel-CA-flu-nssp.csv"),
-            (Date("2024-07-04"), "NY", "RSV", "nhsn", "FDA", "Model-v2", "2024-07-04-FDA-Model-v2-NY-rsv-nhsn.csv")
+            (Date("2024-01-01"), "US", "COVID-19", "nhsn", "CFA",
+                "EpiAutoGP", "2024-01-01-CFA-EpiAutoGP-US-covid-nhsn.csv"),
+            (Date("2024-12-31"), "CA", "Influenza", "nssp", "CDC",
+                "TestModel", "2024-12-31-CDC-TestModel-CA-flu-nssp.csv"),
+            (Date("2024-07-04"), "NY", "RSV", "nhsn", "FDA",
+                "Model-v2", "2024-07-04-FDA-Model-v2-NY-rsv-nhsn.csv")
         ]
 
-        for (forecast_date, location, pathogen, target, group_name, model_name, expected_filename) in test_cases
+        for (forecast_date, location, pathogen, target,
+            group_name, model_name, expected_filename) in test_cases
+
             input = EpiAutoGPInput(
                 [forecast_date - Day(7)],  # dates
                 [100.0],                    # reports
@@ -1026,7 +1041,7 @@ end
 
             forecast_dates = [forecast_date + Day(7)]
             forecasts = reshape([90.0, 95.0, 100.0], 1, 3)
-            
+
             results = (
                 forecast_dates = forecast_dates,
                 forecasts = forecasts,
@@ -1036,7 +1051,7 @@ end
 
             output_type = QuantileOutput(quantile_levels = [0.5])
             temp_dir = mktempdir()
-            
+
             try
                 result_df = create_forecast_output(
                     input, results, temp_dir, output_type;
@@ -1044,12 +1059,12 @@ end
                     group_name = group_name,
                     model_name = model_name
                 )
-                
+
                 csv_path = joinpath(temp_dir, expected_filename)
                 @test isfile(csv_path)
 
             finally
-                rm(temp_dir, recursive=true)
+                rm(temp_dir, recursive = true)
             end
         end
     end
