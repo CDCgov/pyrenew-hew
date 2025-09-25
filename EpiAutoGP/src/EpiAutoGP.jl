@@ -1,9 +1,8 @@
 module EpiAutoGP
 using NowcastAutoGP # Core modeling package
-using CSV, Dates, JSON3, StructTypes # Data handling packages
+using CSV, DataFramesMeta, Dates, JSON3, StructTypes # Data handling packages
 using ArgParse # Command-line argument parsing
 using Statistics # For modeling functions
-using TidierData # For DataFrame and data manipulation
 
 # Export command line argument parsing
 export parse_arguments
@@ -24,7 +23,7 @@ export prepare_for_modelling,
 export AbstractForecastOutput,
        AbstractHubverseOutput,
        QuantileOutput,
-       create_df
+       create_forecast_df
 
 const DEFAULT_PATHOGEN_DICT = Dict(
     "COVID-19" => "covid",

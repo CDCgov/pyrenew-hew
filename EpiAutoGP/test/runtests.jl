@@ -3,7 +3,7 @@ using JSON3
 using ArgParse
 using Dates
 using CSV
-using TidierData
+using DataFramesMeta
 using Random
 using Statistics
 
