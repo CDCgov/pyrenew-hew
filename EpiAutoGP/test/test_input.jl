@@ -165,15 +165,15 @@ end
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
             [Date("2024-01-01")], [[50.0, 55.0]]  # Vector has length 2 but only 1 nowcast date
         ))
-        
+
         # Test correct nowcast structure - 100 vectors each with 1 value for 1 nowcast date
         correct_nowcast = EpiAutoGPInput(
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
             [Date("2024-01-01")], [[50.0 + i] for i in 1:100]  # 100 vectors, each with 1 value
         )
         @test validate_input(correct_nowcast) == true
-        
-        # Test correct nowcast structure - 50 vectors each with 2 values for 2 nowcast dates  
+
+        # Test correct nowcast structure - 50 vectors each with 2 values for 2 nowcast dates
         correct_nowcast_2dates = EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-02")], [45.0, 52.0], "COVID-19", "CA", "nhsn", Date("2024-01-02"),
             [Date("2024-01-01"), Date("2024-01-02")], [[40.0 + i, 50.0 + i] for i in 1:50]  # 50 vectors, each with 2 values
@@ -217,7 +217,7 @@ end
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
             Date[], Vector{Real}[]  # Empty nowcast arrays for pure forecasting
         )) == true
-        
+
         # Test nowcast dates with empty reports (0 realizations/samples)
         @test validate_input(EpiAutoGPInput(
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),

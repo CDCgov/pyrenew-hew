@@ -112,7 +112,7 @@ function validate_input(data::EpiAutoGPInput; valid_targets = ["nhsn", "nssp"])
     if isempty(data.nowcast_dates) && !isempty(data.nowcast_reports)
         throw(ArgumentError("Nowcast consistency error: no nowcast_dates provided but nowcast_reports is not empty"))
     end
-    
+
     # If nowcast dates exist, each vector in nowcast_reports should have length equal to number of nowcast_dates
     # (each vector represents one realization across all nowcast dates)
     if !isempty(data.nowcast_dates)
