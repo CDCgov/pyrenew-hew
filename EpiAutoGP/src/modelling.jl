@@ -47,7 +47,7 @@ function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::Strin
                    create_nowcast_data(input.nowcast_reports, input.nowcast_dates; transformation)
 
     # Calculate forecasting dates
-    forecast_dates = [input.forecast_date + Week(i) for i in 1:n_forecast_weeks]
+    forecast_dates = [input.forecast_date + Week(i) for i in -1:1:n_forecast_weeks]
 
     # Calculate number of forecasts per nowcast sample
     n_forecasts_per_nowcast = length(nowcast_data) > 0 ?
