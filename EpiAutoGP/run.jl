@@ -57,7 +57,7 @@ function main()
         # Create hubverse-compatible output
         @info "Creating hubverse-compatible forecast output..."
         output_type = QuantileOutput()  # Use default quantile levels
-        
+
         hubverse_df = create_forecast_output(
             input_data,
             results,
@@ -65,7 +65,7 @@ function main()
             output_type;
             save_output = true
         )
-        
+
         @info "EpiAutoGP model run completed successfully"
         @info "Results saved to $(args["output-dir"])"
 
