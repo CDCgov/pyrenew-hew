@@ -1,26 +1,32 @@
-function create_hubverse_table(
+abstract type AbstractForecastOutput end
+abstract type AbstractHubverseOutput <: AbstractForecastOutput end
+
+struct QuantileOutput{F <: AbstractFloat} <: AbstractHubverseOutput 
+    quantile_levels::Vector{F}
+end
+
+function create_forecast_output(
         input::EpiAutoGPInput,
         results::NamedTuple,
         output_dir::String,
-        quantile_levels = [
-            0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
-            0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99]
+        output_type::QuantileOutput;
+        disease_abbr::Dict{String, String} = DEFAULT_PATHOGEN_DICT,
+        target_abbr::Dict{String, String} = DEFAULT_TARGET_DICT
 )
-    @info "Creating hubverse table for $(results.disease) in $(results.location)"
+    @info "Creating hubverse table for $(results.disease) with target $(input.target) in $(results.location)"
 
     forecast_dates = results.forecast_dates
-    forecast_samples = results.forecasts
-    forecast_date = results.forecast_date
-    location = results.location
-    disease = results.disease
+    forecasts = results.forecasts
+    forecast_date = input.forecast_date
+    location = input.location
+    pathogen = input.pathogen
+    target = input.target
+    quantile_levels = output_type.quantile_levels
 
     hubverse_rows = []
 
-    # Create target name based on disease
-    disease_abbr = disease == "COVID-19" ? "covid" :
-                   disease == "Influenza" ? "flu" :
-                   lowercase(disease)
-    target = "wk inc $disease_abbr hosp"
+
+    target_col_string = "wk inc $(disease_abbr[pathogen]) $(target_abbr[target])"
 
     for (date_idx, target_end_date) in enumerate(forecast_dates)
         date_samples = forecast_samples[date_idx, :]

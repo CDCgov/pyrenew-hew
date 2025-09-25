@@ -183,16 +183,15 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
         n_hmc = n_hmc
     )
 
-    forecasts = if isempty(model_info.nowcast_data)
+    forecasts = isempty(model_info.nowcast_data) ?
+        # Direct forecast when no nowcasts
         forecast(base_model, model_info.forecast_dates,
             model_info.n_forecasts_per_nowcast;
-            inv_transformation = model_info.inv_transformation)
-    else
+            inv_transformation = model_info.inv_transformation) :
         forecast_with_nowcasts(
             base_model, model_info.nowcast_data, model_info.forecast_dates,
             model_info.n_forecasts_per_nowcast;
             inv_transformation = model_info.inv_transformation)
-    end
 
     return (;
         forecast_dates = model_info.forecast_dates,
