@@ -108,8 +108,19 @@ function validate_input(data::EpiAutoGPInput; valid_targets = ["nhsn", "nssp"])
     end
 
     # Check nowcast data consistency
-    if length(data.nowcast_dates) != length(data.nowcast_reports)
-        throw(ArgumentError("Nowcast length mismatch: nowcast_dates ($(length(data.nowcast_dates))) and nowcast_reports ($(length(data.nowcast_reports))) must have the same length"))
+    # If no nowcast dates, should have no nowcast reports (pure forecasting)
+    if isempty(data.nowcast_dates) && !isempty(data.nowcast_reports)
+        throw(ArgumentError("Nowcast consistency error: no nowcast_dates provided but nowcast_reports is not empty"))
+    end
+    
+    # If nowcast dates exist, each vector in nowcast_reports should have length equal to number of nowcast_dates
+    # (each vector represents one realization across all nowcast dates)
+    if !isempty(data.nowcast_dates)
+        for (i, report_vec) in enumerate(data.nowcast_reports)
+            if length(report_vec) != length(data.nowcast_dates)
+                throw(ArgumentError("Nowcast vector length mismatch at index $i: nowcast_reports[$i] has length $(length(report_vec)) but should have length $(length(data.nowcast_dates)) to match nowcast_dates"))
+            end
+        end
     end
 
     # Check nowcast date ordering

@@ -197,8 +197,6 @@ function create_forecast_output(
         group_name::String = DEFAULT_GROUP_NAME,
         model_name::String = DEFAULT_MODEL_NAME
 )
-    @info "Creating hubverse table for $(results.disease) with target $(input.target) in $(results.location)"
-
     # Extract relevant data
     forecast_date = input.forecast_date
     location = input.location

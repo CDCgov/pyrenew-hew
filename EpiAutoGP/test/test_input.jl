@@ -1,5 +1,11 @@
 """
-    create_sample_input(output_path::String; n_weeks::Int=30, pathogen::String="COVID-19", location::String="CA")
+    create_sample_in       nowcast_dates = dates[max(1, end - 2):end]  # Last 3 days
+    nowcast_reports = [[reports[max(1, end - 2) + j - 1] + rand(-5:5) for j in 1:3] for _ in 1:10]  # 10 realizations, each with 3 values
+
+    input_data = EpiAutoGPInput(owcast_dates = dates[max(1, end - 2):end]  # Last 3 days
+    nowcast_reports = [[reports[max(1, end - 2) + j - 1] + rand(-5:5) for j in 1:3] for _ in 1:10]  # 10 realizations, each with 3 values
+
+    input_data = EpiAutoGPInput(t(output_path::String; n_weeks::Int=30, pathogen::String="COVID-19", location::String="CA")
 
 Create a sample EpiAutoGPInput for testing and write it to a JSON file.
 
@@ -23,7 +29,7 @@ function create_sample_input(output_path::String; n_weeks::Int = 30,
 
     forecast_date = dates[end]
     nowcast_dates = dates[max(1, end - 2):end]  # Last 3 days
-    nowcast_reports = [[r + rand(-5:5) for _ in 1:3] for r in reports[max(1, end - 2):end]]
+    nowcast_reports = [[reports[max(1, end - 2) + j - 1] + rand(-5:5) for j in 1:3] for _ in 1:10]  # 10 realizations, each with 3 values
 
     input_data = EpiAutoGPInput(
         dates, reports, pathogen, location, "nhsn",
@@ -47,7 +53,7 @@ end
         location = "CA"
         forecast_date = Date("2024-01-03")
         nowcast_dates = [Date("2024-01-02"), Date("2024-01-03")]
-        nowcast_reports = [[50.0, 52.0, 54.0], [36.0, 38.0, 40.0]]
+        nowcast_reports = [[50.0, 36.0], [52.0, 38.0], [54.0, 40.0]]  # 3 realizations, each with 2 values for 2 dates
 
         input_data = EpiAutoGPInput(
             dates, reports, pathogen, location, "nhsn",
@@ -73,7 +79,7 @@ end
             "nssp",
             Date("2024-01-02"),
             [Date("2024-01-02")],
-            [[50.0, 55.0]]
+            [[50.0], [55.0]]  # 2 realizations, each with 1 value
         )
 
         # Test JSON serialization
@@ -116,7 +122,7 @@ end
             "nhsn",
             Date("2024-01-03"),
             [Date("2024-01-02"), Date("2024-01-03")],
-            [[50.0, 52.0], [36.0, 40.0]]
+            [[50.0, 36.0], [52.0, 40.0]]  # 2 realizations, each with 2 values
         )
         @test validate_input(typical_data) == true
 
@@ -154,17 +160,31 @@ end
             "COVID-19", "CA", "nhsn", Date("2024-01-02"), Date[], Vector{Real}[]
         ))
 
-        # Test mismatched nowcast lengths
+        # Test mismatched nowcast vector lengths - each vector should have length equal to nowcast_dates
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
-            [Date("2024-01-01")], Vector{Real}[]  # Mismatched lengths
+            [Date("2024-01-01")], [[50.0, 55.0]]  # Vector has length 2 but only 1 nowcast date
         ))
+        
+        # Test correct nowcast structure - 100 vectors each with 1 value for 1 nowcast date
+        correct_nowcast = EpiAutoGPInput(
+            [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
+            [Date("2024-01-01")], [[50.0 + i] for i in 1:100]  # 100 vectors, each with 1 value
+        )
+        @test validate_input(correct_nowcast) == true
+        
+        # Test correct nowcast structure - 50 vectors each with 2 values for 2 nowcast dates  
+        correct_nowcast_2dates = EpiAutoGPInput(
+            [Date("2024-01-01"), Date("2024-01-02")], [45.0, 52.0], "COVID-19", "CA", "nhsn", Date("2024-01-02"),
+            [Date("2024-01-01"), Date("2024-01-02")], [[40.0 + i, 50.0 + i] for i in 1:50]  # 50 vectors, each with 2 values
+        )
+        @test validate_input(correct_nowcast_2dates) == true
 
         # Test unsorted nowcast dates
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-02")], [45.0, 52.0], "COVID-19", "CA", "nhsn", Date("2024-01-02"),
             [Date("2024-01-02"), Date("2024-01-01")],  # Wrong order
-            [[50.0], [45.0]]
+            [[50.0, 45.0]]  # 1 realization with 2 values
         ))
 
         # Test empty pathogen
@@ -192,16 +212,22 @@ end
             [Date("2024-01-01")], [NaN], "COVID-19", "CA", "nhsn", Date("2024-01-01"), Date[], Vector{Real}[]
         ))
 
-        # Test empty nowcast reports vector - this should be allowed (empty nowcast means just forecast)
+        # Test empty nowcast - no nowcast dates and no nowcast reports (pure forecasting)
         @test validate_input(EpiAutoGPInput(
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
-            [Date("2024-01-01")], [Real[]]  # Empty inner vector should be allowed
+            Date[], Vector{Real}[]  # Empty nowcast arrays for pure forecasting
+        )) == true
+        
+        # Test nowcast dates with empty reports (0 realizations/samples)
+        @test validate_input(EpiAutoGPInput(
+            [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
+            [Date("2024-01-01")], Vector{Real}[]  # Nowcast date but no samples yet
         )) == true
 
         # Test invalid nowcast report values
         @test_throws ArgumentError validate_input(EpiAutoGPInput(
             [Date("2024-01-01")], [45.0], "COVID-19", "CA", "nhsn", Date("2024-01-01"),
-            [Date("2024-01-01")], [[-5.0]]  # Negative nowcast value
+            [Date("2024-01-01")], [[-5.0]]  # 1 realization with negative value
         ))
 
         # Test forecast date too far in past
@@ -227,7 +253,7 @@ end
             "target" => "nhsn",
             "forecast_date" => "2024-01-02",
             "nowcast_dates" => ["2024-01-02"],
-            "nowcast_reports" => [[50.0, 55.0]]
+            "nowcast_reports" => [[50.0], [55.0]]
         )
 
         tmpfile = tempname() * ".json"
@@ -245,7 +271,7 @@ end
             @test loaded_data.location == "CA"
             @test loaded_data.forecast_date == Date("2024-01-02")
             @test loaded_data.nowcast_dates == [Date("2024-01-02")]
-            @test loaded_data.nowcast_reports == [[50.0, 55.0]]
+            @test loaded_data.nowcast_reports == [[50.0], [55.0]]
 
             # Test read_and_validate_data
             validated_data = read_and_validate_data(tmpfile)
@@ -293,7 +319,7 @@ end
         single_nowcast = EpiAutoGPInput(
             [Date("2024-01-01"), Date("2024-01-02")], [45.0, 52.0],
             "COVID-19", "CA", "nhsn", Date("2024-01-02"),
-            [Date("2024-01-02")], [[50.0]]  # Single value in nowcast
+            [Date("2024-01-02")], [[50.0]]  # 1 realization with 1 value
         )
         @test validate_input(single_nowcast) == true
     end
@@ -311,7 +337,7 @@ end
             "nhsn",
             Date("2024-01-30"),
             realistic_dates[(end - 2):end],  # Last 3 days for nowcasting
-            [rand(3) .+ realistic_reports[(end - 2):end] for _ in 1:3]  # Nowcast uncertainty
+            [[realistic_reports[end - 2] + rand(), realistic_reports[end - 1] + rand(), realistic_reports[end] + rand()] for _ in 1:5]  # 5 realizations with 3 values each
         )
 
         @test validate_input(realistic_data) == true
@@ -372,7 +398,7 @@ end
             # Test that nowcast dates are properly set (last 3 days)
             @test length(custom_sample.nowcast_dates) == 3
             @test custom_sample.nowcast_dates == custom_sample.dates[(end - 2):end]
-            @test length(custom_sample.nowcast_reports) == 3
+            @test length(custom_sample.nowcast_reports) == 10  # 10 realizations as set in create_sample_input
 
             # Verify nowcast data round-trip
             @test loaded_custom.nowcast_dates == custom_sample.nowcast_dates
