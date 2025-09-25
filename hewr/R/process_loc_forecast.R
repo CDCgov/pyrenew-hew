@@ -148,10 +148,10 @@ epiweekly_samples_from_daily <- function(
 #' Read in and combine training and evaluation
 #' data from a model run directory.
 #'
-#' @param model_run_dir model run directory in which to look
+#' @param model_dir model directory in which to look
 #' for data.
 #' @export
-read_and_combine_data <- function(model_run_dir) {
+read_and_combine_data <- function(model_dir) {
   data_cols <- readr::cols(
     date = readr::col_date(),
     geo_value = readr::col_character(),
@@ -172,7 +172,7 @@ read_and_combine_data <- function(model_run_dir) {
     ) |>
     tidyr::unite("file_name", "prefix", "root", sep = "") |>
     dplyr::mutate(
-      file_path = fs::path(model_run_dir, "data", .data$file_name, ext = "tsv")
+      file_path = fs::path(model_dir, "data", .data$file_name, ext = "tsv")
     ) |>
     dplyr::mutate(
       data = purrr::map(
@@ -416,7 +416,12 @@ process_loc_forecast <- function(
       "must be provided."
     )
   }
-
+  model_name <- dplyr::if_else(
+    is.na(pyrenew_model_name),
+    timeseries_model_name,
+    pyrenew_model_name
+  )
+  model_dir <- fs::path(model_run_dir, model_name)
   data_col_types <- readr::cols(
     date = readr::col_date(),
     geo_value = readr::col_character(),
@@ -429,7 +434,7 @@ process_loc_forecast <- function(
   # Used for augmenting denominator forecasts with training period denominator
   daily_training_dat <- readr::read_tsv(
     fs::path(
-      model_run_dir,
+      model_dir,
       "data",
       "combined_training_data",
       ext = "tsv"
@@ -440,7 +445,7 @@ process_loc_forecast <- function(
   # Used for augmenting denominator forecasts with training period denominator
   epiweekly_training_dat <- readr::read_tsv(
     fs::path(
-      model_run_dir,
+      model_dir,
       "data",
       "epiweekly_combined_training_data",
       ext = "tsv"
