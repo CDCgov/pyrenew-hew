@@ -40,13 +40,11 @@ function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::Strin
     inv_transformation = get_transformations(transformation_name, input.reports)
 
     # Format nowcast data (only if nowcasts exist)
-    nowcast_data = if isempty(input.nowcast_dates) || isempty(input.nowcast_reports)
+    nowcast_data = isempty(input.nowcast_dates) ?
         # Return empty vector when no nowcasts
-        NamedTuple{
-            (:ds, :y, :values), Tuple{Vector{Date}, Vector{Float64}, Vector{Float64}}}[]
-    else
+        TData[] :
+        # Create nowcast data structure
         create_nowcast_data(input.nowcast_reports, input.nowcast_dates; transformation)
-    end
 
     # Calculate forecasting dates
     forecast_dates = [input.forecast_date + Week(i) for i in 1:n_forecast_weeks]
@@ -199,9 +197,6 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
     return (;
         forecast_dates = model_info.forecast_dates,
         forecasts = forecasts,
-        forecast_date = input.forecast_date,
-        location = input.location,
-        disease = input.pathogen
     )
 end
 
