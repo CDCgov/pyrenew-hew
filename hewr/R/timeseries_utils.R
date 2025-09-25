@@ -46,7 +46,7 @@ load_training_data <- function(
     )
   ) |>
     dplyr::select(-"lab_site_index") |>
-    dplyr::filter(stringr::str_ends(.variable, "ed_visits")) |>
+    dplyr::filter(stringr::str_ends(.data$.variable, "ed_visits")) |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value")
 
   list(
@@ -89,7 +89,7 @@ format_timeseries_output <- function(
 ) {
   forecast_data |>
     tidyr::pivot_longer(
-      -c("date", all_of(output_type_id)),
+      -c("date", tidyselect::all_of(output_type_id)),
       names_to = ".variable",
       values_to = ".value"
     ) |>
@@ -99,7 +99,7 @@ format_timeseries_output <- function(
       resolution = resolution,
       aggregated_numerator = FALSE,
       aggregated_denominator = dplyr::if_else(
-        stringr::str_starts(.variable, "prop_"),
+        stringr::str_starts(.data$.variable, "prop_"),
         FALSE,
         NA
       )
@@ -112,7 +112,7 @@ format_timeseries_output <- function(
       "aggregated_numerator",
       "aggregated_denominator",
       ".variable",
-      all_of(output_type_id),
+      tidyselect::all_of(output_type_id),
       ".value"
     )
 }

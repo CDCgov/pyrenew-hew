@@ -194,7 +194,7 @@ read_and_combine_data <- function(model_dir) {
   # suggest reforms to prep_data to prevent duplicate data being in each table
 
   non_ww_dat <- dat |>
-    dplyr::filter(.variable != "site_level_log_ww_conc") |>
+    dplyr::filter(.data$.variable != "site_level_log_ww_conc") |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value") |>
     dplyr::mutate(
       prop_disease_ed_visits = .data$observed_ed_visits /
@@ -214,7 +214,7 @@ read_and_combine_data <- function(model_dir) {
     tidyr::drop_na(".value")
 
   ww_dat <- dat |>
-    dplyr::filter(.variable == "site_level_log_ww_conc")
+    dplyr::filter(.data$.variable == "site_level_log_ww_conc")
 
   combined_dat <- dplyr::bind_rows(ww_dat, non_ww_dat)
   return(combined_dat)

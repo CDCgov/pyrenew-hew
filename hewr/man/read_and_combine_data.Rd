@@ -5,10 +5,10 @@
 \title{Read in and combine training and evaluation
 data from a model run directory.}
 \usage{
-read_and_combine_data(model_run_dir)
+read_and_combine_data(model_dir)
 }
 \arguments{
-\item{model_run_dir}{model run directory in which to look
+\item{model_dir}{model directory in which to look
 for data.}
 }
 \description{
