@@ -3,7 +3,7 @@
 
 Abstract base type for all forecast output formats in EpiAutoGP.
 
-This type serves as the root of the forecast output type hierarchy, allowing for 
+This type serves as the root of the forecast output type hierarchy, allowing for
 extensible output formatting while maintaining type safety and dispatch.
 """
 abstract type AbstractForecastOutput end
@@ -13,8 +13,8 @@ abstract type AbstractForecastOutput end
 
 Abstract type for hubverse-compatible forecast outputs.
 
-The hubverse is a standardized format for epidemiological forecasting used by 
-the CDC and other public health organizations. All concrete subtypes must 
+The hubverse is a standardized format for epidemiological forecasting used by
+the CDC and other public health organizations. All concrete subtypes must
 produce outputs compatible with hubverse table specifications, e.g. quantile-based
 forecasts, sample-based forecasts, etc.
 """
@@ -25,8 +25,8 @@ abstract type AbstractHubverseOutput <: AbstractForecastOutput end
 
 Configuration for quantile-based forecast outputs compatible with hubverse specifications.
 
-This struct defines the quantile levels to be computed and included in the 
-hubverse-compatible output table. The default quantile levels follow CDC 
+This struct defines the quantile levels to be computed and included in the
+hubverse-compatible output table. The default quantile levels follow CDC
 forecast hub standards.
 
 # Fields
@@ -55,8 +55,8 @@ end
 
 Calculate forecast horizons in weeks from reference date to target dates.
 
-This internal helper function computes the horizon column required for hubverse 
-forecast tables. Horizons represent the number of weeks between the reference 
+This internal helper function computes the horizon column required for hubverse
+forecast tables. Horizons represent the number of weeks between the reference
 date (when the forecast was made) and each target date.
 
 # Arguments
@@ -83,8 +83,8 @@ end
 
 Convert EpiAutoGP forecast results to a basic DataFrame with quantile summaries.
 
-This function processes raw forecast samples from the EpiAutoGP model and computes 
-quantile summaries for each forecast date. The resulting DataFrame contains the 
+This function processes raw forecast samples from the EpiAutoGP model and computes
+quantile summaries for each forecast date. The resulting DataFrame contains the
 core forecast data needed for hubverse tables.
 
 # Arguments
@@ -136,8 +136,8 @@ end
 
 Create complete hubverse-compatible forecast table from EpiAutoGP results.
 
-This is the main function for generating hubverse forecast outputs. It combines 
-forecast results with metadata from the input to create a fully compliant 
+This is the main function for generating hubverse forecast outputs. It combines
+forecast results with metadata from the input to create a fully compliant
 hubverse table, optionally saving it to disk.
 
 # Arguments
