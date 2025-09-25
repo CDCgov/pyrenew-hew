@@ -428,12 +428,6 @@ if __name__ == "__main__":
         type=Path,
         help=("Path to a parquet file containing compehensive truth data."),
     )
-    parser.add_argument(
-        "--nhsn-data-path",
-        type=Path,
-        help=("Path to a parquet file containing NHSN data."),
-        required=True,
-    )
 
     args = parser.parse_args()
     n_denominator_samples = args.n_samples * args.n_chains
