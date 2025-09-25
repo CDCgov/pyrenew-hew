@@ -153,7 +153,7 @@ julia --project -e "using Pkg; Pkg.test()"
 ## Integration Points
 
 - **Input**: EpiAutoGPInput JSON format with vintaged surveillance data
-- **Nowcasts**: Vector{Vector{Real}} structure for uncertainty quantification  
+- **Nowcasts**: Vector{Vector{Real}} structure for uncertainty quantification
 - **Output**: Hubverse-compatible CSV tables with quantile forecasts
 - **Visualization**: R integration via `forecasttools` package
 
