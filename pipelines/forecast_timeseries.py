@@ -364,7 +364,6 @@ if __name__ == "__main__":
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
         help=("Directory in which to look for parameter estimatessuch as delay PMFs."),
-        required=True,
     )
 
     parser.add_argument(
