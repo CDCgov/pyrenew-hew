@@ -9,29 +9,13 @@ ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 ARG GIT_BRANCH_NAME
 ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
 
-# Set working directory
-WORKDIR /pyrenew-hew/EpiAutoGP
+COPY EpiAutoGP /EpiAutoGP
 
-# Copy the EpiAutoGP project files
-COPY ./EpiAutoGP/Project.toml ./EpiAutoGP/Manifest.toml ./
+WORKDIR /EpiAutoGP
+# Threads Overloadable by user at runtime
+ENV JULIA_NUM_THREADS=auto 
 
-# Pre-compile and install Julia dependencies
-RUN julia --project=. -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
-
-# Copy the run script
-COPY ./EpiAutoGP/run.jl ./
-
-# Make run script executable
-RUN chmod +x run.jl
-
-# Install system dependencies for CSV and other data processing
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set up Julia environment
-ENV JULIA_PROJECT=/pyrenew-hew/EpiAutoGP
+RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.instantiate()'
 
 # Default command to run the model
-ENTRYPOINT ["julia", "--project=.", "run.jl"]
+ENTRYPOINT ["julia", "--project", "run.jl"]
