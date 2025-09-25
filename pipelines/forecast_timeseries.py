@@ -116,6 +116,7 @@ def main(
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
     credentials_path: Path = None,
+    nhsn_data_path: Path = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -243,6 +244,7 @@ def main(
         save_dir=Path(baseline_model_output_dir, "data"),
         logger=logger,
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
 
     logger.info("Getting eval data...")
@@ -418,6 +420,12 @@ if __name__ == "__main__":
         "--eval-data-path",
         type=Path,
         help=("Path to a parquet file containing compehensive truth data."),
+    )
+    parser.add_argument(
+        "--nhsn-data-path",
+        type=Path,
+        help=("Path to a parquet file containing NHSN data."),
+        required=True,
     )
 
     args = parser.parse_args()

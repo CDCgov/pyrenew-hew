@@ -22,7 +22,8 @@ python pipelines/forecast_timeseries.py \
 	--n-chains 2 \
 	--n-samples 250 \
 	--model-letters "$model_letters" \
-	--eval-data-path "$BASE_DIR/private_data/nssp-etl"
+	--eval-data-path "$BASE_DIR/private_data/nssp-etl" \
+	--nhsn-data-path "$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"
 	exit 1
