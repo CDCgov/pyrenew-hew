@@ -39,7 +39,7 @@ end
 # )
 #     @info "Creating hubverse table for $(results.disease) with target $(input.target) in $(results.location)"
 
-#     # Extract relevant data    
+#     # Extract relevant data
 #     forecast_date = input.forecast_date
 #     location = input.location
 #     pathogen = input.pathogen
@@ -57,7 +57,7 @@ end
 
 #     # Reorder columns and check all required columns are present
 #     forecast_df = @select!(forecast_df, [output_type, :location, :target, :target_end_date, :horizon, :output_type, :output_type_id, :value])
-    
+
 
 
 #     # Save as CSV to match expected format
