@@ -64,13 +64,14 @@ def get_nhsn(
             "Rscript",
             "-e",
             f"""
-            forecasttools::pull_nhsn(
+            forecasttools::pull_data_cdc_gov_dataset(
+                dataset = "nhsn_hrd_prelim",
                 api_key_id = {py_scalar_to_r_scalar(api_key_id)},
                 api_key_secret = {py_scalar_to_r_scalar(api_key_secret)},
                 start_date = {py_scalar_to_r_scalar(start_date)},
                 end_date = {py_scalar_to_r_scalar(end_date)},
                 columns = {py_scalar_to_r_scalar(columns)},
-                jurisdictions = {py_scalar_to_r_scalar(loc_abb_for_query)}
+                locations = {py_scalar_to_r_scalar(loc_abb_for_query)}
             ) |>
             dplyr::mutate(weekendingdate = as.Date(weekendingdate)) |>
             dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
@@ -85,7 +86,7 @@ def get_nhsn(
         result = subprocess.run(r_command)
 
         if result.returncode != 0:
-            raise RuntimeError(f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}")
+            raise RuntimeError(f"get_nhsn: {result.stderr.decode('utf-8')}")
     raw_dat = pl.read_parquet(local_data_file)
     dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
     return dat
