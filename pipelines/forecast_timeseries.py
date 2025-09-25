@@ -387,8 +387,14 @@ if __name__ == "__main__":
         default=28,
         help=(
             "Number of days ahead to forecast relative to the "
-            "report date (default: 28).",
+            "report date (default: 28)."
         ),
+    )
+    parser.add_argument(
+        "--nhsn-data-path",
+        type=Path,
+        help=("Path to local NHSN data (for local testing)"),
+        default=None,
     )
 
     parser.add_argument(
