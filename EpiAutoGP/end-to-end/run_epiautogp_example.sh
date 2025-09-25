@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # EpiAutoGP End-to-End Example Script
-# 
+#
 # This script demonstrates how to run the EpiAutoGP model using the generated
 # JSON input data from the vintaged NHSN dataset for report_date 2025-08-16.
 #
@@ -16,31 +16,31 @@
 # 3. Save outputs to the end-to-end directory
 # 4. Display results and summary
 
-set -e  # Exit on any error
+set -e # Exit on any error
 
 # Parse command line arguments
-THREADS=4  # Default number of threads
+THREADS=4 # Default number of threads
 
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --threads)
-            THREADS="$2"
-            shift 2
-            ;;
-        -h|--help)
-            echo "Usage: $0 [--threads N]"
-            echo ""
-            echo "Arguments:"
-            echo "  --threads N    Number of Julia threads to use (default: 4)"
-            echo "  -h, --help     Show this help message"
-            exit 0
-            ;;
-        *)
-            echo "Unknown argument: $1"
-            echo "Use --help for usage information"
-            exit 1
-            ;;
-    esac
+	case $1 in
+	--threads)
+		THREADS="$2"
+		shift 2
+		;;
+	-h | --help)
+		echo "Usage: $0 [--threads N]"
+		echo ""
+		echo "Arguments:"
+		echo "  --threads N    Number of Julia threads to use (default: 4)"
+		echo "  -h, --help     Show this help message"
+		exit 0
+		;;
+	*)
+		echo "Unknown argument: $1"
+		echo "Use --help for usage information"
+		exit 1
+		;;
+	esac
 done
 
 # Script configuration
@@ -61,14 +61,14 @@ echo ""
 
 # Check that required files exist
 if [[ ! -f "$JSON_INPUT" ]]; then
-    echo "❌ Error: JSON input file not found: $JSON_INPUT"
-    echo "Please run the Python script first: uv run python create_epiautogp_input.py"
-    exit 1
+	echo "❌ Error: JSON input file not found: $JSON_INPUT"
+	echo "Please run the Python script first: uv run python create_epiautogp_input.py"
+	exit 1
 fi
 
 if [[ ! -f "$RUN_SCRIPT" ]]; then
-    echo "❌ Error: Run script not found: $RUN_SCRIPT"
-    exit 1
+	echo "❌ Error: Run script not found: $RUN_SCRIPT"
+	exit 1
 fi
 
 # Create output directory if it doesn't exist
@@ -93,15 +93,15 @@ echo "    --smc-data-proportion 0.2"
 echo ""
 
 julia --project="$PROJECT_DIR" --threads="$THREADS" "$RUN_SCRIPT" \
-    --json-input "$JSON_INPUT" \
-    --output-dir "$OUTPUT_DIR" \
-    --n-forecast-weeks 3 \
-    --n-particles 4 \
-    --n-mcmc 50 \
-    --n-hmc 25 \
-    --n-forecast-draws 100 \
-    --transformation positive \
-    --smc-data-proportion 0.2
+	--json-input "$JSON_INPUT" \
+	--output-dir "$OUTPUT_DIR" \
+	--n-forecast-weeks 3 \
+	--n-particles 4 \
+	--n-mcmc 50 \
+	--n-hmc 25 \
+	--n-forecast-draws 100 \
+	--transformation positive \
+	--smc-data-proportion 0.2
 
 echo ""
 echo "✅ EpiAutoGP model run completed!"
@@ -112,51 +112,51 @@ echo "=== Results Summary ==="
 echo "Output directory: $OUTPUT_DIR"
 
 if [[ -d "$OUTPUT_DIR" ]]; then
-    echo "Files created:"
-    ls -la "$OUTPUT_DIR"
-    echo ""
-    
-    # Look for CSV files (hubverse output)
-    CSV_FILES=$(find "$OUTPUT_DIR" -name "*.csv" -type f 2>/dev/null || true)
-    if [[ -n "$CSV_FILES" ]]; then
-        echo "📊 Hubverse forecast files:"
-        echo "$CSV_FILES"
-        echo ""
-        
-        # Show first few lines of first CSV file
-        FIRST_CSV=$(echo "$CSV_FILES" | head -1)
-        if [[ -f "$FIRST_CSV" ]]; then
-            echo "Preview of forecast output ($FIRST_CSV):"
-            echo "----------------------------------------"
-            head -10 "$FIRST_CSV"
-            echo "----------------------------------------"
-            echo "Total rows: $(wc -l < "$FIRST_CSV")"
-            
-            # Generate plots using forecasttools
-            echo ""
-            echo "🎨 Generating forecast plots using forecasttools..."
-            PLOT_OUTPUT_DIR="$OUTPUT_DIR/plots"
-            R_SCRIPT="$SCRIPT_DIR/plot_forecast.R"
-            
-            if [[ -f "$R_SCRIPT" ]]; then
-                Rscript "$R_SCRIPT" "$FIRST_CSV" "$PLOT_OUTPUT_DIR"
-                
-                if [[ -d "$PLOT_OUTPUT_DIR" ]]; then
-                    echo ""
-                    echo "📊 Plot files created:"
-                    ls -la "$PLOT_OUTPUT_DIR"
-                fi
-            else
-                echo "⚠️  R plotting script not found: $R_SCRIPT"
-                echo "   Plots will not be generated"
-            fi
-        fi
-    else
-        echo "⚠️  No CSV files found in output directory"
-        echo "   Cannot generate plots without forecast data"
-    fi
+	echo "Files created:"
+	ls -la "$OUTPUT_DIR"
+	echo ""
+
+	# Look for CSV files (hubverse output)
+	CSV_FILES=$(find "$OUTPUT_DIR" -name "*.csv" -type f 2>/dev/null || true)
+	if [[ -n "$CSV_FILES" ]]; then
+		echo "📊 Hubverse forecast files:"
+		echo "$CSV_FILES"
+		echo ""
+
+		# Show first few lines of first CSV file
+		FIRST_CSV=$(echo "$CSV_FILES" | head -1)
+		if [[ -f "$FIRST_CSV" ]]; then
+			echo "Preview of forecast output ($FIRST_CSV):"
+			echo "----------------------------------------"
+			head -10 "$FIRST_CSV"
+			echo "----------------------------------------"
+			echo "Total rows: $(wc -l <"$FIRST_CSV")"
+
+			# Generate plots using forecasttools
+			echo ""
+			echo "🎨 Generating forecast plots using forecasttools..."
+			PLOT_OUTPUT_DIR="$OUTPUT_DIR/plots"
+			R_SCRIPT="$SCRIPT_DIR/plot_forecast.R"
+
+			if [[ -f "$R_SCRIPT" ]]; then
+				Rscript "$R_SCRIPT" "$FIRST_CSV" "$PLOT_OUTPUT_DIR"
+
+				if [[ -d "$PLOT_OUTPUT_DIR" ]]; then
+					echo ""
+					echo "📊 Plot files created:"
+					ls -la "$PLOT_OUTPUT_DIR"
+				fi
+			else
+				echo "⚠️  R plotting script not found: $R_SCRIPT"
+				echo "   Plots will not be generated"
+			fi
+		fi
+	else
+		echo "⚠️  No CSV files found in output directory"
+		echo "   Cannot generate plots without forecast data"
+	fi
 else
-    echo "⚠️  Output directory not found or empty"
+	echo "⚠️  Output directory not found or empty"
 fi
 
 echo ""

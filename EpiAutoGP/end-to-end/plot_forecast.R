@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 # Plot EpiAutoGP Forecast Results
-# 
+#
 # This script creates plots of the EpiAutoGP forecast output using the
 # forecasttools::plot_hubverse_file_quantiles function.
 #
@@ -82,7 +82,7 @@ cat("Nowcast samples:", length(nowcast_samples), "values\n")
 nowcast_median <- median(nowcast_samples)
 nowcast_q25 <- quantile(nowcast_samples, 0.25)
 nowcast_q75 <- quantile(nowcast_samples, 0.75)
-cat("Nowcast uncertainty: median =", round(nowcast_median, 1), 
+cat("Nowcast uncertainty: median =", round(nowcast_median, 1),
     ", IQR = [", round(nowcast_q25, 1), ",", round(nowcast_q75, 1), "]\n")
 
 # Find the most recent report_date
@@ -177,51 +177,51 @@ tryCatch({
         obs_pointcolor = "black",
         autotitle = TRUE
     )
-    
+
     cat("✅ Successfully created", length(plots), "base plot(s)\n")
-    
+
     # Enhance the first plot with additional data layers
     if (length(plots) > 0) {
         first_location <- names(plots)[1]
         base_plot <- plots[[first_location]]
-        
+
         cat("🎨 Adding custom data layers to plot...\n")
-        
+
         # Enhanced plot with additional layers and proper legend
         enhanced_plot <- base_plot +
             # Add extended latest data line (black line through forecast period)
-            geom_line(data = observed_data_latest_filtered, 
-                     aes(x = date, y = value, color = "Latest data"), 
+            geom_line(data = observed_data_latest_filtered,
+                     aes(x = date, y = value, color = "Latest data"),
                      linewidth = 2, alpha = 0.9, inherit.aes = FALSE) +
-            geom_point(data = observed_data_latest_filtered %>% filter(!is.na(value)), 
-                      aes(x = date, y = value, color = "Latest data"), 
+            geom_point(data = observed_data_latest_filtered %>% filter(!is.na(value)),
+                      aes(x = date, y = value, color = "Latest data"),
                       size = 2, alpha = 0.9, inherit.aes = FALSE) +
-            
+
             # Add forecast date data as red line/points
-            geom_line(data = observed_data_forecast_filtered, 
-                     aes(x = date, y = value, color = "Vintage data (forecast date)"), 
+            geom_line(data = observed_data_forecast_filtered,
+                     aes(x = date, y = value, color = "Vintage data (forecast date)"),
                      linewidth = 1.5, alpha = 0.8, inherit.aes = FALSE) +
-            geom_point(data = observed_data_forecast_filtered, 
-                      aes(x = date, y = value, color = "Vintage data (forecast date)"), 
+            geom_point(data = observed_data_forecast_filtered,
+                      aes(x = date, y = value, color = "Vintage data (forecast date)"),
                       size = 2.5, alpha = 0.8, inherit.aes = FALSE) +
-            
+
             # Add nowcast uncertainty as error bar
-            geom_errorbar(data = data.frame(x = nowcast_date, 
+            geom_errorbar(data = data.frame(x = nowcast_date,
                                           y = nowcast_median,
                                           ymin = nowcast_q25,
                                           ymax = nowcast_q75),
                          aes(x = x, y = y, ymin = ymin, ymax = ymax),
                          color = "#FF8C00", width = 2, linewidth = 1.5, alpha = 0.9, inherit.aes = FALSE) +
-            
+
             # Add nowcast median point
             geom_point(data = data.frame(x = nowcast_date, y = nowcast_median),
                       aes(x = x, y = y, color = "Nowcast uncertainty"),
                       size = 4, alpha = 0.9, inherit.aes = FALSE) +
-            
+
             # Add vertical line at forecast date
-            geom_vline(xintercept = as.numeric(forecast_date), 
+            geom_vline(xintercept = as.numeric(forecast_date),
                       linetype = "dashed", color = "gray50", alpha = 0.7) +
-            
+
             # Add manual color scale for legend
             scale_color_manual(
                 name = "Data Sources",
@@ -232,19 +232,19 @@ tryCatch({
                 ),
                 breaks = c("Latest data", "Vintage data (forecast date)", "Nowcast uncertainty")
             ) +
-            
+
             # Update labels and legend
             labs(
                 title = paste("EpiAutoGP Forecast - COVID-19 Hospital Admissions (US)"),
-                subtitle = paste("Forecast generated on:", as.character(forecast_date), 
+                subtitle = paste("Forecast generated on:", as.character(forecast_date),
                                "| Nowcast date:", as.character(nowcast_date)),
                 x = "Date",
                 y = "Hospital Admissions",
-                caption = paste("Dashed line marks forecast date |", 
+                caption = paste("Dashed line marks forecast date |",
                               "Red: Latest data extended through forecast period |",
                               "Teal bands show forecast uncertainty")
             ) +
-            
+
             # Improve theme
             theme_minimal() +
             theme(
@@ -258,12 +258,12 @@ tryCatch({
                 legend.text = element_text(size = 10),
                 panel.grid.minor = element_blank()
             )
-        
+
         # Save the forecast plot
         plot_filename <- file.path(output_directory, paste0("forecast_plot_", first_location, ".png"))
-        
+
         cat("💾 Saving forecast plot for location", first_location, "to:", plot_filename, "\n")
-        
+
         ggsave(
             filename = plot_filename,
             plot = enhanced_plot,
@@ -272,26 +272,26 @@ tryCatch({
             dpi = 300,
             bg = "white"
         )
-        
+
         cat("📊 Forecast plot saved successfully\n")
     } else {
         cat("⚠️  No plots were generated\n")
     }
-    
+
     # Clean up temporary file
     if (file.exists(temp_observed_file)) {
         file.remove(temp_observed_file)
     }
-    
+
     cat("\n=== Forecast Plotting Summary ===\n")
     cat("✅ Successfully generated forecast plot with multi-layer data visualization\n")
     cat("📊 Latest data points:", nrow(observed_data_latest_filtered), "\n")
     cat("� Forecast date data points:", nrow(observed_data_forecast_filtered), "\n")
     cat("📅 Plotting period:", as.character(lookback_start_date), "to", as.character(forecast_end_date), "\n")
-    cat("🎯 Nowcast uncertainty: median =", round(nowcast_median, 1), 
+    cat("🎯 Nowcast uncertainty: median =", round(nowcast_median, 1),
         ", IQR = [", round(nowcast_q25, 1), ",", round(nowcast_q75, 1), "]\n")
     cat("📁 Output files saved to:", output_directory, "\n")
-    
+
     # List the created files
     plot_files <- list.files(output_directory, pattern = ".*forecast_plot.*\\.png$", full.names = FALSE)
     if (length(plot_files) > 0) {
@@ -300,7 +300,7 @@ tryCatch({
             cat("   -", file, "\n")
         }
     }
-    
+
     cat("\n🎉 Enhanced forecast plotting completed successfully!\n")
     cat("📈 Plot includes:\n")
     cat("   - Black line: Latest available data (extended through forecast period)\n")
