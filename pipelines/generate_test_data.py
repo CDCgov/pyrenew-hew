@@ -330,7 +330,7 @@ def simulate_data_from_bootstrap(
         report_date=max_train_date,
         first_training_date=first_training_date,
         last_training_date=max_train_date,
-        model_run_dir=model_run_dir,
+        save_dir=model_run_dir / "data",
         nhsn_data_path=bootstrap_nhsn_data_path,
     )
 

@@ -449,7 +449,7 @@ def process_and_save_loc_data(
     report_date: datetime.date,
     first_training_date: datetime.date,
     last_training_date: datetime.date,
-    model_run_dir: Path,
+    save_dir: Path,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     loc_level_nssp_data: pl.LazyFrame = None,
@@ -459,6 +459,8 @@ def process_and_save_loc_data(
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+
+    os.makedirs(save_dir, exist_ok=True)
 
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
@@ -544,10 +546,7 @@ def process_and_save_loc_data(
         "nwss_step_size": 1,
     }
 
-    data_dir = Path(model_run_dir, "data")
-    os.makedirs(data_dir, exist_ok=True)
-
-    with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
+    with open(Path(save_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file, default=str)
 
     combined_training_dat = combine_surveillance_data(
@@ -558,10 +557,10 @@ def process_and_save_loc_data(
     )
 
     if logger is not None:
-        logger.info(f"Saving {loc_abb} to {data_dir}")
+        logger.info(f"Saving {loc_abb} to {save_dir}")
 
     combined_training_dat.write_csv(
-        Path(data_dir, "combined_training_data.tsv"), separator="\t"
+        Path(save_dir, "combined_training_data.tsv"), separator="\t"
     )
     return None
 

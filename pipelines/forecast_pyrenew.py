@@ -336,7 +336,8 @@ def main(
     model_batch_dir = Path(output_dir, model_batch_dir_name)
 
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
-    os.makedirs(model_run_dir, exist_ok=True)
+    model_output_dir = Path(model_run_dir, pyrenew_model_name)
+    os.makedirs(model_output_dir, exist_ok=True)
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 

@@ -7,7 +7,7 @@
 #' forecasting models in the format expected by
 #' the forecasting functions.
 #'
-#' @param model_run_dir Path to the
+#' @param model_dir Path to the
 #' directory containing model run data.
 #' @param base_data_name Base name of the data file to load.
 #' @param epiweekly Logical. Indicate epiweekly (TRUE) or daily (FALSE) data.
@@ -21,7 +21,7 @@
 #' `prefix` (file prefix based on resolution).
 #' @export
 load_training_data <- function(
-  model_run_dir,
+  model_dir,
   base_data_name = "combined_training_data",
   epiweekly = FALSE
 ) {
@@ -32,7 +32,7 @@ load_training_data <- function(
     stringr::str_c(prefix, base_data_name),
     base_data_name
   )
-  data_path <- fs::path(model_run_dir, "data", data_name, ext = "tsv")
+  data_path <- fs::path(model_dir, "data", data_name, ext = "tsv")
 
   target_and_other_data <- readr::read_tsv(
     data_path,
