@@ -41,10 +41,10 @@ function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::Strin
 
     # Format nowcast data (only if nowcasts exist)
     nowcast_data = isempty(input.nowcast_dates) ?
-        # Return empty vector when no nowcasts
-        TData[] :
-        # Create nowcast data structure
-        create_nowcast_data(input.nowcast_reports, input.nowcast_dates; transformation)
+                   # Return empty vector when no nowcasts
+                   TData[] :
+                   # Create nowcast data structure
+                   create_nowcast_data(input.nowcast_reports, input.nowcast_dates; transformation)
 
     # Calculate forecasting dates
     forecast_dates = [input.forecast_date + Week(i) for i in 1:n_forecast_weeks]
@@ -184,18 +184,18 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
     )
 
     forecasts = isempty(model_info.nowcast_data) ?
-        # Direct forecast when no nowcasts
-        forecast(base_model, model_info.forecast_dates,
-            model_info.n_forecasts_per_nowcast;
-            inv_transformation = model_info.inv_transformation) :
-        forecast_with_nowcasts(
-            base_model, model_info.nowcast_data, model_info.forecast_dates,
-            model_info.n_forecasts_per_nowcast;
-            inv_transformation = model_info.inv_transformation)
+                # Direct forecast when no nowcasts
+                forecast(base_model, model_info.forecast_dates,
+        model_info.n_forecasts_per_nowcast;
+        inv_transformation = model_info.inv_transformation) :
+                forecast_with_nowcasts(
+        base_model, model_info.nowcast_data, model_info.forecast_dates,
+        model_info.n_forecasts_per_nowcast;
+        inv_transformation = model_info.inv_transformation)
 
     return (;
         forecast_dates = model_info.forecast_dates,
-        forecasts = forecasts,
+        forecasts = forecasts
     )
 end
 

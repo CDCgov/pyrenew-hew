@@ -20,12 +20,11 @@ export prepare_for_modelling,
        forecast_with_epiautogp,
        forecast_with_epiautogp
 
-# Export output functions
-export create_hubverse_table,
-       save_model_outputs,
-       load_json_data,
-       prepare_epiautogp_data,
-       run_epiautogp_model
+# Export output functions and types
+export AbstractForecastOutput,
+       AbstractHubverseOutput,
+       QuantileOutput,
+       create_df
 
 const DEFAULT_PATHOGEN_DICT = Dict(
     "COVID-19" => "covid",
@@ -35,12 +34,12 @@ const DEFAULT_PATHOGEN_DICT = Dict(
 
 const DEFAULT_TARGET_DICT = Dict(
     "nhsn" => "hosp",
-    "nssp" => "prop ed visits",
+    "nssp" => "prop ed visits"
 )
 
 include("parse_arguments.jl") # Function to parse command line arguments
 include("input.jl")           # Functions to load and process input JSON data
 include("modelling.jl")        # Main modeling and forecasting functions
-# include("output.jl")           # Functions for generating hubverse outputs
+include("output.jl")           # Functions for generating hubverse outputs
 
 end
