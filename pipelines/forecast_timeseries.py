@@ -259,6 +259,7 @@ def main(
         output_data_dir=Path(baseline_model_output_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
     logger.info("Done getting eval data.")
 
