@@ -12,8 +12,8 @@ using JSON3
         forecast_dates = [Date(2024, 1, 15), Date(2024, 1, 22), Date(2024, 1, 29)]
         # Create forecast matrix: 3 dates × 5 samples
         forecasts = [100.0 120.0 95.0 110.0 105.0;  # Week 1
-                    110.0 130.0 105.0 115.0 112.0;  # Week 2
-                    120.0 135.0 115.0 125.0 118.0]  # Week 3
+                     110.0 130.0 105.0 115.0 112.0;  # Week 2
+                     120.0 135.0 115.0 125.0 118.0]  # Week 3
 
         return (;
             forecast_dates = forecast_dates,
@@ -36,7 +36,7 @@ using JSON3
 
         # Check required columns exist
         required_cols = ["reference_date", "target", "horizon", "target_end_date",
-                        "location", "output_type", "output_type_id", "value"]
+            "location", "output_type", "output_type_id", "value"]
         for col in required_cols
             @test col in names(hubverse_df)
         end
@@ -67,8 +67,9 @@ using JSON3
         # Check quantile levels for quantile outputs
         quantile_rows = filter(row -> row.output_type == "quantile", hubverse_df)
         if nrow(quantile_rows) > 0
-            expected_quantiles = [0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
-                                 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99]
+            expected_quantiles = [
+                0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
+                0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99]
             actual_quantiles = sort(unique(quantile_rows.output_type_id))
             @test actual_quantiles == expected_quantiles
         end
@@ -88,7 +89,7 @@ using JSON3
         @test names(saved_df) == names(hubverse_df)
 
         # Clean up
-        rm(output_dir, recursive=true)
+        rm(output_dir, recursive = true)
     end
 
     @testset "save_model_outputs function" begin
@@ -148,7 +149,7 @@ using JSON3
         @test metadata["n_samples"] == 5
 
         # Clean up
-        rm(output_dir, recursive=true)
+        rm(output_dir, recursive = true)
     end
 
     @testset "Edge cases and error handling" begin
@@ -175,7 +176,7 @@ using JSON3
             @test isfile(joinpath(output_dir, "mcmc_output", "tidy_forecast_samples.csv"))
             @test isfile(joinpath(output_dir, "forecast_metadata.json"))
 
-            rm(output_dir, recursive=true)
+            rm(output_dir, recursive = true)
         end
 
         @testset "Negative horizons" begin
@@ -197,7 +198,7 @@ using JSON3
             @test 0 in horizons   # Date(2024, 1, 8) is same as reference
             @test 1 in horizons   # Date(2024, 1, 15) is 1 week after reference
 
-            rm(output_dir, recursive=true)
+            rm(output_dir, recursive = true)
         end
     end
 end

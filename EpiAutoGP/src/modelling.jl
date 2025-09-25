@@ -28,19 +28,22 @@ input = EpiAutoGPInput(...)
 model_setup = prepare_for_modelling(input, "boxcox", 4, 1000)
 ```
 """
-function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::String, n_forecast_weeks::Int, n_forecasts::Int)
+function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::String,
+        n_forecast_weeks::Int, n_forecasts::Int)
     # Extract stable confirmed data, excluding recent uncertain dates with nowcasts
     stable_data_idxs = findall(d -> !(d in input.nowcast_dates), input.dates)
     stable_data_dates = input.dates[stable_data_idxs]
     stable_data_values = input.reports[stable_data_idxs]
 
     # Get transformation functions
-    transformation, inv_transformation = get_transformations(transformation_name, input.reports)
+    transformation,
+    inv_transformation = get_transformations(transformation_name, input.reports)
 
     # Format nowcast data (only if nowcasts exist)
     nowcast_data = if isempty(input.nowcast_dates) || isempty(input.nowcast_reports)
         # Return empty vector when no nowcasts
-        NamedTuple{(:ds, :y, :values), Tuple{Vector{Date}, Vector{Float64}, Vector{Float64}}}[]
+        NamedTuple{
+            (:ds, :y, :values), Tuple{Vector{Date}, Vector{Float64}, Vector{Float64}}}[]
     else
         create_nowcast_data(input.nowcast_reports, input.nowcast_dates; transformation)
     end
@@ -53,8 +56,8 @@ function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::Strin
                               max(1, n_forecasts ÷ length(nowcast_data)) :
                               n_forecasts
 
-
-    return (; stable_data_dates, stable_data_values, nowcast_data, forecast_dates, n_forecasts_per_nowcast, transformation, inv_transformation)
+    return (; stable_data_dates, stable_data_values, nowcast_data, forecast_dates,
+        n_forecasts_per_nowcast, transformation, inv_transformation)
 end
 
 """
@@ -187,7 +190,8 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
             model_info.n_forecasts_per_nowcast;
             inv_transformation = model_info.inv_transformation)
     else
-        forecast_with_nowcasts(base_model, model_info.nowcast_data, model_info.forecast_dates,
+        forecast_with_nowcasts(
+            base_model, model_info.nowcast_data, model_info.forecast_dates,
             model_info.n_forecasts_per_nowcast;
             inv_transformation = model_info.inv_transformation)
     end
@@ -200,7 +204,6 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
         disease = input.pathogen
     )
 end
-
 
 """
     run_epiautogp_pipeline(input::EpiAutoGPInput, args::Dict{String, Any}) -> NamedTuple

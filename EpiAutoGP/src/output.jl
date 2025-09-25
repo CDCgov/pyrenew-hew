@@ -2,8 +2,9 @@ function create_hubverse_table(
         input::EpiAutoGPInput,
         results::NamedTuple,
         output_dir::String,
-        quantile_levels = [0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
-                      0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99]
+        quantile_levels = [
+            0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
+            0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.975, 0.99]
 )
     @info "Creating hubverse table for $(results.disease) in $(results.location)"
 
@@ -13,13 +14,12 @@ function create_hubverse_table(
     location = results.location
     disease = results.disease
 
-
     hubverse_rows = []
 
     # Create target name based on disease
     disease_abbr = disease == "COVID-19" ? "covid" :
-                  disease == "Influenza" ? "flu" :
-                  lowercase(disease)
+                   disease == "Influenza" ? "flu" :
+                   lowercase(disease)
     target = "wk inc $disease_abbr hosp"
 
     for (date_idx, target_end_date) in enumerate(forecast_dates)
@@ -36,7 +36,7 @@ function create_hubverse_table(
             # Create row matching exact hubverse format
             row = (
                 target_end_date = string(target_end_date),
-                value = round(q_value, digits=6),
+                value = round(q_value, digits = 6),
                 output_type_id = q_level,
                 horizon = horizon,
                 output_type = "quantile",
