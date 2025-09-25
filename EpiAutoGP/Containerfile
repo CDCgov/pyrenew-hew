@@ -13,7 +13,7 @@ COPY EpiAutoGP /EpiAutoGP
 
 WORKDIR /EpiAutoGP
 # Threads Overloadable by user at runtime
-ENV JULIA_NUM_THREADS=auto 
+ENV JULIA_NUM_THREADS=auto
 
 RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.instantiate()'
 
