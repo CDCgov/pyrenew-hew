@@ -571,7 +571,7 @@ def process_and_save_loc_param(
     loc_level_nwss_data,
     param_estimates,
     fit_ed_visits,
-    model_run_dir,
+    save_dir,
 ) -> None:
     loc_pop_df = get_loc_pop_df()
     loc_pop = loc_pop_df.filter(pl.col("abb") == loc_abb).item(0, "population")
@@ -618,7 +618,7 @@ def process_and_save_loc_param(
         "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
         "inf_to_hosp_admit_pmf": pmfs["delay_pmf"],
     }
-    with open(Path(model_run_dir, "model_params.json"), "w") as json_file:
+    with open(Path(save_dir, "model_params.json"), "w") as json_file:
         json.dump(model_params, json_file, default=str)
 
     return None
