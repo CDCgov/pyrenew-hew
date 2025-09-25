@@ -1,7 +1,7 @@
 abstract type AbstractForecastOutput end
 abstract type AbstractHubverseOutput <: AbstractForecastOutput end
 
-struct QuantileOutput{F <: AbstractFloat} <: AbstractHubverseOutput 
+struct QuantileOutput{F <: AbstractFloat} <: AbstractHubverseOutput
     quantile_levels::Vector{F}
 end
 
