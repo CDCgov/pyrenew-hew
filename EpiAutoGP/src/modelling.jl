@@ -201,7 +201,7 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
 end
 
 """
-    run_epiautogp_pipeline(input::EpiAutoGPInput, args::Dict{String, Any}) -> NamedTuple
+    forecast_with_epiautogp(input::EpiAutoGPInput, args::Dict{String, Any}) -> NamedTuple
 
 Run the complete EpiAutoGP modeling pipeline using parsed command-line arguments.
 
@@ -229,11 +229,11 @@ with parsed command-line arguments to execute the full nowcasting and forecastin
 # Typical usage pattern
 args = parse_arguments()
 input_data = read_and_validate_data(args["json-input"])
-results = run_epiautogp_pipeline(input_data, args)
+results = forecast_with_epiautogp(input_data, args)
 forecast_dates, forecasts = results.forecast_dates, results.forecasts
 ```
 """
-function run_epiautogp_pipeline(input::EpiAutoGPInput, args::Dict{String, Any})
+function forecast_with_epiautogp(input::EpiAutoGPInput, args::Dict{String, Any})
     return forecast_with_epiautogp(input;
         n_forecast_weeks = args["n-forecast-weeks"],
         n_forecasts = args["n-forecast-draws"],

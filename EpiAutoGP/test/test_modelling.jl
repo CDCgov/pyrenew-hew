@@ -141,7 +141,7 @@ using NowcastAutoGP
         end
     end
 
-    @testset "run_epiautogp_pipeline function" begin
+    @testset "forecast_with_epiautogp function" begin
         input = create_test_input(include_nowcasts = false)
 
         args = Dict(
@@ -154,7 +154,7 @@ using NowcastAutoGP
             "n-hmc" => 3
         )
 
-        forecast_dates, forecasts = run_epiautogp_pipeline(input, args)
+        forecast_dates, forecasts = forecast_with_epiautogp(input, args)
 
         # Check results
         @test length(forecast_dates) == 2

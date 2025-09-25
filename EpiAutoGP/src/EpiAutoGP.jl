@@ -18,7 +18,7 @@ export EpiAutoGPInput,
 export prepare_for_modelling,
        fit_base_model,
        forecast_with_epiautogp,
-       run_epiautogp_pipeline
+       forecast_with_epiautogp
 
 # Export output functions
 export create_hubverse_table,
