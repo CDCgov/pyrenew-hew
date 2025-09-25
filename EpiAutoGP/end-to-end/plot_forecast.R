@@ -291,4 +291,5 @@ tryCatch({
     cat("   - Ensure forecasttools package is installed and loaded\n")
     cat("   - Verify the forecast data contains expected columns\n")
     quit(status = 1)
-})
+  }
+)
