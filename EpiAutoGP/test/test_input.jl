@@ -29,7 +29,8 @@ function create_sample_input(output_path::String; n_weeks::Int = 30,
 
     forecast_date = dates[end]
     nowcast_dates = dates[max(1, end - 2):end]  # Last 3 days
-    nowcast_reports = [[reports[max(1, end - 2) + j - 1] + rand(-5:5) for j in 1:3] for _ in 1:10]  # 10 realizations, each with 3 values
+    nowcast_reports = [[reports[max(1, end - 2) + j - 1] + rand(-5:5) for j in 1:3]
+                       for _ in 1:10]  # 10 realizations, each with 3 values
 
     input_data = EpiAutoGPInput(
         dates, reports, pathogen, location, "nhsn",
@@ -337,7 +338,9 @@ end
             "nhsn",
             Date("2024-01-30"),
             realistic_dates[(end - 2):end],  # Last 3 days for nowcasting
-            [[realistic_reports[end - 2] + rand(), realistic_reports[end - 1] + rand(), realistic_reports[end] + rand()] for _ in 1:5]  # 5 realizations with 3 values each
+            [[realistic_reports[end - 2] + rand(),
+                 realistic_reports[end - 1] + rand(), realistic_reports[end] + rand()]
+             for _ in 1:5]  # 5 realizations with 3 values each
         )
 
         @test validate_input(realistic_data) == true
