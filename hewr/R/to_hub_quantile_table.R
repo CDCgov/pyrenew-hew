@@ -18,6 +18,7 @@ var_to_target <- function(variable, disease) {
     disease,
     "Influenza" ~ "flu",
     "COVID-19" ~ "covid",
+    "RSV" ~ "rsv",
     .default = disease
   )
   dplyr::case_match(
