@@ -58,7 +58,9 @@ save_forecast_figures <- function(
     pyrenew_model_name
   )
 
-  figure_dir <- fs::path(model_run_dir, model_name, "figures")
+  model_dir <- fs::path(model_run_dir, model_name)
+  figure_dir <- fs::path(model_dir, "figures")
+  data_dir <- fs::path(model_dir, "data")
   dir_create(figure_dir)
 
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
@@ -72,7 +74,7 @@ save_forecast_figures <- function(
 
   y_transforms <- c("identity" = "", "log10" = "_log")
 
-  processed_forecast$data <- read_and_combine_data(model_run_dir)
+  processed_forecast$data <- read_and_combine_data(model_dir)
 
   distinct_fig_type_tbl <-
     processed_forecast$ci |>

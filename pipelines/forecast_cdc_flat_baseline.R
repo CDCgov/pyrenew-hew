@@ -67,8 +67,7 @@ cdc_flat_forecast <- function(
 
 
 main <- function(
-  model_run_dir,
-  model_name,
+  model_dir,
   n_forecast_days = 28,
   epiweekly = FALSE
 ) {
@@ -80,7 +79,7 @@ main <- function(
   data_frequency <- if_else(epiweekly, "1 week", "1 day")
 
   data_info <- hewr::load_training_data(
-    model_run_dir,
+    model_dir,
     "combined_training_data",
     epiweekly
   )
@@ -111,9 +110,6 @@ main <- function(
     aheads = 1:aheads_cdc_baseline
   )
 
-  model_dir <- path(model_run_dir, model_name)
-  dir_create(model_dir)
-
   baseline_cdc_forecast_e <-
     dplyr::full_join(
       baseline_cdc_count_e,
@@ -138,12 +134,8 @@ p <- arg_parser(
   "Forecast other (non-target-disease) ED visits for a given location."
 ) |>
   add_argument(
-    "model_run_dir",
+    "--model-dir",
     help = "Directory containing the model data and output.",
-  ) |>
-  add_argument(
-    "--model-name",
-    help = "Name of model.",
   ) |>
   add_argument(
     "--n-forecast-days",
@@ -151,20 +143,17 @@ p <- arg_parser(
     default = 28L
   )
 argv <- parse_args(p)
-model_run_dir <- path(argv$model_run_dir)
-model_name <- argv$model_name
+model_dir <- path(argv$model_dir)
 n_forecast_days <- argv$n_forecast_days
 
 # Baseline forecasts on 1 day resolution
 main(
-  model_run_dir,
-  model_name,
+  model_dir,
   n_forecast_days = n_forecast_days
 )
 # Baseline forecasts on 1 (epi)week resolution
 main(
-  model_run_dir,
-  model_name,
+  model_dir,
   n_forecast_days = n_forecast_days,
   epiweekly = TRUE
 )
