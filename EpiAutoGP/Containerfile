@@ -1,0 +1,21 @@
+#syntax=docker/dockerfile:1-labs
+
+# Use Julia official image as base
+FROM julia:1.11.7
+
+ARG GIT_COMMIT_SHA
+ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
+
+ARG GIT_BRANCH_NAME
+ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
+
+COPY EpiAutoGP /EpiAutoGP
+
+WORKDIR /EpiAutoGP
+# Threads Overloadable by user at runtime
+ENV JULIA_NUM_THREADS=auto
+
+RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.instantiate()'
+
+# Default command to run the model
+ENTRYPOINT ["julia", "--project", "run.jl"]

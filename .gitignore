@@ -378,7 +378,7 @@ docs/site/
 # Project.toml It records a fixed state of all packages used by the project. As
 # such, it should not be committed for packages, but should be committed for
 # applications that require a static environment.
-#Manifest.toml
+Manifest.toml
 
 
 .DS_Store
@@ -405,3 +405,8 @@ nwss-vintages
 # Azure configuration files
 azureconfig.env
 azureconfig.sh
+
+# EpiAutoGP end-to-end example edits
+!EpiAutoGP/end-to-end/vintaged_us_nhsn_data.csv
+!EpiAutoGP/end-to-end/output/2025-08-16-CFA-EpiAutoGP-US-covid-nhsn.csv
+!EpiAutoGP/end-to-end/output/plots/forecast_plot_US.png
