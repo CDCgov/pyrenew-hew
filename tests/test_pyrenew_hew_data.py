@@ -130,8 +130,8 @@ def test_to_forecast_data(
 
 
 def test_pyrenew_wastewater_data():
-    first_training_date = np.datetime64("2023-01-01")
-    last_training_date = np.datetime64("2023-07-23")
+    first_training_date = dt.date(2023, 1, 1)  # Use datetime.date
+    last_training_date = dt.date(2023, 7, 23)   # Use datetime.date
     dates = pl.date_range(
         first_training_date,
         last_training_date,
