@@ -534,11 +534,13 @@ class HospAdmitObservationProcess(RandomVariable):
         else:
             which_obs_weekly_hosp_admissions = jnp.arange(n_datapoints)
             if model_t_first_pred_admissions < 0:
-                which_obs_weekly_hosp_admissions = which_obs_weekly_hosp_admissions[
-                    (-model_t_first_pred_admissions - 1) // 7 + 1 :
-                ]
+                # Skip weeks ending before model t=0 (during initialization period)
+                # ceil(-model_t_first_pred_admissions / 7) computed as (-x-1)//7 + 1
+                skip_weeks = (-model_t_first_pred_admissions - 1) // 7 + 1
+
                 # Truncate to include only the epiweek ending after
                 # model t0 for posterior prediction
+                which_obs_weekly_hosp_admissions = which_obs_weekly_hosp_admissions[skip_weeks:]
 
         return which_obs_weekly_hosp_admissions
 
