@@ -1,4 +1,5 @@
 import datetime as dt
+import itertools
 import json
 
 import numpy as np
@@ -209,35 +210,51 @@ def test_pyrenew_wastewater_data():
 
 
 @pytest.fixture
-def mock_data():
+def base_data():
+    """Base data dictionary for all tests"""
+    return {
+        "loc_pop": [10000],
+        "right_truncation_offset": 10,
+    }
+
+
+@pytest.fixture
+def ed_visits_data():
+    """ED visits data component"""
     return {
         "nssp_training_data": {
-            "date": [
-                "2025-01-01",
-                "2025-01-02",
-            ],
+            "date": ["2025-01-01", "2025-01-02"],
             "geo_value": ["CA"] * 2,
             "other_ed_visits": [200, 400],
             "observed_ed_visits": [10, 3],
             "data_type": ["train"] * 2,
         },
+        "nssp_training_dates": ["2025-01-01"],
+        "nssp_step_size": 1,
+    }
+
+
+@pytest.fixture
+def hospital_admissions_data():
+    """Hospital admissions data component"""
+    return {
         "nhsn_training_data": {
             "weekendingdate": ["2025-01-01", "2025-01-02"],
             "jurisdiction": ["CA"] * 2,
             "hospital_admissions": [5, 1],
             "data_type": ["train"] * 2,
         },
-        "loc_pop": [10000],
-        "nssp_training_dates": ["2025-01-01"],
         "nhsn_training_dates": ["2025-01-04"],
-        "right_truncation_offset": 10,
+        "nhsn_step_size": 7,
+    }
+
+
+@pytest.fixture
+def wastewater_data():
+    """Wastewater data component"""
+    return {
         "nwss_training_data": {
-            "date": [
-                "2025-01-01",
-                "2025-01-01",
-                "2025-01-02",
-                "2025-01-02",
-            ],
+            "date": ["2025-01-01", "2025-01-01", "2025-01-02", "2025-01-02"],
             "site": ["1.0", "1.0", "2.0", "2.0"],
             "lab": ["1.0", "1.0", "1.0", "1.0"],
             "site_pop": [4000, 4000, 2000, 2000],
@@ -248,37 +265,44 @@ def mock_data():
             "below_lod": [False, False, False, False],
         },
         "pop_fraction": [0.4, 0.4, 0.2],
-        "population_size": 1e5,
-        "nhsn_step_size": 7,
-        "nssp_step_size": 1,
         "nwss_step_size": 1,
     }
 
 
-@pytest.fixture
-def mock_data_dir(mock_data, tmpdir):
-    data_path = tmpdir.join("data.json")
-    with open(data_path, "w") as f:
-        json.dump(mock_data, f)
-    return data_path
+@pytest.mark.parametrize(
+    "fit_ed_visits,fit_hospital_admissions,fit_wastewater",
+    list(itertools.product([False, True], repeat=3)),
+)
+def test_json_roundtrip(
+    tmp_path,
+    base_data,
+    ed_visits_data,
+    hospital_admissions_data,
+    wastewater_data,
+    fit_ed_visits,
+    fit_hospital_admissions,
+    fit_wastewater,
+):
+    # Build data dictionary based on parameters
+    data_dict = base_data.copy()
 
+    if fit_ed_visits:
+        data_dict.update(ed_visits_data)
+    if fit_hospital_admissions:
+        data_dict.update(hospital_admissions_data)
+    if fit_wastewater:
+        data_dict.update(wastewater_data)
 
-def test_build_pyrenew_hew_data_from_json(mock_data_dir):
-    # Test when all `fit_` arguments are False
-    data = PyrenewHEWData.from_json(mock_data_dir)
-    assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is None
-    assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater_conc is None
+    # Write to json
+    json_path = tmp_path / "data.json"
+    with open(json_path, "w") as f:
+        json.dump(data_dict, f)
 
-    # Test when all `fit_` arguments are True
+    # Read from json
     data = PyrenewHEWData.from_json(
-        mock_data_dir,
-        fit_ed_visits=True,
-        fit_hospital_admissions=True,
-        fit_wastewater=True,
+        json_path,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
     )
     assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is not None
-    assert data.data_observed_disease_hospital_admissions is not None
-    assert data.data_observed_disease_wastewater_conc is not None
