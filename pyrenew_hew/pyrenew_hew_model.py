@@ -540,7 +540,9 @@ class HospAdmitObservationProcess(RandomVariable):
 
                 # Truncate to include only the epiweek ending after
                 # model t0 for posterior prediction
-                which_obs_weekly_hosp_admissions = which_obs_weekly_hosp_admissions[skip_weeks:]
+                which_obs_weekly_hosp_admissions = which_obs_weekly_hosp_admissions[
+                    skip_weeks:
+                ]
 
         return which_obs_weekly_hosp_admissions
 

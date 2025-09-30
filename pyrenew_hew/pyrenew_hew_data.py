@@ -7,16 +7,14 @@ import jax.numpy as jnp
 import numpy as np
 import polars as pl
 from jax.typing import ArrayLike
-
 from pyrenew.time import (
     create_date_time_spine,
     date_to_model_t,
-    get_date_range_length,
     get_end_date,
     get_n_data_days,
-    model_t_to_date,
     validate_mmwr_dates,
 )
+
 
 class PyrenewHEWData:
     """
@@ -316,9 +314,8 @@ class PyrenewHEWData:
     @property
     def date_time_spine(self):
         return create_date_time_spine(
-            self.first_data_date_overall,
-            self.last_data_date_overall
-            )
+            self.first_data_date_overall, self.last_data_date_overall
+        )
 
     @property
     def wastewater_data_extended(self):
@@ -365,30 +362,40 @@ class PyrenewHEWData:
     def model_t_obs_wastewater(self):
         if self.nwss_training_data is not None:
             observed_dates = self.nwss_training_data.get_column("date").to_numpy()
-            return jnp.array([
-                date_to_model_t(date, self.first_data_date_overall)
-                for date in observed_dates
-                ])
+            return jnp.array(
+                [
+                    date_to_model_t(date, self.first_data_date_overall)
+                    for date in observed_dates
+                ]
+            )
         return None
 
     @property
     def model_t_obs_ed_visits(self):
         if self.nssp_training_data is not None:
-            observed_dates = self.nssp_training_data.get_column("date").unique().to_numpy()
-            return jnp.array([
-                date_to_model_t(date, self.first_data_date_overall)
-                for date in observed_dates
-                ])
+            observed_dates = (
+                self.nssp_training_data.get_column("date").unique().to_numpy()
+            )
+            return jnp.array(
+                [
+                    date_to_model_t(date, self.first_data_date_overall)
+                    for date in observed_dates
+                ]
+            )
         return None
 
     @property
     def model_t_obs_hospital_admissions(self):
         if self.nhsn_training_data is not None:
-            observed_dates = self.nhsn_training_data.get_column("weekendingdate").unique().to_numpy()
-            return jnp.array([
-                date_to_model_t(date, self.first_data_date_overall)
-                for date in observed_dates
-                ])
+            observed_dates = (
+                self.nhsn_training_data.get_column("weekendingdate").unique().to_numpy()
+            )
+            return jnp.array(
+                [
+                    date_to_model_t(date, self.first_data_date_overall)
+                    for date in observed_dates
+                ]
+            )
         return None
 
     @property
@@ -431,9 +438,9 @@ class PyrenewHEWData:
         n_weeks = n_days // 7
         first_dow = self.first_data_date_overall.astype(dt.datetime).weekday()
         to_first_sat = (5 - first_dow) % 7
-        first_mmwr_ending_date = (
-            self.first_data_date_overall + np.timedelta64(to_first_sat, "D")
-            )
+        first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
+            to_first_sat, "D"
+        )
         return PyrenewHEWData(
             n_ed_visits_data_days=n_days,
             n_hospital_admissions_data_days=n_weeks,
