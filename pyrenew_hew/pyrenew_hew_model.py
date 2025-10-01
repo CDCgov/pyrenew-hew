@@ -24,7 +24,7 @@ from pyrenew.metaclass import Model, RandomVariable
 from pyrenew.observation import NegativeBinomialObservation
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
-from pyrenew.time import daily_to_mmwr_epiweekly
+from pyrenew.time import daily_to_mmwr_epiweekly, get_first_week_on_or_after_t0
 
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
@@ -533,16 +533,10 @@ class HospAdmitObservationProcess(RandomVariable):
             ) // 7
         else:
             which_obs_weekly_hosp_admissions = jnp.arange(n_datapoints)
-            if model_t_first_pred_admissions < 0:
-                # Skip weeks ending before model t=0 (during initialization period)
-                # ceil(-model_t_first_pred_admissions / 7) computed as (-x-1)//7 + 1
-                skip_weeks = (-model_t_first_pred_admissions - 1) // 7 + 1
-
-                # Truncate to include only the epiweek ending after
-                # model t0 for posterior prediction
-                which_obs_weekly_hosp_admissions = which_obs_weekly_hosp_admissions[
-                    skip_weeks:
-                ]
+            skip_weeks = get_first_week_on_or_after_t0(model_t_first_pred_admissions)
+            which_obs_weekly_hosp_admissions = which_obs_weekly_hosp_admissions[
+                skip_weeks:
+            ]
 
         return which_obs_weekly_hosp_admissions
 

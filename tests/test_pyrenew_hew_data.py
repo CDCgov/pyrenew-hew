@@ -123,10 +123,38 @@ def test_to_forecast_data(
     assert (
         (forecast_data.first_hospital_admissions_date - data.first_data_date_overall)
         / np.timedelta64(1, "D")
-    ).item() <= 6
+    ).item() <= 7
 
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
     assert forecast_data.data_observed_disease_wastewater_conc is None
+
+
+def test_to_forecast_data_saturday_edge_case():
+    """
+    Test that to_forecast_data correctly handles the edge case where
+    first_data_date_overall is already a Saturday. In this case,
+    first_hospital_admissions_date should be the NEXT Saturday (7 days later),
+    not the same day.
+    """
+    # 2025-03-08 is a Saturday
+    first_date_saturday = np.datetime64("2025-03-08")
+
+    data = PyrenewHEWData(
+        n_ed_visits_data_days=10,
+        n_hospital_admissions_data_days=2,
+        first_ed_visits_date=first_date_saturday,
+        first_hospital_admissions_date=first_date_saturday,
+        right_truncation_offset=0,
+    )
+
+    forecast_data = data.to_forecast_data(n_forecast_points=14)
+
+    # Verify that first_hospital_admissions_date is 7 days after the start Saturday
+    expected_hosp_date = first_date_saturday + np.timedelta64(7, "D")
+    assert forecast_data.first_hospital_admissions_date == expected_hosp_date
+
+    # Verify it's still a Saturday
+    assert forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
 
 
 def test_pyrenew_wastewater_data():

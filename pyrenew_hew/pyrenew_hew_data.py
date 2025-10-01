@@ -8,6 +8,7 @@ import numpy as np
 import polars as pl
 from jax.typing import ArrayLike
 from pyrenew.time import (
+    align_observation_times,
     create_date_time_spine,
     date_to_model_t,
     get_end_date,
@@ -362,11 +363,10 @@ class PyrenewHEWData:
     def model_t_obs_wastewater(self):
         if self.nwss_training_data is not None:
             observed_dates = self.nwss_training_data.get_column("date").to_numpy()
-            return jnp.array(
-                [
-                    date_to_model_t(date, self.first_data_date_overall)
-                    for date in observed_dates
-                ]
+            return align_observation_times(
+                observed_dates,
+                self.first_data_date_overall,
+                aggregation_freq="daily",
             )
         return None
 
@@ -376,11 +376,10 @@ class PyrenewHEWData:
             observed_dates = (
                 self.nssp_training_data.get_column("date").unique().to_numpy()
             )
-            return jnp.array(
-                [
-                    date_to_model_t(date, self.first_data_date_overall)
-                    for date in observed_dates
-                ]
+            return align_observation_times(
+                observed_dates,
+                self.first_data_date_overall,
+                aggregation_freq="daily",
             )
         return None
 
@@ -390,11 +389,10 @@ class PyrenewHEWData:
             observed_dates = (
                 self.nhsn_training_data.get_column("weekendingdate").unique().to_numpy()
             )
-            return jnp.array(
-                [
-                    date_to_model_t(date, self.first_data_date_overall)
-                    for date in observed_dates
-                ]
+            return align_observation_times(
+                observed_dates,
+                self.first_data_date_overall,
+                aggregation_freq="daily",
             )
         return None
 
@@ -436,10 +434,13 @@ class PyrenewHEWData:
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
-        first_dow = self.first_data_date_overall.astype(dt.datetime).weekday()
-        to_first_sat = (5 - first_dow) % 7
+        start_date = self.first_data_date_overall.astype(dt.datetime)
+        first_dow = start_date.weekday()
+        days_to_first_saturday = (5 - first_dow) % 7
+        if days_to_first_saturday == 0:
+            days_to_first_saturday = 7
         first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
-            to_first_sat, "D"
+            days_to_first_saturday, "D"
         )
         return PyrenewHEWData(
             n_ed_visits_data_days=n_days,
