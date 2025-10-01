@@ -10,7 +10,6 @@ from jax.typing import ArrayLike
 from pyrenew.time import (
     align_observation_times,
     create_date_time_spine,
-    date_to_model_t,
     get_end_date,
     get_n_data_days,
     validate_mmwr_dates,

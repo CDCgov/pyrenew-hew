@@ -154,7 +154,9 @@ def test_to_forecast_data_saturday_edge_case():
     assert forecast_data.first_hospital_admissions_date == expected_hosp_date
 
     # Verify it's still a Saturday
-    assert forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
+    assert (
+        forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
+    )
 
 
 def test_pyrenew_wastewater_data():
