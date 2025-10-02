@@ -376,9 +376,7 @@ class EDVisitObservationProcess(RandomVariable):
 
         if ed_obs_time is None:  # True for forecasting/posterior prediction
             # slice the latent ed visits from model t0 to the end of the vector
-            ed_obs_idx = np.s_[
-                -t_first_ed_visit : potential_latent_ed_visits.size
-            ]
+            ed_obs_idx = np.s_[-t_first_ed_visit : potential_latent_ed_visits.size]
         else:
             ed_obs_idx = ed_obs_time - t_first_ed_visit
 
@@ -508,9 +506,7 @@ class HospAdmitObservationProcess(RandomVariable):
 
         # First prediction is made for the week ending day (Saturday)
         # of the first full epiweek
-        t_first_pred_admissions = (
-            t_first_admissions + truncated_latent_admit_days + 6
-        )
+        t_first_pred_admissions = t_first_admissions + truncated_latent_admit_days + 6
 
         model_dow_first_pred_admissions = (
             first_latent_admission_dow + truncated_latent_admit_days + 6
@@ -528,15 +524,11 @@ class HospAdmitObservationProcess(RandomVariable):
                 raise ValueError(
                     "Not all observed or predicted hospital admissions are on Saturdays."
                 )
-            hosp_admit_obs_idx = (
-                hosp_admit_time - t_first_pred_admissions
-            ) // 7
+            hosp_admit_obs_idx = (hosp_admit_time - t_first_pred_admissions) // 7
         else:
             hosp_admit_obs_idx = jnp.arange(n_datapoints)
             skip_weeks = get_first_week_on_or_after_t0(t_first_pred_admissions)
-            hosp_admit_obs_idx = hosp_admit_obs_idx[
-                skip_weeks:
-            ]
+            hosp_admit_obs_idx = hosp_admit_obs_idx[skip_weeks:]
 
         return hosp_admit_obs_idx
 
@@ -588,9 +580,7 @@ class HospAdmitObservationProcess(RandomVariable):
             )
         )
 
-        t_first_admissions = (
-            hospital_admissions_offset + t_first_infection
-        )
+        t_first_admissions = hospital_admissions_offset + t_first_infection
 
         first_latent_admission_dow = (
             first_latent_infection_dow + hospital_admissions_offset
@@ -795,19 +785,13 @@ class WastewaterObservationProcess(RandomVariable):
             sigma_ww_site = sigma_ww_site_rv()
 
         viral_genome_offset = viral_kinetics.shape[0] - 1  # max_shed_interval-2
-        t_first_viral_genome = (
-            viral_genome_offset + t_first_infection
-        )
+        t_first_viral_genome = viral_genome_offset + t_first_infection
 
         if data_observed is not None:
-            expected_conc_time_idx = (
-                ww_obs_time - t_first_viral_genome
-            )
+            expected_conc_time_idx = ww_obs_time - t_first_viral_genome
             # multiply the expected observed genomes by the site-specific multiplier at that sampling time
             expected_obs_log_v_site = (
-                expected_log_conc[
-                    expected_conc_time_idx, ww_obs_subpop
-                ]
+                expected_log_conc[expected_conc_time_idx, ww_obs_subpop]
                 + mode_ww_site[ww_obs_unit]
             )
             site_level_log_ww_conc = DistributionalVariable(
