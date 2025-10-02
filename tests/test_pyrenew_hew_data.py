@@ -112,21 +112,21 @@ def test_to_forecast_data(
     assert forecast_data.n_wastewater_data_days == n_days_expected
     assert forecast_data.n_hospital_admissions_data_days == n_weeks_expected
     assert forecast_data.right_truncation_offset is None
-    assert forecast_data.first_ed_visits_date == data.first_data_date_overall
+    assert forecast_data.ed_first_date == data.first_data_date_overall
 
     ## hosp admit date should be the first Saturday
-    assert forecast_data.first_hospital_admissions_date >= data.first_data_date_overall
+    assert forecast_data.hosp_admit_first_date >= data.first_data_date_overall
     assert (
-        forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
+        forecast_data.hosp_admit_first_date.astype(dt.datetime).weekday() == 5
     )
 
     assert (
-        (forecast_data.first_hospital_admissions_date - data.first_data_date_overall)
+        (forecast_data.hosp_admit_first_date - data.first_data_date_overall)
         / np.timedelta64(1, "D")
     ).item() <= 7
 
-    assert forecast_data.first_wastewater_date == data.first_data_date_overall
-    assert forecast_data.data_observed_disease_wastewater_conc is None
+    assert forecast_data.ww_first_date == data.first_data_date_overall
+    assert forecast_data.log_ww_conc_obs is None
 
 
 def test_to_forecast_data_saturday_edge_case():
@@ -149,12 +149,12 @@ def test_to_forecast_data_saturday_edge_case():
 
     forecast_data = data.to_forecast_data(n_forecast_points=14)
 
-    # Verify that first_hospital_admissions_date is 7 days after the start Saturday
+    # Verify that hosp_admit_first_date is 7 days after the start Saturday
     expected_hosp_date = first_date_saturday + np.timedelta64(7, "D")
-    assert forecast_data.first_hospital_admissions_date == expected_hosp_date
+    assert forecast_data.hosp_admit_first_date == expected_hosp_date
 
     # Verify it's still a Saturday
-    assert forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
+    assert forecast_data.hosp_admit_first_date.astype(dt.datetime).weekday() == 5
 
 
 def test_pyrenew_wastewater_data():
@@ -203,8 +203,8 @@ def test_pyrenew_wastewater_data():
     )
 
     forecast_data = data.to_forecast_data(n_forecast_points)
-    assert forecast_data.data_observed_disease_wastewater_conc is None
-    assert data.data_observed_disease_wastewater_conc is not None
+    assert forecast_data.log_ww_conc_obs is None
+    assert data.log_ww_conc_obs is not None
 
     assert forecast_data.ww_censored is None
     assert data.ww_censored is not None
@@ -215,19 +215,19 @@ def test_pyrenew_wastewater_data():
     assert forecast_data.ww_log_lod is None
     assert data.ww_log_lod is not None
 
-    assert forecast_data.ww_observed_lab_sites is None
-    assert data.ww_observed_lab_sites is not None
+    assert forecast_data.ww_obs_unit is None
+    assert data.ww_obs_unit is not None
 
-    assert forecast_data.ww_observed_subpops is None
-    assert data.ww_observed_subpops is not None
+    assert forecast_data.ww_obs_subpop is None
+    assert data.ww_obs_subpop is not None
 
-    assert data.model_t_obs_wastewater is not None
-    assert forecast_data.model_t_obs_wastewater is None
+    assert data.ww_obs_time is not None
+    assert forecast_data.ww_obs_time is None
 
     assert np.array_equal(data.n_ww_lab_sites, forecast_data.n_ww_lab_sites)
 
     assert np.array_equal(
-        data.data_observed_disease_wastewater_conc,
+        data.log_ww_conc_obs,
         ww_data["log_genome_copies_per_ml"],
     )
     assert len(data.ww_censored) == len(ww_data.filter(pl.col("below_lod") == 1))
@@ -295,9 +295,9 @@ def test_build_pyrenew_hew_data_from_json(mock_data_dir):
     # Test when all `fit_` arguments are False
     data = PyrenewHEWData.from_json(mock_data_dir)
     assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is None
-    assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater_conc is None
+    assert data.ed_visit_count is None
+    assert data.hosp_admit_count is None
+    assert data.log_ww_conc_obs is None
 
     # Test when all `fit_` arguments are True
     data = PyrenewHEWData.from_json(
@@ -307,9 +307,9 @@ def test_build_pyrenew_hew_data_from_json(mock_data_dir):
         fit_wastewater=True,
     )
     assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is not None
-    assert data.data_observed_disease_hospital_admissions is not None
-    assert data.data_observed_disease_wastewater_conc is not None
+    assert data.ed_visit_count is not None
+    assert data.hosp_admit_count is not None
+    assert data.log_ww_conc_obs is not None
 
 
 # ============================================================================
@@ -370,12 +370,12 @@ def test_model_t_conversions():
     assert data.first_data_date_overall == np.datetime64(ed_dates[0])
 
     # model_t should be 0 for first date, 3 for second ED visit
-    assert data.model_t_obs_ed_visits[0] == 0
-    assert data.model_t_obs_ed_visits[1] == 3
+    assert data.ed_obs_time[0] == 0
+    assert data.ed_obs_time[1] == 3
 
     # Hospital admissions at days 2 and 9
-    assert data.model_t_obs_hospital_admissions[0] == 2
-    assert data.model_t_obs_hospital_admissions[1] == 9
+    assert data.hosp_admit_time[0] == 2
+    assert data.hosp_admit_time[1] == 9
 
 
 def test_properties_with_no_data():
@@ -389,12 +389,12 @@ def test_properties_with_no_data():
         n_ed_visits_data_days=10, first_ed_visits_date=np.datetime64("2023-01-01")
     )
 
-    assert data.data_observed_disease_ed_visits is None
-    assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater_conc is None
-    assert data.model_t_obs_ed_visits is None
-    assert data.model_t_obs_hospital_admissions is None
-    assert data.model_t_obs_wastewater is None
+    assert data.ed_visit_count is None
+    assert data.hosp_admit_count is None
+    assert data.log_ww_conc_obs is None
+    assert data.ed_obs_time is None
+    assert data.hosp_admit_time is None
+    assert data.ww_obs_time is None
 
 
 def test_mixed_data_sources():
@@ -426,14 +426,14 @@ def test_mixed_data_sources():
     )
 
     # ED data should work
-    assert data.data_observed_disease_ed_visits is not None
-    assert len(data.data_observed_disease_ed_visits) == 1
+    assert data.ed_visit_count is not None
+    assert len(data.ed_visit_count) == 1
 
     # Others should be None
-    assert data.first_hospital_admissions_date is None
-    assert data.first_wastewater_date is None
-    assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater_conc is None
+    assert data.hosp_admit_first_date is None
+    assert data.ww_first_date is None
+    assert data.hosp_admit_count is None
+    assert data.log_ww_conc_obs is None
 
 
 def test_site_subpop_spine_with_auxiliary():
