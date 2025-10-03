@@ -116,9 +116,7 @@ def test_to_forecast_data(
 
     ## hosp admit date should be the first Saturday
     assert forecast_data.hosp_admit_first_date >= data.first_data_date_overall
-    assert (
-        forecast_data.hosp_admit_first_date.astype(dt.datetime).weekday() == 5
-    )
+    assert forecast_data.hosp_admit_first_date.astype(dt.datetime).weekday() == 5
 
     assert (
         (forecast_data.hosp_admit_first_date - data.first_data_date_overall)
