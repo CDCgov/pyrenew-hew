@@ -147,14 +147,14 @@ class PyrenewHEWData:
     def n_ed_visits_data_days(self):
         return get_n_data_days(
             n_points=self.n_ed_visits_data_days_,
-            date_array=self.ed_dates,
+            date_array=self.dates_observed_ed_visits,
         )
 
     @property
     def n_hospital_admissions_data_days(self):
         return get_n_data_days(
             n_points=self.n_hospital_admissions_data_days_,
-            date_array=self.hosp_admit_dates,
+            date_array=self.dates_observed_hospital_admissions,
             timestep_days=7,
         )
 
@@ -162,64 +162,64 @@ class PyrenewHEWData:
     def n_wastewater_data_days(self):
         return get_n_data_days(
             n_points=self.n_wastewater_data_days_,
-            date_array=self.ww_dates,
+            date_array=self.dates_observed_disease_wastewater,
         )
 
     @property
-    def ed_dates(self):
+    def dates_observed_ed_visits(self):
         if self.nssp_training_data is not None:
             return self.nssp_training_data.get_column("date").unique().to_numpy()
 
     @property
-    def hosp_admit_dates(self):
+    def dates_observed_hospital_admissions(self):
         if self.nhsn_training_data is not None:
             return (
                 self.nhsn_training_data.get_column("weekendingdate").unique().to_numpy()
             )
 
     @property
-    def ww_dates(self):
+    def dates_observed_disease_wastewater(self):
         if self.nwss_training_data is not None:
             return self.nwss_training_data.get_column("date").unique().to_numpy()
 
     @property
-    def ww_first_date(self):
-        if self.ww_dates is not None:
-            return self.ww_dates.min()
+    def first_wastewater_date(self):
+        if self.dates_observed_disease_wastewater is not None:
+            return self.dates_observed_disease_wastewater.min()
         return self.first_wastewater_date_
 
     @property
-    def ed_first_date(self):
-        if self.ed_dates is not None:
-            return self.ed_dates.min()
+    def first_ed_visits_date(self):
+        if self.dates_observed_ed_visits is not None:
+            return self.dates_observed_ed_visits.min()
         return self.first_ed_visits_date_
 
     @property
-    def hosp_admit_first_date(self):
-        if self.hosp_admit_dates is not None:
-            return self.hosp_admit_dates.min()
+    def first_hospital_admissions_date(self):
+        if self.dates_observed_hospital_admissions is not None:
+            return self.dates_observed_hospital_admissions.min()
         return self.first_hospital_admissions_date_
 
     @property
-    def ww_last_date(self):
+    def last_wastewater_date(self):
         return get_end_date(
-            self.ww_first_date,
+            self.first_wastewater_date,
             self.n_wastewater_data_days,
             timestep_days=1,
         )
 
     @property
-    def ed_last_date(self):
+    def last_ed_visits_date(self):
         return get_end_date(
-            self.ed_first_date,
+            self.first_ed_visits_date,
             self.n_ed_visits_data_days,
             timestep_days=1,
         )
 
     @property
-    def hosp_admit_last_date(self):
+    def last_hospital_admissions_date(self):
         return get_end_date(
-            self.hosp_admit_first_date,
+            self.first_hospital_admissions_date,
             self.n_hospital_admissions_data_days,
             timestep_days=7,
         )
@@ -227,17 +227,17 @@ class PyrenewHEWData:
     @property
     def first_data_dates(self):
         return dict(
-            ed_visits=self.ed_first_date,
-            hospital_admissions=self.hosp_admit_first_date,
-            wastewater=self.ww_first_date,
+            ed_visits=self.first_ed_visits_date,
+            hospital_admissions=self.first_hospital_admissions_date,
+            wastewater=self.first_wastewater_date,
         )
 
     @property
     def last_data_dates(self):
         return dict(
-            ed_visits=self.ed_last_date,
-            hospital_admissions=self.hosp_admit_last_date,
-            wastewater=self.ww_last_date,
+            ed_visits=self.last_ed_visits_date,
+            hospital_admissions=self.last_hospital_admissions_date,
+            wastewater=self.last_wastewater_date,
         )
 
     @property
@@ -257,17 +257,17 @@ class PyrenewHEWData:
         ).item()
 
     @property
-    def ed_visit_count(self):
+    def data_observed_disease_ed_visits(self):
         if self.nssp_training_data is not None:
             return self.nssp_training_data.get_column("observed_ed_visits").to_numpy()
 
     @property
-    def total_ed_visit_count(self):
+    def data_observed_total_ed_visits(self):
         if self.nssp_training_data is not None:
             return self.nssp_training_data.get_column("other_ed_visits").to_numpy()
 
     @property
-    def hosp_admit_count(self):
+    def data_observed_disease_hospital_admissions(self):
         if self.nhsn_training_data is not None:
             return self.nhsn_training_data.get_column("hospital_admissions").to_numpy()
 
@@ -334,7 +334,7 @@ class PyrenewHEWData:
             )
 
     @property
-    def log_ww_conc_obs(self):
+    def data_observed_disease_wastewater_conc(self):
         if self.nwss_training_data is not None:
             return self.wastewater_data_extended.get_column(
                 "log_genome_copies_per_ml"
@@ -359,7 +359,7 @@ class PyrenewHEWData:
             )
 
     @property
-    def ww_obs_time(self):
+    def model_t_obs_wastewater(self):
         if self.nwss_training_data is not None:
             observed_dates = self.nwss_training_data.get_column("date").to_numpy()
             return align_observation_times(
@@ -370,7 +370,7 @@ class PyrenewHEWData:
         return None
 
     @property
-    def ed_obs_time(self):
+    def model_t_obs_ed_visits(self):
         if self.nssp_training_data is not None:
             observed_dates = (
                 self.nssp_training_data.get_column("date").unique().to_numpy()
@@ -383,7 +383,7 @@ class PyrenewHEWData:
         return None
 
     @property
-    def hosp_admit_time(self):
+    def model_t_obs_hospital_admissions(self):
         if self.nhsn_training_data is not None:
             observed_dates = (
                 self.nhsn_training_data.get_column("weekendingdate").unique().to_numpy()
@@ -396,12 +396,12 @@ class PyrenewHEWData:
         return None
 
     @property
-    def ww_obs_subpop(self):
+    def ww_observed_subpops(self):
         if self.nwss_training_data is not None:
             return self.wastewater_data_extended.get_column("subpop_index").to_numpy()
 
     @property
-    def ww_obs_unit(self):
+    def ww_observed_lab_sites(self):
         if self.nwss_training_data is not None:
             return self.wastewater_data_extended.get_column("lab_site_index").to_numpy()
 

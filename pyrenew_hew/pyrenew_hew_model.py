@@ -356,8 +356,8 @@ class EDVisitObservationProcess(RandomVariable):
         latent_infections: ArrayLike,
         population_size: int,
         data_observed: ArrayLike,
-        ed_obs_time: ArrayLike,
-        t_first_infection: int,
+        model_t_observed: ArrayLike,
+        model_t_first_latent_infection: int,
         right_truncation_offset: int = None,
     ) -> tuple[ArrayLike]:
         """
@@ -372,15 +372,15 @@ class EDVisitObservationProcess(RandomVariable):
             )
         )
 
-        t_first_ed_visit = ed_visit_offset + t_first_infection
+        model_t_first_latent_ed_visit = ed_visit_offset + model_t_first_latent_infection
 
-        if ed_obs_time is None:  # True for forecasting/posterior prediction
+        if model_t_observed is None:  # True for forecasting/posterior prediction
             # slice the latent ed visits from model t0 to the end of the vector
-            ed_obs_idx = np.s_[
-                -t_first_ed_visit : potential_latent_ed_visits.size
+            which_obs_ed_visits = np.s_[
+                -model_t_first_latent_ed_visit : potential_latent_ed_visits.size
             ]
         else:
-            ed_obs_idx = ed_obs_time - t_first_ed_visit
+            which_obs_ed_visits = model_t_observed - model_t_first_latent_ed_visit
 
         p_ed_mean = self.p_ed_mean_rv()
         p_ed_w_sd = self.p_ed_w_sd_rv()
@@ -447,7 +447,7 @@ class EDVisitObservationProcess(RandomVariable):
         )
 
         observed_ed_visits = ed_visit_obs_rv(
-            mu=latent_ed_visits_now[ed_obs_idx],
+            mu=latent_ed_visits_now[which_obs_ed_visits],
             obs=data_observed,
         )
 
@@ -473,8 +473,8 @@ class HospAdmitObservationProcess(RandomVariable):
     @staticmethod
     def calculate_weekly_hosp_indices(
         first_latent_admission_dow: int,
-        t_first_admissions: int,
-        hosp_admit_time: ArrayLike,
+        model_t_first_latent_admissions: int,
+        model_t_observed: ArrayLike,
         n_datapoints: int,
     ):
         """
@@ -487,11 +487,11 @@ class HospAdmitObservationProcess(RandomVariable):
         first_latent_admission_dow : int
             Day of the week (0=Monday, ..., 6=Sunday)
             of the first latent hospital admission.
-        t_first_admissions : int
+        model_t_first_latent_admissions : int
             Time index in model time of the
             first latent hospital admission.
             Model time `t0` is the first overall data date.
-        hosp_admit_time : ArrayLike
+        model_t_observed : ArrayLike
             Time indices in model time of observed hospital
             admissions (must be end of MMWR epiweek).
         n_datapoints : int
@@ -508,8 +508,8 @@ class HospAdmitObservationProcess(RandomVariable):
 
         # First prediction is made for the week ending day (Saturday)
         # of the first full epiweek
-        t_first_pred_admissions = (
-            t_first_admissions + truncated_latent_admit_days + 6
+        model_t_first_pred_admissions = (
+            model_t_first_latent_admissions + truncated_latent_admit_days + 6
         )
 
         model_dow_first_pred_admissions = (
@@ -519,35 +519,35 @@ class HospAdmitObservationProcess(RandomVariable):
         # Check the first predicted admissions day is a Saturday (MMWR epiweek end)
         assert model_dow_first_pred_admissions == 5
 
-        if hosp_admit_time is not None:
-            if not all((hosp_admit_time - t_first_pred_admissions) >= 0):
+        if model_t_observed is not None:
+            if not all((model_t_observed - model_t_first_pred_admissions) >= 0):
                 raise ValueError(
                     "Observed hospital admissions date is before predicted hospital admissions."
                 )
-            if not all((hosp_admit_time - t_first_pred_admissions) % 7 == 0):
+            if not all((model_t_observed - model_t_first_pred_admissions) % 7 == 0):
                 raise ValueError(
                     "Not all observed or predicted hospital admissions are on Saturdays."
                 )
-            hosp_admit_obs_idx = (
-                hosp_admit_time - t_first_pred_admissions
+            which_obs_weekly_hosp_admissions = (
+                model_t_observed - model_t_first_pred_admissions
             ) // 7
         else:
-            hosp_admit_obs_idx = jnp.arange(n_datapoints)
-            skip_weeks = get_first_week_on_or_after_t0(t_first_pred_admissions)
-            hosp_admit_obs_idx = hosp_admit_obs_idx[
+            which_obs_weekly_hosp_admissions = jnp.arange(n_datapoints)
+            skip_weeks = get_first_week_on_or_after_t0(model_t_first_pred_admissions)
+            which_obs_weekly_hosp_admissions = which_obs_weekly_hosp_admissions[
                 skip_weeks:
             ]
 
-        return hosp_admit_obs_idx
+        return which_obs_weekly_hosp_admissions
 
     def sample(
         self,
         latent_infections: ArrayLike,
         first_latent_infection_dow: int,
         population_size: int,
-        t_first_infection: int,
+        model_t_first_latent_infection: int,
         data_observed: ArrayLike = None,
-        hosp_admit_time: ArrayLike = None,
+        model_t_observed: ArrayLike = None,
         iedr: ArrayLike = None,
     ) -> ArrayLike:
         """
@@ -588,8 +588,8 @@ class HospAdmitObservationProcess(RandomVariable):
             )
         )
 
-        t_first_admissions = (
-            hospital_admissions_offset + t_first_infection
+        model_t_first_latent_admissions = (
+            hospital_admissions_offset + model_t_first_latent_infection
         )
 
         first_latent_admission_dow = (
@@ -601,10 +601,10 @@ class HospAdmitObservationProcess(RandomVariable):
             input_data_first_dow=first_latent_admission_dow,
         )
 
-        hosp_admit_obs_idx = self.calculate_weekly_hosp_indices(
+        which_obs_weekly_hosp_admissions = self.calculate_weekly_hosp_indices(
             first_latent_admission_dow,
-            t_first_admissions,
-            hosp_admit_time,
+            model_t_first_latent_admissions,
+            model_t_observed,
             n_datapoints=predicted_weekly_admissions.size,
         )
         hospital_admissions_obs_rv = NegativeBinomialObservation(
@@ -613,7 +613,7 @@ class HospAdmitObservationProcess(RandomVariable):
         )
 
         observed_hospital_admissions = hospital_admissions_obs_rv(
-            mu=predicted_weekly_admissions[hosp_admit_obs_idx],
+            mu=predicted_weekly_admissions[which_obs_weekly_hosp_admissions],
             obs=data_observed,
         )
 
@@ -740,12 +740,12 @@ class WastewaterObservationProcess(RandomVariable):
         self,
         latent_infections_subpop: ArrayLike,
         data_observed: ArrayLike,
-        t_first_infection: int,
+        model_t_first_latent_infection: int,
         ww_uncensored: ArrayLike,
         ww_censored: ArrayLike,
-        ww_obs_unit: ArrayLike,
-        ww_obs_subpop: ArrayLike,
-        ww_obs_time: ArrayLike,
+        ww_observed_lab_sites: ArrayLike,
+        ww_observed_subpops: ArrayLike,
+        ww_model_t_observed: ArrayLike,
         ww_log_lod: ArrayLike,
         lab_site_to_subpop_map: ArrayLike,
         n_ww_lab_sites: int,
@@ -763,12 +763,12 @@ class WastewaterObservationProcess(RandomVariable):
         )
 
         log10_genome_per_inf_ind = self.log10_genome_per_inf_ind_rv()
-        expected_log_conc = (
+        expected_obs_viral_genomes = (
             jnp.log(10) * log10_genome_per_inf_ind
             + jnp.log(model_net_inf_ind_shedding + shedding_offset)
             - jnp.log(self.ww_ml_produced_per_day)
         )
-        numpyro.deterministic("expected_log_conc", expected_log_conc)
+        numpyro.deterministic("expected_obs_viral_genomes", expected_obs_viral_genomes)
 
         mode_sigma_ww_site = self.mode_sigma_ww_site_rv()
         sd_log_sigma_ww_site = self.sd_log_sigma_ww_site_rv()
@@ -795,26 +795,26 @@ class WastewaterObservationProcess(RandomVariable):
             sigma_ww_site = sigma_ww_site_rv()
 
         viral_genome_offset = viral_kinetics.shape[0] - 1  # max_shed_interval-2
-        t_first_viral_genome = (
-            viral_genome_offset + t_first_infection
+        model_t_first_latent_viral_genome = (
+            viral_genome_offset + model_t_first_latent_infection
         )
 
         if data_observed is not None:
-            expected_conc_time_idx = (
-                ww_obs_time - t_first_viral_genome
+            which_obs_t_viral_genome = (
+                ww_model_t_observed - model_t_first_latent_viral_genome
             )
             # multiply the expected observed genomes by the site-specific multiplier at that sampling time
             expected_obs_log_v_site = (
-                expected_log_conc[
-                    expected_conc_time_idx, ww_obs_subpop
+                expected_obs_viral_genomes[
+                    which_obs_t_viral_genome, ww_observed_subpops
                 ]
-                + mode_ww_site[ww_obs_unit]
+                + mode_ww_site[ww_observed_lab_sites]
             )
             site_level_log_ww_conc = DistributionalVariable(
                 "site_level_log_ww_conc",
                 dist.Normal(
                     loc=expected_obs_log_v_site[ww_uncensored],
-                    scale=sigma_ww_site[ww_obs_unit[ww_uncensored]],
+                    scale=sigma_ww_site[ww_observed_lab_sites[ww_uncensored]],
                 ),
             ).sample(
                 obs=data_observed[ww_uncensored],
@@ -822,18 +822,18 @@ class WastewaterObservationProcess(RandomVariable):
             if ww_censored.shape[0] != 0:
                 log_cdf_values = dist.Normal(
                     loc=expected_obs_log_v_site[ww_censored],
-                    scale=sigma_ww_site[ww_obs_unit[ww_censored]],
+                    scale=sigma_ww_site[ww_observed_lab_sites[ww_censored]],
                 ).log_cdf(ww_log_lod[ww_censored])
                 numpyro.factor("log_prob_censored", log_cdf_values.sum())
         else:
-            expected_conc_time_idx = np.s_[
-                -t_first_viral_genome:
+            which_obs_t_viral_genome = np.s_[
+                -model_t_first_latent_viral_genome:
             ]  # Slice time (first) dimension from model t0 to end of the vector
             site_level_log_ww_conc = DistributionalVariable(
                 "site_level_log_ww_conc",
                 dist.Normal(
-                    loc=expected_log_conc[
-                        expected_conc_time_idx, lab_site_to_subpop_map
+                    loc=expected_obs_viral_genomes[
+                        which_obs_t_viral_genome, lab_site_to_subpop_map
                     ]
                     + mode_ww_site,
                     scale=sigma_ww_site,
@@ -841,7 +841,7 @@ class WastewaterObservationProcess(RandomVariable):
             )()
 
         pop_log_latent_viral_genome_conc = jax.scipy.special.logsumexp(
-            expected_log_conc, axis=1, b=self.pop_fraction
+            expected_obs_viral_genomes, axis=1, b=self.pop_fraction
         )
 
         return site_level_log_ww_conc, pop_log_latent_viral_genome_conc
@@ -891,9 +891,9 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
             observed_ed_visits, iedr = self.ed_visit_obs_process_rv(
                 latent_infections=latent_infections,
                 population_size=self.population_size,
-                data_observed=data.ed_visit_count,
-                ed_obs_time=data.ed_obs_time,
-                t_first_infection=-n_init_days,
+                data_observed=data.data_observed_disease_ed_visits,
+                model_t_observed=data.model_t_obs_ed_visits,
+                model_t_first_latent_infection=-n_init_days,
                 right_truncation_offset=data.right_truncation_offset,
             )
 
@@ -902,9 +902,9 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 latent_infections=latent_infections,
                 first_latent_infection_dow=first_latent_infection_dow,
                 population_size=self.population_size,
-                t_first_infection=-n_init_days,
-                data_observed=data.hosp_admit_count,
-                hosp_admit_time=data.hosp_admit_time,
+                model_t_first_latent_infection=-n_init_days,
+                data_observed=data.data_observed_disease_hospital_admissions,
+                model_t_observed=data.model_t_obs_hospital_admissions,
                 iedr=iedr,
             )
         if sample_wastewater:
@@ -913,13 +913,13 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 population_level_latent_wastewater,
             ) = self.wastewater_obs_process_rv(
                 latent_infections_subpop=latent_infections_subpop,
-                data_observed=data.log_ww_conc_obs,
-                t_first_infection=-n_init_days,
+                data_observed=data.data_observed_disease_wastewater_conc,
+                model_t_first_latent_infection=-n_init_days,
                 ww_uncensored=data.ww_uncensored,
                 ww_censored=data.ww_censored,
-                ww_obs_unit=data.ww_obs_unit,
-                ww_obs_subpop=data.ww_obs_subpop,
-                ww_obs_time=data.ww_obs_time,
+                ww_observed_lab_sites=data.ww_observed_lab_sites,
+                ww_observed_subpops=data.ww_observed_subpops,
+                ww_model_t_observed=data.model_t_obs_wastewater,
                 ww_log_lod=data.ww_log_lod,
                 lab_site_to_subpop_map=data.lab_site_to_subpop_map,
                 n_ww_lab_sites=data.n_ww_lab_sites,
