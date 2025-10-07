@@ -12,7 +12,8 @@ ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 
 COPY ./hewr /pyrenew-hew/hewr
 
-WORKDIR /pyrenew-hew
+ARG WORKDIR=/pyrenew-hew
+WORKDIR $(WORKDIR)
 
 RUN Rscript -e "install.packages('pak')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
@@ -29,5 +30,10 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 
+# add Dagster workflow files
+COPY ./pyproject.toml .
+COPY ./src/ ./src/
+
+ENV PATH="/${WORKDIR}/.venv/bin:$PATH"
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync

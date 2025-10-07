@@ -28,6 +28,12 @@ dependencies = [
     "dotenv>=0.9.9",
     "arviz",
     "polarbayes",
+    "dagster-azure>=0.27.4",
+    "dagster-docker>=0.27.4",
+    "dagster-postgres>=0.27.4",
+    "dagster==1.11.4",
+    "cfa-dagster",
+    "pyyaml>=6.0.2"
 ]
 
 [build-system]
@@ -44,9 +50,13 @@ dev = [
 test = [
     "pytest>=8.3.2",
     "pytest-cov>=5.0.0",
-    "pytest-mpl>=0.17.0"
+    "pytest-mpl>=0.17.0",
+    "dagster-webserver",
+    "dagster-dg-cli",
 ]
 
+[tool.dg]
+directory_type = "project"
 
 [tool.ruff]
 fix = true
@@ -60,3 +70,4 @@ testpaths = ["tests", "pipelines/tests"]
 [tool.uv.sources]
 arviz = { git = "https://github.com/arviz-devs/arviz.git" }
 polarbayes = { git = "https://github.com/CDCgov/polarbayes.git" }
+cfa-dagster = { git = "https://github.com/cdcgov/cfa-dagster.git", branch = "gio-run-coordinator" }
