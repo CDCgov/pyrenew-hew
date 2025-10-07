@@ -20,11 +20,11 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
 # add Dagster workflow files
-COPY ./dagster_defs.py .
+COPY ./dg.py .
 # create a virtual environment for the dagster workflows
 ARG VIRTUAL_ENV=${WORKDIR}/.dg_venv
 RUN uv venv ${VIRTUAL_ENV}
 # install the dagster workflow dependencies
-RUN uv sync --script ./dagster_defs.py --active
+RUN uv sync --script ./dg.py --active
 # add the dagster workflow dependencies to the system path
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
