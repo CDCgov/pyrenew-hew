@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -2075,8 +2075,8 @@ wheels = [
 
 [[package]]
 name = "pyrenew"
-version = "0.1.4"
-source = { git = "https://github.com/cdcgov/PyRenew/#468ad5823cdf6f715f91240ddc3a01ec756c9b61" }
+version = "0.1.5"
+source = { git = "https://github.com/CDCgov/PyRenew?rev=v0.1.5#7f7a4f8791fa860a488a4598ec144bc7a2aee6ef" }
 dependencies = [
     { name = "jax" },
     { name = "numpy" },
@@ -2133,7 +2133,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=18.0.0" },
     { name = "pygit2", specifier = ">=1.17.0" },
     { name = "pypdf", specifier = ">=5.1.0" },
-    { name = "pyrenew", git = "https://github.com/cdcgov/PyRenew/" },
+    { name = "pyrenew", git = "https://github.com/CDCgov/PyRenew?rev=v0.1.5" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "tomli-w", specifier = ">=1.1.0" },
