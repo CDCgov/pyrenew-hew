@@ -31,3 +31,15 @@ ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
+
+# copy in the dagster workflow definitions
+COPY ./dagster_defs.py .
+
+# create a virtual environment for the dagster workflows
+ARG VIRTUAL_ENV=/pyrenew-hew/.dg_venv
+RUN uv venv ${VIRTUAL_ENV}
+
+# install the dagster workflow dependencies
+RUN uv sync --script ./dagster_defs.py --active
+# add the dagster workflow dependencies to the system path
+ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
