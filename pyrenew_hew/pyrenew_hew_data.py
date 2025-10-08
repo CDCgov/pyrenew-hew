@@ -196,8 +196,8 @@ class PyrenewHEWData:
 
     @property
     def first_hospital_admissions_date(self):
-        if self.dates_observed_hospital_admissions is not None:
-            return self.dates_observed_hospital_admissions.min()
+        if self.dates_observed_disease_hospital_admissions is not None:
+            return self.dates_observed_disease_hospital_admissions.min()
         return self.first_hospital_admissions_date_
 
     @property
