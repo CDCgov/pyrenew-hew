@@ -12,7 +12,7 @@ authors = [
 
 
 dependencies = [
-    "pyrenew @ git+https://github.com/cdcgov/PyRenew/",
+    "pyrenew",
     "forecasttools @ git+https://github.com/cdcgov/forecasttools-py",
     "ipywidgets>=8.1.5",
     "pyyaml>=6.0.2",
@@ -60,3 +60,4 @@ testpaths = ["tests", "pipelines/tests"]
 [tool.uv.sources]
 arviz = { git = "https://github.com/arviz-devs/arviz.git" }
 polarbayes = { git = "https://github.com/CDCgov/polarbayes.git" }
+pyrenew = { git = "https://github.com/CDCgov/PyRenew", rev = "v0.1.5" }
