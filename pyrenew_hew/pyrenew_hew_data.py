@@ -9,6 +9,7 @@ import polars as pl
 from jax.typing import ArrayLike
 from pyrenew.time import (
     align_observation_times,
+    convert_date,
     create_date_time_spine,
     get_end_date,
     get_n_data_days,
@@ -433,7 +434,7 @@ class PyrenewHEWData:
     def to_forecast_data(self, n_forecast_points: int) -> Self:
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
-        start_date = self.first_data_date_overall.astype(dt.datetime)
+        start_date = convert_date(self.first_data_date_overall)
         first_dow = start_date.weekday()
         days_to_first_saturday = (5 - first_dow) % 7
         if days_to_first_saturday == 0:

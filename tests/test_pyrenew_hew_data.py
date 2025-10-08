@@ -654,3 +654,199 @@ def test_date_time_spine():
     assert spine["t"][9] == 9
     assert spine["date"][0] == dt.date(2023, 1, 1)
     assert spine["date"][9] == dt.date(2023, 1, 10)
+
+
+# ============================================================================
+# ADDITIONAL TESTS FOR mem_refactor_datetime_indexing BRANCH
+# ============================================================================
+
+
+@pytest.mark.parametrize(
+    ["first_date", "expected_dow", "description"],
+    [
+        (np.datetime64("2023-01-01"), 6, "Sunday"),  # Sunday
+        (np.datetime64("2023-01-02"), 0, "Monday"),  # Monday
+        (np.datetime64("2023-01-03"), 1, "Tuesday"),  # Tuesday
+        (np.datetime64("2023-01-04"), 2, "Wednesday"),  # Wednesday
+        (np.datetime64("2023-01-05"), 3, "Thursday"),  # Thursday
+        (np.datetime64("2023-01-06"), 4, "Friday"),  # Friday
+        (np.datetime64("2023-01-07"), 5, "Saturday"),  # Saturday
+    ],
+)
+def test_to_forecast_data_different_start_days(first_date, expected_dow, description):
+    """
+    Test to_forecast_data() with first_data_date_overall on different days of week.
+
+    This ensures that the calculation of first_hospital_admissions_date
+    (which must be a Saturday) works correctly regardless of what day
+    of the week the data starts on.
+    """
+    # Use first_date as Saturday for hospital admissions
+    # Calculate the nearest Saturday on or after first_date
+    days_to_saturday = (5 - expected_dow) % 7
+    if days_to_saturday == 0 and expected_dow == 5:
+        # Already a Saturday, use it
+        first_hosp_date = first_date
+    else:
+        # Find next Saturday
+        first_hosp_date = first_date + np.timedelta64(
+            days_to_saturday if days_to_saturday > 0 else 7, "D"
+        )
+
+    data = PyrenewHEWData(
+        n_ed_visits_data_days=14,
+        n_hospital_admissions_data_days=2,
+        first_ed_visits_date=first_date,
+        first_hospital_admissions_date=first_hosp_date,
+    )
+
+    forecast_data = data.to_forecast_data(n_forecast_points=7)
+
+    # Verify the forecast hospital admissions date is a Saturday
+    forecast_hosp_date = forecast_data.first_hospital_admissions_date
+    assert forecast_hosp_date.astype(dt.datetime).weekday() == 5, (
+        f"Expected Saturday (5), got {forecast_hosp_date.astype(dt.datetime).weekday()} "
+        f"for start day {description}"
+    )
+
+    # Verify it's after the first data date
+    assert forecast_hosp_date >= data.first_data_date_overall
+
+    # Verify it's within 14 days (at most 2 weeks)
+    days_diff = (forecast_hosp_date - data.first_data_date_overall) / np.timedelta64(1, "D")
+    assert days_diff <= 14
+
+
+@pytest.mark.parametrize(
+    ["n_days", "expected_weeks", "has_partial_week"],
+    [
+        (7, 1, False),  # Exactly 1 week
+        (10, 1, True),  # 1 week + 3 days
+        (13, 1, True),  # 1 week + 6 days
+        (14, 2, False),  # Exactly 2 weeks
+        (20, 2, True),  # 2 weeks + 6 days
+        (21, 3, False),  # Exactly 3 weeks
+        (1, 0, True),  # Less than 1 week
+        (6, 0, True),  # Less than 1 week
+    ],
+)
+def test_to_forecast_data_partial_weeks(n_days, expected_weeks, has_partial_week):
+    """
+    Test to_forecast_data() with data spanning partial weeks.
+
+    Hospital admissions are weekly, so we need to ensure correct
+    handling when the total number of days doesn't evenly divide by 7.
+    """
+    first_date = np.datetime64("2023-01-01")  # Sunday
+    first_saturday = np.datetime64("2023-01-07")  # First Saturday
+
+    data = PyrenewHEWData(
+        n_ed_visits_data_days=n_days,
+        n_hospital_admissions_data_days=0,
+        first_ed_visits_date=first_date,
+        first_hospital_admissions_date=first_saturday,
+    )
+
+    forecast_data = data.to_forecast_data(n_forecast_points=0)
+
+    # Check that the number of weeks is calculated correctly
+    assert forecast_data.n_hospital_admissions_data_days == expected_weeks, (
+        f"For {n_days} days, expected {expected_weeks} weeks, "
+        f"got {forecast_data.n_hospital_admissions_data_days}"
+    )
+
+
+def test_to_forecast_data_negative_n_forecast_points_error():
+    """
+    Test that to_forecast_data() handles edge case of 0 forecast points.
+
+    While negative forecast points don't make logical sense,
+    we test the current behavior for 0 points.
+    """
+    data = PyrenewHEWData(
+        n_ed_visits_data_days=10,
+        n_hospital_admissions_data_days=1,
+        first_ed_visits_date=np.datetime64("2023-01-01"),
+        first_hospital_admissions_date=np.datetime64("2023-01-07"),
+    )
+
+    # 0 forecast points should work
+    forecast_data = data.to_forecast_data(n_forecast_points=0)
+    assert forecast_data.n_ed_visits_data_days == data.n_ed_visits_data_days
+    # n_days_post_init // 7 gives the number of weeks
+    assert forecast_data.n_hospital_admissions_data_days == data.n_days_post_init // 7
+
+
+def test_date_handling_leap_year():
+    """
+    Test date handling across leap year boundary (Feb 29).
+
+    Ensures that date arithmetic works correctly with leap years.
+    """
+    # Leap year: 2024
+    leap_year_start = np.datetime64("2024-02-28")
+    leap_year_saturday = np.datetime64("2024-03-02")  # Saturday after Feb 29
+
+    data = PyrenewHEWData(
+        n_ed_visits_data_days=10,  # Spans Feb 28 - Mar 8, includes Feb 29
+        n_hospital_admissions_data_days=2,
+        first_ed_visits_date=leap_year_start,
+        first_hospital_admissions_date=leap_year_saturday,
+    )
+
+    # Verify dates span the leap day
+    assert data.first_ed_visits_date == leap_year_start
+    assert data.last_ed_visits_date == leap_year_start + np.timedelta64(9, "D")
+
+    # Feb 29 should exist in 2024
+    feb_29_2024 = np.datetime64("2024-02-29")
+    assert data.first_ed_visits_date < feb_29_2024 < data.last_ed_visits_date
+
+    # Verify n_days_post_init calculates correctly across leap day
+    # Feb 28 to Mar 2 is 4 days, so n_days_post_init should be the maximum
+    # span from first_data_date_overall (Feb 28) to last_data_date_overall
+    # ED: Feb 28 + 9 days = Mar 8
+    # Hosp: Mar 2 + (2 weeks * 7 days) - 1 = Mar 2 + 13 = Mar 15
+    # So n_days_post_init = Mar 15 - Feb 28 + 1 = 17
+    expected_n_days = (data.last_data_date_overall - data.first_data_date_overall) // np.timedelta64(1, "D") + 1
+    assert data.n_days_post_init == expected_n_days
+
+    # Test forecast across leap year
+    forecast_data = data.to_forecast_data(n_forecast_points=30)
+    assert forecast_data.n_ed_visits_data_days == data.n_days_post_init + 30
+
+
+def test_date_handling_year_boundary():
+    """
+    Test date handling across year boundary (Dec 31 -> Jan 1).
+
+    Ensures that date arithmetic works correctly when spanning
+    two different years.
+    """
+    # Start late in December
+    year_end = np.datetime64("2023-12-28")  # Thursday
+    year_end_saturday = np.datetime64("2023-12-30")  # Saturday
+
+    data = PyrenewHEWData(
+        n_ed_visits_data_days=14,  # Spans Dec 28, 2023 - Jan 10, 2024
+        n_hospital_admissions_data_days=2,
+        first_ed_visits_date=year_end,
+        first_hospital_admissions_date=year_end_saturday,
+    )
+
+    # Verify dates span the year boundary
+    assert data.first_ed_visits_date.astype("datetime64[Y]").astype(int) + 1970 == 2023
+    assert data.last_ed_visits_date.astype("datetime64[Y]").astype(int) + 1970 == 2024
+
+    # Verify n_days_post_init is correct
+    assert data.n_days_post_init == 14
+
+    # Test that date_time_spine works across year boundary
+    spine = data.date_time_spine
+    assert len(spine) == 14
+    assert spine["date"][0].year == 2023
+    assert spine["date"][13].year == 2024
+
+    # Test forecast into new year
+    forecast_data = data.to_forecast_data(n_forecast_points=20)
+    assert forecast_data.n_ed_visits_data_days == 34
