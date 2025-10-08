@@ -713,7 +713,9 @@ def test_to_forecast_data_different_start_days(first_date, expected_dow, descrip
     assert forecast_hosp_date >= data.first_data_date_overall
 
     # Verify it's within 14 days (at most 2 weeks)
-    days_diff = (forecast_hosp_date - data.first_data_date_overall) / np.timedelta64(1, "D")
+    days_diff = (forecast_hosp_date - data.first_data_date_overall) / np.timedelta64(
+        1, "D"
+    )
     assert days_diff <= 14
 
 
@@ -808,7 +810,9 @@ def test_date_handling_leap_year():
     # ED: Feb 28 + 9 days = Mar 8
     # Hosp: Mar 2 + (2 weeks * 7 days) - 1 = Mar 2 + 13 = Mar 15
     # So n_days_post_init = Mar 15 - Feb 28 + 1 = 17
-    expected_n_days = (data.last_data_date_overall - data.first_data_date_overall) // np.timedelta64(1, "D") + 1
+    expected_n_days = (
+        data.last_data_date_overall - data.first_data_date_overall
+    ) // np.timedelta64(1, "D") + 1
     assert data.n_days_post_init == expected_n_days
 
     # Test forecast across leap year
