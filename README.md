@@ -37,7 +37,7 @@ Container images pushed to the Azure Container Registry are automatically tagged
 4. Materialize an asset!
 
 ### Next Steps
-1. Push your updated image to ACR: 
+1. Push your updated image to ACR:
     - `az login --identity && az acr login -n cfaprdbatchcr && docker build -t cfaprdbatchcr.azurecr.io/pyrenew-dagster:$(basename $HOME) . --push`
 2. Modify the `dagster_defs.py` file to use the `azure_caj_executor` or `azure_batch_executor` instead of the `docker_executor`
 4. Materialize your Asset again! (See `Getting Started`)

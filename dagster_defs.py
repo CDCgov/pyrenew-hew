@@ -16,7 +16,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-import json
 
 import dagster as dg
 from cfa_dagster.azure_batch.executor import azure_batch_executor
@@ -68,13 +67,16 @@ monthly_partition = dg.MonthlyPartitionsDefinition(
 # get the user from the environment, throw an error if variable is not set
 user = os.environ["DAGSTER_USER"]
 
+
 class UpstreamAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
+
 class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
+
 
 # Upstream Assets
 @dg.asset
@@ -82,22 +84,24 @@ def nssp_gold() -> str:
     # this shoudld get the nssp gold data
     return "nssp-gold"
 
-@dg.asset(
-        deps=['nssp_gold']
-)
+
+@dg.asset(deps=["nssp_gold"])
 def nssp_latest_comprehensive() -> str:
     # this should pull the nssp latest comprehensive data
     return "nssp-latest-comprehensive"
+
 
 @dg.asset
 def nwss_gold() -> str:
     # this should get the nwss gold data
     return "nwss-gold"
 
+
 @dg.asset
 def nhsn_latest() -> str:
     # this should pull the nhsn data
     return "nhsn-latest"
+
 
 # Pyrenew Assets
 @dg.asset
@@ -105,41 +109,60 @@ def timeseries_e_output(nssp_gold, nssp_latest_comprehensive) -> str:
     # These should generate the outputs by submitting to azure batch.
     return "nssp-timeseries-e-output"
 
-@dg.asset(
-    deps=['timeseries_e_output', 'nssp_latest_comprehensive']
-)
+
+@dg.asset(deps=["timeseries_e_output", "nssp_latest_comprehensive"])
 def pyrenew_e_output() -> str:
     # These should generate the outputs by submitting to azure batch.
     return "pyrenew-e-output"
 
+
 @dg.asset(
-    deps=['nhsn_latest', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
+    deps=[
+        "nhsn_latest",
+        "nssp_gold",
+        "timeseries_e_output",
+        "nssp_latest_comprehensive",
+    ]
 )
 def pyrenew_he_output() -> str:
     # These should generate the outputs by submitting to azure batch.
     return "pyrenew-he-output"
 
+
 @dg.asset(
-    deps=['nhsn_latest', 'nwss_gold', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
+    deps=[
+        "nhsn_latest",
+        "nwss_gold",
+        "nssp_gold",
+        "timeseries_e_output",
+        "nssp_latest_comprehensive",
+    ]
 )
 def pyrenew_hew_output() -> str:
     # These should generate the outputs by submitting to azure batch.
     return "pyrenew-hew-output"
 
+
 disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "INFLUENZA", "RSV"])
-state_partitions = dg.StaticPartitionsDefinition(["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"])
+state_partitions = dg.StaticPartitionsDefinition(
+    ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"]
+)
 two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
 
+
 class PyrenewHOutputConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
-    image: str = f"pyrenew-dagster"
+    image: str = "pyrenew-dagster"
+
 
 @dg.asset(
     partitions_def=two_dimensional_partitions,
 )
-def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputConfig, nhsn_latest) -> str:
+def pyrenew_h_output(
+    context: dg.AssetExecutionContext, config: PyrenewHOutputConfig, nhsn_latest
+) -> str:
     # These should generate the outputs by submitting to azure batch.
     # Trace down all the variables.
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
@@ -154,11 +177,11 @@ def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputCo
     additional_forecast_letters = ""
     output_subdir = "./"
     additional_args = (
-            f"--n-warmup {n_warmup} "
-            "--nwss-data-dir nwss-vintages "
-            "--priors-path ../pipelines/priors/prod_priors.py "
-            f"--additional-forecast-letters {additional_forecast_letters} "
-        )
+        f"--n-warmup {n_warmup} "
+        "--nwss-data-dir nwss-vintages "
+        "--priors-path ../pipelines/priors/prod_priors.py "
+        f"--additional-forecast-letters {additional_forecast_letters} "
+    )
     base_call = (
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script} "
@@ -180,19 +203,18 @@ def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputCo
         f"{additional_args}"
         "'"
     )
-    base_call=base_call.format(
-                loc=loc,
-                disease=disease,
-                report_date="latest",
-                output_dir=str(Path("output", output_subdir)),
+    base_call = base_call.format(
+        loc=loc,
+        disease=disease,
+        report_date="latest",
+        output_dir=str(Path("output", output_subdir)),
     )
     run = subprocess.run(base_call, shell=True, check=True)
     run.check_returncode()
     return "pyrenew-h-output"
 
-@dg.asset(
-    deps=['nhsn_latest','nwss_gold']
-)
+
+@dg.asset(deps=["nhsn_latest", "nwss_gold"])
 def pyrenew_hw_output() -> str:
     # These should generate the outputs by submitting to azure batch.
     return "pyrenew-hw-output"
@@ -212,12 +234,12 @@ docker_executor_configured = docker_executor.configured(
                 # the container image for workflow changes
                 f"{__file__}:/app/{os.path.basename(__file__)}",
                 # blob container mounts for pyrenew-hew
-                f"nssp-etl:/app/nssp-etl",
-                f"nwss-vintages:/app/nwss-vintages",
-                f"prod-param-estimates:/app/params",
-                f"pyrenew-hew-config:/app/config",
-                f"pyrenew-hew-prod-output:/app/output",
-                f"pyrenew-test-output:/app/test-output"
+                "nssp-etl:/app/nssp-etl",
+                "nwss-vintages:/app/nwss-vintages",
+                "prod-param-estimates:/app/params",
+                "pyrenew-hew-config:/app/config",
+                "pyrenew-hew-prod-output:/app/output",
+                "pyrenew-test-output:/app/test-output",
             ]
         },
     }
@@ -286,7 +308,7 @@ defs = dg.Definitions(
         pyrenew_he_output,
         pyrenew_hew_output,
         pyrenew_h_output,
-        pyrenew_hw_output
+        pyrenew_hw_output,
     ],
     jobs=[
         upstream_assets_job,
