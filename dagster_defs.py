@@ -68,63 +68,63 @@ monthly_partition = dg.MonthlyPartitionsDefinition(
 # get the user from the environment, throw an error if variable is not set
 user = os.environ["DAGSTER_USER"]
 
-class UpstreamAssetConfig(dg.Config):
-    # when using the docker_executor, specify the image you'd like to use
-    image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
+# class UpstreamAssetConfig(dg.Config):
+#     # when using the docker_executor, specify the image you'd like to use
+#     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
 class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
 # Upstream Assets
-@dg.asset
-def nssp_gold() -> str:
-    # this shoudld get the nssp gold data
-    return "nssp-gold"
+# @dg.asset
+# def nssp_gold() -> str:
+#     # this shoudld get the nssp gold data
+#     return "nssp-gold"
 
-@dg.asset(
-        deps=['nssp_gold']
-)
-def nssp_latest_comprehensive() -> str:
-    # this should pull the nssp latest comprehensive data
-    return "nssp-latest-comprehensive"
+# @dg.asset(
+#         deps=['nssp_gold']
+# )
+# def nssp_latest_comprehensive() -> str:
+#     # this should pull the nssp latest comprehensive data
+#     return "nssp-latest-comprehensive"
 
-@dg.asset
-def nwss_gold() -> str:
-    # this should get the nwss gold data
-    return "nwss-gold"
+# @dg.asset
+# def nwss_gold() -> str:
+#     # this should get the nwss gold data
+#     return "nwss-gold"
 
-@dg.asset
-def nhsn_latest() -> str:
-    # this should pull the nhsn data
-    return "nhsn-latest"
+# @dg.asset
+# def nhsn_latest() -> str:
+#     # this should pull the nhsn data
+#     return "nhsn-latest"
 
-# Pyrenew Assets
-@dg.asset
-def timeseries_e_output(nssp_gold, nssp_latest_comprehensive) -> str:
-    # These should generate the outputs by submitting to azure batch.
-    return "nssp-timeseries-e-output"
+# # Pyrenew Assets
+# @dg.asset
+# def timeseries_e_output(nssp_gold, nssp_latest_comprehensive) -> str:
+#     # These should generate the outputs by submitting to azure batch.
+#     return "nssp-timeseries-e-output"
 
-@dg.asset(
-    deps=['timeseries_e_output', 'nssp_latest_comprehensive']
-)
-def pyrenew_e_output() -> str:
-    # These should generate the outputs by submitting to azure batch.
-    return "pyrenew-e-output"
+# @dg.asset(
+#     deps=['timeseries_e_output', 'nssp_latest_comprehensive']
+# )
+# def pyrenew_e_output() -> str:
+#     # These should generate the outputs by submitting to azure batch.
+#     return "pyrenew-e-output"
 
-@dg.asset(
-    deps=['nhsn_latest', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
-)
-def pyrenew_he_output() -> str:
-    # These should generate the outputs by submitting to azure batch.
-    return "pyrenew-he-output"
+# @dg.asset(
+#     deps=['nhsn_latest', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
+# )
+# def pyrenew_he_output() -> str:
+#     # These should generate the outputs by submitting to azure batch.
+#     return "pyrenew-he-output"
 
-@dg.asset(
-    deps=['nhsn_latest', 'nwss_gold', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
-)
-def pyrenew_hew_output() -> str:
-    # These should generate the outputs by submitting to azure batch.
-    return "pyrenew-hew-output"
+# @dg.asset(
+#     deps=['nhsn_latest', 'nwss_gold', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
+# )
+# def pyrenew_hew_output() -> str:
+#     # These should generate the outputs by submitting to azure batch.
+#     return "pyrenew-hew-output"
 
 disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "INFLUENZA", "RSV"])
 state_partitions = dg.StaticPartitionsDefinition(["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"])
@@ -139,13 +139,13 @@ class PyrenewHOutputConfig(dg.Config):
 @dg.asset(
     partitions_def=two_dimensional_partitions,
 )
-def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputConfig, nhsn_latest) -> str:
+def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputConfig) -> str:
     # These should generate the outputs by submitting to azure batch.
     # Trace down all the variables.
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
     disease = keys_by_dimension["disease"]
     loc = keys_by_dimension["loc"]
-    run_script = "../pipelines/forecast_pyrenew.py"
+    run_script = "forecast_pyrenew.py"
     n_training_days = 150
     n_samples = 500
     exclude_last_n_days = 1
@@ -156,7 +156,7 @@ def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputCo
     additional_args = (
             f"--n-warmup {n_warmup} "
             "--nwss-data-dir nwss-vintages "
-            "--priors-path ../pipelines/priors/prod_priors.py "
+            "--priors-path ./pipelines/priors/prod_priors.py "
             f"--additional-forecast-letters {additional_forecast_letters} "
         )
     base_call = (
@@ -188,14 +188,16 @@ def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputCo
     )
     run = subprocess.run(base_call, shell=True, check=True)
     run.check_returncode()
-    return "pyrenew-h-output"
+    print(run.stderr)
+    print(run.stdout)
+    return run
 
-@dg.asset(
-    deps=['nhsn_latest','nwss_gold']
-)
-def pyrenew_hw_output() -> str:
-    # These should generate the outputs by submitting to azure batch.
-    return "pyrenew-hw-output"
+# @dg.asset(
+#     deps=['nhsn_latest','nwss_gold']
+# )
+# def pyrenew_hw_output() -> str:
+#     # These should generate the outputs by submitting to azure batch.
+#     return "pyrenew-hw-output"
 
 
 # add this to a job or the Definitions class to use it
@@ -227,7 +229,7 @@ docker_executor_configured = docker_executor.configured(
 # add this to a job or the Definitions class to use it
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
-        "image": f"cfaprdbatchcr.azurecr.io/pyrenew_hew:dagster_latest_{user}",
+        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
         "env_vars": [f"DAGSTER_USER={user}"],
     }
 )
@@ -236,7 +238,7 @@ azure_caj_executor_configured = azure_caj_executor.configured(
 # add this to a job or the Definitions class to use it
 azure_batch_executor_configured = azure_batch_executor.configured(
     {
-        "image": f"cfaprdbatchcr.azurecr.io/pyrenew_hew:dagster_latest_{user}",
+        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
         "env_vars": [f"DAGSTER_USER={user}"],
         # "container_kwargs": {
         #     # default working_dir is /app for Batch
@@ -269,30 +271,27 @@ resources_def = {
 }
 
 # schedule the job to run weekly
-schedule_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_cron", cron_schedule="0 9 * * 3", job=pyrenew_assets_job
-)
+# schedule_every_wednesday = dg.ScheduleDefinition(
+#     name="weekly_cron", cron_schedule="0 9 * * 3", 
+# )
 
 # Add assets, jobs, schedules, and sensors here to have them appear in the
 # Dagster UI
 defs = dg.Definitions(
     assets=[
-        nssp_gold,
-        nssp_latest_comprehensive,
-        nwss_gold,
-        nhsn_latest,
-        timeseries_e_output,
-        pyrenew_e_output,
-        pyrenew_he_output,
-        pyrenew_hew_output,
+        # nssp_gold,
+        # nssp_latest_comprehensive,
+        # nwss_gold,
+        # nhsn_latest,
+        # timeseries_e_output,
+        # pyrenew_e_output,
+        # pyrenew_he_output,
+        # pyrenew_hew_output,
         pyrenew_h_output,
-        pyrenew_hw_output
+        # pyrenew_hw_output
     ],
     jobs=[
-        upstream_assets_job,
-        pyrenew_assets_job,
     ],
-    schedules=[schedule_every_wednesday],
     resources=resources_def,
     # setting Docker as the default executor. comment this out to use
     # the default executor that runs directly on your computer
