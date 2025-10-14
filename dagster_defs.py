@@ -145,7 +145,9 @@ class PyrenewHOutputConfig(dg.Config):
 @dg.asset(
     partitions_def=two_dimensional_partitions,
 )
-def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputConfig) -> str:
+def pyrenew_h_output(
+    context: dg.AssetExecutionContext, config: PyrenewHOutputConfig
+) -> str:
     # These should generate the outputs by submitting to azure batch.
     # Trace down all the variables.
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
@@ -160,11 +162,11 @@ def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputCo
     additional_forecast_letters = ""
     output_subdir = "./"
     additional_args = (
-            f"--n-warmup {n_warmup} "
-            "--nwss-data-dir nwss-vintages "
-            "--priors-path ./pipelines/priors/prod_priors.py "
-            f"--additional-forecast-letters {additional_forecast_letters} "
-        )
+        f"--n-warmup {n_warmup} "
+        "--nwss-data-dir nwss-vintages "
+        "--priors-path ./pipelines/priors/prod_priors.py "
+        f"--additional-forecast-letters {additional_forecast_letters} "
+    )
     base_call = (
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script} "
@@ -197,6 +199,7 @@ def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputCo
     print(run.stderr)
     print(run.stdout)
     return run
+
 
 # @dg.asset(
 #     deps=['nhsn_latest','nwss_gold']
@@ -278,7 +281,7 @@ resources_def = {
 
 # schedule the job to run weekly
 # schedule_every_wednesday = dg.ScheduleDefinition(
-#     name="weekly_cron", cron_schedule="0 9 * * 3", 
+#     name="weekly_cron", cron_schedule="0 9 * * 3",
 # )
 
 # Add assets, jobs, schedules, and sensors here to have them appear in the
@@ -296,8 +299,7 @@ defs = dg.Definitions(
         pyrenew_h_output,
         # pyrenew_hw_output
     ],
-    jobs=[
-    ],
+    jobs=[],
     resources=resources_def,
     # setting Docker as the default executor. comment this out to use
     # the default executor that runs directly on your computer
