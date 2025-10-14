@@ -168,7 +168,7 @@ def pyrenew_h_output(
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
     disease = keys_by_dimension["disease"]
     loc = keys_by_dimension["loc"]
-    run_script = "../pipelines/forecast_pyrenew.py"
+    run_script = "./pipelines/forecast_pyrenew.py"
     n_training_days = 150
     n_samples = 500
     exclude_last_n_days = 1
