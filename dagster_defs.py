@@ -16,7 +16,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-import json
 
 import dagster as dg
 from cfa_dagster.azure_batch.executor import azure_batch_executor
@@ -72,9 +71,11 @@ user = os.environ["DAGSTER_USER"]
 #     # when using the docker_executor, specify the image you'd like to use
 #     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
+
 class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
+
 
 # Upstream Assets
 # @dg.asset
@@ -126,15 +127,20 @@ class PyrenewAssetConfig(dg.Config):
 #     # These should generate the outputs by submitting to azure batch.
 #     return "pyrenew-hew-output"
 
+
 disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "INFLUENZA", "RSV"])
-state_partitions = dg.StaticPartitionsDefinition(["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"])
+state_partitions = dg.StaticPartitionsDefinition(
+    ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"]
+)
 two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
 
+
 class PyrenewHOutputConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
-    image: str = f"pyrenew-dagster"
+    image: str = "pyrenew-dagster"
+
 
 @dg.asset(
     partitions_def=two_dimensional_partitions,
@@ -180,11 +186,11 @@ def pyrenew_h_output(context: dg.AssetExecutionContext, config: PyrenewHOutputCo
         f"{additional_args}"
         "'"
     )
-    base_call=base_call.format(
-                loc=loc,
-                disease=disease,
-                report_date="latest",
-                output_dir=str(Path("output", output_subdir)),
+    base_call = base_call.format(
+        loc=loc,
+        disease=disease,
+        report_date="latest",
+        output_dir=str(Path("output", output_subdir)),
     )
     run = subprocess.run(base_call, shell=True, check=True)
     run.check_returncode()
@@ -214,12 +220,12 @@ docker_executor_configured = docker_executor.configured(
                 # the container image for workflow changes
                 f"{__file__}:/app/{os.path.basename(__file__)}",
                 # blob container mounts for pyrenew-hew
-                f"nssp-etl:/app/nssp-etl",
-                f"nwss-vintages:/app/nwss-vintages",
-                f"prod-param-estimates:/app/params",
-                f"pyrenew-hew-config:/app/config",
-                f"pyrenew-hew-prod-output:/app/output",
-                f"pyrenew-test-output:/app/test-output"
+                "nssp-etl:/app/nssp-etl",
+                "nwss-vintages:/app/nwss-vintages",
+                "prod-param-estimates:/app/params",
+                "pyrenew-hew-config:/app/config",
+                "pyrenew-hew-prod-output:/app/output",
+                "pyrenew-test-output:/app/test-output",
             ]
         },
     }
