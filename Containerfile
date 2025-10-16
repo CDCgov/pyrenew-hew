@@ -19,8 +19,13 @@ RUN Rscript -e "pak::pkg_install('cmu-delphi/epiprocess@main')"
 RUN Rscript -e "pak::pkg_install('cmu-delphi/epipredict@main')"
 RUN Rscript -e "pak::local_install('hewr', upgrade = FALSE)"
 
-COPY ./ ./
-COPY pipelines/priors pipelines/priors
+# Explicitly bring over what we need
+COPY . .
+# COPY pipelines .
+# COPY pyrenew_hew .
+# COPY tests .
+# COPY pyproject.toml .
+# COPY uv.lock .
 
 # Python from https://docs.astral.sh/uv/guides/integration/docker/
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -31,7 +36,7 @@ ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
-
+    
 # copy in the dagster workflow definitions
 COPY ./dagster_defs.py .
 

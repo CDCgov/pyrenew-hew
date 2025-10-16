@@ -1,5 +1,4 @@
 #!/usr/bin/env -S uv run --script
-# PEP 723 dependency definition: https://peps.python.org/pep-0723/
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
@@ -18,6 +17,8 @@ import sys
 from pathlib import Path
 
 import dagster as dg
+import itertools
+
 from cfa_dagster.azure_batch.executor import azure_batch_executor
 from cfa_dagster.azure_container_app_job.executor import (
     azure_container_app_job_executor as azure_caj_executor,
@@ -127,11 +128,11 @@ class PyrenewAssetConfig(dg.Config):
 #     # These should generate the outputs by submitting to azure batch.
 #     return "pyrenew-hew-output"
 
+disease_list = ["COVID-19", "INFLUENZA", "RSV"]
+disease_partitions = dg.StaticPartitionsDefinition(disease_list)
 
-disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "INFLUENZA", "RSV"])
-state_partitions = dg.StaticPartitionsDefinition(
-    ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"]
-)
+state_list = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"]
+state_partitions = dg.StaticPartitionsDefinition(state_list)
 two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
@@ -146,7 +147,7 @@ class PyrenewHOutputConfig(dg.Config):
     partitions_def=two_dimensional_partitions,
 )
 def pyrenew_h_output(
-    context: dg.AssetExecutionContext, config: PyrenewHOutputConfig
+    context: dg.AssetExecutionContext, config: PyrenewHOutputConfig,
 ) -> str:
     # These should generate the outputs by submitting to azure batch.
     # Trace down all the variables.
@@ -159,7 +160,7 @@ def pyrenew_h_output(
     exclude_last_n_days = 1
     model_letters = "h"
     n_warmup = 1000
-    additional_forecast_letters = ""
+    additional_forecast_letters = "h"
     output_subdir = "./"
     additional_args = (
         f"--n-warmup {n_warmup} "
@@ -170,16 +171,16 @@ def pyrenew_h_output(
     base_call = (
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script} "
-        "--disease {disease} "
-        "--loc {loc} "
+        f"--disease {disease} "
+        f"--loc {loc} "
         f"--n-training-days {n_training_days} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
         "--param-data-dir params "
-        "--output-dir {output_dir} "
-        "--credentials-path config/creds.toml "
+        f"--output-dir {output_subdir} "
+        # "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
@@ -188,7 +189,8 @@ def pyrenew_h_output(
         f"{additional_args}"
         "'"
     )
-    base_call = base_call.format(
+    for disease, loc in itertools.product(disease_list, state_list):
+        base_call = base_call.format(
         loc=loc,
         disease=disease,
         report_date="latest",
@@ -207,8 +209,7 @@ def pyrenew_h_output(
 # def pyrenew_hw_output() -> str:
 #     # These should generate the outputs by submitting to azure batch.
 #     return "pyrenew-hw-output"
-
-
+workdir="pyrenew-hew"
 # add this to a job or the Definitions class to use it
 docker_executor_configured = docker_executor.configured(
     {
@@ -221,14 +222,14 @@ docker_executor_configured = docker_executor.configured(
                 f"/home/{user}/.azure:/root/.azure",
                 # bind current file so we don't have to rebuild
                 # the container image for workflow changes
-                f"{__file__}:/app/{os.path.basename(__file__)}",
+                f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
                 # blob container mounts for pyrenew-hew
-                "nssp-etl:/app/nssp-etl",
-                "nwss-vintages:/app/nwss-vintages",
-                "prod-param-estimates:/app/params",
-                "pyrenew-hew-config:/app/config",
-                "pyrenew-hew-prod-output:/app/output",
-                "pyrenew-test-output:/app/test-output",
+                f"mounts/nssp-etl:/{workdir}/nssp-etl",
+                f"mounts/nwss-vintages:/{workdir}/nwss-vintages",
+                f"mounts/prod-param-estimates:/{workdir}/params",
+                f"mounts/pyrenew-hew-config:/{workdir}/config",
+                f"mounts/pyrenew-hew-prod-output:/{workdir}/output",
+                f"mounts/pyrenew-test-output:/{workdir}/test-output",
             ]
         },
     }
