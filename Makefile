@@ -45,6 +45,7 @@ help:
 	@echo ""
 	@echo "Container Build Targets: "
 	@echo "  container_build     : Build the container image"
+	@echo "  dagster_build       : Build the dagster container image"
 	@echo "  container_tag       : Tag the container image"
 	@echo "  ghcr_login          : Log in to the Github Container Registry. Requires GH_USERNAME and GH_PAT env vars"
 	@echo "  container_push      : Push the container image to the Azure Container Registry"
@@ -81,6 +82,12 @@ help:
 
 container_build: ghcr_login
 	$(ENGINE) build . -t $(CONTAINER_NAME) -f $(CONTAINERFILE)
+
+dagster_build:
+	docker build -t pyrenew-hew:dagster_latest -f Containerfile .
+
+dagster:
+	uv run dagster_defs.py --dev
 
 container_tag:
 	$(ENGINE) tag $(CONTAINER_NAME) $(CONTAINER_REMOTE_NAME)
