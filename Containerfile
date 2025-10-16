@@ -36,7 +36,7 @@ ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
-    
+
 # copy in the dagster workflow definitions
 COPY ./dagster_defs.py .
 
