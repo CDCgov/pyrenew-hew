@@ -176,11 +176,10 @@ def pyrenew_h_output(
         f"--n-training-days {n_training_days} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--state-level-nssp-data-dir "
-        "nssp-archival-vintages/gold "
+        "--state-level-nssp-data-dir nssp-archival-vintages/gold "
         "--param-data-dir params "
         f"--output-dir {output_subdir} "
-        # "--credentials-path config/creds.toml "
+        "--credentials-path config/creds.toml "
         "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
@@ -210,6 +209,8 @@ def pyrenew_h_output(
 #     # These should generate the outputs by submitting to azure batch.
 #     return "pyrenew-hw-output"
 workdir="pyrenew-hew"
+local_workdir=Path(__file__).parent.resolve()
+
 # add this to a job or the Definitions class to use it
 docker_executor_configured = docker_executor.configured(
     {
@@ -224,12 +225,13 @@ docker_executor_configured = docker_executor.configured(
                 # the container image for workflow changes
                 f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
                 # blob container mounts for pyrenew-hew
-                f"mounts/nssp-etl:/{workdir}/nssp-etl",
-                f"mounts/nwss-vintages:/{workdir}/nwss-vintages",
-                f"mounts/prod-param-estimates:/{workdir}/params",
-                f"mounts/pyrenew-hew-config:/{workdir}/config",
-                f"mounts/pyrenew-hew-prod-output:/{workdir}/output",
-                f"mounts/pyrenew-test-output:/{workdir}/test-output",
+                f"/{local_workdir}/nssp-etl:/pyrenew-hew/nssp-etl",
+                f"/{local_workdir}/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                f"/{local_workdir}/nwss-vintages:/pyrenew-hew/nwss-vintages",
+                f"/{local_workdir}/prod-param-estimates:/pyrenew-hew/params",
+                f"/{local_workdir}/pyrenew-hew-config:/pyrenew-hew/config",
+                f"/{local_workdir}/pyrenew-hew-prod-output:/pyrenew-hew/output",
+                f"/{local_workdir}/pyrenew-test-output:/pyrenew-hew/test-output",
             ]
         },
     }

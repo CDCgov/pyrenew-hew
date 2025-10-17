@@ -402,6 +402,10 @@ output
 params
 nwss-vintages
 mounts
+prod-param-estimates
+pyrenew-hew-config
+pyrenew-hew-prod-output
+pyrenew-test-output
 
 # Azure configuration files
 azureconfig.env
