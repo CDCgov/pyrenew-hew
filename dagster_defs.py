@@ -63,6 +63,7 @@ monthly_partition = dg.MonthlyPartitionsDefinition(
 # get the user from the environment, throw an error if variable is not set
 user = os.environ["DAGSTER_USER"]
 
+
 class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
@@ -70,14 +71,18 @@ class PyrenewAssetConfig(dg.Config):
 
 # Pyrenew Assets
 @dg.asset
-def timeseries_e_output(context: dg.AssetExecutionContext, config: PyrenewAssetConfig) -> str:
+def timeseries_e_output(
+    context: dg.AssetExecutionContext, config: PyrenewAssetConfig
+) -> str:
     # These should generate the outputs by submitting to azure batch.
     return "timeseries-e-output"
+
 
 @dg.asset
 def pyrenew_e_output(context: dg.AssetExecutionContext, config: PyrenewAssetConfig) -> str:
     # These should generate the outputs by submitting to azure batch.
     return "pyrenew-e-output"
+
 
 disease_list = ["COVID-19", "Influenza", "RSV"]
 disease_partitions = dg.StaticPartitionsDefinition(disease_list)
@@ -140,6 +145,7 @@ two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
 
+
 class PyrenewHOutputConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = "pyrenew-hew:dagster_latest"
@@ -200,6 +206,7 @@ def pyrenew_h_output(
         )
     run = subprocess.run(base_call, shell=True, check=True)
     return "pyrenew-h-output"
+
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
