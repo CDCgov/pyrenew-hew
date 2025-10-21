@@ -11,14 +11,13 @@
 #    "pyyaml>=6.0.2",
 # ]
 # ///
+import itertools
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 import dagster as dg
-import itertools
-
 from cfa_dagster.azure_batch.executor import azure_batch_executor
 from cfa_dagster.azure_container_app_job.executor import (
     azure_container_app_job_executor as azure_caj_executor,
@@ -159,7 +158,8 @@ class PyrenewHOutputConfig(dg.Config):
     partitions_def=two_dimensional_partitions,
 )
 def pyrenew_h_output(
-    context: dg.AssetExecutionContext, config: PyrenewHOutputConfig,
+    context: dg.AssetExecutionContext,
+    config: PyrenewHOutputConfig,
 ) -> str:
     # These should generate the outputs by submitting to azure batch.
     # Trace down all the variables.
@@ -202,11 +202,11 @@ def pyrenew_h_output(
     )
     for disease, loc in itertools.product(disease_list, state_list):
         base_call = base_call.format(
-        loc=loc,
-        disease=disease,
-        report_date="latest",
-        output_dir=str(Path("output", output_subdir)),
-    )
+            loc=loc,
+            disease=disease,
+            report_date="latest",
+            output_dir=str(Path("output", output_subdir)),
+        )
     run = subprocess.run(base_call, shell=True, check=True)
     return "pyrenew-h-output"
 
