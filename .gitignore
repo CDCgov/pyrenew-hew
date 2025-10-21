@@ -414,3 +414,4 @@ azureconfig.sh
 # blobfuse
 blobfuse_*
 config.yaml
+test-output

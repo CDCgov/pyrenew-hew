@@ -62,27 +62,9 @@ monthly_partition = dg.MonthlyPartitionsDefinition(
 
 # get the user from the environment, throw an error if variable is not set
 user = os.environ["DAGSTER_USER"]
-
-
 class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
-
-
-# Pyrenew Assets
-@dg.asset
-def timeseries_e_output(
-    context: dg.AssetExecutionContext, config: PyrenewAssetConfig
-) -> str:
-    # These should generate the outputs by submitting to azure batch.
-    return "timeseries-e-output"
-
-
-@dg.asset
-def pyrenew_e_output(context: dg.AssetExecutionContext, config: PyrenewAssetConfig) -> str:
-    # These should generate the outputs by submitting to azure batch.
-    return "pyrenew-e-output"
-
 
 disease_list = ["COVID-19", "Influenza", "RSV"]
 disease_partitions = dg.StaticPartitionsDefinition(disease_list)
@@ -144,69 +126,81 @@ state_partitions = dg.StaticPartitionsDefinition(state_list)
 two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
-
-
 class PyrenewHOutputConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = "pyrenew-hew:dagster_latest"
 
 
-@dg.asset(
-    partitions_def=two_dimensional_partitions,
-)
-def pyrenew_h_output(
-    context: dg.AssetExecutionContext,
-    config: PyrenewHOutputConfig,
-) -> str:
-    # These should generate the outputs by submitting to azure batch.
-    # Trace down all the variables.
-    keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    disease = keys_by_dimension["disease"]
-    loc = keys_by_dimension["loc"]
-    run_script = "forecast_pyrenew.py"
-    n_training_days = 150
-    n_samples = 500
-    exclude_last_n_days = 1
-    model_letters = "h"
-    n_warmup = 1000
-    additional_forecast_letters = "h"
-    output_subdir = "./"
-    additional_args = (
-        f"--n-warmup {n_warmup} "
-        "--nwss-data-dir nwss-vintages "
-        "--priors-path ./pipelines/priors/prod_priors.py "
-        f"--additional-forecast-letters {additional_forecast_letters} "
+def build_pyrenew_asset(
+    model_letters: str,
+    model_family: str = "pyrenew",
+    partitions_def: dg.PartitionsDefinition = two_dimensional_partitions,
+    asset_name: str = None,
+):
+    @dg.asset(
+        partitions_def=partitions_def,
+        name=asset_name,
     )
-    base_call = (
-        "/bin/bash -c '"
-        f"uv run python pipelines/{run_script} "
-        f"--disease {disease} "
-        f"--loc {loc} "
-        f"--n-training-days {n_training_days} "
-        f"--n-samples {n_samples} "
-        "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--state-level-nssp-data-dir nssp-archival-vintages/gold "
-        "--param-data-dir params "
-        f"--output-dir {output_subdir} "
-        "--credentials-path config/creds.toml "
-        "--report-date {report_date} "
-        f"--exclude-last-n-days {exclude_last_n_days} "
-        f"--model-letters {model_letters} "
-        "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet "
-        f"{additional_args}"
-        "'"
-    )
-    for disease, loc in itertools.product(disease_list, state_list):
-        base_call = base_call.format(
-            loc=loc,
-            disease=disease,
-            report_date="latest",
-            output_dir=str(Path("output", output_subdir)),
+    def pyrenew_asset(
+        context: dg.AssetExecutionContext,
+        config: PyrenewHOutputConfig,
+    ) -> str:
+        keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
+        disease = keys_by_dimension["disease"]
+        loc = keys_by_dimension["loc"]
+        n_training_days = 150
+        n_samples = 500
+        exclude_last_n_days = 1
+        n_warmup = 1000
+        additional_forecast_letters = model_letters
+        output_subdir = "./"
+        if model_family == "pyrenew":
+            run_script = "forecast_pyrenew.py"
+            additional_args = (
+                f"--n-warmup {n_warmup} "
+                "--nwss-data-dir nwss-vintages "
+                "--priors-path pipelines/priors/prod_priors.py "
+                f"--additional-forecast-letters {additional_forecast_letters} "
+            )
+        elif model_family == "timeseries":
+            run_script = "forecast_timeseries.py"
+            additional_args = ""
+        else:
+            raise ValueError(
+                f"Unsupported model family: {model_family}. "
+                "Supported values are 'pyrenew' and 'timeseries'."
+            )
+        base_call = (
+            "/bin/bash -c '"
+            f"uv run python pipelines/{run_script} "
+            f"--disease {disease} "
+            f"--loc {loc} "
+            f"--n-training-days {n_training_days} "
+            f"--n-samples {n_samples} "
+            "--facility-level-nssp-data-dir nssp-etl/gold "
+            "--state-level-nssp-data-dir nssp-archival-vintages/gold "
+            "--param-data-dir params "
+            f"--output-dir {output_subdir} "
+            "--credentials-path config/creds.toml "
+            f"--report-date latest "
+            f"--exclude-last-n-days {exclude_last_n_days} "
+            f"--model-letters {model_letters} "
+            "--eval-data-path "
+            "nssp-etl/latest_comprehensive.parquet "
+            f"{additional_args}"
+            "'"
         )
-    run = subprocess.run(base_call, shell=True, check=True)
-    return "pyrenew-h-output"
+        run = subprocess.run(base_call, shell=True, check=True)
+        return asset_name
+    return pyrenew_asset
 
+# Use the builder to create multiple assets
+timeseries_e_output = build_pyrenew_asset(model_letters="e", asset_name="timeseries_e_output", model_family="timeseries")
+pyrenew_h_output = build_pyrenew_asset(model_letters="h", asset_name="pyrenew_h_output")
+pyrenew_e_output = build_pyrenew_asset(model_letters="e", asset_name="pyrenew_e_output")
+pyrenew_he_output = build_pyrenew_asset(model_letters="he", asset_name="pyrenew_he_output")
+pyrenew_hw_output = build_pyrenew_asset(model_letters="hw", asset_name="pyrenew_hw_output")
+pyrenew_hew_output = build_pyrenew_asset(model_letters="hew", asset_name="pyrenew_hew_output")
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
@@ -296,11 +290,11 @@ defs = dg.Definitions(
         # nwss_gold,
         # nhsn_latest,
         timeseries_e_output,
-        # pyrenew_e_output,
-        # pyrenew_he_output,
-        # pyrenew_hew_output,
+        pyrenew_e_output,
+        pyrenew_he_output,
+        pyrenew_hew_output,
         pyrenew_h_output,
-        # pyrenew_hw_output
+        pyrenew_hw_output
     ],
     jobs=[],
     resources=resources_def,
