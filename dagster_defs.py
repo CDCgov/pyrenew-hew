@@ -128,15 +128,27 @@ class PyrenewAssetConfig(dg.Config):
 #     # These should generate the outputs by submitting to azure batch.
 #     return "pyrenew-hew-output"
 
-disease_list = ["COVID-19", "INFLUENZA", "RSV"]
+disease_list = ["COVID-19", "Influenza", "RSV"]
 disease_partitions = dg.StaticPartitionsDefinition(disease_list)
-
-state_list = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA"]
+state_list = [
+    "AL", "AK", "AZ", "AR", 
+    "CA", "CO", "CT", "DE", 
+    "FL", "GA", "HI", "ID", 
+    "IL", "IN", "IA", "KS",
+    "KY", "LA", "ME", "MD", 
+    "MA", "MI", "MN", "MS", 
+    "MO", "MT", "NE", "NV", 
+    "NH", "NJ", "NM", "NY",
+    "NC", "ND", "OH", "OK", 
+    "OR", "PA", "RI", "SC", 
+    "SD", "TN", "TX", "UT", 
+    "VT", "VA", "WA", "WV",
+    "WI", "WY", "DC", "US"
+]
 state_partitions = dg.StaticPartitionsDefinition(state_list)
 two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
-
 
 class PyrenewHOutputConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
@@ -161,7 +173,7 @@ def pyrenew_h_output(
     model_letters = "h"
     n_warmup = 1000
     additional_forecast_letters = "h"
-    output_subdir = "./"
+    output_subdir = "."
     additional_args = (
         f"--n-warmup {n_warmup} "
         "--nwss-data-dir nwss-vintages "
@@ -196,10 +208,7 @@ def pyrenew_h_output(
         output_dir=str(Path("output", output_subdir)),
     )
     run = subprocess.run(base_call, shell=True, check=True)
-    run.check_returncode()
-    print(run.stderr)
-    print(run.stdout)
-    return run
+    return "pyrenew-h-output"
 
 
 # @dg.asset(
