@@ -130,24 +130,64 @@ class PyrenewAssetConfig(dg.Config):
 disease_list = ["COVID-19", "Influenza", "RSV"]
 disease_partitions = dg.StaticPartitionsDefinition(disease_list)
 state_list = [
-    "AL", "AK", "AZ", "AR", 
-    "CA", "CO", "CT", "DE", 
-    "FL", "GA", "HI", "ID", 
-    "IL", "IN", "IA", "KS",
-    "KY", "LA", "ME", "MD", 
-    "MA", "MI", "MN", "MS", 
-    "MO", "MT", "NE", "NV", 
-    "NH", "NJ", "NM", "NY",
-    "NC", "ND", "OH", "OK", 
-    "OR", "PA", "RI", "SC", 
-    "SD", "TN", "TX", "UT", 
-    "VT", "VA", "WA", "WV",
-    "WI", "WY", "DC", "US"
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "DC",
+    "US",
 ]
 state_partitions = dg.StaticPartitionsDefinition(state_list)
 two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
+
 
 class PyrenewHOutputConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
@@ -217,8 +257,8 @@ def pyrenew_h_output(
 # def pyrenew_hw_output() -> str:
 #     # These should generate the outputs by submitting to azure batch.
 #     return "pyrenew-hw-output"
-workdir="pyrenew-hew"
-local_workdir=Path(__file__).parent.resolve()
+workdir = "pyrenew-hew"
+local_workdir = Path(__file__).parent.resolve()
 
 # add this to a job or the Definitions class to use it
 docker_executor_configured = docker_executor.configured(
