@@ -71,12 +71,11 @@ class PyrenewAssetConfig(dg.Config):
 # Pyrenew Assets
 @dg.asset
 def timeseries_e_output(context: dg.AssetExecutionContext, config: PyrenewAssetConfig) -> str:
-
     # These should generate the outputs by submitting to azure batch.
     return "timeseries-e-output"
 
 @dg.asset
-def pyrenew_e_output(context: dg) -> str:
+def pyrenew_e_output(context: dg.AssetExecutionContext, config: PyrenewAssetConfig) -> str:
     # These should generate the outputs by submitting to azure batch.
     return "pyrenew-e-output"
 
