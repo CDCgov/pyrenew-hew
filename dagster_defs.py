@@ -54,10 +54,6 @@ if "--dev" in sys.argv:
 # get the user from the environment, throw an error if variable is not set
 user = os.environ["DAGSTER_USER"]
 
-# ----------------------------
-# Pyrenew Sandbox assets
-# ----------------------------
-
 # end_offset=1 allows you to target the current month
 # by default, dagster only allows you to materialize after a month is complete
 monthly_partition = dg.MonthlyPartitionsDefinition(
@@ -67,65 +63,22 @@ monthly_partition = dg.MonthlyPartitionsDefinition(
 # get the user from the environment, throw an error if variable is not set
 user = os.environ["DAGSTER_USER"]
 
-# class UpstreamAssetConfig(dg.Config):
-#     # when using the docker_executor, specify the image you'd like to use
-#     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
-
-
 class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
 
-# Upstream Assets
-# @dg.asset
-# def nssp_gold() -> str:
-#     # this shoudld get the nssp gold data
-#     return "nssp-gold"
+# Pyrenew Assets
+@dg.asset
+def timeseries_e_output(context: dg.AssetExecutionContext, config: PyrenewAssetConfig) -> str:
 
-# @dg.asset(
-#         deps=['nssp_gold']
-# )
-# def nssp_latest_comprehensive() -> str:
-#     # this should pull the nssp latest comprehensive data
-#     return "nssp-latest-comprehensive"
+    # These should generate the outputs by submitting to azure batch.
+    return "timeseries-e-output"
 
-# @dg.asset
-# def nwss_gold() -> str:
-#     # this should get the nwss gold data
-#     return "nwss-gold"
-
-# @dg.asset
-# def nhsn_latest() -> str:
-#     # this should pull the nhsn data
-#     return "nhsn-latest"
-
-# # Pyrenew Assets
-# @dg.asset
-# def timeseries_e_output(nssp_gold, nssp_latest_comprehensive) -> str:
-#     # These should generate the outputs by submitting to azure batch.
-#     return "nssp-timeseries-e-output"
-
-# @dg.asset(
-#     deps=['timeseries_e_output', 'nssp_latest_comprehensive']
-# )
-# def pyrenew_e_output() -> str:
-#     # These should generate the outputs by submitting to azure batch.
-#     return "pyrenew-e-output"
-
-# @dg.asset(
-#     deps=['nhsn_latest', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
-# )
-# def pyrenew_he_output() -> str:
-#     # These should generate the outputs by submitting to azure batch.
-#     return "pyrenew-he-output"
-
-# @dg.asset(
-#     deps=['nhsn_latest', 'nwss_gold', 'nssp_gold', 'timeseries_e_output', 'nssp_latest_comprehensive']
-# )
-# def pyrenew_hew_output() -> str:
-#     # These should generate the outputs by submitting to azure batch.
-#     return "pyrenew-hew-output"
+@dg.asset
+def pyrenew_e_output(context: dg) -> str:
+    # These should generate the outputs by submitting to azure batch.
+    return "pyrenew-e-output"
 
 disease_list = ["COVID-19", "Influenza", "RSV"]
 disease_partitions = dg.StaticPartitionsDefinition(disease_list)
@@ -188,10 +141,9 @@ two_dimensional_partitions = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "loc": state_partitions}
 )
 
-
 class PyrenewHOutputConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
-    image: str = "pyrenew-dagster"
+    image: str = "pyrenew-hew:dagster_latest"
 
 
 @dg.asset(
@@ -213,7 +165,7 @@ def pyrenew_h_output(
     model_letters = "h"
     n_warmup = 1000
     additional_forecast_letters = "h"
-    output_subdir = "."
+    output_subdir = "./"
     additional_args = (
         f"--n-warmup {n_warmup} "
         "--nwss-data-dir nwss-vintages "
@@ -250,13 +202,6 @@ def pyrenew_h_output(
     run = subprocess.run(base_call, shell=True, check=True)
     return "pyrenew-h-output"
 
-
-# @dg.asset(
-#     deps=['nhsn_latest','nwss_gold']
-# )
-# def pyrenew_hw_output() -> str:
-#     # These should generate the outputs by submitting to azure batch.
-#     return "pyrenew-hw-output"
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
 
@@ -344,7 +289,7 @@ defs = dg.Definitions(
         # nssp_latest_comprehensive,
         # nwss_gold,
         # nhsn_latest,
-        # timeseries_e_output,
+        timeseries_e_output,
         # pyrenew_e_output,
         # pyrenew_he_output,
         # pyrenew_hew_output,
