@@ -11,15 +11,13 @@
 #    "pyyaml>=6.0.2",
 # ]
 # ///
-import itertools
 import os
 import subprocess
 import sys
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 
 import dagster as dg
-
 from cfa_dagster.azure_batch.executor import azure_batch_executor
 from cfa_dagster.azure_container_app_job.executor import (
     azure_container_app_job_executor as azure_caj_executor,
@@ -72,14 +70,14 @@ class PyrenewAssetConfig(dg.Config):
 disease_list = ["COVID-19", "Influenza", "RSV"]
 disease_partitions = dg.StaticPartitionsDefinition(disease_list)
 state_list = [
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", 
-    "DE", "FL", "GA", "HI", "ID", "IL", "IN", 
-    "IA", "KS", "KY", "LA", "ME", "MD", "MA", 
-    "MI", "MN", "MS", "MO", "MT", "NE", "NV", 
-    "NH", "NJ", "NM", "NY", "NC", "ND", "OH", 
-    "OK", "OR", "PA", "RI", "SC", "SD", "TN", 
-    "TX", "UT", "VT", "VA", "WA", "WV", "WI", 
-    "WY", 
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT",
+    "DE", "FL", "GA", "HI", "ID", "IL", "IN",
+    "IA", "KS", "KY", "LA", "ME", "MD", "MA",
+    "MI", "MN", "MS", "MO", "MT", "NE", "NV",
+    "NH", "NJ", "NM", "NY", "NC", "ND", "OH",
+    "OK", "OR", "PA", "RI", "SC", "SD", "TN",
+    "TX", "UT", "VT", "VA", "WA", "WV", "WI",
+    "WY",
     "DC", "US"
 ]
 state_partitions = dg.StaticPartitionsDefinition(state_list)

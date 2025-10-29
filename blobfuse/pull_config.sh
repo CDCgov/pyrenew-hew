@@ -3,18 +3,18 @@
 
 # Download the Azure configuration script from blob storage
 az storage blob download \
-    --account-name "cfaazurebatchprd" \
-    --container-name "pyrenew-hew-config" \
-    --name "azureconfig.sh" \
-    --file "./azureconfig.sh" \
-    --auth-mode login \
-    --overwrite
+	--account-name "cfaazurebatchprd" \
+	--container-name "pyrenew-hew-config" \
+	--name "azureconfig.sh" \
+	--file "./azureconfig.sh" \
+	--auth-mode login \
+	--overwrite
 
 # Download the blobfuse config yaml from blob storage
 az storage blob download \
-    --account-name "cfaazurebatchprd" \
-    --container-name "pyrenew-hew-config" \
-    --name "blobfuse_config.yaml" \
-    --file "./config.yaml" \
-    --auth-mode login \
-    --overwrite
+	--account-name "cfaazurebatchprd" \
+	--container-name "pyrenew-hew-config" \
+	--name "blobfuse_config.yaml" \
+	--file "./config.yaml" \
+	--auth-mode login \
+	--overwrite

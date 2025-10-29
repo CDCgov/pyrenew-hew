@@ -3,11 +3,9 @@
 # ensure logged in via Azure CLI.
 ./blobfuse/verifylogin.sh
 
-if [[ "$?" -ne 0 ]]
-then
-    exit 1
+if [[ "$?" -ne 0 ]]; then
+	exit 1
 fi
-
 
 echo "Cleaning up blobfuse mounts"
 

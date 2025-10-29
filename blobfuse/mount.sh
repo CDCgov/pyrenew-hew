@@ -6,9 +6,8 @@
 # pull azure configuration files
 ./blobfuse/pull_config.sh
 
-if [[ "$?" -ne 0 ]]
-then
-    exit 1
+if [[ "$?" -ne 0 ]]; then
+	exit 1
 fi
 
 # ensure cache exists
@@ -18,11 +17,10 @@ echo "Mounting containers specified in mounts.txt using blobfuse2..."
 
 TO_MOUNT=$(<mounts.txt)
 
-for dir in $TO_MOUNT
-do
-    echo "Mounting" $dir
-    mkdir -p /mnt/$dir
-    blobfuse2 mount --container-name $dir /mnt/$dir --allow-other
+for dir in $TO_MOUNT; do
+	echo "Mounting" $dir
+	mkdir -p /mnt/$dir
+	blobfuse2 mount --container-name $dir /mnt/$dir --allow-other
 done
 sym_dir="${1:=.}"
 echo ""
