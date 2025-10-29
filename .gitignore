@@ -406,12 +406,11 @@ prod-param-estimates
 pyrenew-hew-config
 pyrenew-hew-prod-output
 pyrenew-test-output
+test-output
 
 # Azure configuration files
 azureconfig.env
 azureconfig.sh
 
 # blobfuse
-blobfuse_*
 config.yaml
-test-output

@@ -16,8 +16,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from datetime import date
 
 import dagster as dg
+
 from cfa_dagster.azure_batch.executor import azure_batch_executor
 from cfa_dagster.azure_container_app_job.executor import (
     azure_container_app_job_executor as azure_caj_executor,
@@ -66,61 +68,19 @@ class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
+# TODO: Encode business rules for exclusions across the different model letters and types
 disease_list = ["COVID-19", "Influenza", "RSV"]
 disease_partitions = dg.StaticPartitionsDefinition(disease_list)
 state_list = [
-    "AL",
-    "AK",
-    "AZ",
-    "AR",
-    "CA",
-    "CO",
-    "CT",
-    "DE",
-    "FL",
-    "GA",
-    "HI",
-    "ID",
-    "IL",
-    "IN",
-    "IA",
-    "KS",
-    "KY",
-    "LA",
-    "ME",
-    "MD",
-    "MA",
-    "MI",
-    "MN",
-    "MS",
-    "MO",
-    "MT",
-    "NE",
-    "NV",
-    "NH",
-    "NJ",
-    "NM",
-    "NY",
-    "NC",
-    "ND",
-    "OH",
-    "OK",
-    "OR",
-    "PA",
-    "RI",
-    "SC",
-    "SD",
-    "TN",
-    "TX",
-    "UT",
-    "VT",
-    "VA",
-    "WA",
-    "WV",
-    "WI",
-    "WY",
-    "DC",
-    "US",
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", 
+    "DE", "FL", "GA", "HI", "ID", "IL", "IN", 
+    "IA", "KS", "KY", "LA", "ME", "MD", "MA", 
+    "MI", "MN", "MS", "MO", "MT", "NE", "NV", 
+    "NH", "NJ", "NM", "NY", "NC", "ND", "OH", 
+    "OK", "OR", "PA", "RI", "SC", "SD", "TN", 
+    "TX", "UT", "VT", "VA", "WA", "WV", "WI", 
+    "WY", 
+    "DC", "US"
 ]
 state_partitions = dg.StaticPartitionsDefinition(state_list)
 two_dimensional_partitions = dg.MultiPartitionsDefinition(
@@ -135,11 +95,15 @@ def build_pyrenew_asset(
     model_letters: str,
     model_family: str = "pyrenew",
     partitions_def: dg.PartitionsDefinition = two_dimensional_partitions,
-    asset_name: str = None,
+    asset_name: str = str(None),
+    depends_on: list[str] = None,
 ):
+    if depends_on is None:
+        depends_on = []
     @dg.asset(
         partitions_def=partitions_def,
         name=asset_name,
+        deps=depends_on
     )
     def pyrenew_asset(
         context: dg.AssetExecutionContext,
@@ -153,7 +117,8 @@ def build_pyrenew_asset(
         exclude_last_n_days = 1
         n_warmup = 1000
         additional_forecast_letters = model_letters
-        output_subdir = "./"
+        forecast_date = str(date.today())
+        output_subdir = f"{forecast_date}_forecasts"
         if model_family == "pyrenew":
             run_script = "forecast_pyrenew.py"
             additional_args = (
@@ -180,7 +145,7 @@ def build_pyrenew_asset(
             "--facility-level-nssp-data-dir nssp-etl/gold "
             "--state-level-nssp-data-dir nssp-archival-vintages/gold "
             "--param-data-dir params "
-            f"--output-dir {output_subdir} "
+            f"--output-dir test-output/{output_subdir} "
             "--credentials-path config/creds.toml "
             f"--report-date latest "
             f"--exclude-last-n-days {exclude_last_n_days} "
@@ -197,10 +162,10 @@ def build_pyrenew_asset(
 # Use the builder to create multiple assets
 timeseries_e_output = build_pyrenew_asset(model_letters="e", asset_name="timeseries_e_output", model_family="timeseries")
 pyrenew_h_output = build_pyrenew_asset(model_letters="h", asset_name="pyrenew_h_output")
-pyrenew_e_output = build_pyrenew_asset(model_letters="e", asset_name="pyrenew_e_output")
-pyrenew_he_output = build_pyrenew_asset(model_letters="he", asset_name="pyrenew_he_output")
+pyrenew_e_output = build_pyrenew_asset(model_letters="e", asset_name="pyrenew_e_output", depends_on=["timeseries_e_output"])
+pyrenew_he_output = build_pyrenew_asset(model_letters="he", asset_name="pyrenew_he_output", depends_on=["timeseries_e_output"])
 pyrenew_hw_output = build_pyrenew_asset(model_letters="hw", asset_name="pyrenew_hw_output")
-pyrenew_hew_output = build_pyrenew_asset(model_letters="hew", asset_name="pyrenew_hew_output")
+pyrenew_hew_output = build_pyrenew_asset(model_letters="hew", asset_name="pyrenew_hew_output", depends_on=["timeseries_e_output"])
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
@@ -222,10 +187,10 @@ docker_executor_configured = docker_executor.configured(
                 f"/{local_workdir}/nssp-etl:/pyrenew-hew/nssp-etl",
                 f"/{local_workdir}/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
                 f"/{local_workdir}/nwss-vintages:/pyrenew-hew/nwss-vintages",
-                f"/{local_workdir}/prod-param-estimates:/pyrenew-hew/params",
-                f"/{local_workdir}/pyrenew-hew-config:/pyrenew-hew/config",
-                f"/{local_workdir}/pyrenew-hew-prod-output:/pyrenew-hew/output",
-                f"/{local_workdir}/pyrenew-test-output:/pyrenew-hew/test-output",
+                f"/{local_workdir}/params:/pyrenew-hew/params",
+                f"/{local_workdir}/config:/pyrenew-hew/config",
+                f"/{local_workdir}/output:/pyrenew-hew/output",
+                f"/{local_workdir}/test-output:/pyrenew-hew/test-output",
             ]
         },
     }
