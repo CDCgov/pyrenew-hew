@@ -210,7 +210,7 @@ docker_executor_configured = docker_executor.configured(
 # add this to a job or the Definitions class to use it
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
-        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest",
+        "image": "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest",
         "env_vars": [f"DAGSTER_USER={user}"],
     }
 )
@@ -228,13 +228,13 @@ azure_batch_executor_configured = azure_batch_executor.configured(
                 # bind current file so we don't have to rebuild
                 # the container image for workflow changes
                 # blob container mounts for pyrenew-hew
-                f"nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
-                f"nssp-etl:/pyrenew-hew/nssp-etl",
-                f"nwss-vintages:/pyrenew-hew/nwss-vintages",
-                f"params:/pyrenew-hew/params",
-                f"config:/pyrenew-hew/config",
-                f"output:/pyrenew-hew/output",
-                f"test-output:/pyrenew-hew/test-output",
+                "nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                "nssp-etl:/pyrenew-hew/nssp-etl",
+                "nwss-vintages:/pyrenew-hew/nwss-vintages",
+                "params:/pyrenew-hew/params",
+                "config:/pyrenew-hew/config",
+                "output:/pyrenew-hew/output",
+                "test-output:/pyrenew-hew/test-output",
             ],
             "working_dir":"/app",
         },
