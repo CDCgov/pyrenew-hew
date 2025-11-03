@@ -39,14 +39,16 @@ Follow the instructions in `./blobfuse` before using dagster.
 ### Running the sample asset workflow
 
 1. If you have never set up Dagster on your VAP before, you will need to set up a `~/.dagster_home/dagster.yaml` file: `uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/setup.py`
-2. Build the initial image for your test asset: `docker build -t pyrenew-hew:dagster_latest -f Containerfile .`
+2. Build the initial image for your test asset: `docker build -t pyrenew-hew:$(whoami)_dagster_latest -f Containerfile .`
 3. Start the Dagster UI by running `uv run dagster_defs.py --dev` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
 4. Materialize an asset!
 
 ### Next Steps
 1. Push your updated image to ACR:
-    - `az login --identity && az acr login -n cfaprdbatchcr && docker build -t cfaprdbatchcr.azurecr.io/pyrenew-dagster:$(basename $HOME) . --push`
-2. Modify the `dagster_defs.py` file to use the `azure_caj_executor` or `azure_batch_executor` instead of the `docker_executor`
+    - `az login --identity`
+    - `az acr login -n cfaprdbatchcr`
+    - `docker build -t "cfaprdbatchcr.azurecr.io/pyrenew-hew:$(whoami)_dagster -f Containerfile . --push`
+2. Modify the `dagster_defs.py` file to use the `azure_caj_executor` or `azure_batch_executor` instead of the `docker_executor`.
 4. Materialize your Asset again!
 
 ## Running Model Pipelines

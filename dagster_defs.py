@@ -158,12 +158,24 @@ def build_pyrenew_asset(
     return pyrenew_asset
 
 # Use the builder to create multiple assets
-timeseries_e_output = build_pyrenew_asset(model_letters="e", asset_name="timeseries_e_output", model_family="timeseries")
-pyrenew_h_output = build_pyrenew_asset(model_letters="h", asset_name="pyrenew_h_output")
-pyrenew_e_output = build_pyrenew_asset(model_letters="e", asset_name="pyrenew_e_output", depends_on=["timeseries_e_output"])
-pyrenew_he_output = build_pyrenew_asset(model_letters="he", asset_name="pyrenew_he_output", depends_on=["timeseries_e_output"])
-pyrenew_hw_output = build_pyrenew_asset(model_letters="hw", asset_name="pyrenew_hw_output")
-pyrenew_hew_output = build_pyrenew_asset(model_letters="hew", asset_name="pyrenew_hew_output", depends_on=["timeseries_e_output"])
+timeseries_e_output = build_pyrenew_asset(
+    model_letters="e", asset_name="timeseries_e_output", model_family="timeseries"
+)
+pyrenew_h_output = build_pyrenew_asset(
+    model_letters="h", asset_name="pyrenew_h_output"
+)
+pyrenew_e_output = build_pyrenew_asset(
+    model_letters="e", asset_name="pyrenew_e_output", depends_on=["timeseries_e_output"]
+)
+pyrenew_he_output = build_pyrenew_asset(
+    model_letters="he", asset_name="pyrenew_he_output", depends_on=["timeseries_e_output"]
+)
+pyrenew_hw_output = build_pyrenew_asset(
+    model_letters="hw", asset_name="pyrenew_hw_output"
+)
+pyrenew_hew_output = build_pyrenew_asset(
+    model_letters="hew", asset_name="pyrenew_hew_output", depends_on=["timeseries_e_output"]
+)
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
@@ -198,7 +210,7 @@ docker_executor_configured = docker_executor.configured(
 # add this to a job or the Definitions class to use it
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
-        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
+        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest",
         "env_vars": [f"DAGSTER_USER={user}"],
     }
 )
@@ -209,11 +221,23 @@ azure_batch_executor_configured = azure_batch_executor.configured(
     {
         "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
         "env_vars": [f"DAGSTER_USER={user}"],
-        # "container_kwargs": {
-        #     # default working_dir is /app for Batch
-        #     # I have not been able to get Batch to work with other dirs
-        #     "working_dir": "/app",
-        # },
+        "container_kwargs": {
+            "volumes": [
+                # bind the ~/.azure folder for optional cli login
+                # f"/home/{user}/.azure:/root/.azure",
+                # bind current file so we don't have to rebuild
+                # the container image for workflow changes
+                # blob container mounts for pyrenew-hew
+                f"nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                f"nssp-etl:/pyrenew-hew/nssp-etl",
+                f"nwss-vintages:/pyrenew-hew/nwss-vintages",
+                f"params:/pyrenew-hew/params",
+                f"config:/pyrenew-hew/config",
+                f"output:/pyrenew-hew/output",
+                f"test-output:/pyrenew-hew/test-output",
+            ],
+            "working_dir":"/app",
+        },
     }
 )
 
@@ -263,7 +287,7 @@ defs = dg.Definitions(
     resources=resources_def,
     # setting Docker as the default executor. comment this out to use
     # the default executor that runs directly on your computer
-    executor=docker_executor_configured,
+    # executor=docker_executor_configured,
     # executor=azure_caj_executor_configured,
-    # executor=azure_batch_executor_configured,
+    executor=azure_batch_executor_configured,
 )
