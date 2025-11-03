@@ -5,5 +5,10 @@ This directory will mount pyrenew-hew blobs to `/mnt` and then symlink to a dire
 
 To run, make sure you're in the top level as your working directory (`pyrenew-hew`, and not `pyrenew-hew/blobfuse`).
 1. Run `sudo chmod +x ./blobfuse/mount.sh`.
-2. Run `sudo ./blobfuse/mount.sh <name_of_dir_to_symlink_blobs`.
+2. Run `sudo ./blobfuse/mount.sh`. This will mount to the top-level (pyrenew-hew)
 3. Check to make sure `/mnt` has pyrenew blobs mounted and that symlinks have been created in your working directory (`pyrenew-hew/`).
+4. Before attempting to remount, run the cleanup script `sudo ./blobfuse/cleanup.sh`.
+
+You can, for convenience, use make commands:
+- `make mount`
+- `make unmount`

@@ -43,6 +43,11 @@ endif
 help:
 	@echo "Usage: make [target] [ARGS]"
 	@echo ""
+
+	@echo "Blobfuse Mount Targets: "
+	@echo "  mount              : Mount blob storage containers using blobfuse2"
+	@echo "  unmount            : Unmount blob storage containers and clean up"
+	@echo ""
 	@echo "Container Build Targets: "
 	@echo "  container_build     : Build the container image"
 	@echo "  dagster_build       : Build the dagster container image"
@@ -75,6 +80,17 @@ help:
 	@echo "  make run_hew_model ARGS=\"--locations-include 'NY GA'\""
 	@echo ""
 	@echo "Passing a flag through ARGS will also override the flags set previously."
+
+#------------------------ #
+# Blobfuse Mount Targets
+# ----------------------- #
+
+
+mount:
+	sudo ./blobfuse/mount.sh
+
+unmount:
+	sudo ./blobfuse/cleanup.sh
 
 # ----------------------- #
 # Container Build Targets
