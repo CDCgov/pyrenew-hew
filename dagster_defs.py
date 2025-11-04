@@ -287,7 +287,7 @@ defs = dg.Definitions(
     resources=resources_def,
     # setting Docker as the default executor. comment this out to use
     # the default executor that runs directly on your computer
-    executor=docker_executor_configured,
+    # executor=docker_executor_configured,
     # executor=azure_caj_executor_configured,
-    # executor=azure_batch_executor_configured,
+    executor=azure_batch_executor_configured,
 )
