@@ -100,7 +100,12 @@ container_build: ghcr_login
 	$(ENGINE) build . -t $(CONTAINER_NAME) -f $(CONTAINERFILE)
 
 dagster_build:
-	docker build -t pyrenew-hew:dagster_latest -f Containerfile .
+	docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_$(USER) -f Containerfile .
+
+dagster_push: dagster_build
+	az login --identity && \
+	az acr login -n cfaprdbatchcr && \
+	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_$(USER)"
 
 dagster:
 	uv run dagster_defs.py --dev
