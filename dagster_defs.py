@@ -210,7 +210,7 @@ docker_executor_configured = docker_executor.configured(
 # add this to a job or the Definitions class to use it
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
-        "image": "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest",
+        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
         "env_vars": [f"DAGSTER_USER={user}"],
     }
 )
