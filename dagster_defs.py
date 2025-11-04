@@ -184,7 +184,7 @@ local_workdir = Path(__file__).parent.resolve()
 docker_executor_configured = docker_executor.configured(
     {
         # specify a default image
-        "image": "pyrenew-hew:dagster_latest",
+        "image": f"pyrenew-hew:dagster_latest_{user}",
         "env_vars": [f"DAGSTER_USER={user}"],
         "container_kwargs": {
             "volumes": [
