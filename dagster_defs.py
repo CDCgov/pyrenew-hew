@@ -218,7 +218,7 @@ azure_caj_executor_configured = azure_caj_executor.configured(
 # configuring an executor to run workflow steps on Azure Batch 4CPU 16GB RAM pool
 # add this to a job or the Definitions class to use it
 azure_batch_executor_configured = azure_batch_executor.configured(
-    {
+    {   "pool_name": "pyrenew-pool",
         "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
         "env_vars": [f"DAGSTER_USER={user}"],
         "container_kwargs": {
@@ -236,7 +236,7 @@ azure_batch_executor_configured = azure_batch_executor.configured(
                 "pyrenew-hew-prod-output:/pyrenew-hew/output",
                 "pyrenew-test-output:/pyrenew-hew/test-output",
             ],
-            "working_dir":"/app",
+            "working_dir":"/pyrenew-hew",
         },
     }
 )
