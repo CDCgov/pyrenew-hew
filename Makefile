@@ -43,8 +43,14 @@ endif
 help:
 	@echo "Usage: make [target] [ARGS]"
 	@echo ""
+
+	@echo "Blobfuse Mount Targets: "
+	@echo "  mount              : Mount blob storage containers using blobfuse2"
+	@echo "  unmount            : Unmount blob storage containers and clean up"
+	@echo ""
 	@echo "Container Build Targets: "
 	@echo "  container_build     : Build the container image"
+	@echo "  dagster_build       : Build the dagster container image"
 	@echo "  container_tag       : Tag the container image"
 	@echo "  ghcr_login          : Log in to the Github Container Registry. Requires GH_USERNAME and GH_PAT env vars"
 	@echo "  container_push      : Push the container image to the Azure Container Registry"
@@ -75,12 +81,34 @@ help:
 	@echo ""
 	@echo "Passing a flag through ARGS will also override the flags set previously."
 
+#------------------------ #
+# Blobfuse Mount Targets
+# ----------------------- #
+
+
+mount:
+	sudo ./blobfuse/mount.sh
+
+unmount:
+	sudo ./blobfuse/cleanup.sh
+
 # ----------------------- #
 # Container Build Targets
 # ----------------------- #
 
 container_build: ghcr_login
 	$(ENGINE) build . -t $(CONTAINER_NAME) -f $(CONTAINERFILE)
+
+dagster_build:
+	docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_$(USER) -f Containerfile .
+
+dagster_push: dagster_build
+	az login --identity && \
+	az acr login -n cfaprdbatchcr && \
+	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_$(USER)"
+
+dagster:
+	uv run dagster_defs.py --dev
 
 container_tag:
 	$(ENGINE) tag $(CONTAINER_NAME) $(CONTAINER_REMOTE_NAME)
