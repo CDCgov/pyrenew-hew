@@ -210,7 +210,7 @@ make_forecast_figure <- function(
       data = lineribbon_dat,
       mapping = ggplot2::aes(ymin = .data$.lower, ymax = .data$.upper),
       color = "#08519c",
-      key_glyph = ggplot2::draw_key_rect,
+      key_glyph = ggplot2::draw_key_polygon,
       step = "mid"
     ) +
     ggplot2::scale_fill_brewer(
