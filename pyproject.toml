@@ -18,7 +18,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "jupyter>=1.0.0",
     "ipykernel>=6.29.5",
-    "polars<=1.34.0",
+    "polars<1.35",
     "pypdf>=5.1.0",
     "pyarrow>=18.0.0",
     "pygit2>=1.17.0",
@@ -27,7 +27,7 @@ dependencies = [
     "rich>=14.0.0",
     "dotenv>=0.9.9",
     "polarbayes",
-    "pandas<=2.3.2",
+    "xarray<=2025.9",
 ]
 
 [build-system]
