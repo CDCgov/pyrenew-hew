@@ -435,9 +435,14 @@ class PyrenewHEWData:
         n_weeks = n_days // 7
         start_date = convert_date(self.first_data_date_overall)
         first_dow = start_date.weekday()
-        days_to_first_saturday = (5 - first_dow) % 7
-        if days_to_first_saturday == 0:
-            days_to_first_saturday = 7
+
+        # Calculate offset to next Sunday (or 0 if already Sunday)
+        # MMWR weeks start on Sunday (weekday=6) and end on Saturday (weekday=5)
+        offset_to_sunday = (6 - first_dow) % 7
+
+        # First complete MMWR week ends 6 days after that Sunday
+        days_to_first_saturday = offset_to_sunday + 6
+
         first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
             days_to_first_saturday, "D"
         )

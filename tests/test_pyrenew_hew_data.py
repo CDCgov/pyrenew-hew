@@ -114,16 +114,19 @@ def test_to_forecast_data(
     assert forecast_data.right_truncation_offset is None
     assert forecast_data.first_ed_visits_date == data.first_data_date_overall
 
-    ## hosp admit date should be the first Saturday
+    ## hosp admit date should be the first Saturday ending a complete MMWR week
     assert forecast_data.first_hospital_admissions_date >= data.first_data_date_overall
     assert (
         forecast_data.first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
     )
 
-    assert (
+    # First complete MMWR week (Sunday-Saturday) ends 6-12 days from start
+    # 6 days if starting on Sunday, 12 days if starting on Monday
+    days_diff = (
         (forecast_data.first_hospital_admissions_date - data.first_data_date_overall)
         / np.timedelta64(1, "D")
-    ).item() <= 7
+    ).item()
+    assert 6 <= days_diff <= 12
 
     assert forecast_data.first_wastewater_date == data.first_data_date_overall
     assert forecast_data.data_observed_disease_wastewater_conc is None
@@ -132,9 +135,11 @@ def test_to_forecast_data(
 def test_to_forecast_data_saturday_edge_case():
     """
     Test that to_forecast_data correctly handles the edge case where
-    first_data_date_overall is already a Saturday. In this case,
-    first_hospital_admissions_date should be the NEXT Saturday (7 days later),
-    not the same day.
+    first_data_date_overall is already a Saturday.
+
+    Since MMWR weeks run Sunday-Saturday, starting on Saturday means we skip
+    1 day to Sunday, then the first complete week ends 6 days later on Saturday
+    (total: 7 days from the starting Saturday).
     """
     # 2025-03-08 is a Saturday
     first_date_saturday = np.datetime64("2025-03-08")
@@ -712,11 +717,12 @@ def test_to_forecast_data_different_start_days(first_date, expected_dow, descrip
     # Verify it's after the first data date
     assert forecast_hosp_date >= data.first_data_date_overall
 
-    # Verify it's within 14 days (at most 2 weeks)
+    # Verify it ends the first complete MMWR week (6-12 days from start)
+    # 6 days if starting on Sunday, 12 days if starting on Monday
     days_diff = (forecast_hosp_date - data.first_data_date_overall) / np.timedelta64(
         1, "D"
     )
-    assert days_diff <= 14
+    assert 6 <= days_diff <= 12
 
 
 @pytest.mark.parametrize(
