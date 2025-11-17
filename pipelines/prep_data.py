@@ -65,7 +65,7 @@ def get_nhsn(
             "-e",
             f"""
             forecasttools::pull_data_cdc_gov_dataset(
-                dataset = "nhsn_hrd_prelim",
+                dataset = "nhsn_hrd_final",
                 api_key_id = {py_scalar_to_r_scalar(api_key_id)},
                 api_key_secret = {py_scalar_to_r_scalar(api_key_secret)},
                 start_date = {py_scalar_to_r_scalar(start_date)},
