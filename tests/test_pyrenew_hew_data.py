@@ -291,6 +291,7 @@ def test_build_pyrenew_hew_data_from_json(mock_data_dir):
 #    subpopulation handling
 #############################################
 
+
 def test_hospital_admissions_must_be_saturday():
     """
     Test that hospital admissions dates must be Saturdays (MMWR epiweek ends).
@@ -637,7 +638,6 @@ def test_date_time_spine():
     assert spine["t"][9] == 9
     assert spine["date"][0] == dt.date(2023, 1, 1)
     assert spine["date"][9] == dt.date(2023, 1, 10)
-
 
 
 @pytest.mark.parametrize(
