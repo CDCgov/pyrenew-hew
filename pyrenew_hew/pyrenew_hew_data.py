@@ -488,20 +488,48 @@ class PyrenewHEWData:
             return n_datapoints
 
     def to_forecast_data(self, n_forecast_points: int) -> Self:
+        """
+        Create a new PyrenewHEWData instance for forecasting.
+
+        This method extends the current data object to include forecast points,
+        converting from observed data to a structure suitable for forecasting.
+
+        Parameters
+        ----------
+        n_forecast_points : int
+            Number of additional days to forecast beyond the current data.
+
+        Returns
+        -------
+        PyrenewHEWData
+            A new instance configured for forecasting with extended time range.
+
+        Notes
+        -----
+        The method handles different temporal resolutions for data streams:
+
+        - ED visits and wastewater data are daily, so they extend by
+          n_forecast_points days.
+        - Hospital admissions are weekly (MMWR epiweeks), so the number of
+          weeks is calculated as total days divided by 7 (integer division).
+        """
+        # Calculate total forecast period
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
+
+        # Find the first Saturday on or after first_data_date_overall
         first_dow = self.first_data_date_overall.astype(dt.datetime).weekday()
-        to_first_sat = (5 - first_dow) % 7
+        to_first_sat = (5 - first_dow) % 7  # Saturday is weekday 5
         first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
             to_first_sat, "D"
         )
+
         return PyrenewHEWData(
             n_ed_visits_data_days=n_days,
             n_hospital_admissions_data_days=n_weeks,
             n_wastewater_data_days=n_days,
             first_ed_visits_date=self.first_data_date_overall,
             first_hospital_admissions_date=first_mmwr_ending_date,
-            # admissions are MMWR epiweekly
             first_wastewater_date=self.first_data_date_overall,
             right_truncation_offset=None,  # by default, want forecasts of complete reports
             n_ww_lab_sites=self.n_ww_lab_sites,
