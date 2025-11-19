@@ -283,6 +283,7 @@ def test_build_pyrenew_hew_data_from_json(mock_data_dir):
     assert data.data_observed_disease_hospital_admissions is not None
     assert data.data_observed_disease_wastewater_conc is not None
 
+
 def test_hospital_admissions_must_be_saturday():
     """
     Test that hospital admissions dates must be Saturdays (MMWR epiweek ends).
