@@ -9,7 +9,7 @@ fi
 
 echo "Unmounting containers specified in mounts.txt with blobfuse2..."
 
-TO_UNMOUNT=$(<mounts.txt)
+TO_UNMOUNT=$(<./blobfuse/mounts.txt)
 
 for dir in $TO_UNMOUNT; do
 	echo "Unmounting" $dir

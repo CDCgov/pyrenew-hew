@@ -10,6 +10,8 @@ az storage blob download \
 	--auth-mode login \
 	--overwrite
 
+source ./azureconfig.sh
+
 # Download the blobfuse config yaml from blob storage
 az storage blob download \
 	--account-name "cfaazurebatchprd" \

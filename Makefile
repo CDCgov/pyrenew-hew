@@ -85,7 +85,6 @@ help:
 # Blobfuse Mount Targets
 # ----------------------- #
 
-
 mount:
 	sudo ./blobfuse/mount.sh
 
@@ -119,11 +118,14 @@ ghcr_login:
 container_push: container_tag ghcr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
 
+config:
+	bash -c "source ./azureconfig.sh"
+
 # ---------------- #
 # Model Fit Targets
 # ---------------- #
 
-run_timeseries:
+run_timeseries: config
 	uv run python pipelines/batch/setup_job.py \
 		--model-family timeseries \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
@@ -134,7 +136,7 @@ run_timeseries:
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
 
-run_e_model:
+run_e_model: config
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
@@ -145,7 +147,7 @@ run_e_model:
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
 
-run_h_model:
+run_h_model: config
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
@@ -156,7 +158,7 @@ run_h_model:
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
 
-run_he_model:
+run_he_model: config
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
@@ -167,7 +169,7 @@ run_he_model:
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
 
-run_hw_model:
+run_hw_model: config
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
@@ -178,18 +180,18 @@ run_hw_model:
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
 
-run_hew_model:
+run_hew_model: config
 	uv run python pipelines/batch/setup_job.py \
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
-		--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}" \
+	--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
 
-post_process:
+post_process: config
 	uv run python pipelines/postprocess_forecast_batches.py \
     	--input "./blobfuse/mounts/pyrenew-hew-prod-output/${FORECAST_DATE}_forecasts" \
     	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}_forecasts.parquet" \

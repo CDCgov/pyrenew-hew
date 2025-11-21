@@ -22,6 +22,7 @@ for dir in $TO_MOUNT; do
 	mkdir -p /mnt/$dir
 	blobfuse2 mount --container-name $dir /mnt/$dir --allow-other
 done
+
 echo ""
 echo "Creating symlinks in $(pwd)..."
 ln -s "/mnt/prod-param-estimates" "./params"
