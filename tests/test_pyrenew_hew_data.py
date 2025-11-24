@@ -295,7 +295,7 @@ def test_hospital_admissions_must_be_saturday():
     # 2023-01-02 is a Monday (not a Saturday)
     monday_date = np.datetime64("2023-01-02")
 
-    with pytest.raises(ValueError, match="Saturdays.*MMWR epiweek"):
+    with pytest.raises(ValueError, match="MMWR dates must be Saturdays"):
         PyrenewHEWData(
             n_ed_visits_data_days=10,
             n_hospital_admissions_data_days=1,
