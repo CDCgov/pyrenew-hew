@@ -44,7 +44,7 @@ jobs:
   generate-data:
     runs-on:  ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -69,7 +69,7 @@ jobs:
         disease: [COVID-19, Influenza, RSV]
         location: [US, CA, MT, DC]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -127,7 +127,7 @@ jobs:
           - model: hew
             location: US
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -165,7 +165,7 @@ jobs:
     needs: fit-pyrenew-models
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
