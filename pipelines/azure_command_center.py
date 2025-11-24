@@ -52,7 +52,7 @@ def setup_job_append_id(
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
-    n_training_days: int = 150,
+    n_training_days: int | None = None,
     exclude_last_n_days: int = 1,
     locations_include: list[str] | None = None,
     locations_exclude: list[str] | None = None,
@@ -60,23 +60,28 @@ def setup_job_append_id(
     append_id: str = "",
 ):
     updated_job_id = job_id + append_id
-    if Confirm.ask(f"Submit job {updated_job_id}?"):
-        setup_job(
-            model_letters=model_letters,
-            job_id=updated_job_id,
-            pool_id=pool_id,
-            model_family=model_family,
-            diseases=diseases,
-            output_subdir=output_subdir,
-            additional_forecast_letters=additional_forecast_letters,
-            container_image_name=container_image_name,
-            container_image_version=container_image_version,
-            n_training_days=n_training_days,
-            exclude_last_n_days=exclude_last_n_days,
-            locations_include=locations_include,
-            locations_exclude=locations_exclude,
-            test=test,
-        )
+
+    for disease in diseases:
+        updated_job_id += f"-{disease.lower()}"
+        if n_training_days is None:
+            n_training_days = 90 if disease == "Influenza" else 150
+        if Confirm.ask(f"Submit job {updated_job_id}?"):
+            setup_job(
+                model_letters=model_letters,
+                job_id=updated_job_id,
+                pool_id=pool_id,
+                model_family=model_family,
+                diseases=[disease],
+                output_subdir=output_subdir,
+                additional_forecast_letters=additional_forecast_letters,
+                container_image_name=container_image_name,
+                container_image_version=container_image_version,
+                n_training_days=n_training_days,
+                exclude_last_n_days=exclude_last_n_days,
+                locations_include=locations_include,
+                locations_exclude=locations_exclude,
+                test=test,
+            )
 
 
 fit_timeseries_e = partial(
