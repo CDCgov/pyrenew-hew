@@ -12,10 +12,10 @@ from pathlib import Path
 from azure.batch import models
 
 # Custom CFA Azure Libraries
-from azuretools.auth import EnvCredentialHandler
-from azuretools.client import get_batch_service_client
-from azuretools.job import create_job
-from azuretools.task import get_container_settings, get_task_config
+from cfa.cloudops.auth import EnvCredentialHandler
+from cfa.cloudops.client import get_batch_service_client
+from cfa.cloudops.job import create_job
+from cfa.cloudops.task import get_container_settings, get_task_config
 from forecasttools import location_table
 
 # Rich printing
@@ -70,7 +70,7 @@ def main(
         the job. Default 'pyrenew-hew'.
         The container registry account name and enpoint
         will be obtained from local environm variables
-        via a :class``azuretools.auth.EnvCredentialHandler`.
+        via a :class:`cfa.cloudops.auth.EnvCredentialHandler`.
 
     container_image_version
         Version of the container to use. Default 'latest'.
@@ -314,10 +314,10 @@ def main(
 
     print("")
     print("Using environment credentials to authenticate with Azure Batch...")
-    creds = EnvCredentialHandler()  # TODO: Jon note: azuretools class. I would love to use DefaultAzureCredential() instead with OIDC and VM identities.
+    creds = EnvCredentialHandler()  # TODO: Jon note: cfa.cloudops class. I would love to use DefaultAzureCredential() instead with OIDC and VM identities.
     client = get_batch_service_client(
         creds
-    )  # TODO: Jon note: azuretools... but outputs an azure SDK object. IF we can get here with DefaultAzureCredential, it will be more portable.
+    )  # TODO: Jon note: cfa.cloudops... but outputs an azure SDK object. IF we can get here with DefaultAzureCredential, it will be more portable.
     print("Submitting job to Azure Batch...")
     job = models.JobAddParameter(
         id=job_id,

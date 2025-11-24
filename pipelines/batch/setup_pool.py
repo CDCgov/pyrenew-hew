@@ -2,11 +2,11 @@
 
 import argparse
 
-import azuretools.defaults as d
+import cfa.cloudops.defaults as d
 from azure.mgmt.batch import models
-from azuretools import blob
-from azuretools.auth import EnvCredentialHandler
-from azuretools.client import get_batch_management_client
+from cfa.cloudops import blob
+from cfa.cloudops.auth import EnvCredentialHandler
+from cfa.cloudops.client import get_batch_management_client
 
 
 def main(pool_name: str) -> None:
@@ -67,7 +67,7 @@ def main(pool_name: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=("Set up an Azure batch pool using the azuretools defaults")
+        description=("Set up an Azure batch pool using the cfa.cloudops defaults")
     )
     parser.add_argument(
         "pool_name",

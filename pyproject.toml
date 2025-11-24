@@ -23,7 +23,7 @@ dependencies = [
     "pyarrow>=18.0.0",
     "pygit2>=1.17.0",
     "tomli-w>=1.1.0",
-    "azuretools",
+    "cfa.cloudops",
     "rich>=14.0.0",
     "dotenv>=0.9.9",
     "polarbayes",
@@ -60,4 +60,4 @@ testpaths = ["tests", "pipelines/tests"]
 polarbayes = { git = "https://github.com/CDCgov/polarbayes" }
 pyrenew = { git = "https://github.com/CDCgov/PyRenew", rev = "v0.1.5" }
 forecasttools = { git = "https://github.com/cdcgov/forecasttools-py" }
-azuretools = { git = "https://github.com/cdcgov/cfa-azuretools" }
+"cfa.cloudops" = { git = "https://github.com/CDCgov/cfa-cloudops" }
