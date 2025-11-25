@@ -24,6 +24,7 @@ from cfa_dagster.azure_container_app_job.executor import (
     azure_container_app_job_executor as azure_caj_executor,
 )
 from cfa_dagster.docker.executor import docker_executor
+from cfa_dagster.utils import collect_definitions
 from dagster_azure.adls2 import (
     ADLS2DefaultAzureCredential,
     ADLS2PickleIOManager,
@@ -33,7 +34,6 @@ from dagster_azure.blob import (
     AzureBlobStorageDefaultCredential,
     AzureBlobStorageResource,
 )
-from cfa_dagster.utils import bootstrap_dev, collect_definitions
 
 # Start the Dagster UI and set necessary env vars
 if "--dev" in sys.argv:
@@ -379,7 +379,7 @@ schedule_every_wednesday = dg.ScheduleDefinition(
 #     # executor=docker_executor_configured,
 #     # executor=azure_caj_executor_configured,
 #     executor=azure_batch_executor_configured,
-# ) 
+# )
 
 # env variable set by Dagster CLI
 is_production = os.getenv("DAGSTER_IS_DEV_CLI", "false") == "false"
