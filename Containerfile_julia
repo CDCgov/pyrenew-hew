@@ -39,7 +39,5 @@ RUN apt-get update && apt-get install -y wget ca-certificates && \
     ln -s /opt/julia-1.11.6/bin/julia /usr/local/bin/julia && \
     rm julia-1.11.6-linux-x86_64.tar.gz
 
-# Copy EpiAutoGP and instantiate Julia deps
-COPY EpiAutoGP/Project.toml EpiAutoGP/
-COPY EpiAutoGP/run_epiautogp.jl EpiAutoGP/
+# Instantiate Julia deps (EpiAutoGP already copied above)
 RUN julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
