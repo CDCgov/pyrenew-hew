@@ -32,12 +32,22 @@ ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
 
-# Add Julia 
+# Add Julia with platform detection
 RUN apt-get update && apt-get install -y wget ca-certificates && \
-    wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.6-linux-x86_64.tar.gz && \
-    tar -xzf julia-1.11.6-linux-x86_64.tar.gz -C /opt && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        JULIA_ARCH="x64"; \
+        JULIA_FILE="julia-1.11.6-linux-x86_64.tar.gz"; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        JULIA_ARCH="aarch64"; \
+        JULIA_FILE="julia-1.11.6-linux-aarch64.tar.gz"; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    wget https://julialang-s3.julialang.org/bin/linux/${JULIA_ARCH}/1.11/${JULIA_FILE} && \
+    tar -xzf ${JULIA_FILE} -C /opt && \
     ln -s /opt/julia-1.11.6/bin/julia /usr/local/bin/julia && \
-    rm julia-1.11.6-linux-x86_64.tar.gz
+    rm ${JULIA_FILE}
 
 # Instantiate Julia deps (EpiAutoGP already copied above)
 RUN julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
