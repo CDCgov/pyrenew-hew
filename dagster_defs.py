@@ -60,46 +60,56 @@ class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
-# TODO: Encode business rules for exclusions across the different model letters and types
-disease_list = ["COVID-19", "Influenza", "RSV"]
-disease_partitions = dg.StaticPartitionsDefinition(disease_list)
-state_list = [
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT",
-    "DE", "FL", "GA", "HI", "ID", "IL", "IN",
-    "IA", "KS", "KY", "LA", "ME", "MD", "MA",
-    "MI", "MN", "MS", "MO", "MT", "NE", "NV",
-    "NH", "NJ", "NM", "NY", "NC", "ND", "OH",
-    "OK", "OR", "PA", "RI", "SC", "SD", "TN",
-    "TX", "UT", "VT", "VA", "WA", "WV", "WI",
-    "WY",
-    "DC", "US"
-]
-state_partitions = dg.StaticPartitionsDefinition(state_list)
-two_dimensional_partitions = dg.MultiPartitionsDefinition(
-    {"disease": disease_partitions, "loc": state_partitions}
-)
-class PyrenewHOutputConfig(dg.Config):
-    # when using the docker_executor, specify the image you'd like to use
-    image: str = "pyrenew-hew:dagster_latest"
-
-
+#
 def build_pyrenew_asset(
     model_letters: str,
     model_family: str = "pyrenew",
-    partitions_def: dg.PartitionsDefinition = two_dimensional_partitions,
     asset_name: str = str(None),
     depends_on: list[str] = None,
-):
+): 
+    # Partition Definitions
+    full_disease_list = ["COVID-19", "Influenza", "RSV"]
+   
+    full_state_list = [
+        'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 
+        'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 
+        'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 
+        'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 
+        'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 
+        'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 
+        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 
+        'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR', 
+        'UM', 'VI'
+    ]
+    # TODO: encode a way for people to customize excluded locations
+    DEFAULT_EXCLUDED_LOCATIONS: list[str] = ["AS", "GU", "MP", "PR", "UM", "VI"]
+    disease_list: list[str] = full_disease_list
+    state_list: list[str] = [state for state in full_state_list if state not in DEFAULT_EXCLUDED_LOCATIONS]
+
+    # w models do not forecast RSV or Influenza
+    # e models do not forecast WY as a location
+    if "w" in model_letters:
+        disease_list.remove("RSV")
+        disease_list.remove("Influenza")
+    elif "e" in model_letters:
+        state_list.remove("WY")
+    
+    disease_partitions = dg.StaticPartitionsDefinition(disease_list)
+    state_partitions = dg.StaticPartitionsDefinition(state_list)
+    two_dimensional_pyrenew_partition = dg.MultiPartitionsDefinition(
+        {"disease": disease_partitions, "loc": state_partitions}
+    )
+
     if depends_on is None:
         depends_on = []
+
     @dg.asset(
-        partitions_def=partitions_def,
+        partitions_def=two_dimensional_pyrenew_partition,
         name=asset_name,
         deps=depends_on
     )
     def pyrenew_asset(
         context: dg.AssetExecutionContext,
-        config: PyrenewHOutputConfig,
     ) -> str:
         keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
         disease = keys_by_dimension["disease"]
@@ -171,7 +181,7 @@ pyrenew_hew_output = build_pyrenew_asset(
     model_letters="hew", asset_name="pyrenew_hew_output", depends_on=["timeseries_e_output"]
 )
 
-
+# Sample assets - useful for reference and testing
 @dg.asset(
     kinds={"azure_blob"},
     description="An asset that downloads a file from Azure Blob Storage",
