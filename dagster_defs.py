@@ -139,6 +139,7 @@ def build_pyrenew_asset(
             )
         base_call = (
             "/bin/bash -c '"
+            f"VIRTUAL_ENV=.venv && "
             f"uv run python pipelines/{run_script} "
             f"--disease {disease} "
             f"--loc {loc} "
@@ -235,7 +236,7 @@ docker_executor_configured = docker_executor.configured(
     {
         # specify a default image
         "image": f"pyrenew-hew:dagster_latest_{user}",
-        "env_vars": [f"DAGSTER_USER={user}"],
+        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
@@ -261,7 +262,7 @@ docker_executor_configured = docker_executor.configured(
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
         "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
-        "env_vars": [f"DAGSTER_USER={user}"],
+        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
     }
 )
 
@@ -270,7 +271,7 @@ azure_caj_executor_configured = azure_caj_executor.configured(
 azure_batch_executor_configured = azure_batch_executor.configured(
     {   "pool_name": "pyrenew-pool",
         "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
-        "env_vars": [f"DAGSTER_USER={user}"],
+        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
