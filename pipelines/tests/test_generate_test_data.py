@@ -10,7 +10,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from pipelines.generate_test_data_lib import (
+from pipelines.generate_test_data import (
     create_default_param_estimates,
     create_param_estimates,
     create_var_df,
