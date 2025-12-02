@@ -56,14 +56,6 @@ if "--dev" in sys.argv:
 # get the user from the environment, throw an error if variable is not set
 user = os.environ["DAGSTER_USER"]
 
-# end_offset=1 allows you to target the current month
-# by default, dagster only allows you to materialize after a month is complete
-monthly_partition = dg.MonthlyPartitionsDefinition(
-    start_date="2024-01-01", end_offset=1
-)
-
-# get the user from the environment, throw an error if variable is not set
-user = os.environ["DAGSTER_USER"]
 class PyrenewAssetConfig(dg.Config):
     # when using the docker_executor, specify the image you'd like to use
     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
@@ -356,30 +348,6 @@ schedule_every_wednesday = dg.ScheduleDefinition(
     cron_schedule="0 9 * * 3",
     job=pyrenew_asset_job
 )
-
-# Add assets, jobs, schedules, and sensors here to have them appear in the
-# Dagster UI
-# defs = dg.Definitions(
-#     assets=[
-#         # nssp_gold,
-#         # nssp_latest_comprehensive,
-#         # nwss_gold,
-#         # nhsn_latest,
-#         timeseries_e_output,
-#         pyrenew_e_output,
-#         pyrenew_he_output,
-#         pyrenew_hew_output,
-#         pyrenew_h_output,
-#         pyrenew_hw_output
-#     ],
-#     jobs=[],
-#     resources=resources_def,
-#     # setting Docker as the default executor. comment this out to use
-#     # the default executor that runs directly on your computer
-#     # executor=docker_executor_configured,
-#     # executor=azure_caj_executor_configured,
-#     executor=azure_batch_executor_configured,
-# )
 
 # env variable set by Dagster CLI
 is_production = os.getenv("DAGSTER_IS_DEV_CLI", "false") == "false"
