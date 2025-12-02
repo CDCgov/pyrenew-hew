@@ -13,7 +13,7 @@ repos:
   #####
   # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.0
+    rev: v0.14.7
     hooks:
       # Sort imports
       - id: ruff-check
@@ -22,13 +22,13 @@ repos:
         exclude: dagster_defs.py
   #####extra
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.2
+    rev: 0.9.13
     hooks:
       - id: uv-lock
   #####
   # R
   - repo: https://github.com/lorenzwalthert/precommit
-    rev: v0.4.3.9015
+    rev: v0.4.3.9017
     hooks:
       - id: lintr
   #####
