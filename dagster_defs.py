@@ -66,19 +66,19 @@ def build_pyrenew_asset(
     model_family: str = "pyrenew",
     asset_name: str = str(None),
     depends_on: list[str] = None,
-): 
+):
     # Partition Definitions
     full_disease_list = ["COVID-19", "Influenza", "RSV"]
-   
+
     full_state_list = [
-        'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 
-        'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 
-        'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 
-        'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 
-        'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 
-        'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 
-        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 
-        'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR', 
+        'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO',
+        'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID',
+        'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
+        'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT',
+        'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
+        'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA',
+        'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR',
         'UM', 'VI'
     ]
     # TODO: encode a way for people to customize excluded locations
@@ -93,7 +93,7 @@ def build_pyrenew_asset(
         disease_list.remove("Influenza")
     elif "e" in model_letters:
         state_list.remove("WY")
-    
+
     disease_partitions = dg.StaticPartitionsDefinition(disease_list)
     state_partitions = dg.StaticPartitionsDefinition(state_list)
     two_dimensional_pyrenew_partition = dg.MultiPartitionsDefinition(
