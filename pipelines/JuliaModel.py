@@ -44,42 +44,32 @@ def to_abs_path(path: Union[str, Path]) -> Path:
 
 class JuliaModel:
     """
-    A class to manage and execute experiments using a Julia model.
+    A class to manage and execute Julia models.
 
-    Attributes:
-        experiment_path (str): Absolute path to the experiment directory.
-        model_name (str): Name of the model used in the experiment.
-        target (str): Target variable for the experiment, derived from the data source.
-        train_data (Any): Training data used in the experiment.
-        eval_data (Any): Evaluation data used in the experiment.
-        reference_date (Any): Reference date for the experiment.
-        nthreads (int): Number of threads to use during model execution.
-        model_run_path (str): Path to the Julia script or executable to run the model.
-        project_path (str): Path to the Julia project directory.
+    This class provides a Python interface for running Julia scripts with proper
+    project environment setup and argument handling.
 
-    Methods:
-        __init__(experiment_info, model_name, model_run_path, project_path, nthreads):
-            Initializes the JuliaExperiment instance with experiment configuration,
-            model name, model run path, and project path.
+    Attributes
+    ----------
+    data_json_path : Path
+        Absolute path to the input JSON data file.
+    model_run_path : Path
+        Absolute path to the directory where model outputs will be saved.
+    project_path : Path
+        Absolute path to the Julia project directory (containing Project.toml).
+    julia_entrypoint : Path
+        Absolute path to the Julia script that serves as the model entry point.
+    model_name : str
+        Name identifier for the model.
+    nthreads : int
+        Number of threads to use for Julia execution (default: 1).
 
-        run(location, params):
-            Executes the experiment by logging model details, running the model, and logging artifacts to MLflow.
-
-        log_model(params, location):
-            Logs experiment parameters and tags to MLflow.
-
-        log_artifact():
-            Logs experiment artifacts (plots and forecast data) to MLflow.
-
-        score_model():
-            Logs forecast scores to MLflow.
-
-        get_tags():
-            Returns a dictionary of tags associated with the experiment, including the model name.
-
-        run_model(location, *args):
-            Executes the Julia model with the specified location and additional arguments.
-            Handles Julia package instantiation and resolves dependencies before running the experiment.
+    Methods
+    -------
+    run(params: dict)
+        Execute the Julia model with the specified parameters.
+    run_model(*args)
+        Low-level method that constructs and runs the Julia command.
     """
 
     def __init__(
@@ -88,11 +78,31 @@ class JuliaModel:
         model_run_dir: str | Path,
         model_name: str,
         julia_project_path: str | Path,
+        julia_entrypoint: str | Path,
         nthreads: int = 1,
     ):
+        """
+        Initialize a JuliaModel instance.
+
+        Parameters
+        ----------
+        data_json_path : str | Path
+            Path to the input JSON data file for the model.
+        model_run_dir : str | Path
+            Directory where model outputs will be saved.
+        model_name : str
+            Name identifier for the model.
+        julia_project_path : str | Path
+            Path to the Julia project directory (containing Project.toml).
+        julia_entrypoint : str | Path
+            Path to the Julia script to execute.
+        nthreads : int, optional
+            Number of threads for Julia execution (default: 1).
+        """
         self.data_json_path = to_abs_path(data_json_path)
         self.model_run_path = to_abs_path(model_run_dir)
         self.project_path = to_abs_path(julia_project_path)
+        self.julia_entrypoint = to_abs_path(julia_entrypoint)
         self.model_name = model_name
         self.nthreads = nthreads
 
@@ -100,23 +110,78 @@ class JuliaModel:
         self,
         params: dict,
     ):
-        params["threads"] = self.nthreads
-        params["project"] = self.project_path
+        """
+        Execute the Julia model with specified parameters.
+
+        This method automatically includes the data input path and output directory
+        in the parameters before running the model.
+
+        Parameters
+        ----------
+        params : dict
+            Dictionary of command-line arguments to pass to the Julia script.
+            Keys will be converted to --key=value format.
+            The 'json-input' and 'output-dir' keys are automatically set.
+
+        Raises
+        ------
+        RuntimeError
+            If the Julia model execution fails (non-zero exit code).
+        """
         params["json-input"] = self.data_json_path
         params["output-dir"] = self.model_run_path
         args = dict_to_arg_list(params)
         self.run_model(*args)
 
     def run_model(self, *args):
+        """
+        Execute the Julia model with low-level command construction.
+
+        This method handles Julia package instantiation, dependency resolution,
+        and model execution. It first ensures all Julia dependencies are installed,
+        then runs the model script.
+
+        Parameters
+        ----------
+        *args : str
+            Variable-length argument list of command-line arguments to pass to
+            the Julia script (typically in --key=value format).
+
+        Raises
+        ------
+        RuntimeError
+            If Julia package instantiation or model execution fails.
+        """
         cmd = [
             "julia",
+            f"--project={self.project_path}",
+            f"--threads={self.nthreads}",
+            f"{self.julia_entrypoint}",
             *args,
         ]
         cmd_str = " ".join(cmd)
-        print(f"instantiate Julia model {self.model_name}")
-        subprocess.run(
+
+        print(f"Instantiating Julia model {self.model_name}")
+        result = subprocess.run(
             f"julia --project={self.project_path} -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()' ",
             shell=True,
+            capture_output=True,
+            text=True,
         )
-        print(f"run experiment with command: {cmd_str}")
-        subprocess.run(cmd_str, shell=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Julia package instantiation failed:\n"
+                f"STDOUT: {result.stdout}\n"
+                f"STDERR: {result.stderr}"
+            )
+
+        print(f"Running experiment with command: {cmd_str}")
+        result = subprocess.run(cmd_str, shell=True, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Julia model execution failed:\n"
+                f"STDOUT: {result.stdout}\n"
+                f"STDERR: {result.stderr}"
+            )
+
+        print(f"Model {self.model_name} completed successfully")
