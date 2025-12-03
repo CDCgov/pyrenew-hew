@@ -224,12 +224,15 @@ def simulate_data_from_bootstrap(
     n_ww_sites: int,
     states_to_simulate: list[str],
     diseases_to_simulate: list[str],
+    clean: bool = True,
 ) -> dict[str, pl.DataFrame]:
     """
     Simulate data from bootstrap model.
 
     This function creates bootstrap data structures, builds a PyRenew model,
-    runs prior predictive sampling, and returns the simulated data.
+    runs prior predictive sampling, and returns the simulated data as parquet DataFrames.
+    Optionally, it populates the bootstrap directory with the prior predictive values also, but
+    default behavior is to clean up the directory after simulation.
 
     Args:
         n_training_days: Number of training days
@@ -242,6 +245,8 @@ def simulate_data_from_bootstrap(
         n_ww_sites: Number of wastewater sites
         states_to_simulate: List of state abbreviations
         diseases_to_simulate: List of disease names
+        clean: If True, remove bootstrap_private_data_dir after simulation,
+                otherwise update JSON and TSV files with prior predictive values
 
     Returns:
         Dictionary mapping variable names to DataFrames with simulated data
@@ -441,30 +446,35 @@ def simulate_data_from_bootstrap(
         prior=prior_predictive_samples,
     ).sel(draw=slice(0, max_draw - 1))
 
-    # Update the JSON file with realistic prior predictive values
-    json_file_path = Path(model_run_dir) / "data" / "data_for_model_fit.json"
-    update_json_with_prior_predictive(
-        json_file_path=json_file_path,
-        idata=idata,
-        state_disease_key=state_disease_key,
-        bootstrap_loc=bootstrap_loc,
-        bootstrap_disease=bootstrap_disease,
-    )
-
-    # Update the TSV file with realistic prior predictive values
-    tsv_file_path = Path(model_run_dir) / "data" / "combined_training_data.tsv"
-    update_tsv_with_prior_predictive(
-        tsv_file_path=tsv_file_path,
-        idata=idata,
-        state_disease_key=state_disease_key,
-        bootstrap_loc=bootstrap_loc,
-        bootstrap_disease=bootstrap_disease,
-    )
-
-    return {
+    result = {
         var: create_var_df(idata, var, state_disease_key)
         for var in PREDICTIVE_VAR_NAMES
     }
+
+    # Clean up bootstrap directory if requested
+    if clean and bootstrap_private_data_dir.exists():
+        shutil.rmtree(bootstrap_private_data_dir)
+    else:
+        # Update the JSON file with realistic prior predictive values
+        json_file_path = Path(model_run_dir) / "data" / "data_for_model_fit.json"
+        update_json_with_prior_predictive(
+            json_file_path=json_file_path,
+            idata=idata,
+            state_disease_key=state_disease_key,
+            bootstrap_loc=bootstrap_loc,
+            bootstrap_disease=bootstrap_disease,
+        )
+        # Update the TSV file with realistic prior predictive values
+        tsv_file_path = Path(model_run_dir) / "data" / "combined_training_data.tsv"
+        update_tsv_with_prior_predictive(
+            tsv_file_path=tsv_file_path,
+            idata=idata,
+            state_disease_key=state_disease_key,
+            bootstrap_loc=bootstrap_loc,
+            bootstrap_disease=bootstrap_disease,
+        )
+
+    return result
 
 
 def create_default_param_estimates(
