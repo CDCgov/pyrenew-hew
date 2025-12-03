@@ -435,7 +435,3 @@ class TestCreateDefaultParamEstimates:
         unique_diseases = result["disease"].unique().to_list()
         for disease in diseases:
             assert disease in unique_diseases
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
