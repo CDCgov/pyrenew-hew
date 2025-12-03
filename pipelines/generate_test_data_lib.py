@@ -229,6 +229,7 @@ def simulate_data_from_bootstrap(
     n_ww_sites: int,
     states_to_simulate: list[str],
     diseases_to_simulate: list[str],
+    other_ed_visits_multiplier: float = 10.0,
 ) -> dict[str, pl.DataFrame]:
     """
     Simulate data from bootstrap model.
@@ -247,6 +248,8 @@ def simulate_data_from_bootstrap(
         n_ww_sites: Number of wastewater sites
         states_to_simulate: List of state abbreviations
         diseases_to_simulate: List of disease names
+        other_ed_visits_multiplier: Multiplier for other_ed_visits Poisson mean
+            (default: 10.0). The mean is computed as multiplier * max(observed_ed_visits).
 
     Returns:
         Dictionary mapping variable names to DataFrames with simulated data
@@ -457,6 +460,7 @@ def simulate_data_from_bootstrap(
         state_disease_key=state_disease_key,
         bootstrap_loc=bootstrap_loc,
         bootstrap_disease=bootstrap_disease,
+        other_ed_visits_multiplier=other_ed_visits_multiplier,
     )
 
     # Update the TSV file with realistic prior predictive values
@@ -467,6 +471,7 @@ def simulate_data_from_bootstrap(
         state_disease_key=state_disease_key,
         bootstrap_loc=bootstrap_loc,
         bootstrap_disease=bootstrap_disease,
+        other_ed_visits_multiplier=other_ed_visits_multiplier,
     )
 
     return {
@@ -523,6 +528,7 @@ def update_json_with_prior_predictive(
     state_disease_key: pl.DataFrame,
     bootstrap_loc: str,
     bootstrap_disease: str,
+    other_ed_visits_multiplier: float = 10.0,
 ) -> None:
     """
     Update JSON file with values from prior predictive sampling.
@@ -533,10 +539,13 @@ def update_json_with_prior_predictive(
         state_disease_key: DataFrame mapping draws to state/disease combinations
         bootstrap_loc: State abbreviation used for bootstrap
         bootstrap_disease: Disease name used for bootstrap
+        other_ed_visits_multiplier: Multiplier for other_ed_visits Poisson mean
+            (default: 10.0). The mean is computed as multiplier * max(observed_ed_visits).
 
     This function reads the JSON file, extracts realistic values from the prior
     predictive samples for the bootstrap location/disease, and writes them back
-    to the JSON file.
+    to the JSON file. The other_ed_visits are generated from a Poisson distribution
+    with mean = other_ed_visits_multiplier * max(observed_ed_visits).
     """
     # Read the existing JSON
     with open(json_file_path, "r") as f:
@@ -572,6 +581,17 @@ def update_json_with_prior_predictive(
         data["nssp_training_data"]["observed_ed_visits"] = [
             int(x) for x in ed_samples[:n_ed]
         ]
+
+        # Generate other_ed_visits from Poisson with mean = multiplier * max(observed_ed_visits)
+        if "other_ed_visits" in data["nssp_training_data"]:
+            max_ed = float(ed_samples[:n_ed].max())
+            poisson_mean = other_ed_visits_multiplier * max_ed
+            np.random.seed(42)  # For reproducibility
+            n_other = len(data["nssp_training_data"]["other_ed_visits"])
+            other_ed_samples = np.random.poisson(lam=poisson_mean, size=n_other)
+            data["nssp_training_data"]["other_ed_visits"] = [
+                int(x) for x in other_ed_samples
+            ]
 
     # Update wastewater if present (note: key is 'nwss_training_data', not 'ww_training_data')
     if (
@@ -610,6 +630,7 @@ def update_tsv_with_prior_predictive(
     state_disease_key: pl.DataFrame,
     bootstrap_loc: str,
     bootstrap_disease: str,
+    other_ed_visits_multiplier: float = 10.0,
 ) -> None:
     """Update TSV file with realistic values from prior predictive sampling.
 
@@ -619,10 +640,13 @@ def update_tsv_with_prior_predictive(
         state_disease_key: DataFrame mapping draws to state/disease combinations
         bootstrap_loc: State abbreviation used for bootstrap
         bootstrap_disease: Disease name used for bootstrap
+        other_ed_visits_multiplier: Multiplier for other_ed_visits Poisson mean
+            (default: 10.0). The mean is computed as multiplier * max(observed_ed_visits).
 
     This function reads the TSV file, extracts realistic values from the prior
     predictive samples for the bootstrap location/disease, and writes them back
-    to the TSV file.
+    to the TSV file. The other_ed_visits are generated from a Poisson distribution
+    with mean = other_ed_visits_multiplier * max(observed_ed_visits).
     """
     # Read the existing TSV
     df = pl.read_csv(tsv_file_path, separator="\t")
@@ -661,9 +685,9 @@ def update_tsv_with_prior_predictive(
                 .alias(".value")
             )
 
-    # Generate other_ed_visits from Poisson with mean = 10 * max(observed_ed_visits)
+    # Generate other_ed_visits from Poisson with mean = multiplier * max(observed_ed_visits)
     max_ed = float(ed_samples.max())
-    poisson_mean = 10 * max_ed
+    poisson_mean = other_ed_visits_multiplier * max_ed
     np.random.seed(42)  # For reproducibility
     other_ed_samples = np.random.poisson(lam=poisson_mean, size=len(dates))
 
