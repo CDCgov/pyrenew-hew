@@ -1,7 +1,27 @@
-"""Script to generate synthetic test data for disease modeling.
+"""
+Script to generate synthetic test data for disease modelling.
 
-This script creates bootstrap data and synthetic test data for multiple states
-and diseases, saving results in the specified output directory.
+This script creates a bootstrap data structure and synthetic data for multiple states
+and diseases, saving results in the specified output directory. The aim is to produce
+fairly realistic test data that mimics real-world surveillance data for use in
+development and testing of disease modelling pipelines.
+
+Steps:
+1. Creates parameter estimates (generation interval, right truncation, delay PMFs)
+2. Generates bootstrap data structure for a reference location/disease (populated with zeros for observations)
+3. Uses the bootstrap data structure to build a PyRenew model
+4. Runs prior predictive sampling to generate synthetic observations
+    4a. Creates facility-level and state-level NSSP ED visit data (useful for NSSP-ETL and NSSP state-level gold)
+    4b. Creates NWSS wastewater surveillance data with site-level concentrations
+    4c. Creates NHSN hospital admission data (state and US-level)
+5. Saves all data as parquet files in private_data directory structure
+6. Optionally removes bootstrap data directory after simulation, otherwise updates bootstrap data files with prior predictive values
+
+Arguments:
+    base_dir: Base directory where output will be saved. Creates two subdirectories:
+        - bootstrap_private_data/: Temporary bootstrap data (removed if --clean)
+        - private_data/: Final synthetic test data in production format
+    --clean: Optional flag to remove bootstrap_private_data directory after generation. Default is `False`.
 """
 
 import argparse
@@ -26,7 +46,6 @@ from pipelines.generate_test_data_lib import (
 
 
 def main():
-    """Main function to generate test data."""
     parser = argparse.ArgumentParser(
         description="Create fit data for disease modeling."
     )
