@@ -1,68 +1,102 @@
-import pickle
+"""
+Functions for fitting EpiAutoGP models.
+
+This module provides the interface for running EpiAutoGP Julia models,
+following the same pattern as fit_pyrenew_model.py.
+"""
+
 from pathlib import Path
 
-import jax
-import numpy as np
-
-from pipelines.utils import build_pyrenew_hew_model_from_dir
-from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
+from pipelines.JuliaModel import JuliaModel
 
 
-def fit_and_save_epiautogp(
-    model_run_dir: str,
+def fit_and_save_model(
+    model_run_dir: str | Path,
     model_name: str,
-    fit_ed_visits: bool = False,
-    fit_hospital_admissions: bool = False,
-    fit_wastewater: bool = False,
-    n_warmup: int = 1000,
-    n_samples: int = 1000,
-    n_chains: int = 4,
-    rng_key: int = None,
+    epiautogp_input_json: str | Path,
+    n_forecast_weeks: int = 4,
+    n_particles: int = 12,
+    n_mcmc: int = 100,
+    n_hmc: int = 50,
+    n_forecast_draws: int = 10000,
+    nthreads: int = 1,
 ) -> None:
-    if rng_key is None:
-        rng_key = np.random.randint(0, 10000)
-    if isinstance(rng_key, int):
-        rng_key = jax.random.key(rng_key)
-    else:
-        raise ValueError(
-            "rng_key must be an integer with which to seed :func:`jax.random.key`"
+    """
+    Fit EpiAutoGP model and save results.
+
+    This function runs the EpiAutoGP Julia model with the specified parameters
+    and saves the forecast outputs to the model directory.
+
+    Parameters
+    ----------
+    model_run_dir : str | Path
+        Directory containing the model run data and where outputs will be saved.
+    model_name : str
+        Name of the model (typically "epiautogp").
+    epiautogp_input_json : str | Path
+        Path to the EpiAutoGP-formatted input JSON file.
+    n_forecast_weeks : int, optional
+        Number of weeks to forecast (default: 4).
+    n_particles : int, optional
+        Number of particles for filtering (default: 500).
+    n_mcmc : int, optional
+        Number of MCMC iterations (default: 500).
+    n_hmc : int, optional
+        Number of HMC iterations (default: 250).
+    n_forecast_draws : int, optional
+        Number of forecast draws (default: 10000).
+    nthreads : int, optional
+        Number of threads for Julia execution (default: 1).
+
+    Raises
+    ------
+    FileNotFoundError
+        If the Julia entrypoint script is not found.
+    RuntimeError
+        If the Julia model execution fails.
+
+    Notes
+    -----
+    The model outputs will be saved to a subdirectory named `model_name`
+    within `model_run_dir`. The main output is a hubverse-compatible
+    forecast CSV file.
+    """
+    model_run_dir = Path(model_run_dir)
+    epiautogp_input_json = Path(epiautogp_input_json)
+
+    # Create model output directory
+    model_output_dir = model_run_dir / model_name
+    model_output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Julia project and entrypoint paths
+    julia_project_path = Path("EpiAutoGP")
+    julia_entrypoint = julia_project_path / "run.jl"
+
+    if not julia_entrypoint.exists():
+        raise FileNotFoundError(
+            f"Julia entrypoint script not found: {julia_entrypoint}"
         )
 
-    my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
-        fit_ed_visits=fit_ed_visits,
-        fit_hospital_admissions=fit_hospital_admissions,
-        fit_wastewater=fit_wastewater,
-    )
-    my_model = build_pyrenew_hew_model_from_dir(
-        model_run_dir,
-        fit_ed_visits=fit_ed_visits,
-        fit_hospital_admissions=fit_hospital_admissions,
-        fit_wastewater=fit_wastewater,
-    )
-    my_model.run(
-        data=my_data,
-        sample_ed_visits=fit_ed_visits,
-        sample_hospital_admissions=fit_hospital_admissions,
-        sample_wastewater=fit_wastewater,
-        num_warmup=n_warmup,
-        num_samples=n_samples,
-        rng_key=rng_key,
-        extra_fields=(
-            "potential_energy",
-            "num_steps",
-            "z_grad",
-            "accept_prob",
-        ),
-        mcmc_args=dict(num_chains=n_chains, progress_bar=True),
-        nuts_args=dict(find_heuristic_step_size=True),
+    # Initialize JuliaModel
+    julia_model = JuliaModel(
+        data_json_path=epiautogp_input_json,
+        model_run_dir=model_output_dir,
+        model_name=model_name,
+        julia_project_path=julia_project_path,
+        julia_entrypoint=julia_entrypoint,
+        nthreads=nthreads,
     )
 
-    my_model.mcmc.sampler = None
-    model_dir = Path(model_run_dir, model_name)
-    model_dir.mkdir(exist_ok=True)
-    with open(
-        model_dir / "posterior_samples.pickle",
-        "wb",
-    ) as file:
-        pickle.dump(my_model.mcmc, file)
+    # Prepare model parameters
+    model_params = {
+        "n-forecast-weeks": n_forecast_weeks,
+        "n-particles": n_particles,
+        "n-mcmc": n_mcmc,
+        "n-hmc": n_hmc,
+        "n-forecast-draws": n_forecast_draws,
+    }
+
+    # Run the model (this will raise RuntimeError if it fails)
+    julia_model.run(model_params)
+
+    return None

@@ -1,76 +1,181 @@
+# Key Features:
+# Same Structure as PyRenew Pipeline:
+
+# Git info recording
+# Data preparation (NSSP, NHSN)
+# Evaluation data gathering
+# Model execution
+# Post-processing (plots, hubverse tables)
+# EpiAutoGP-Specific Adaptations:
+
+# Only supports hospital admissions (NHSN data) currently
+# Uses convert_to_epiautogp_format() to transform PyRenew JSON to EpiAutoGP JSON
+# Calls Julia model via run_epiautogp_model() function
+# EpiAutoGP-specific parameters (n_particles, n_mcmc, n_hmc, n_forecast_draws)
+# Post-Processing:
+
+# Finds the generated CSV forecast file
+# Converts it to parquet for consistency
+# Calls plotting function (though the R script plot_epiautogp_forecast.R still needs to be created)
+# Command-Line Interface:
+
+# Same arguments as PyRenew pipeline where applicable
+# Additional EpiAutoGP-specific parameters
+# Example usage:
+# uv run python pipelines/forecast_epiautogp.py \
+#   --disease COVID-19 \
+#   --loc CA \
+#   --report-date 2024-12-21 \
+#   --param-data-dir private_data/prod_param_estimates \
+#   --output-dir private_data \
+#   --eval-data-path private_data/eval_data.parquet
+
+
 import argparse
 import datetime as dt
 import logging
 import os
+import subprocess
 import tomllib
 from pathlib import Path
 
 import polars as pl
-from fit_pyrenew_model import fit_and_save_model
-from generate_predictive import (
-    generate_and_save_predictions,
-)
+import tomli_w
+from fit_epiautogp_model import fit_and_save_model
+from prep_epiautogp_data import convert_to_epiautogp_format
+from pygit2.repository import Repository
 
-from pipelines.forecast_pyrenew import (
-    create_hubverse_table,
-    generate_epiweekly_data,
-    get_available_reports,
-    plot_and_save_loc_forecast,
-    record_git_info,
-)
 from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
 from pipelines.prep_eval_data import save_eval_data
-from pyrenew_hew.utils import (
-    flags_from_hew_letters,
-    hew_letters_from_flags,
-)
 
 
-def nssp_data_handling(
+def record_git_info(model_run_dir: Path):
+    metadata_file = Path(model_run_dir, "metadata.toml")
+
+    if metadata_file.exists():
+        with open(metadata_file, "rb") as file:
+            metadata = tomllib.load(file)
+    else:
+        metadata = {}
+
+    try:
+        repo = Repository(os.getcwd())
+        branch_name = repo.head.shorthand
+        commit_sha = str(repo.head.target)
+    except Exception:
+        branch_name = os.environ.get("GIT_BRANCH_NAME", "unknown")
+        commit_sha = os.environ.get("GIT_COMMIT_SHA", "unknown")
+
+    new_metadata = {
+        "branch_name": branch_name,
+        "commit_sha": commit_sha,
+    }
+
+    metadata.update(new_metadata)
+
+    metadata_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(metadata_file, "wb") as file:
+        tomli_w.dump(metadata, file)
+
+
+def get_available_reports(data_dir: str | Path, glob_pattern: str = "*.parquet"):
+    return [
+        dt.datetime.strptime(f.stem, "%Y-%m-%d").date()
+        for f in Path(data_dir).glob(glob_pattern)
+    ]
+
+
+def plot_epiautogp_forecast(
+    model_run_dir: Path,
+    forecast_csv_path: Path,
+) -> None:
+    """
+    Generate plots for EpiAutoGP forecast using R script.
+
+    Args:
+        model_run_dir: Directory containing model run data
+        forecast_csv_path: Path to the hubverse-formatted forecast CSV
+    """
+    # Create figures directory
+    figure_dir = Path(model_run_dir, "epiautogp", "figures")
+    figure_dir.mkdir(parents=True, exist_ok=True)
+
+    # Construct R plotting command
+    # Note: This assumes we'll create a simplified R plotting script
+    # similar to plot_and_save_loc_forecast.R but for EpiAutoGP
+    command = [
+        "Rscript",
+        "pipelines/plot_epiautogp_forecast.R",
+        str(forecast_csv_path),
+        str(figure_dir),
+        str(model_run_dir),
+    ]
+
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"plot_epiautogp_forecast failed:\n"
+            f"STDOUT: {result.stdout}\n"
+            f"STDERR: {result.stderr}"
+        )
+
+    return None
+
+
+def main(
+    disease: str,
+    report_date: str,
+    loc: str,
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
-    report_date: str,
-    exclude_last_n_days: int,
+    param_data_dir: Path | str,
+    output_dir: Path | str,
     n_training_days: int,
-    logger: logging.Logger,
-) -> tuple[
-    pl.DataFrame | None,
-    pl.DataFrame | None,
-    dt.date,
-    dt.date,
-    dt.date,
-    dt.date | None,
-]:
-    """
-    Handle NSSP data loading and report date logic.
-    Parameters
-    ----------
-    facility_level_nssp_data_dir : Path | str
-        Directory containing facility-level NSSP data.
-    state_level_nssp_data_dir : Path | str
-        Directory containing state-level NSSP data.
-    report_date : str
-        Report date in 'YYYY-MM-DD' format or 'latest'.
-    exclude_last_n_days : int
-        Number of most recent days to exclude from training data.
-    n_training_days : int
-        Number of days to use for training.
-    logger : logging.Logger
-        Logger for logging information.
-    Returns
-    -------
-    facility_level_nssp_data : pl.DataFrame | None
-        Facility-level NSSP data for the report date, or None if not available.
-    loc_level_nssp_data : pl.DataFrame | None
-        Location-level NSSP data for the report date, or None if not available.
-    first_training_date : dt.date
-        First date of the training data.
-    last_training_date : dt.date
-        Last date of the training data.
-    report_date : dt.date
-        Finalized report date.
-    loc_report_date : dt.date | None
-        Location-level report date used, or None if not applicable."""
+    n_forecast_days: int,
+    nhsn_data_path: Path | str = None,
+    exclude_last_n_days: int = 0,
+    eval_data_path: Path = None,
+    credentials_path: Path = None,
+    fit_hospital_admissions: bool = True,
+    n_forecast_weeks: int = 4,
+    n_particles: int = 500,
+    n_mcmc: int = 500,
+    n_hmc: int = 250,
+    n_forecast_draws: int = 10000,
+) -> None:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    model_name = "epiautogp"
+
+    logger.info(
+        "Starting single-location EpiAutoGP forecasting pipeline for "
+        f"location {loc} and report date {report_date}"
+    )
+
+    # EpiAutoGP currently only supports hospital admissions
+    if not fit_hospital_admissions:
+        raise ValueError(
+            "EpiAutoGP currently only supports hospital admissions forecasting. "
+            "fit_hospital_admissions must be True."
+        )
+
+    if credentials_path is not None:
+        cp = Path(credentials_path)
+        if not cp.suffix.lower() == ".toml":
+            raise ValueError(
+                "Credentials file must have the extension "
+                "'.toml' (not case-sensitive). Got "
+                f"{cp.suffix}"
+            )
+        logger.info(f"Reading in credentials from {cp}...")
+        with open(cp, "rb") as fp:
+            credentials_dict = tomllib.load(fp)
+    else:
+        logger.info("No credentials file given. Will proceed without one.")
+        credentials_dict = None
+
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
@@ -139,100 +244,8 @@ def nssp_data_handling(
         raise ValueError(
             f"No data available for the requested report date {report_date}"
         )
-    return (
-        facility_level_nssp_data,
-        loc_level_nssp_data,
-        first_training_date,
-        last_training_date,
-        report_date,
-        loc_report_date,
-    )
 
-
-def main(
-    disease: str,
-    report_date: str,
-    loc: str,
-    facility_level_nssp_data_dir: Path | str,
-    state_level_nssp_data_dir: Path | str,
-    param_data_dir: Path | str,
-    output_dir: Path | str,
-    n_training_days: int,
-    n_forecast_days: int,
-    n_chains: int,
-    n_warmup: int,
-    n_samples: int,
-    nhsn_data_path: Path | str = None,
-    exclude_last_n_days: int = 0,
-    eval_data_path: Path = None,
-    credentials_path: Path = None,
-    fit_ed_visits: bool = False,
-    fit_hospital_admissions: bool = False,
-    forecast_ed_visits: bool = False,
-    forecast_hospital_admissions: bool = False,
-) -> None:
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-
-    model_name = "epiautogp_" + hew_letters_from_flags(
-        fit_ed_visits=fit_ed_visits,
-        fit_hospital_admissions=fit_hospital_admissions,
-        fit_wastewater=False,
-    )
-
-    logger.info(
-        "Starting single-location forecasting pipeline for "
-        f"model {model_name}, location {loc}, "
-        f"and report date {report_date}"
-    )
-    signals = ["ed_visits", "hospital_admissions"]
-
-    for signal in signals:
-        fit = locals().get(f"fit_{signal}", False)
-        forecast = locals().get(f"forecast_{signal}", False)
-        if fit and not forecast:
-            raise ValueError(
-                "This pipeline does not currently support "
-                "fitting to but not forecasting a signal. "
-                f"Asked to fit but not forecast {signal}."
-            )
-    any_fit = any([locals().get(f"fit_{signal}", False) for signal in signals])
-    if not any_fit:
-        raise ValueError(
-            "pyrenew_null (fitting to no signals) is not supported by this pipeline"
-        )
-
-    if credentials_path is not None:
-        cp = Path(credentials_path)
-        if not cp.suffix.lower() == ".toml":
-            raise ValueError(
-                "Credentials file must have the extension "
-                "'.toml' (not case-sensitive). Got "
-                f"{cp.suffix}"
-            )
-        logger.info(f"Reading in credentials from {cp}...")
-        with open(cp, "rb") as fp:
-            credentials_dict = tomllib.load(fp)
-    else:
-        logger.info("No credentials file given. Will proceed without one.")
-        credentials_dict = None
-
-    (
-        facility_level_nssp_data,
-        loc_level_nssp_data,
-        first_training_date,
-        last_training_date,
-        report_date,
-        loc_report_date,
-    ) = nssp_data_handling(
-        facility_level_nssp_data_dir,
-        state_level_nssp_data_dir,
-        report_date,
-        exclude_last_n_days,
-        n_training_days,
-        logger,
-    )
-
+    # EpiAutoGP doesn't currently use parameter estimates, but we keep for consistency
     param_estimates = pl.scan_parquet(Path(param_data_dir, "prod.parquet"))
 
     model_batch_dir_name = (
@@ -245,18 +258,6 @@ def main(
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
     os.makedirs(model_run_dir, exist_ok=True)
 
-    timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
-
-    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
-        raise ValueError(
-            f"{timeseries_model_name} model run not found. "
-            "Please ensure that the timeseries forecasts "
-            "for the ED visits (E) signal are generated "
-            "before fitting Pyrenew models with the E signal. "
-            "If running a batch job, set the flag --model-family "
-            "'timeseries' to fit timeseries model."
-        )
-
     logger.info("Recording git info...")
     record_git_info(model_run_dir)
 
@@ -266,7 +267,7 @@ def main(
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
         loc_level_nssp_data=loc_level_nssp_data,
-        loc_level_nwss_data=None,
+        loc_level_nwss_data=None,  # EpiAutoGP doesn't use wastewater
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
@@ -275,14 +276,17 @@ def main(
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
+
+    # Keep for consistency, though EpiAutoGP doesn't use these parameters
     process_and_save_loc_param(
         loc_abb=loc,
         disease=disease,
         loc_level_nwss_data=None,
         param_estimates=param_estimates,
-        fit_ed_visits=fit_ed_visits,
+        fit_ed_visits=False,
         model_run_dir=model_run_dir,
     )
+
     logger.info("Getting eval data...")
     if eval_data_path is None:
         raise ValueError("No path to an evaluation dataset provided.")
@@ -299,56 +303,75 @@ def main(
     )
     logger.info("Done getting eval data.")
 
-    logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(model_run_dir)
-
     logger.info("Data preparation complete.")
 
-    logger.info("Fitting model")
-    # Fit and save the model
-    # Todo: epiautogp option
+    # Convert PyRenew data format to EpiAutoGP JSON format
+    logger.info("Converting data to EpiAutoGP format...")
+    data_json_path = Path(model_run_dir, "data", "data_for_model_fit.json")
+    epiautogp_input_path = Path(model_run_dir, "epiautogp_input.json")
+
+    convert_to_epiautogp_format(
+        input_json_path=str(data_json_path),
+        output_json_path=str(epiautogp_input_path),
+        target="nhsn",
+        disease=disease,
+        location=loc,
+        forecast_date=str(last_training_date),
+        nowcast_reports_path=None,
+    )
+
+    logger.info("Running EpiAutoGP model...")
+
     fit_and_save_model(
-        model_run_dir,
-        model_name,
-        n_warmup=n_warmup,
-        n_samples=n_samples,
-        n_chains=n_chains,
-        fit_ed_visits=fit_ed_visits,
-        fit_hospital_admissions=fit_hospital_admissions,
-        fit_wastewater=False,
+        model_run_dir=model_run_dir,
+        model_name=model_name,
+        epiautogp_input_json=epiautogp_input_path,
+        n_forecast_weeks=n_forecast_weeks,
+        n_particles=n_particles,
+        n_mcmc=n_mcmc,
+        n_hmc=n_hmc,
+        n_forecast_draws=n_forecast_draws,
+        nthreads=1,
     )
-    logger.info("Model fitting complete")
 
-    logger.info("Performing posterior prediction / forecasting...")
+    logger.info("EpiAutoGP model fitting and forecasting complete.")
 
-    n_days_past_last_training = n_forecast_days + exclude_last_n_days
-    generate_and_save_predictions(
-        model_run_dir,
-        model_name,
-        n_days_past_last_training,
-        predict_ed_visits=forecast_ed_visits,
-        predict_hospital_admissions=forecast_hospital_admissions,
-        predict_wastewater=False,
-    )
-    logger.info("All forecasting complete.")
+    # Find the generated forecast CSV file
+    epiautogp_output_dir = Path(model_run_dir, model_name)
+    forecast_csvs = list(epiautogp_output_dir.glob("*.csv"))
+    if len(forecast_csvs) == 0:
+        raise RuntimeError(f"No forecast CSV files found in {epiautogp_output_dir}")
+    elif len(forecast_csvs) > 1:
+        logger.warning(
+            f"Multiple CSV files found in {epiautogp_output_dir}. "
+            f"Using the first one: {forecast_csvs[0].name}"
+        )
+
+    forecast_csv_path = forecast_csvs[0]
+    logger.info(f"Found forecast output: {forecast_csv_path.name}")
 
     logger.info("Postprocessing forecast...")
 
-    plot_and_save_loc_forecast(
-        model_run_dir,
-        n_days_past_last_training,
-        model_name,
-        timeseries_model_name,
-    )
+    # Copy CSV to hubverse_table location for consistency with PyRenew
+    hubverse_table_dir = Path(model_run_dir, model_name)
+    hubverse_table_path = Path(hubverse_table_dir, "hubverse_table.parquet")
 
-    create_hubverse_table(Path(model_run_dir, model_name))
+    # Convert CSV to parquet for consistency
+    logger.info("Converting hubverse table to parquet format...")
+    forecast_df = pl.read_csv(forecast_csv_path)
+    forecast_df.write_parquet(hubverse_table_path)
+
+    logger.info("Generating forecast plots...")
+    try:
+        plot_epiautogp_forecast(model_run_dir, forecast_csv_path)
+    except Exception as e:
+        logger.warning(f"Plotting failed (continuing anyway): {e}")
 
     logger.info("Postprocessing complete.")
 
     logger.info(
-        "Single-location pipeline complete "
-        f"for model {model_name}, "
-        f"location {loc}, and "
+        "Single-location EpiAutoGP pipeline complete "
+        f"for location {loc} and "
         f"report date {report_date}."
     )
     return None
@@ -356,7 +379,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Create fit data for disease modeling."
+        description="Run EpiAutoGP forecasting for a single location."
     )
     parser.add_argument(
         "--disease",
@@ -373,15 +396,6 @@ if __name__ == "__main__":
             "Two-letter USPS abbreviation for the location to fit"
             "(e.g. 'AK', 'AL', 'AZ', etc.)."
         ),
-    )
-
-    parser.add_argument(
-        "--model-letters",
-        type=str,
-        help=(
-            "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
-        ),
-        required=True,
     )
 
     parser.add_argument(
@@ -409,17 +423,7 @@ if __name__ == "__main__":
         "--param-data-dir",
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
-        help=("Directory in which to look for parameter estimatessuch as delay PMFs."),
-        required=True,
-    )
-
-    parser.add_argument(
-        "--priors-path",
-        type=Path,
-        help=(
-            "Path to an executible python file defining random variables "
-            "that require priors as pyrenew RandomVariable objects."
-        ),
+        help=("Directory in which to look for parameter estimates such as delay PMFs."),
         required=True,
     )
 
@@ -454,29 +458,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--n-chains",
-        type=int,
-        default=4,
-        help="Number of MCMC chains to run (default: 4).",
-    )
-
-    parser.add_argument(
-        "--n-warmup",
-        type=int,
-        default=1000,
-        help=("Number of warmup iterations per chain for NUTS (default: 1000)."),
-    )
-
-    parser.add_argument(
-        "--n-samples",
-        type=int,
-        default=1000,
-        help=(
-            "Number of posterior samples to draw per chain using NUTS (default: 1000)."
-        ),
-    )
-
-    parser.add_argument(
         "--exclude-last-n-days",
         type=int,
         default=0,
@@ -491,15 +472,7 @@ if __name__ == "__main__":
         type=Path,
         help=("Path to a parquet file containing compehensive truth data."),
     )
-    parser.add_argument(
-        "--additional-forecast-letters",
-        type=str,
-        help=(
-            "Forecast the following signals even if they were not fit. "
-            "Fit signals are always forecast."
-        ),
-        default=None,
-    )
+
     parser.add_argument(
         "--nhsn-data-path",
         type=Path,
@@ -507,12 +480,43 @@ if __name__ == "__main__":
         default=None,
     )
 
-    args = parser.parse_args()
-    fit_flags = flags_from_hew_letters(args.model_letters)
-    forecast_flags = flags_from_hew_letters(
-        args.model_letters + (args.additional_forecast_letters or ""),
-        flag_prefix="forecast",
+    # EpiAutoGP-specific parameters
+    parser.add_argument(
+        "--n-forecast-weeks",
+        type=int,
+        default=4,
+        help="Number of weeks to forecast (default: 4).",
     )
-    delattr(args, "additional_forecast_letters")
-    delattr(args, "model_letters")
-    main(**vars(args), **fit_flags, **forecast_flags)
+
+    parser.add_argument(
+        "--n-particles",
+        type=int,
+        default=12,
+        help="Number of particles for filtering (default: 12).",
+    )
+
+    parser.add_argument(
+        "--n-mcmc",
+        type=int,
+        default=100,
+        help="Number of MCMC iterations (default: 100).",
+    )
+
+    parser.add_argument(
+        "--n-hmc",
+        type=int,
+        default=50,
+        help="Number of HMC iterations (default: 50).",
+    )
+
+    parser.add_argument(
+        "--n-forecast-draws",
+        type=int,
+        default=2000,
+        help="Number of forecast draws (default: 2000).",
+    )
+
+    args = parser.parse_args()
+
+    # EpiAutoGP only supports hospital admissions
+    main(**vars(args), fit_hospital_admissions=True)
