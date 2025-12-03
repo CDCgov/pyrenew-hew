@@ -11,6 +11,8 @@ Usage:
 
 from pathlib import Path
 
+from pipelines.JuliaModel import JuliaModel
+
 # Configuration - must match Steps 1 and 2
 TEST_OUTPUT_DIR = Path("pipelines/epiautogp_tests/test_output")
 EPIAUTOGP_INPUT_JSON = TEST_OUTPUT_DIR / "epiautogp_input.json"
@@ -56,38 +58,27 @@ def main():
         print("Initializing Julia model...")
         print("=" * 70 + "\n")
 
-        # Add the run.jl script to the parameters
-        run_script = JULIA_PROJECT_PATH / "run.jl"
-        if not run_script.exists():
-            raise FileNotFoundError(f"Julia run script not found: {run_script}")
+        # Verify the Julia entrypoint script exists
+        julia_entrypoint = JULIA_PROJECT_PATH / "run.jl"
+        if not julia_entrypoint.exists():
+            raise FileNotFoundError(f"Julia run script not found: {julia_entrypoint}")
+
+        # Initialize JuliaModel
+        julia_model = JuliaModel(
+            data_json_path=EPIAUTOGP_INPUT_JSON,
+            model_run_dir=MODEL_OUTPUT_DIR,
+            model_name="EpiAutoGP",
+            julia_project_path=JULIA_PROJECT_PATH,
+            julia_entrypoint=julia_entrypoint,
+            nthreads=1,
+        )
 
         print("\n" + "=" * 70)
         print("Running Julia model...")
-        print(
-            "=" * 70 + "\n"
-        )  # Run the model - manually construct command since JuliaModel doesn't handle the script path
-        import subprocess
+        print("=" * 70 + "\n")
 
-        cmd_parts = [
-            "julia",
-            f"--project={JULIA_PROJECT_PATH}",
-            "--threads=1",
-            str(run_script),
-            f"--json-input={EPIAUTOGP_INPUT_JSON}",
-            f"--output-dir={MODEL_OUTPUT_DIR}",
-        ]
-
-        # Add model parameters
-        for key, value in MODEL_PARAMS.items():
-            cmd_parts.append(f"--{key}={value}")
-
-        cmd_str = " ".join(cmd_parts)
-        print(f"Running command: {cmd_str}\n")
-
-        result = subprocess.run(cmd_str, shell=True, capture_output=False)
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Julia model failed with exit code {result.returncode}")
+        # Run the model with parameters
+        julia_model.run(MODEL_PARAMS)
 
         print("\n" + "=" * 70)
         print("✓ Step 3 COMPLETED SUCCESSFULLY")
