@@ -28,6 +28,11 @@ from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pipelines.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
+# Disease name mapping for NSSP data (matches prep_data.py)
+_disease_map = {
+    "COVID-19": "COVID-19/Omicron",
+}
+
 FACILITY_LEVEL_NSSP_DATA_COLS = [
     "reference_date",
     "report_date",
@@ -249,13 +254,16 @@ def simulate_data_from_bootstrap(
     bootstrap_loc = states_to_simulate[0]
     bootstrap_disease = diseases_to_simulate[0]
 
+    # Map disease name to NSSP format
+    disease_nssp_name = _disease_map.get(bootstrap_disease, bootstrap_disease)
+
     # facility_level_nssp_data
     bootstrap_facility_level_nssp_data = (
         pl.DataFrame(
             itertools.product(
                 np.arange(-n_training_days, 0 + 1),
                 np.arange(1, n_nssp_sites + 1),
-                [bootstrap_disease] + ["Total"],
+                [disease_nssp_name] + ["Total"],
             ),
             schema=["time", "facility", "disease"],
         )
@@ -389,7 +397,7 @@ def simulate_data_from_bootstrap(
         report_date=max_train_date,
         first_training_date=first_training_date,
         last_training_date=max_train_date,
-        save_dir=model_run_dir / "data",
+        model_run_dir=model_run_dir,
         nhsn_data_path=bootstrap_nhsn_data_path,
     )
 
@@ -404,7 +412,7 @@ def simulate_data_from_bootstrap(
         loc_level_nwss_data=bootstrap_loc_level_nwss_data,
         param_estimates=param_estimates,
         fit_ed_visits=True,
-        save_dir=model_run_dir / "data",
+        model_run_dir=model_run_dir,
     )
 
     my_data = PyrenewHEWData.from_json(
@@ -547,8 +555,10 @@ def update_json_with_prior_predictive(
         hosp_samples = idata.prior["observed_hospital_admissions"].values[
             0, bootstrap_draw, :
         ]
+        # Only take as many samples as exist in the original data
+        n_hosp = len(data["nhsn_training_data"]["hospital_admissions"])
         data["nhsn_training_data"]["hospital_admissions"] = [
-            int(x) for x in hosp_samples
+            int(x) for x in hosp_samples[:n_hosp]
         ]
 
     # Update ED visits if present (note: key is 'observed_ed_visits', not 'total')
@@ -557,7 +567,11 @@ def update_json_with_prior_predictive(
         and "observed_ed_visits" in data["nssp_training_data"]
     ):
         ed_samples = idata.prior["observed_ed_visits"].values[0, bootstrap_draw, :]
-        data["nssp_training_data"]["observed_ed_visits"] = [int(x) for x in ed_samples]
+        # Only take as many samples as exist in the original data
+        n_ed = len(data["nssp_training_data"]["observed_ed_visits"])
+        data["nssp_training_data"]["observed_ed_visits"] = [
+            int(x) for x in ed_samples[:n_ed]
+        ]
 
     # Update wastewater if present (note: key is 'nwss_training_data', not 'ww_training_data')
     if (
