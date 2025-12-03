@@ -35,8 +35,15 @@ def main():
         type=Path,
         help="Base directory for output data.",
     )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        default=False,
+        help="Remove bootstrap_private_data_dir after simulation",
+    )
     args = parser.parse_args()
     base_dir = args.base_dir
+    clean = args.clean
 
     # Configuration
     max_train_date_str = "2024-12-21"
@@ -79,6 +86,7 @@ def main():
     param_estimates.write_parquet(Path(param_estimates_dir, "prod.parquet"))
 
     # Simulate data for states with reference subpopulation
+    # This bootstrap data is not cleaned up to allow next step to use
     dfs_ref_subpop = simulate_data_from_bootstrap(
         n_training_days=n_training_days,
         max_train_date=max_train_date,
@@ -90,9 +98,12 @@ def main():
         n_ww_sites=n_ww_sites,
         states_to_simulate=["MT", "CA"],
         diseases_to_simulate=diseases_to_simulate,
+        clean=False,
     )
 
     # Simulate data for states without reference subpopulation
+    # This bootstrap data is cleaned up after simulation
+    # depending on user input
     dfs_no_ref_subpop = simulate_data_from_bootstrap(
         n_training_days=n_training_days,
         max_train_date=max_train_date,
@@ -104,6 +115,7 @@ def main():
         n_ww_sites=1,
         states_to_simulate=["DC"],
         diseases_to_simulate=diseases_to_simulate,
+        clean=clean,
     )
 
     # Concatenate dataframes by variable names
@@ -313,7 +325,7 @@ def main():
             Path(nhsn_dir, f"{name[0]}_{name[1]}.parquet")
         )
 
-    print(f"Successfully generated test data in {base_dir}")
+    print(f"Successfully generated test data in {private_data_dir}")
 
 
 if __name__ == "__main__":
