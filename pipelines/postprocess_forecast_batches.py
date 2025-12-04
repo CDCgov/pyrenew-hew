@@ -62,7 +62,7 @@ def main(
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-    to_process = get_all_forecast_dirs(base_forecast_dir, diseases)
+    to_process = get_all_forecast_dirs(base_forecast_dir, list(diseases))
     for batch_dir in to_process:
         logger.info(f"Processing {batch_dir}...")
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)

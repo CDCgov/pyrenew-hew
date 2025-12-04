@@ -330,7 +330,7 @@ def simulate_data_from_bootstrap(
         report_date=max_train_date,
         first_training_date=first_training_date,
         last_training_date=max_train_date,
-        model_run_dir=model_run_dir,
+        save_dir=model_run_dir / "data",
         nhsn_data_path=bootstrap_nhsn_data_path,
     )
 
@@ -344,7 +344,7 @@ def simulate_data_from_bootstrap(
         loc_level_nwss_data=bootstrap_loc_level_nwss_data,
         param_estimates=param_estimates,
         fit_ed_visits=True,
-        model_run_dir=model_run_dir,
+        save_dir=model_run_dir / "data",
     )
     my_data = PyrenewHEWData.from_json(
         json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",

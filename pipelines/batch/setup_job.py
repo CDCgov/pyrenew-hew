@@ -367,12 +367,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--diseases",
         type=str,
-        default="COVID-19 Influenza",
+        default="COVID-19 Influenza RSV",
         help=(
             "Name(s) of disease(s) to run as part of the job, "
             "as a whitespace-separated string. Supported "
-            "values are 'COVID-19' and 'Influenza'. "
-            "Default 'COVID-19 Influenza' (i.e. run for both)."
+            "values are 'COVID-19', 'Influenza', and 'RSV'. "
+            "Default 'COVID-19 Influenza RSV' (i.e. run for "
+            "all three)."
         ),
     )
     parser.add_argument(

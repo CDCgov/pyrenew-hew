@@ -139,20 +139,20 @@ def get_all_model_run_dirs(parent_dir: Path) -> list[str]:
 
 
 def build_pyrenew_hew_model_from_dir(
-    model_run_dir: Path | str = None,
+    model_dir: Path | str = None,
     prior_path: Path | str = None,
     model_params_path: Path | str = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
 ):
-    if model_run_dir is not None:
-        prior_path = Path(model_run_dir) / "priors.py"
-        model_params_path = Path(model_run_dir) / "model_params.json"
+    if model_dir is not None:
+        prior_path = Path(model_dir) / "priors.py"
+        model_params_path = Path(model_dir) / "data" / "model_params.json"
     else:
         if prior_path is None or model_params_path is None:
             raise ValueError(
-                "Either model_run_dir must be provided, "
+                "Either model_dir must be provided, "
                 "or both prior_path and model_params_path "
                 "must be provided."
             )

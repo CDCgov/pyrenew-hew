@@ -7,7 +7,7 @@
 #' forecasting models in the format expected by
 #' the forecasting functions.
 #'
-#' @param model_run_dir Path to the
+#' @param model_dir Path to the
 #' directory containing model run data.
 #' @param base_data_name Base name of the data file to load.
 #' @param epiweekly Logical. Indicate epiweekly (TRUE) or daily (FALSE) data.
@@ -21,7 +21,7 @@
 #' `prefix` (file prefix based on resolution).
 #' @export
 load_training_data <- function(
-  model_run_dir,
+  model_dir,
   base_data_name = "combined_training_data",
   epiweekly = FALSE
 ) {
@@ -32,7 +32,7 @@ load_training_data <- function(
     stringr::str_c(prefix, base_data_name),
     base_data_name
   )
-  data_path <- fs::path(model_run_dir, "data", data_name, ext = "tsv")
+  data_path <- fs::path(model_dir, "data", data_name, ext = "tsv")
 
   target_and_other_data <- readr::read_tsv(
     data_path,
@@ -46,7 +46,7 @@ load_training_data <- function(
     )
   ) |>
     dplyr::select(-"lab_site_index") |>
-    dplyr::filter(stringr::str_ends(.variable, "ed_visits")) |>
+    dplyr::filter(stringr::str_ends(.data$.variable, "ed_visits")) |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value")
 
   list(
@@ -89,7 +89,7 @@ format_timeseries_output <- function(
 ) {
   forecast_data |>
     tidyr::pivot_longer(
-      -c("date", all_of(output_type_id)),
+      -c("date", tidyselect::all_of(output_type_id)),
       names_to = ".variable",
       values_to = ".value"
     ) |>
@@ -99,7 +99,7 @@ format_timeseries_output <- function(
       resolution = resolution,
       aggregated_numerator = FALSE,
       aggregated_denominator = dplyr::if_else(
-        stringr::str_starts(.variable, "prop_"),
+        stringr::str_starts(.data$.variable, "prop_"),
         FALSE,
         NA
       )
@@ -112,7 +112,7 @@ format_timeseries_output <- function(
       "aggregated_numerator",
       "aggregated_denominator",
       ".variable",
-      all_of(output_type_id),
+      tidyselect::all_of(output_type_id),
       ".value"
     )
 }
