@@ -9,8 +9,7 @@ from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
 def fit_and_save_model(
-    model_run_dir: str,
-    model_name: str,
+    model_dir: str,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -29,13 +28,13 @@ def fit_and_save_model(
         )
 
     my_data = PyrenewHEWData.from_json(
-        json_file_path=Path(model_run_dir) / "data" / "data_for_model_fit.json",
+        json_file_path=Path(model_dir) / "data" / "data_for_model_fit.json",
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
     )
     my_model = build_pyrenew_hew_model_from_dir(
-        model_run_dir,
+        model_dir,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
@@ -59,8 +58,6 @@ def fit_and_save_model(
     )
 
     my_model.mcmc.sampler = None
-    model_dir = Path(model_run_dir, model_name)
-    model_dir.mkdir(exist_ok=True)
     with open(
         model_dir / "posterior_samples.pickle",
         "wb",

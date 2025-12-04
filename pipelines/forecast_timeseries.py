@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import shutil
 import subprocess
 import tomllib
 from datetime import datetime, timedelta
@@ -39,15 +40,14 @@ def plot_and_save_loc_forecast(
 
 
 def timeseries_ensemble_forecasts(
-    model_run_dir: Path, model_name: str, n_forecast_days: int, n_samples: int
+    model_dir: Path, n_forecast_days: int, n_samples: int
 ) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/forecast_timeseries_ensemble.R",
-            f"{model_run_dir}",
-            "--model-name",
-            f"{model_name}",
+            "--model-dir",
+            f"{model_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",
             "--n-samples",
@@ -62,16 +62,13 @@ def timeseries_ensemble_forecasts(
     return None
 
 
-def cdc_flat_baseline_forecasts(
-    model_run_dir: Path, model_name: str, n_forecast_days: int
-) -> None:
+def cdc_flat_baseline_forecasts(model_dir: str, n_forecast_days: int) -> None:
     result = subprocess.run(
         [
             "Rscript",
             "pipelines/forecast_cdc_flat_baseline.R",
-            f"{model_run_dir}",
-            "--model-name",
-            f"{model_name}",
+            "--model-dir",
+            f"{model_dir}",
             "--n-forecast-days",
             f"{n_forecast_days}",
         ],
@@ -119,6 +116,7 @@ def main(
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
     credentials_path: Path = None,
+    nhsn_data_path: Path = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -224,9 +222,14 @@ def main(
         f"{first_training_date}_t_{last_training_date}"
     )
     model_batch_dir = Path(output_dir, model_batch_dir_name)
+
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
+    baseline_model_output_dir = Path(model_run_dir, baseline_model_name)
+    ensemble_model_output_dir = Path(model_run_dir, ensemble_model_name)
 
     os.makedirs(model_run_dir, exist_ok=True)
+    os.makedirs(baseline_model_output_dir, exist_ok=True)
+    os.makedirs(ensemble_model_output_dir, exist_ok=True)
 
     logger.info(f"Processing {loc}")
     process_and_save_loc_data(
@@ -238,9 +241,10 @@ def main(
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
-        model_run_dir=model_run_dir,
+        save_dir=Path(baseline_model_output_dir, "data"),
         logger=logger,
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
 
     logger.info("Getting eval data...")
@@ -252,30 +256,33 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         latest_comprehensive_path=eval_data_path,
-        output_data_dir=Path(model_run_dir, "data"),
+        output_data_dir=Path(baseline_model_output_dir, "data"),
         last_eval_date=report_date + timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
     )
     logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(model_run_dir)
+    generate_epiweekly_data(Path(baseline_model_output_dir, "data"))
+
+    logger.info("Copying data from baseline to ensemble directory...")
+    shutil.copytree(
+        Path(baseline_model_output_dir, "data"), Path(ensemble_model_output_dir, "data")
+    )
 
     logger.info("Data preparation complete.")
 
     logger.info("Performing baseline forecasting and postprocessing...")
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
-    cdc_flat_baseline_forecasts(
-        model_run_dir, baseline_model_name, n_days_past_last_training
-    )
+    cdc_flat_baseline_forecasts(baseline_model_output_dir, n_days_past_last_training)
 
     create_hubverse_table(Path(model_run_dir, baseline_model_name))
 
     logger.info("Performing timeseries ensemble forecasting")
     timeseries_ensemble_forecasts(
-        model_run_dir,
-        ensemble_model_name,
+        ensemble_model_output_dir,
         n_days_past_last_training,
         n_denominator_samples,
     )
@@ -357,7 +364,6 @@ if __name__ == "__main__":
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
         help=("Directory in which to look for parameter estimatessuch as delay PMFs."),
-        required=True,
     )
 
     parser.add_argument(
@@ -380,8 +386,14 @@ if __name__ == "__main__":
         default=28,
         help=(
             "Number of days ahead to forecast relative to the "
-            "report date (default: 28).",
+            "report date (default: 28)."
         ),
+    )
+    parser.add_argument(
+        "--nhsn-data-path",
+        type=Path,
+        help=("Path to local NHSN data (for local testing)"),
+        default=None,
     )
 
     parser.add_argument(

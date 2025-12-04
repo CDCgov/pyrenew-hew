@@ -19,9 +19,10 @@ from pipelines.batch.setup_job import main as setup_job
 load_dotenv()
 console = Console()
 
-# TODO: work with specific diseases
-DISEASES = ["COVID-19", "Influenza"]
-WASTEWATER_DISEASES = ["COVID-19"]
+H_DISEASES = {"COVID-19", "Influenza", "RSV"}
+E_DISEASES = {"COVID-19", "Influenza", "RSV"}
+W_DISEASES = {"COVID-19"}
+ALL_DISEASES = H_DISEASES | E_DISEASES | W_DISEASES
 # ND: wastewater data not available
 # TN: wastewater data unusable (dry sludge)
 W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
@@ -87,7 +88,7 @@ fit_timeseries_e = partial(
     job_id="timeseries-e-prod-",
     pool_id="pyrenew-pool",
     model_family="timeseries",
-    diseases=DISEASES,
+    diseases=E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
 )
@@ -98,7 +99,7 @@ fit_pyrenew_e = partial(
     job_id="pyrenew-e-prod-",
     pool_id="pyrenew-pool",
     model_family="pyrenew",
-    diseases=DISEASES,
+    diseases=E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
 )
@@ -109,7 +110,7 @@ fit_pyrenew_h = partial(
     job_id="pyrenew-h-prod-",
     pool_id="pyrenew-pool",
     model_family="pyrenew",
-    diseases=DISEASES,
+    diseases=H_DISEASES,
     output_subdir=output_subdir,
 )
 
@@ -119,7 +120,7 @@ fit_pyrenew_he = partial(
     job_id="pyrenew-he-prod-",
     pool_id="pyrenew-pool",
     model_family="pyrenew",
-    diseases=DISEASES,
+    diseases=H_DISEASES & E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
 )
@@ -130,7 +131,7 @@ fit_pyrenew_hw = partial(
     job_id="pyrenew-hw-prod-",
     pool_id="pyrenew-pool-32gb",
     model_family="pyrenew",
-    diseases=WASTEWATER_DISEASES,
+    diseases=H_DISEASES & W_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=W_EXCLUDE_DEFAULT,
 )
@@ -141,7 +142,7 @@ fit_pyrenew_hew = partial(
     job_id="pyrenew-hew-prod-",
     pool_id="pyrenew-pool-32gb",
     model_family="pyrenew",
-    diseases=WASTEWATER_DISEASES,
+    diseases=H_DISEASES & E_DISEASES & W_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT + W_EXCLUDE_DEFAULT,
 )
@@ -420,7 +421,7 @@ if __name__ == "__main__":
         elif selected_choice == "Postprocess Forecast Batches":
             postprocess(
                 base_forecast_dir=pyrenew_hew_prod_output_path / output_subdir,
-                diseases=DISEASES,
+                diseases=ALL_DISEASES,
             )
 
         input("Press enter to continue...")

@@ -9,23 +9,23 @@ from pathlib import Path
 
 import polars as pl
 import tomli_w
-from pygit2.repository import Repository
-
-from pipelines.fit_pyrenew_model import fit_and_save_model
-from pipelines.generate_predictive import (
+from fit_pyrenew_model import fit_and_save_model
+from generate_predictive import (
     generate_and_save_predictions,
 )
+from prep_ww_data import clean_nwss_data, preprocess_ww_data
+from pygit2.repository import Repository
+
 from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
 from pipelines.prep_eval_data import save_eval_data
-from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pyrenew_hew.utils import (
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
 )
 
 
-def record_git_info(model_run_dir: Path):
-    metadata_file = Path(model_run_dir, "metadata.toml")
+def record_git_info(model_dir: Path):
+    metadata_file = Path(model_dir, "metadata.toml")
 
     if metadata_file.exists():
         with open(metadata_file, "rb") as file:
@@ -53,35 +53,31 @@ def record_git_info(model_run_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def update_metadata(model_run_dir: Path, **kwargs):
-    """Update the metadata.toml file in model_run_dir with provided key-value pairs."""
-    metadata_file = Path(model_run_dir, "metadata.toml")
+def copy_and_record_priors(priors_path: Path, model_dir: Path):
+    metadata_file = Path(model_dir, "metadata.toml")
+    shutil.copyfile(priors_path, Path(model_dir, "priors.py"))
+
     if metadata_file.exists():
         with open(metadata_file, "rb") as file:
             metadata = tomllib.load(file)
     else:
         metadata = {}
-    metadata.update(kwargs)
-    metadata_file.parent.mkdir(parents=True, exist_ok=True)
+
+    new_metadata = {
+        "priors_path": str(priors_path),
+    }
+
+    metadata.update(new_metadata)
+
     with open(metadata_file, "wb") as file:
         tomli_w.dump(metadata, file)
 
 
-def copy_and_record_priors(priors_path: Path, model_run_dir: Path):
-    shutil.copyfile(priors_path, Path(model_run_dir, "priors.py"))
-    update_metadata(model_run_dir, priors_path=str(priors_path))
-
-
-def record_rng_key(model_run_dir: Path, rng_key: int):
-    """Record the RNG key used for model fitting in metadata for reproducibility."""
-    update_metadata(model_run_dir, rng_key=rng_key)
-
-
-def generate_epiweekly_data(model_run_dir: Path, data_names: str = None) -> None:
+def generate_epiweekly_data(data_dir: Path, data_names: str = None) -> None:
     command = [
         "Rscript",
         "pipelines/generate_epiweekly_data.R",
-        f"{model_run_dir}",
+        f"{data_dir}",
     ]
     if data_names is not None:
         command.extend(["--data-names", f"{data_names}"])
@@ -168,7 +164,6 @@ def main(
     n_chains: int,
     n_warmup: int,
     n_samples: int,
-    rng_key: int = None,
     nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
@@ -341,7 +336,9 @@ def main(
     model_batch_dir = Path(output_dir, model_batch_dir_name)
 
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
-    os.makedirs(model_run_dir, exist_ok=True)
+    model_dir = Path(model_run_dir, pyrenew_model_name)
+    data_dir = Path(model_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 
@@ -356,13 +353,10 @@ def main(
         )
 
     logger.info("Recording git info...")
-    record_git_info(model_run_dir)
+    record_git_info(model_dir)
 
     logger.info(f"Copying and recording priors from {priors_path}...")
-    copy_and_record_priors(priors_path, model_run_dir)
-
-    logger.info(f"Recording RNG key: {rng_key}...")
-    record_rng_key(model_run_dir, rng_key)
+    copy_and_record_priors(priors_path, model_dir)
 
     logger.info(f"Processing {loc}")
     process_and_save_loc_data(
@@ -374,18 +368,19 @@ def main(
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
-        model_run_dir=model_run_dir,
+        save_dir=data_dir,
         logger=logger,
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
+
     process_and_save_loc_param(
         loc_abb=loc,
         disease=disease,
         loc_level_nwss_data=loc_level_nwss_data,
         param_estimates=param_estimates,
         fit_ed_visits=fit_ed_visits,
-        model_run_dir=model_run_dir,
+        save_dir=data_dir,
     )
     logger.info("Getting eval data...")
     if eval_data_path is None:
@@ -396,7 +391,7 @@ def main(
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         latest_comprehensive_path=eval_data_path,
-        output_data_dir=Path(model_run_dir, "data"),
+        output_data_dir=data_dir,
         last_eval_date=report_date + dt.timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
@@ -404,21 +399,20 @@ def main(
     logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(model_run_dir)
+    generate_epiweekly_data(data_dir)
 
     logger.info("Data preparation complete.")
 
-    logger.info("Fitting model")
+    logger.info("Fitting model...")
+
     fit_and_save_model(
-        model_run_dir,
-        pyrenew_model_name,
+        model_dir,
         n_warmup=n_warmup,
         n_samples=n_samples,
         n_chains=n_chains,
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
-        rng_key=rng_key,
     )
     logger.info("Model fitting complete")
 

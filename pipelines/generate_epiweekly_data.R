@@ -20,7 +20,7 @@ purrr::walk(script_packages, \(pkg) {
 #' This function reads daily data from a CSV file, converts it to epiweekly
 #' data, and writes the resulting epiweekly data to a new CSV file.
 #'
-#' @param model_run_dir A string specifying the directory containing the model
+#' @param data_dir A string specifying the directory containing the model
 #'  run data.
 #' @param data_name A string specifying the name of the daily data file. Default
 #'
@@ -32,12 +32,12 @@ purrr::walk(script_packages, \(pkg) {
 #' @return None. The function writes the epiweekly data to a CSV file in the
 #'  specified directory.
 convert_daily_to_epiweekly <- function(
-  model_run_dir,
+  data_dir,
   data_name,
   strict = TRUE,
   day_of_week = 7
 ) {
-  data_path <- path(model_run_dir, "data", data_name)
+  data_path <- path(data_dir, data_name)
 
   daily_data <- read_tsv(
     data_path,
@@ -73,21 +73,20 @@ convert_daily_to_epiweekly <- function(
     arrange(date, .variable)
 
   output_file <- path(
-    model_run_dir,
-    "data",
+    data_dir,
     glue::glue("epiweekly_{data_name}")
   )
 
   write_tsv(epiweekly_data, output_file)
 }
 
-main <- function(model_run_dir) {
+main <- function(data_dir) {
   convert_daily_to_epiweekly(
-    model_run_dir,
+    data_dir,
     data_name = "combined_training_data.tsv"
   )
   convert_daily_to_epiweekly(
-    model_run_dir,
+    data_dir,
     data_name = "combined_eval_data.tsv"
   )
 }
@@ -95,9 +94,9 @@ main <- function(model_run_dir) {
 # Create a parser
 p <- arg_parser("Create epiweekly data") |>
   add_argument(
-    "model_run_dir",
+    "data_dir",
     help = "Directory containing the model data and output."
   )
 
 argv <- parse_args(p)
-main(argv$model_run_dir)
+main(argv$data_dir)

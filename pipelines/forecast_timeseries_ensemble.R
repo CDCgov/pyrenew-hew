@@ -107,14 +107,13 @@ fit_and_forecast_ensemble <- function(
 }
 
 main <- function(
-  model_run_dir,
-  model_name,
+  model_dir,
   n_forecast_days = 28,
   n_samples = 2000,
   epiweekly = FALSE
 ) {
   training_data <- hewr::load_training_data(
-    model_run_dir,
+    model_dir,
     "combined_training_data",
     epiweekly
   )
@@ -145,9 +144,6 @@ main <- function(
   ts_ensemble_prop_e <- ts_ensemble_count_e |>
     to_prop_forecast(ts_ensemble_other_e)
 
-  model_dir <- path(model_run_dir, model_name)
-  dir_create(model_dir)
-
   ts_ensemble_forecast_e <-
     ts_ensemble_prop_e |>
     hewr::format_timeseries_output(
@@ -173,12 +169,8 @@ p <- arg_parser(
   "Forecast other (non-target-disease) ED visits for a given location."
 ) |>
   add_argument(
-    "model_run_dir",
+    "--model-dir",
     help = "Directory containing the model data and output.",
-  ) |>
-  add_argument(
-    "--model-name",
-    help = "Name of model.",
   ) |>
   add_argument(
     "--n-forecast-days",
@@ -192,22 +184,19 @@ p <- arg_parser(
   )
 
 argv <- parse_args(p)
-model_run_dir <- path(argv$model_run_dir)
-model_name <- argv$model_name
+model_dir <- path(argv$model_dir)
 n_forecast_days <- argv$n_forecast_days
 n_samples <- argv$n_samples
 
 # Baseline forecasts on 1 day resolution
 main(
-  model_run_dir,
-  model_name,
+  model_dir,
   n_forecast_days = n_forecast_days,
   n_samples = n_samples
 )
 # Baseline forecasts on 1 (epi)week resolution
 main(
-  model_run_dir,
-  model_name,
+  model_dir,
   n_forecast_days = n_forecast_days,
   n_samples = n_samples,
   epiweekly = TRUE
