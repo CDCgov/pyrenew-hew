@@ -284,6 +284,45 @@ def test_build_pyrenew_hew_data_from_json(mock_data_dir):
     assert data.data_observed_disease_wastewater_conc is not None
 
 
+def test_step_size_conditional_on_fit_flags(mock_data_dir):
+    """Test that step_size parameters are only loaded when corresponding fit_* flag is True"""
+
+    # Test when all fit flags are False - step sizes should be None
+    data = PyrenewHEWData.from_json(mock_data_dir)
+    assert data.nssp_step_size is None
+    assert data.nhsn_step_size is None
+    assert data.nwss_step_size is None
+
+    # Test when only fit_ed_visits is True - only nssp_step_size should be loaded
+    data = PyrenewHEWData.from_json(mock_data_dir, fit_ed_visits=True)
+    assert data.nssp_step_size == 1  # From mock_data
+    assert data.nhsn_step_size is None
+    assert data.nwss_step_size is None
+
+    # Test when only fit_hospital_admissions is True - only nhsn_step_size should be loaded
+    data = PyrenewHEWData.from_json(mock_data_dir, fit_hospital_admissions=True)
+    assert data.nssp_step_size is None
+    assert data.nhsn_step_size == 7  # From mock_data
+    assert data.nwss_step_size is None
+
+    # Test when only fit_wastewater is True - only nwss_step_size should be loaded
+    data = PyrenewHEWData.from_json(mock_data_dir, fit_wastewater=True)
+    assert data.nssp_step_size is None
+    assert data.nhsn_step_size is None
+    assert data.nwss_step_size == 1  # From mock_data
+
+    # Test when all fit flags are True - all step sizes should be loaded
+    data = PyrenewHEWData.from_json(
+        mock_data_dir,
+        fit_ed_visits=True,
+        fit_hospital_admissions=True,
+        fit_wastewater=True,
+    )
+    assert data.nssp_step_size == 1
+    assert data.nhsn_step_size == 7
+    assert data.nwss_step_size == 1
+
+
 def test_hospital_admissions_must_be_saturday():
     """
     Test that hospital admissions dates must be Saturdays (MMWR epiweek ends).
