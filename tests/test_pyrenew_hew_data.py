@@ -208,9 +208,13 @@ def test_pyrenew_wastewater_data():
     assert data.n_ww_lab_sites == ww_data["lab_site_index"].n_unique()
 
 
-@pytest.fixture
-def mock_data():
-    return {
+def _build_mock_data(fit_ed_visits, fit_hospital_admissions, fit_wastewater):
+    """Helper function to build mock data with specified fit flags."""
+    combined_dat: dict[str, object] = {
+        "loc_pop": [10000],
+        "right_truncation_offset": 10,
+    }
+    ed_visit_dat = {
         "nssp_training_data": {
             "date": [
                 "2025-01-01",
@@ -221,16 +225,22 @@ def mock_data():
             "observed_ed_visits": [10, 3],
             "data_type": ["train"] * 2,
         },
+        "nssp_training_dates": ["2025-01-01"],
+        "nssp_step_size": 1,
+    }
+
+    hospital_admission_dat: dict[str, object] = {
         "nhsn_training_data": {
             "weekendingdate": ["2025-01-01", "2025-01-02"],
             "jurisdiction": ["CA"] * 2,
             "hospital_admissions": [5, 1],
             "data_type": ["train"] * 2,
         },
-        "loc_pop": [10000],
-        "nssp_training_dates": ["2025-01-01"],
         "nhsn_training_dates": ["2025-01-04"],
-        "right_truncation_offset": 10,
+        "nhsn_step_size": 7,
+    }
+
+    wastewater_dat: dict[str, object] = {
         "nwss_training_data": {
             "date": [
                 "2025-01-01",
@@ -248,40 +258,82 @@ def mock_data():
             "below_lod": [False, False, False, False],
         },
         "pop_fraction": [0.4, 0.4, 0.2],
-        "population_size": 1e5,
-        "nhsn_step_size": 7,
-        "nssp_step_size": 1,
         "nwss_step_size": 1,
     }
 
+    if fit_ed_visits:
+        combined_dat.update(ed_visit_dat)
 
-@pytest.fixture
-def mock_data_dir(mock_data, tmpdir):
-    data_path = tmpdir.join("data.json")
-    with open(data_path, "w") as f:
-        json.dump(mock_data, f)
-    return data_path
+    if fit_hospital_admissions:
+        combined_dat.update(hospital_admission_dat)
 
+    if fit_wastewater:
+        combined_dat.update(wastewater_dat)
 
-def test_build_pyrenew_hew_data_from_json(mock_data_dir):
-    # Test when all `fit_` arguments are False
-    data = PyrenewHEWData.from_json(mock_data_dir)
-    assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is None
-    assert data.data_observed_disease_hospital_admissions is None
-    assert data.data_observed_disease_wastewater_conc is None
+    return combined_dat
 
-    # Test when all `fit_` arguments are True
-    data = PyrenewHEWData.from_json(
-        mock_data_dir,
-        fit_ed_visits=True,
-        fit_hospital_admissions=True,
-        fit_wastewater=True,
+    @pytest.mark.parametrize(
+        "fit_ed_visits,fit_hospital_admissions,fit_wastewater",
+        [
+            (fit_ed, fit_hosp, fit_ww)
+            for fit_ed in [True, False]
+            for fit_hosp in [True, False]
+            for fit_ww in [True, False]
+        ],
     )
-    assert isinstance(data, PyrenewHEWData)
-    assert data.data_observed_disease_ed_visits is not None
-    assert data.data_observed_disease_hospital_admissions is not None
-    assert data.data_observed_disease_wastewater_conc is not None
+    def test_from_json(
+        tmp_path, fit_ed_visits, fit_hospital_admissions, fit_wastewater
+    ):
+        """
+        Test from_json method with various combinations of data sources.
+
+        Parameters control which data streams are included and loaded.
+        """
+        # Create mock data
+        mock_data = _build_mock_data(
+            fit_ed_visits, fit_hospital_admissions, fit_wastewater
+        )
+
+        # Write to temporary JSON file
+        json_path = tmp_path / "test_data.json"
+        with open(json_path, "w") as f:
+            json.dump(mock_data, f)
+
+        # Load data
+        data = PyrenewHEWData.from_json(
+            json_path,
+            fit_ed_visits=fit_ed_visits,
+            fit_hospital_admissions=fit_hospital_admissions,
+            fit_wastewater=fit_wastewater,
+        )
+
+        # Verify population and truncation offset always loaded
+        assert data.population_size == 10000
+        assert data.right_truncation_offset == 10
+
+        # Verify ED visits data
+        if fit_ed_visits:
+            assert data.nssp_training_data is not None
+            assert data.data_observed_disease_ed_visits is not None
+        else:
+            assert data.nssp_training_data is None
+            assert data.data_observed_disease_ed_visits is None
+
+        # Verify hospital admissions data
+        if fit_hospital_admissions:
+            assert data.nhsn_training_data is not None
+            assert data.data_observed_disease_hospital_admissions is not None
+        else:
+            assert data.nhsn_training_data is None
+            assert data.data_observed_disease_hospital_admissions is None
+
+        # Verify wastewater data
+        if fit_wastewater:
+            assert data.nwss_training_data is not None
+            assert data.data_observed_disease_wastewater_conc is not None
+        else:
+            assert data.nwss_training_data is None
+            assert data.data_observed_disease_wastewater_conc is None
 
 
 def test_hospital_admissions_must_be_saturday():

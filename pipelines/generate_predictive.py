@@ -75,27 +75,44 @@ def generate_and_save_predictions(
 
     ft.arviz.replace_all_dim_suffix(idata, ["time", "site_id"], inplace=True)
 
-    date_details_df = pl.DataFrame(
-        {
-            "dim_name": [
-                "observed_ed_visits_time",
-                "observed_hospital_admissions_time",
-                "site_level_log_ww_conc_time",
-            ],
-            "start_date": [
-                forecast_data.first_data_dates["ed_visits"].astype(dt.datetime),
-                forecast_data.first_data_dates["hospital_admissions"].astype(
+    available_dims = ft.arviz.get_all_dims(idata)
+
+    date_details_rows = []
+
+    if "observed_ed_visits_time" in available_dims:
+        date_details_rows.append(
+            {
+                "dim_name": "observed_ed_visits_time",
+                "start_date": forecast_data.first_data_dates["ed_visits"].astype(
                     dt.datetime
                 ),
-                forecast_data.first_data_dates["wastewater"].astype(dt.datetime),
-            ],
-            "interval": [
-                dt.timedelta(days=my_data.nssp_step_size),
-                dt.timedelta(days=my_data.nhsn_step_size),
-                dt.timedelta(days=my_data.nwss_step_size),
-            ],
-        }
-    ).filter(pl.col("dim_name").is_in(ft.arviz.get_all_dims(idata)))
+                "interval": dt.timedelta(days=my_data.nssp_step_size),
+            }
+        )
+
+    if "observed_hospital_admissions_time" in available_dims:
+        date_details_rows.append(
+            {
+                "dim_name": "observed_hospital_admissions_time",
+                "start_date": forecast_data.first_data_dates[
+                    "hospital_admissions"
+                ].astype(dt.datetime),
+                "interval": dt.timedelta(days=my_data.nhsn_step_size),
+            }
+        )
+
+    if "site_level_log_ww_conc_time" in available_dims:
+        date_details_rows.append(
+            {
+                "dim_name": "site_level_log_ww_conc_time",
+                "start_date": forecast_data.first_data_dates["wastewater"].astype(
+                    dt.datetime
+                ),
+                "interval": dt.timedelta(days=my_data.nwss_step_size),
+            }
+        )
+
+    date_details_df = pl.DataFrame(date_details_rows)
 
     for row in date_details_df.iter_rows(named=True):
         ft.arviz.assign_coords_from_start_step(idata, **row, inplace=True)
