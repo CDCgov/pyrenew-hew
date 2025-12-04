@@ -176,12 +176,11 @@ def ask_about_reruns():
 
 
 def compute_skips(e_exclude_last_n_days: int, h_exclude_last_n_days: int, rng_key: int):
-    skip_e = e_exclude_last_n_days == 1 & rng_key == DEFAULT_RNG_KEY
-    skip_h = h_exclude_last_n_days == 1 & rng_key == DEFAULT_RNG_KEY
+    skip_e = e_exclude_last_n_days == 1 and rng_key == DEFAULT_RNG_KEY
+    skip_h = h_exclude_last_n_days == 1 and rng_key == DEFAULT_RNG_KEY
     skip_he = (
-        max(e_exclude_last_n_days, h_exclude_last_n_days)
-        == 1 & rng_key
-        == DEFAULT_RNG_KEY
+        max(e_exclude_last_n_days, h_exclude_last_n_days) == 1
+        and rng_key == DEFAULT_RNG_KEY
     )
     return {"skip_e": skip_e, "skip_h": skip_h, "skip_he": skip_he}
 
