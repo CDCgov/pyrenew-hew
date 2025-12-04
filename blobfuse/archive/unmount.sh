@@ -9,9 +9,18 @@ fi
 
 echo "Unmounting containers specified in mounts.txt with blobfuse2..."
 
-TO_UNMOUNT=$(<./blobfuse/mounts.txt)
+TO_UNMOUNT=(
+	"nssp-etl"
+	"nssp-archival-vintages"
+	"prod-param-estimates"
+	"pyrenew-hew-prod-output"
+	"pyrenew-test-output"
+	"nwss-vintages"
+	"pyrenew-hew-config"
+	"nssp-etl"
+)
 
-for dir in $TO_UNMOUNT; do
+for dir in "${TO_UNMOUNT[@]}"; do
 	echo "Unmounting" $dir
 	blobfuse2 unmount $dir
 	rmdir $dir

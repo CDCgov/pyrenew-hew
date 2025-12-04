@@ -14,10 +14,17 @@ fi
 mkdir -p .cache
 
 echo "Mounting containers specified in mounts.txt using blobfuse2..."
+TO_MOUNT=(
+	"nssp-etl"
+	"nssp-archival-vintages"
+	"prod-param-estimates"
+	"pyrenew-hew-prod-output"
+	"pyrenew-test-output"
+	"nwss-vintages"
+	"pyrenew-hew-config"
+)
 
-TO_MOUNT=$(<./blobfuse/mounts.txt)
-
-for dir in $TO_MOUNT; do
+for dir in "${TO_MOUNT[@]}"; do
 	echo "Mounting" $dir
 	mkdir -p /mnt/$dir
 	blobfuse2 mount --container-name $dir /mnt/$dir --allow-other
