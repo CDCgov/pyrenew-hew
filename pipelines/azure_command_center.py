@@ -16,6 +16,7 @@ from rich.text import Text
 
 from pipelines.batch.setup_job import main as setup_job
 
+DEFAULT_RNG_KEY = 12345
 load_dotenv()
 console = Console()
 
@@ -55,7 +56,7 @@ def setup_job_append_id(
     container_image_version: str = "latest",
     n_training_days: int = 150,
     exclude_last_n_days: int = 1,
-    rng_key: int = 12345,
+    rng_key: int = DEFAULT_RNG_KEY,
     locations_include: list[str] | None = None,
     locations_exclude: list[str] | None = None,
     test: bool = False,
@@ -164,7 +165,7 @@ def ask_about_reruns():
     h_exclude_last_n_days = IntPrompt.ask(
         "How many days to exclude for H signal?", default=1
     )
-    rng_key = IntPrompt.ask("RNG seed for reproducibility?", default=12345)
+    rng_key = IntPrompt.ask("RNG seed for reproducibility?", default=DEFAULT_RNG_KEY)
 
     return {
         "locations_include": locations_include,
@@ -174,14 +175,27 @@ def ask_about_reruns():
     }
 
 
+def compute_skips(e_exclude_last_n_days: int, h_exclude_last_n_days: int, rng_key: int):
+    skip_e = e_exclude_last_n_days == 1 & rng_key == DEFAULT_RNG_KEY
+    skip_h = h_exclude_last_n_days == 1 & rng_key == DEFAULT_RNG_KEY
+    skip_he = (
+        max(e_exclude_last_n_days, h_exclude_last_n_days)
+        == 1 & rng_key
+        == DEFAULT_RNG_KEY
+    )
+    return {"skip_e": skip_e, "skip_h": skip_h, "skip_he": skip_he}
+
+
 def do_timeseries_reruns(
     locations_include: list[str] | None = None,
     e_exclude_last_n_days: int = 1,
     h_exclude_last_n_days: int = 1,
-    rng_key: int = 12345,  # not used, but kept for interface consistency
+    rng_key: int = DEFAULT_RNG_KEY,  # not used, but kept for interface consistency
     append_id: str = "",
 ):
-    if e_exclude_last_n_days == 1:
+    skips = compute_skips(e_exclude_last_n_days, h_exclude_last_n_days, rng_key)
+
+    if skips["skip_e"]:
         print("Skipping Timeseries-E re-fitting due to E")
     else:
         fit_timeseries_e(
@@ -189,7 +203,7 @@ def do_timeseries_reruns(
             locations_include=locations_include,
             exclude_last_n_days=e_exclude_last_n_days,
         )
-    if h_exclude_last_n_days == 1:
+    if skips["skip_h"]:
         print("Skipping Timeseries-E re-fitting due to H")
     else:
         fit_timeseries_e(
@@ -203,11 +217,13 @@ def do_pyrenew_reruns(
     locations_include: list[str] | None = None,
     e_exclude_last_n_days: int = 1,
     h_exclude_last_n_days: int = 1,
-    rng_key: int = 12345,
+    rng_key: int = DEFAULT_RNG_KEY,
     append_id: str = "",
 ):
     he_exclude_last_n_days = max(e_exclude_last_n_days, h_exclude_last_n_days)
-    if e_exclude_last_n_days == 1:
+    skips = compute_skips(e_exclude_last_n_days, h_exclude_last_n_days, rng_key)
+
+    if skips["skip_e"]:
         print("Skipping PyRenew-E re-fitting")
     else:
         fit_pyrenew_e(
@@ -217,7 +233,7 @@ def do_pyrenew_reruns(
             rng_key=rng_key,
         )
 
-    if h_exclude_last_n_days == 1:
+    if skips["skip_h"]:
         print("Skipping PyRenew-H re-fitting")
     else:
         fit_pyrenew_h(
@@ -233,7 +249,7 @@ def do_pyrenew_reruns(
             rng_key=rng_key,
         )
 
-    if he_exclude_last_n_days == 1:
+    if skips["skip_he"]:
         print("Skipping PyRenew-HE and HEW re-fitting")
     else:
         fit_pyrenew_he(

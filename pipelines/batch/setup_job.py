@@ -88,6 +88,10 @@ def main(
         for fitting; ``exclude_last_n_days`` determines where
         the date range of observations starts and ends.
 
+    rng_key
+        Random number generator seed for reproducibility.
+        Default 12345.
+
     locations_include
         List of two-letter USPS location abbreviations for locations
         to include in the job (unless explicitly excluded by
