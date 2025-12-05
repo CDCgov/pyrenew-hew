@@ -1,232 +1,238 @@
-#!/usr/bin/env -S uv run --script
-# PEP 723 dependency definition: https://peps.python.org/pep-0723/
-# /// script
-# requires-python = ">=3.13,<3.14"
-# dependencies = [
-#    "dagster-azure>=0.27.4",
-#    "dagster-docker>=0.27.4",
-#    "dagster-postgres>=0.27.4",
-#    "dagster-webserver==1.12.2",
-#    "dagster==1.12.2",
-#    "cfa-dagster @ git+https://github.com/cdcgov/cfa-dagster.git",
-#    "pyyaml>=6.0.2",
-# ]
-# ///
 import os
 import subprocess
-import sys
 from datetime import date
 from pathlib import Path
 
 import dagster as dg
-from cfa_dagster.azure_batch.executor import azure_batch_executor
-from cfa_dagster.azure_container_app_job.executor import (
-    azure_container_app_job_executor as azure_caj_executor,
-)
-from cfa_dagster.docker.executor import docker_executor
-from cfa_dagster.utils import collect_definitions
-from dagster_azure.adls2 import (
-    ADLS2DefaultAzureCredential,
+from cfa_dagster import (
     ADLS2PickleIOManager,
-    ADLS2Resource,
+    azure_batch_executor,
+    collect_definitions,
+    docker_executor,
+    start_dev_env,
+)
+from cfa_dagster import (
+    azure_container_app_job_executor as azure_caj_executor,
 )
 from dagster_azure.blob import (
     AzureBlobStorageDefaultCredential,
     AzureBlobStorageResource,
 )
 
-# Start the Dagster UI and set necessary env vars
-if "--dev" in sys.argv:
-    # Set environment variables
-    home_dir = Path.home()
-    dagster_user = home_dir.name
-    dagster_home = home_dir / ".dagster_home"
+# ---------------------- #
+# Dagster Initialization
+# ---------------------- #
 
-    os.environ["DAGSTER_USER"] = dagster_user
-    os.environ["DAGSTER_HOME"] = str(dagster_home)
-    script = sys.argv[0]
+# function to start the dev server
+start_dev_env()
 
-    # Run the Dagster webserver
-    try:
-        subprocess.run(["dagster", "dev", "-f", script])
-    except KeyboardInterrupt:
-        print("\nShutting down cleanly...")
+# --------------------------------------------------------------- #
+# Partitions: how are the data split and processed in Azure Batch?
+# --------------------------------------------------------------- #
 
+full_state_list = [
+    'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO',
+    'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID',
+    'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
+    'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT',
+    'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
+    'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA',
+    'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR',
+    'UM', 'VI'
+]
+# TODO: encode a way for people to customize excluded locations
+# TODO: get partition mapping figured out - we need to exclude on some assets
+DEFAULT_EXCLUDED_LOCATIONS: list[str] = ["AS", "GU", "MP", "PR", "UM", "VI"]
+state_list: list[str] = [state for state in full_state_list if state not in DEFAULT_EXCLUDED_LOCATIONS]
 
-# get the user from the environment, throw an error if variable is not set
-user = os.environ["DAGSTER_USER"]
+# Disease Partitions
+# disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RSV'])
+non_w_disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RSV'])
+w_disease_partitions = dg.StaticPartitionsDefinition(['COVID-19'])
 
-class PyrenewAssetConfig(dg.Config):
-    # when using the docker_executor, specify the image you'd like to use
-    image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
+# State Partitions
+# state_partitions = dg.StaticPartitionsDefinition(state_list)
+non_e_state_partitions = dg.StaticPartitionsDefinition(state_list)
+e_state_partitions = dg.StaticPartitionsDefinition([state for state in state_list if state != 'WY'])
 
-#
-def build_pyrenew_asset(
+e_partition_def = dg.MultiPartitionsDefinition(
+    {"disease": non_w_disease_partitions, "loc": e_state_partitions}
+)
+he_partition_def = dg.MultiPartitionsDefinition(
+    {"disease": non_w_disease_partitions, "loc": e_state_partitions}
+)
+hw_partition_def = dg.MultiPartitionsDefinition(
+    {"disease": non_w_disease_partitions, "loc": non_e_state_partitions}
+)
+hew_partition_def = dg.MultiPartitionsDefinition(
+    {"disease": non_w_disease_partitions, "loc": e_state_partitions}
+)
+h_partition_def = dg.MultiPartitionsDefinition(
+    {"disease": non_w_disease_partitions, "loc": non_e_state_partitions}
+)
+
+# multi_partition_def = dg.MultiPartitionsDefinition(
+#     {"disease": disease_partitions, "loc": state_partitions}
+# )
+
+# ----------------------------------------------------------- #
+# Asset Definitions - What are we outputting in our pipeline?
+# ----------------------------------------------------------- #
+
+# ---------------
+# Worker Function
+# ---------------
+
+def run_pyrenew_model(
     model_letters: str,
-    model_family: str = "pyrenew",
-    asset_name: str = str(None),
-    depends_on: list[str] = None,
+    model_family: str,
+    context: dg.AssetExecutionContext,
 ):
-    # Partition Definitions
-    full_disease_list = ["COVID-19", "Influenza", "RSV"]
-
-    full_state_list = [
-        'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO',
-        'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID',
-        'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
-        'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT',
-        'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
-        'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA',
-        'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR',
-        'UM', 'VI'
-    ]
-    # TODO: encode a way for people to customize excluded locations
-    DEFAULT_EXCLUDED_LOCATIONS: list[str] = ["AS", "GU", "MP", "PR", "UM", "VI"]
-    disease_list: list[str] = full_disease_list
-    state_list: list[str] = [state for state in full_state_list if state not in DEFAULT_EXCLUDED_LOCATIONS]
-
-    # w models do not forecast RSV or Influenza
-    # e models do not forecast WY as a location
-    if "w" in model_letters:
-        disease_list.remove("RSV")
-        disease_list.remove("Influenza")
-    elif "e" in model_letters:
-        state_list.remove("WY")
-
-    disease_partitions = dg.StaticPartitionsDefinition(disease_list)
-    state_partitions = dg.StaticPartitionsDefinition(state_list)
-    two_dimensional_pyrenew_partition = dg.MultiPartitionsDefinition(
-        {"disease": disease_partitions, "loc": state_partitions}
-    )
-
-    if depends_on is None:
-        depends_on = []
-
-    @dg.asset(
-        partitions_def=two_dimensional_pyrenew_partition,
-        name=asset_name,
-        deps=depends_on
-    )
-    def pyrenew_asset(
-        context: dg.AssetExecutionContext,
-    ) -> str:
-        keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-        disease = keys_by_dimension["disease"]
-        loc = keys_by_dimension["loc"]
-        n_training_days = 150
-        n_samples = 500
-        exclude_last_n_days = 1
-        n_warmup = 1000
-        additional_forecast_letters = model_letters
-        forecast_date = str(date.today())
-        output_subdir = f"{forecast_date}_forecasts"
-        if model_family == "pyrenew":
-            run_script = "forecast_pyrenew.py"
-            additional_args = (
-                f"--n-warmup {n_warmup} "
-                "--nwss-data-dir nwss-vintages "
-                "--priors-path pipelines/priors/prod_priors.py "
-                f"--additional-forecast-letters {additional_forecast_letters} "
-            )
-        elif model_family == "timeseries":
-            run_script = "forecast_timeseries.py"
-            additional_args = ""
-        else:
-            raise ValueError(
-                f"Unsupported model family: {model_family}. "
-                "Supported values are 'pyrenew' and 'timeseries'."
-            )
-        base_call = (
-            "/bin/bash -c '"
-            f"VIRTUAL_ENV=.venv && "
-            f"uv run python pipelines/{run_script} "
-            f"--disease {disease} "
-            f"--loc {loc} "
-            f"--n-training-days {n_training_days} "
-            f"--n-samples {n_samples} "
-            "--facility-level-nssp-data-dir nssp-etl/gold "
-            "--state-level-nssp-data-dir nssp-archival-vintages/gold "
-            "--param-data-dir params "
-            f"--output-dir test-output/{output_subdir} "
-            "--credentials-path config/creds.toml "
-            f"--report-date latest "
-            f"--exclude-last-n-days {exclude_last_n_days} "
-            f"--model-letters {model_letters} "
-            "--eval-data-path "
-            "nssp-etl/latest_comprehensive.parquet "
-            f"{additional_args}"
-            "'"
+    keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
+    disease = keys_by_dimension["disease"]
+    loc = keys_by_dimension["loc"]
+    n_training_days = 150
+    n_samples = 500
+    exclude_last_n_days = 1
+    n_warmup = 1000
+    additional_forecast_letters = model_letters
+    forecast_date = str(date.today())
+    output_dir="test-output"
+    output_subdir = f"{forecast_date}_forecasts"
+    full_output_dir=f"{output_dir}/{output_subdir}"
+    if model_family == "pyrenew":
+        run_script = "forecast_pyrenew.py"
+        additional_args = (
+            f"--n-warmup {n_warmup} "
+            "--nwss-data-dir nwss-vintages "
+            "--priors-path pipelines/priors/prod_priors.py "
+            f"--additional-forecast-letters {additional_forecast_letters} "
         )
-        run = subprocess.run(base_call, shell=True, check=True)
-        return asset_name
-    return pyrenew_asset
-
-# Use the builder to create multiple assets
-timeseries_e_output = build_pyrenew_asset(
-    model_letters="e", asset_name="timeseries_e_output", model_family="timeseries"
-)
-pyrenew_h_output = build_pyrenew_asset(
-    model_letters="h", asset_name="pyrenew_h_output"
-)
-pyrenew_e_output = build_pyrenew_asset(
-    model_letters="e", asset_name="pyrenew_e_output", depends_on=["timeseries_e_output"]
-)
-pyrenew_he_output = build_pyrenew_asset(
-    model_letters="he", asset_name="pyrenew_he_output", depends_on=["timeseries_e_output"]
-)
-pyrenew_hw_output = build_pyrenew_asset(
-    model_letters="hw", asset_name="pyrenew_hw_output"
-)
-pyrenew_hew_output = build_pyrenew_asset(
-    model_letters="hew", asset_name="pyrenew_hew_output", depends_on=["timeseries_e_output"]
-)
-
-# Sample assets - useful for reference and testing
-@dg.asset(
-    kinds={"azure_blob"},
-    description="An asset that downloads a file from Azure Blob Storage",
-)
-def basic_blob_asset(azure_blob_storage: AzureBlobStorageResource):
-    """
-    An asset that downloads a config file from Azure Blob
-    """
-    container_name = "cfadagsterdev"
-    with azure_blob_storage.get_client() as blob_storage_client:
-        container_client = blob_storage_client.get_container_client(container_name)
-    downloader = container_client.download_blob("test-files/test_config.json")
-    print("Downloaded file from blob!")
-    return downloader.readall().decode("utf-8")
-
-
-@dg.asset(
-    description="An asset that runs R code",
-)
-def basic_r_asset(basic_blob_asset):
-    subprocess.run("Rscript hello.R", shell=True, check=True)
-
-    # Read the random number from output.txt
-    with open("output.txt", "r") as f:
-        random_number = f.read().strip()
-
-    return dg.MaterializeResult(
-        metadata={
-            # add metadata from upstream asset
-            "config": dg.MetadataValue.json(json.loads(basic_blob_asset)),
-            # Dagster will plot numeric values as you repeat runs
-            "output_value": dg.MetadataValue.int(int(random_number)),
-        }
+    elif model_family == "timeseries":
+        run_script = "forecast_timeseries.py"
+        additional_args = ""
+    else:
+        raise ValueError(
+            f"Unsupported model family: {model_family}. "
+            "Supported values are 'pyrenew' and 'timeseries'."
+        )
+    base_call = (
+        "/bin/bash -c '"
+        f"VIRTUAL_ENV=.venv && "
+        f"uv run python pipelines/{run_script} "
+        f"--disease {disease} "
+        f"--loc {loc} "
+        f"--n-training-days {n_training_days} "
+        f"--n-samples {n_samples} "
+        "--facility-level-nssp-data-dir nssp-etl/gold "
+        "--state-level-nssp-data-dir nssp-archival-vintages/gold "
+        "--param-data-dir params "
+        f"--output-dir {full_output_dir} "
+        "--credentials-path config/creds.toml "
+        f"--report-date latest "
+        f"--exclude-last-n-days {exclude_last_n_days} "
+        f"--model-letters {model_letters} "
+        "--eval-data-path "
+        "nssp-etl/latest_comprehensive.parquet "
+        f"{additional_args}"
+        "'"
     )
+    subprocess.run(base_call, shell=True, check=True)
 
-disease_partitions = dg.StaticPartitionsDefinition(["COVID", "FLU", "RSV"])
+# --------------------------------------------------------------------
+# Assets: these are the core of Dagster - functions that specify data
+# --------------------------------------------------------------------
+
+# Upstream Data #
+
+@dg.asset
+def nhsn_data(context: dg.AssetExecutionContext):
+    return "nhsn_data"
+
+@dg.asset
+def nssp_gold(context: dg.AssetExecutionContext):
+    return "nssp_gold"
+
+@dg.asset
+def nssp_latest_comprehensive(context: dg.AssetExecutionContext):
+    return "nssp_latest_comprehensive"
+
+@dg.asset
+def nwss_data(context: dg.AssetExecutionContext):
+    return "nwss_data"
+
+# Pyrenew Assets #
+
+# Timeseries E
+nssp_deps = ["nssp_gold","nssp_latest_comprehensive"]
 
 @dg.asset(
-    description="A partitioned asset that runs R code for different diseases",
-    partitions_def=disease_partitions,
+        partitions_def=e_partition_def,
+        deps=nssp_deps
 )
-def partitioned_r_asset(context: dg.OpExecutionContext):
-    disease = context.partition_key
-    subprocess.run(f"Rscript hello.R {disease}", shell=True, check=True)
+def timeseries_e_output(context: dg.AssetExecutionContext):
+    run_pyrenew_model(model_letters="e", model_family="timeseries")
+    return "timeseries_e_output"
+
+# Pyrenew E
+@dg.asset(
+    partitions_def=e_partition_def,
+    deps=["timeseries_e_output"]+nssp_deps
+)
+def pyrenew_e_output(context: dg.AssetExecutionContext):
+    run_pyrenew_model(model_letters="e", model_family="pyrenew")
+    return "pyrenew_e_output"
+
+# Pyrenew H
+@dg.asset(
+    partitions_def=h_partition_def,
+    deps=["nhsn_data"]
+)
+def pyrenew_h_output(context: dg.AssetExecutionContext):
+    run_pyrenew_model(model_letters="h", model_family="pyrenew")
+    return "pyrenew_h_output"
+
+# Pyrenew HE
+@dg.asset(
+    partitions_def=he_partition_def,
+    deps=["timeseries_e_output", "nhsn_data"]+nssp_deps
+)
+def pyrenew_he_output(context: dg.AssetExecutionContext):
+    run_pyrenew_model(model_letters="he", model_family="pyrenew")
+    return "pyrenew_he_output"
+
+# Pyrenew HW
+@dg.asset(
+    partitions_def=hw_partition_def,
+    deps=["nhsn_data", "nwss_data"]
+)
+def pyrenew_hw_output(context: dg.AssetExecutionContext):
+    run_pyrenew_model(model_letters="hw", model_family="pyrenew")
+    return "pyrenew_hw_output"
+
+# Pyrenew HEW
+@dg.asset(
+    partitions_def=hew_partition_def,
+    deps=["timeseries_e_output"]+nssp_deps+["nhsn_data", "nwss_data"]
+)
+def pyrenew_hew_output(context: dg.AssetExecutionContext):
+    run_pyrenew_model(model_letters="hew", model_family="pyrenew")
+    return "pyrenew_hew_output"
+
+
+# --------------------------------------------------------- #
+# Runtime Configuration: User, Working Directory, Executors
+# - Executors define the runtime-location of an asset job
+# - See later on for Asset job definitions
+# --------------------------------------------------------- #
+
+user = os.getenv("DAGSTER_USER")
+
+# # Asset Config
+# class PyrenewAssetConfig(dg.Config):
+#     # when using the docker_executor, specify the image you'd like to use
+#     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
@@ -292,76 +298,41 @@ azure_batch_executor_configured = azure_batch_executor.configured(
     }
 )
 
-# this prefix allows your assets to be stored in Azure
-# without conflicting with other users
-adls2_prefix = f"dagster-files/{user}/"
+# -------------------------------------------------------------------------- #
+# Asset Jobs and Schedules: how are outputs created together and when?
+# -------------------------------------------------------------------------- #
+upstream_asset_job = dg.define_asset_job(
+    name="upstream_asset_job",
+    executor_def=dg.in_process_executor,
+    selection=["nhsn_data", "nssp_gold", "nssp_latest_comprehensive", "nwss_data"],
+    # tag the run with your user to allow for easy filtering in the Dagster UI
+    tags={"user": user},
+)
 
-resources_def = {
-    # This IOManager lets Dagster serialize asset outputs and store them
-    # in Azure to pass between assets
-    "io_manager": ADLS2PickleIOManager(
-        adls2_file_system="cfadagsterdev",
-        adls2_prefix=adls2_prefix,
-        adls2=ADLS2Resource(
-            storage_account="cfadagsterdev",
-            credential=ADLS2DefaultAzureCredential(kwargs={}),
-        ),
-        lease_duration=-1,  # unlimited lease for writing large files
-    ),
-    "azure_blob_storage": AzureBlobStorageResource(
-        account_url="cfadagsterdev.blob.core.windows.net",
-        credential=AzureBlobStorageDefaultCredential(),
-    ),
-}
-
-# schedule the job to run weekly
-# schedule_every_wednesday = dg.ScheduleDefinition(
-#     name="weekly_cron", cron_schedule="0 9 * * 3",
+# TODO: Error thrown because different execeptions.
+# pyrenew_asset_job = dg.define_asset_job(
+#     name="pyrenew_asset_job",
+#     executor_def=azure_batch_executor_configured,
+#     selection=[timeseries_e_output, pyrenew_e_output, pyrenew_h_output, pyrenew_he_output, pyrenew_hw_output, pyrenew_hew_output],
+#     # tag the run with your user to allow for easy filtering in the Dagster UI
+#     tags={"user": user},
 # )
 
-pyrenew_asset_job = dg.define_asset_job(
-    name="pyrenew_asset_job",
-    executor_def=azure_batch_executor_configured,
-    selection=dg.AssetSelection.assets(
-        "timeseries_e_output"
-    ),
-    # tag the run with your user to allow for easy filtering in the Dagster UI
-    tags={"user": user},
-)
-
-# jobs are used to materialize assets with a given configuration
-basic_r_asset_job = dg.define_asset_job(
-    name="basic_r_asset_job",
-    # specify an executor including docker, Azure Container App Job, or
-    # the future Azure Batch executor
-    executor_def=docker_executor_configured,
-    # uncomment the below to switch to run on Azure Container App Jobs.
-    # remember to rebuild and push your image if you made any workflow changes
-    # executor_def=azure_caj_executor_configured,
-    selection=dg.AssetSelection.assets(basic_r_asset),
-    # tag the run with your user to allow for easy filtering in the Dagster UI
-    tags={"user": user},
-)
-
-partitioned_r_asset_job = dg.define_asset_job(
-    name="partitioned_r_asset_job",
-    executor_def=docker_executor_configured,
-    # uncomment the below to switch to run on Azure Container App Jobs.
-    # remember to rebuild and push your image if you made any workflow changes
-    # executor_def=azure_caj_executor_configured,
-    selection=dg.AssetSelection.assets(partitioned_r_asset),
-    # tag the run with your user to allow for easy filtering in the Dagster UI
-    tags={"user": user},
-)
-
-schedule_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_cron",
+upstream_every_wednesday = dg.ScheduleDefinition(
+    name="weekly_upstream_cron",
     cron_schedule="0 9 * * 3",
-    job=pyrenew_asset_job
+    job=upstream_asset_job
 )
+
+# pyrenew_every_wednesday = dg.ScheduleDefinition(
+#     name="weekly_pyrenew_cron",
+#     cron_schedule="0 9 * * 3",
+#     job=pyrenew_asset_job
+# )
 
 # env variable set by Dagster CLI
-is_production = os.getenv("DAGSTER_IS_DEV_CLI", "false") == "false"
+is_production = not os.getenv("DAGSTER_IS_DEV_CLI")
+
 # change storage accounts between dev and prod
 storage_account = "cfadagster" if is_production else "cfadagsterdev"
 
@@ -375,10 +346,29 @@ defs = dg.Definitions(
     jobs=collected_defs["jobs"],
     sensors=collected_defs["sensors"],
     schedules=collected_defs["schedules"],
-    resources=resources_def,
+    resources={
+        # This IOManager lets Dagster serialize asset outputs and store them
+        # in Azure to pass between assets
+        "io_manager": ADLS2PickleIOManager(),
+        # an example storage account
+        "azure_blob_storage": AzureBlobStorageResource(
+            account_url=f"{storage_account}.blob.core.windows.net",
+            credential=AzureBlobStorageDefaultCredential(),
+        ),
+    },
     # setting Docker as the default executor. comment this out to use
     # the default executor that runs directly on your computer
     # executor=docker_executor_configured,
+    # executor=dg.in_process_executor,
     # executor=azure_caj_executor_configured,
     executor=azure_batch_executor_configured,
+    # uncomment the below to launch runs on Azure CAJ
+    # metadata={
+    #     "cfa_dagster/launcher": {
+    #         "class": AzureContainerAppJobRunLauncher.__name__,
+    #         "config": {
+    #             "image": image,
+    #         },
+    #     }
+    # },
 )

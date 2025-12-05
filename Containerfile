@@ -41,18 +41,13 @@ COPY ./.python-version ./
 # Create the Pyrenew-Hew venv and sync dependencies from pyproject.toml
 RUN uv venv .venv
 RUN --mount=type=cache,target=/root/.cache/uv
-RUN VIRTUAL_ENV=.venv uv sync
-
-# Copy in the dagster defs
-COPY ./dagster_defs.py ./
-
-# Create a separate venv for dagster workflows and sync dependencies from dagster_defs.py
-RUN uv venv .dg_venv
-RUN VIRTUAL_ENV=.dg_venv uv sync --script dagster_defs.py
-
 # Set VIRTUAL_ENV variable at runtime to choose which venv to activate
 # By default we'll do the main pyrenew-hew venv
 ENV VIRTUAL_ENV=/pyrenew-hew/.venv
+RUN uv sync
+
+# Copy in the dagster defs
+COPY ./dagster_defs.py ./
 
 # Update PATH to use the selected venv
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
