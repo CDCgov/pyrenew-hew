@@ -3,7 +3,6 @@ import datetime as dt
 import logging
 import os
 import shutil
-import subprocess
 import tomllib
 from pathlib import Path
 
@@ -16,6 +15,14 @@ from generate_predictive import (
 from prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pygit2.repository import Repository
 
+from pipelines.common_utils import (
+    calculate_training_dates,
+    get_available_reports,
+    load_credentials,
+    load_nssp_data,
+    parse_and_validate_report_date,
+    run_r_script,
+)
 from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
 from pipelines.prep_eval_data import save_eval_data
 from pyrenew_hew.utils import (
@@ -74,20 +81,15 @@ def copy_and_record_priors(priors_path: Path, model_dir: Path):
 
 
 def generate_epiweekly_data(data_dir: Path, data_names: str = None) -> None:
-    command = [
-        "Rscript",
-        "pipelines/generate_epiweekly_data.R",
-        f"{data_dir}",
-    ]
+    args = [f"{data_dir}"]
     if data_names is not None:
-        command.extend(["--data-names", f"{data_names}"])
+        args.extend(["--data-names", f"{data_names}"])
 
-    result = subprocess.run(
-        command,
-        capture_output=True,
+    run_r_script(
+        "pipelines/generate_epiweekly_data.R",
+        args,
+        function_name="generate_epiweekly_data",
     )
-    if result.returncode != 0:
-        raise RuntimeError(f"generate_epiweekly_data: {result.stderr.decode('utf-8')}")
     return None
 
 
@@ -97,9 +99,7 @@ def plot_and_save_loc_forecast(
     pyrenew_model_name: str,
     timeseries_model_name: str,
 ) -> None:
-    command = [
-        "Rscript",
-        "pipelines/plot_and_save_loc_forecast.R",
+    args = [
         f"{model_run_dir}",
         "--n-forecast-days",
         f"{n_forecast_days}",
@@ -107,33 +107,25 @@ def plot_and_save_loc_forecast(
         f"{pyrenew_model_name}",
     ]
     if timeseries_model_name is not None:
-        command.extend(
+        args.extend(
             [
                 "--timeseries-model-name",
                 f"{timeseries_model_name}",
             ]
         )
 
-    result = subprocess.run(command, capture_output=True)
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"plot_and_save_loc_forecast: {result.stderr.decode('utf-8')}"
-        )
+    run_r_script(
+        "pipelines/plot_and_save_loc_forecast.R",
+        args,
+        function_name="plot_and_save_loc_forecast",
+    )
     return None
 
 
-def get_available_reports(data_dir: str | Path, glob_pattern: str = "*.parquet"):
-    return [
-        dt.datetime.strptime(f.stem, "%Y-%m-%d").date()
-        for f in Path(data_dir).glob(glob_pattern)
-    ]
-
-
 def create_hubverse_table(model_fit_path):
-    result = subprocess.run(
+    run_r_script(
+        "-e",
         [
-            "Rscript",
-            "-e",
             f"""
             forecasttools::write_tabular(
             hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
@@ -141,11 +133,9 @@ def create_hubverse_table(model_fit_path):
             )
             """,
         ],
-        capture_output=True,
+        function_name="create_hubverse_table",
         text=True,
     )
-    if result.returncode != 0:
-        raise RuntimeError(f"create_hubverse_table: {result.stderr}")
     return None
 
 
@@ -207,89 +197,37 @@ def main(
             "pyrenew_null (fitting to no signals) is not supported by this pipeline"
         )
 
-    if credentials_path is not None:
-        cp = Path(credentials_path)
-        if not cp.suffix.lower() == ".toml":
-            raise ValueError(
-                "Credentials file must have the extension "
-                "'.toml' (not case-sensitive). Got "
-                f"{cp.suffix}"
-            )
-        logger.info(f"Reading in credentials from {cp}...")
-        with open(cp, "rb") as fp:
-            credentials_dict = tomllib.load(fp)
-    else:
-        logger.info("No credentials file given. Will proceed without one.")
-        credentials_dict = None
+    credentials_dict = load_credentials(credentials_path, logger)
 
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
 
     available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
-    first_available_loc_report = min(available_loc_level_reports)
-    last_available_loc_report = max(available_loc_level_reports)
 
-    if report_date == "latest":
-        report_date = max(available_facility_level_reports)
-    else:
-        report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
+    report_date, loc_report_date = parse_and_validate_report_date(
+        report_date,
+        available_facility_level_reports,
+        available_loc_level_reports,
+        logger,
+    )
 
-    if report_date in available_loc_level_reports:
-        loc_report_date = report_date
-    elif report_date > last_available_loc_report:
-        loc_report_date = last_available_loc_report
-    elif report_date > first_available_loc_report:
-        raise ValueError(
-            "Dataset appear to be missing some state-level "
-            f"reports. First entry is {first_available_loc_report}, "
-            f"last is {last_available_loc_report}, but no entry "
-            f"for {report_date}"
-        )
-    else:
-        raise ValueError(
-            "Requested report date is earlier than the first "
-            "state-level vintage. This is not currently supported"
-        )
+    first_training_date, last_training_date = calculate_training_dates(
+        report_date,
+        n_training_days,
+        exclude_last_n_days,
+        logger,
+    )
 
-    logger.info(f"Report date: {report_date}")
-    if loc_report_date is not None:
-        logger.info(f"Using location-level data as of: {loc_report_date}")
-
-    # + 1 because max date in dataset is report_date - 1
-    last_training_date = report_date - dt.timedelta(days=exclude_last_n_days + 1)
-
-    if last_training_date >= report_date:
-        raise ValueError(
-            "Last training date must be before the report date. "
-            "Got a last training date of {last_training_date} "
-            "with a report date of {report_date}."
-        )
-
-    logger.info(f"last training date: {last_training_date}")
-
-    first_training_date = last_training_date - dt.timedelta(days=n_training_days - 1)
-
-    logger.info(f"First training date {first_training_date}")
-
-    facility_level_nssp_data, loc_level_nssp_data = None, None
-
-    if report_date in available_facility_level_reports:
-        logger.info("Facility level data available for the given report date")
-        facility_datafile = f"{report_date}.parquet"
-        facility_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, facility_datafile)
-        )
-    if loc_report_date in available_loc_level_reports:
-        logger.info("location-level data available for the given report date.")
-        loc_datafile = f"{loc_report_date}.parquet"
-        loc_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, loc_datafile)
-        )
-    if facility_level_nssp_data is None and loc_level_nssp_data is None:
-        raise ValueError(
-            f"No data available for the requested report date {report_date}"
-        )
+    facility_level_nssp_data, loc_level_nssp_data = load_nssp_data(
+        report_date,
+        loc_report_date,
+        available_facility_level_reports,
+        available_loc_level_reports,
+        facility_level_nssp_data_dir,
+        state_level_nssp_data_dir,
+        logger,
+    )
 
     nwss_data_disease_map = {
         "COVID-19": "covid",

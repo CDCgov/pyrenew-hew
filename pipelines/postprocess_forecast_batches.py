@@ -9,11 +9,11 @@ and .tsv-format hubverse tables.
 import argparse
 import datetime as dt
 import logging
-import subprocess
 from pathlib import Path
 
 import collate_plots as cp
 
+from pipelines.common_utils import run_r_script
 from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
 
@@ -32,19 +32,14 @@ def combine_hubverse_tables(model_batch_dir_path: str | Path) -> None:
 
     output_path = Path(model_batch_dir_path, output_file_name)
 
-    result = subprocess.run(
+    run_r_script(
+        "pipelines/combine_hubverse_tables.R",
         [
-            "Rscript",
-            "pipelines/combine_hubverse_tables.R",
             f"{model_batch_dir_path}",
             f"{output_path}",
         ],
-        capture_output=True,
+        function_name="combine_hubverse_tables",
     )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"combine_hubverse_tables: {result.stdout}\n{result.stderr.decode('utf-8')}"
-        )
     return None
 
 
