@@ -36,6 +36,10 @@ ifndef ENVIRONMENT
 ENVIRONMENT = prod
 endif
 
+ifndef RNG_KEY
+RNG_KEY = 12345
+endif
+
 # ----------- #
 # Help Target #
 # ----------- #
@@ -65,7 +69,7 @@ help:
 	@echo "  post_process        : Post-process the forecast batches"
 	@echo ""
 	@echo "Toggle default forecasting parameters with the following syntax:"
-	@echo "  make <target> TEST=True DRY_RUN=True MODEL_LETTERS=<letters> FORECAST_DATE=<date>"
+	@echo "  make <target> TEST=True DRY_RUN=True RNG_KEY=54321 MODEL_LETTERS=<letters> FORECAST_DATE=<date>"
 	@echo ""
 	@echo "For example, to run the timeseries model in production, you can simply type:"
 	@echo "  make run_timeseries"
@@ -143,6 +147,7 @@ run_e_model: config
 		--model-letters "e" \
 		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
+		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
@@ -154,6 +159,7 @@ run_h_model: config
 		--model-letters "h" \
 		--job-id "pyrenew-h-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
+		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
@@ -165,6 +171,7 @@ run_he_model: config
 		--model-letters "he" \
 		--job-id "pyrenew-he-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool \
+		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
@@ -176,6 +183,7 @@ run_hw_model: config
 		--model-letters "hw" \
 		--job-id "pyrenew-hw-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
+		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)
@@ -187,6 +195,7 @@ run_hew_model: config
 		--model-letters "hew" \
 	--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
+		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
 		$(ARGS)

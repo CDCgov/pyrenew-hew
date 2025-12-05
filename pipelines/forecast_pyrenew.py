@@ -174,6 +174,7 @@ def main(
     forecast_ed_visits: bool = False,
     forecast_hospital_admissions: bool = False,
     forecast_wastewater: bool = False,
+    rng_key: int | None = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -413,6 +414,7 @@ def main(
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,
         fit_wastewater=fit_wastewater,
+        rng_key=rng_key,
     )
     logger.info("Model fitting complete")
 
@@ -426,6 +428,7 @@ def main(
         predict_ed_visits=forecast_ed_visits,
         predict_hospital_admissions=forecast_hospital_admissions,
         predict_wastewater=forecast_wastewater,
+        rng_key=rng_key,
     )
     logger.info("All forecasting complete.")
 
@@ -608,6 +611,15 @@ if __name__ == "__main__":
         "--nhsn-data-path",
         type=Path,
         help=("Path to local NHSN data (for local testing)"),
+        default=None,
+    )
+    parser.add_argument(
+        "--rng-key",
+        type=int,
+        help=(
+            "Integer seed for a JAX random number generator. "
+            "If not provided, a random integer will be chosen."
+        ),
         default=None,
     )
 
