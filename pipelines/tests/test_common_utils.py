@@ -1,11 +1,13 @@
-"""Unit tests for common utility functions in pipelines/common_utils.py"""
+"""Unit tests for common utility and command-line argument functions"""
 
+import argparse
 import datetime as dt
 import logging
 
 import polars as pl
 import pytest
 
+from pipelines.cli_utils import add_common_forecast_arguments
 from pipelines.common_utils import (
     calculate_training_dates,
     get_available_reports,
@@ -144,3 +146,31 @@ class TestDataWranglingUtils:
         assert loc_data is not None
         assert isinstance(facility_data, pl.LazyFrame)
         assert isinstance(loc_data, pl.LazyFrame)
+
+
+class TestCLIUtils:
+    """Tests for CLI argument parsing utilities."""
+
+    def test_add_common_forecast_arguments_smoke_test(self):
+        """Smoke test that common arguments are added without errors."""
+        parser = argparse.ArgumentParser()
+
+        add_common_forecast_arguments(parser)
+
+        # Parse with minimal required arguments to verify they exist
+        args = parser.parse_args(
+            [
+                "--disease",
+                "COVID-19",
+                "--loc",
+                "CA",
+            ]
+        )
+
+        assert args.disease == "COVID-19"
+        assert args.loc == "CA"
+        assert args.report_date == "latest"  # default value
+        assert args.n_training_days == 180  # default value
+        assert args.n_forecast_days == 28  # default value
+        assert args.n_chains == 4  # default value
+        assert args.exclude_last_n_days == 0  # default value
