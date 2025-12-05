@@ -5,6 +5,8 @@ from pathlib import Path
 
 import arviz as az
 import forecasttools as ft
+import jax
+import numpy as np
 import polarbayes as pb
 import polars as pl
 
@@ -22,7 +24,16 @@ def generate_and_save_predictions(
     predict_ed_visits: bool = False,
     predict_hospital_admissions: bool = False,
     predict_wastewater: bool = False,
+    rng_key: int | None = None,
 ) -> None:
+    if rng_key is None:
+        rng_key = np.random.randint(0, 10000)
+    if isinstance(rng_key, int):
+        rng_key = jax.random.key(rng_key)
+    else:
+        raise ValueError(
+            "rng_key must be an integer with which to seed `jax.random.key`"
+        )
     model_run_dir = Path(model_run_dir)
     model_dir = Path(model_run_dir, model_name)
     if not model_dir.exists():
@@ -54,6 +65,7 @@ def generate_and_save_predictions(
 
     posterior_predictive = my_model.posterior_predictive(
         data=forecast_data,
+        rng_key=rng_key,
         sample_ed_visits=predict_ed_visits,
         sample_hospital_admissions=predict_hospital_admissions,
         sample_wastewater=predict_wastewater,
@@ -173,7 +185,15 @@ if __name__ == "__main__":
         action=argparse.BooleanOptionalAction,
         help="If provided, generate posterior predictions for wastewater.",
     )
-
+    parser.add_argument(
+        "--rng-key",
+        type=int,
+        help=(
+            "Integer seed for a JAX random number generator. "
+            "If not provided, a random integer will be chosen."
+        ),
+        default=None,
+    )
     args = parser.parse_args()
 
     generate_and_save_predictions(**vars(args))

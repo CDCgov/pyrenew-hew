@@ -24,6 +24,7 @@ python pipelines/forecast_pyrenew.py \
 	--n-chains 2 \
 	--n-samples 250 \
 	--n-warmup 250 \
+	--rng-key 12345 \
 	--model-letters "$model_letters" \
 	--additional-forecast-letters "$model_letters" \
 	--eval-data-path "$BASE_DIR/private_data/nssp-etl" \
