@@ -261,3 +261,82 @@ def run_r_script(
         raise RuntimeError(f"{error_name}: {error_msg}")
 
     return result
+
+
+def plot_and_save_loc_forecast(
+    model_run_dir: Path,
+    n_forecast_days: int,
+    pyrenew_model_name: str = None,
+    timeseries_model_name: str = None,
+) -> None:
+    """Plot and save location forecast using R script.
+
+    Parameters
+    ----------
+    model_run_dir : Path
+        Directory containing the model run.
+    n_forecast_days : int
+        Number of days to forecast.
+    pyrenew_model_name : str, optional
+        Name of the PyRenew model.
+    timeseries_model_name : str, optional
+        Name of the timeseries model.
+
+    Returns
+    -------
+    None
+    """
+    args = [
+        f"{model_run_dir}",
+        "--n-forecast-days",
+        f"{n_forecast_days}",
+    ]
+    if pyrenew_model_name is not None:
+        args.extend(
+            [
+                "--pyrenew-model-name",
+                f"{pyrenew_model_name}",
+            ]
+        )
+    if timeseries_model_name is not None:
+        args.extend(
+            [
+                "--timeseries-model-name",
+                f"{timeseries_model_name}",
+            ]
+        )
+
+    run_r_script(
+        "pipelines/plot_and_save_loc_forecast.R",
+        args,
+        function_name="plot_and_save_loc_forecast",
+    )
+    return None
+
+
+def create_hubverse_table(model_fit_path: Path) -> None:
+    """Create hubverse table from model fit using R script.
+
+    Parameters
+    ----------
+    model_fit_path : Path
+        Path to the model fit directory.
+
+    Returns
+    -------
+    None
+    """
+    run_r_script(
+        "-e",
+        [
+            f"""
+            forecasttools::write_tabular(
+            hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
+            fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
+            )
+            """,
+        ],
+        function_name="create_hubverse_table",
+        text=True,
+    )
+    return None
