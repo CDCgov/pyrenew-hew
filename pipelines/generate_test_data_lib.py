@@ -558,7 +558,7 @@ def update_json_with_prior_predictive(
             0, bootstrap_draw, :
         ]
         data["nhsn_training_data"]["hospital_admissions"] = [
-            int(x) for x in hosp_samples
+            int(x.item()) for x in hosp_samples
         ]
 
     # Update ED visits if present (note: key is 'observed_ed_visits', not 'total')
@@ -567,7 +567,9 @@ def update_json_with_prior_predictive(
         and "observed_ed_visits" in data["nssp_training_data"]
     ):
         ed_samples = idata.prior["observed_ed_visits"].values[0, bootstrap_draw, :]
-        data["nssp_training_data"]["observed_ed_visits"] = [int(x) for x in ed_samples]
+        data["nssp_training_data"]["observed_ed_visits"] = [
+            int(x.item()) for x in ed_samples
+        ]
 
     # Update wastewater if present (note: key is 'nwss_training_data', not 'ww_training_data')
     if (
@@ -652,7 +654,7 @@ def update_tsv_with_prior_predictive(
                     (pl.col("date") == date)
                     & (pl.col(".variable") == "observed_ed_visits")
                 )
-                .then(float(ed_samples[i]))
+                .then(float(ed_samples[i].item()))
                 .otherwise(pl.col(".value"))
                 .alias(".value")
             )
