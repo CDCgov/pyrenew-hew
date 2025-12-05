@@ -60,7 +60,10 @@ def get_nhsn(
             "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
         )
 
-        r_str = f"""
+        run_r_script(
+            "-e",
+            [
+                f"""
             forecasttools::pull_data_cdc_gov_dataset(
                 dataset = "nhsn_hrd_prelim",
                 api_key_id = {py_scalar_to_r_scalar(api_key_id)},
@@ -77,11 +80,8 @@ def get_nhsn(
             dplyr::rename(hospital_admissions = {py_scalar_to_r_scalar(columns)}) |>
             dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
             forecasttools::write_tabular("{str(local_data_file)}")
-            """
-
-        run_r_script(
-            "-e",
-            r_str,
+            """,
+            ],
             function_name="get_nhsn",
         )
     raw_dat = pl.read_parquet(local_data_file)
