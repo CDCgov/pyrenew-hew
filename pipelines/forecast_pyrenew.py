@@ -15,6 +15,7 @@ from generate_predictive import (
 from prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pygit2.repository import Repository
 
+from pipelines.cli_utils import add_common_forecast_arguments
 from pipelines.common_utils import (
     calculate_training_dates,
     get_available_reports,
@@ -393,66 +394,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Create fit data for disease modeling."
     )
-    parser.add_argument(
-        "--disease",
-        type=str,
-        required=True,
-        help="Disease to model (e.g., COVID-19, Influenza, RSV).",
-    )
 
-    parser.add_argument(
-        "--loc",
-        type=str,
-        required=True,
-        help=(
-            "Two-letter USPS abbreviation for the location to fit"
-            "(e.g. 'AK', 'AL', 'AZ', etc.)."
-        ),
-    )
+    # Add common arguments
+    add_common_forecast_arguments(parser)
 
+    # Add pyrenew-specific arguments
     parser.add_argument(
         "--model-letters",
         type=str,
         help=(
-            "Fit the model corresponding to the provided model letters (e.g. 'he', 'e', 'hew')."
+            "Fit the model corresponding to the provided model letters "
+            "(e.g. 'he', 'e', 'hew')."
         ),
         required=True,
-    )
-
-    parser.add_argument(
-        "--report-date",
-        type=str,
-        default="latest",
-        help="Report date in YYYY-MM-DD format or latest (default: latest).",
-    )
-
-    parser.add_argument(
-        "--facility-level-nssp-data-dir",
-        type=Path,
-        default=Path("private_data", "nssp_etl_gold"),
-        help=("Directory in which to look for facility-level NSSP ED visit data"),
-    )
-
-    parser.add_argument(
-        "--state-level-nssp-data-dir",
-        type=Path,
-        default=Path("private_data", "nssp_state_level_gold"),
-        help=("Directory in which to look for state-level NSSP ED visit data."),
     )
 
     parser.add_argument(
         "--nwss-data-dir",
         type=Path,
         default=Path("private_data", "nwss_vintages"),
-        help=("Directory in which to look for NWSS data."),
-    )
-
-    parser.add_argument(
-        "--param-data-dir",
-        type=Path,
-        default=Path("private_data", "prod_param_estimates"),
-        help=("Directory in which to look for parameter estimatessuch as delay PMFs."),
-        required=True,
+        help="Directory in which to look for NWSS data.",
     )
 
     parser.add_argument(
@@ -466,47 +427,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--credentials-path",
-        type=Path,
-        help=("Path to a TOML file containing credentials such as API keys."),
-    )
-
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default="private_data",
-        help="Directory in which to save output.",
-    )
-
-    parser.add_argument(
-        "--n-training-days",
-        type=int,
-        default=180,
-        help="Number of training days (default: 180).",
-    )
-
-    parser.add_argument(
-        "--n-forecast-days",
-        type=int,
-        default=28,
-        help=(
-            "Number of days ahead to forecast relative to the "
-            "report date (default: 28).",
-        ),
-    )
-
-    parser.add_argument(
-        "--n-chains",
-        type=int,
-        default=4,
-        help="Number of MCMC chains to run (default: 4).",
-    )
-
-    parser.add_argument(
         "--n-warmup",
         type=int,
         default=1000,
-        help=("Number of warmup iterations per chain for NUTS (default: 1000)."),
+        help="Number of warmup iterations per chain for NUTS (default: 1000).",
     )
 
     parser.add_argument(
@@ -519,33 +443,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--exclude-last-n-days",
-        type=int,
-        default=0,
-        help=(
-            "Optionally exclude the final n days of available training "
-            "data (Default: 0, i.e. exclude no available data"
-        ),
-    )
-
-    parser.add_argument(
-        "--eval-data-path",
-        type=Path,
-        help=("Path to a parquet file containing compehensive truth data."),
-    )
-    parser.add_argument(
         "--additional-forecast-letters",
         type=str,
         help=(
             "Forecast the following signals even if they were not fit. "
             "Fit signals are always forecast."
         ),
-        default=None,
-    )
-    parser.add_argument(
-        "--nhsn-data-path",
-        type=Path,
-        help=("Path to local NHSN data (for local testing)"),
         default=None,
     )
 
