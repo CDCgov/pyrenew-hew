@@ -18,10 +18,12 @@ from pygit2.repository import Repository
 from pipelines.cli_utils import add_common_forecast_arguments
 from pipelines.common_utils import (
     calculate_training_dates,
+    create_hubverse_table,
     get_available_reports,
     load_credentials,
     load_nssp_data,
     parse_and_validate_report_date,
+    plot_and_save_loc_forecast,
     run_r_script,
 )
 from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
@@ -90,52 +92,6 @@ def generate_epiweekly_data(data_dir: Path, data_names: str = None) -> None:
         "pipelines/generate_epiweekly_data.R",
         args,
         function_name="generate_epiweekly_data",
-    )
-    return None
-
-
-def plot_and_save_loc_forecast(
-    model_run_dir: Path,
-    n_forecast_days: int,
-    pyrenew_model_name: str,
-    timeseries_model_name: str,
-) -> None:
-    args = [
-        f"{model_run_dir}",
-        "--n-forecast-days",
-        f"{n_forecast_days}",
-        "--pyrenew-model-name",
-        f"{pyrenew_model_name}",
-    ]
-    if timeseries_model_name is not None:
-        args.extend(
-            [
-                "--timeseries-model-name",
-                f"{timeseries_model_name}",
-            ]
-        )
-
-    run_r_script(
-        "pipelines/plot_and_save_loc_forecast.R",
-        args,
-        function_name="plot_and_save_loc_forecast",
-    )
-    return None
-
-
-def create_hubverse_table(model_fit_path):
-    run_r_script(
-        "-e",
-        [
-            f"""
-            forecasttools::write_tabular(
-            hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
-            fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
-            )
-            """,
-        ],
-        function_name="create_hubverse_table",
-        text=True,
     )
     return None
 

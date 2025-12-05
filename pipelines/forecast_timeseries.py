@@ -11,34 +11,17 @@ from prep_eval_data import save_eval_data
 from pipelines.cli_utils import add_common_forecast_arguments
 from pipelines.common_utils import (
     calculate_training_dates,
+    create_hubverse_table,
     get_available_reports,
     load_credentials,
     load_nssp_data,
     parse_and_validate_report_date,
+    plot_and_save_loc_forecast,
     run_r_script,
 )
 from pipelines.forecast_pyrenew import (
     generate_epiweekly_data,
 )
-
-
-def plot_and_save_loc_forecast(
-    model_run_dir: Path,
-    n_forecast_days: int,
-    timeseries_model_name: str,
-) -> None:
-    run_r_script(
-        "pipelines/plot_and_save_loc_forecast.R",
-        [
-            f"{model_run_dir}",
-            "--n-forecast-days",
-            f"{n_forecast_days}",
-            "--timeseries-model-name",
-            f"{timeseries_model_name}",
-        ],
-        function_name="plot_and_save_loc_forecast",
-    )
-    return None
 
 
 def timeseries_ensemble_forecasts(
@@ -69,23 +52,6 @@ def cdc_flat_baseline_forecasts(model_dir: str, n_forecast_days: int) -> None:
             f"{n_forecast_days}",
         ],
         function_name="cdc_flat_baseline_forecasts",
-    )
-    return None
-
-
-def create_hubverse_table(model_fit_path):
-    run_r_script(
-        "-e",
-        [
-            f"""
-            forecasttools::write_tabular(
-            hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
-            fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
-            )
-            """,
-        ],
-        function_name="create_hubverse_table",
-        text=True,
     )
     return None
 
@@ -224,7 +190,9 @@ def main(
         n_denominator_samples,
     )
     plot_and_save_loc_forecast(
-        model_run_dir, n_days_past_last_training, ensemble_model_name
+        model_run_dir,
+        n_days_past_last_training,
+        timeseries_model_name=ensemble_model_name,
     )
     create_hubverse_table(Path(model_run_dir, ensemble_model_name))
 
