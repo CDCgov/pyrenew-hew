@@ -83,10 +83,9 @@ def copy_and_record_priors(priors_path: Path, model_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly_data(data_dir: Path, data_names: str = None) -> None:
-    args = [f"{data_dir}"]
-    if data_names is not None:
-        args.extend(["--data-names", f"{data_names}"])
+def generate_epiweekly_data(data_dir: Path) -> None:
+    """Generate epiweekly datasets from daily datasets using an R script."""
+    args = [str(data_dir)]
 
     run_r_script(
         "pipelines/generate_epiweekly_data.R",
