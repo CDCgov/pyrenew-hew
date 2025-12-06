@@ -263,6 +263,25 @@ def run_r_script(
     return result
 
 
+def run_r_code(
+    r_code: str,
+    function_name: str | None = None,
+    capture_output: bool = True,
+    text: bool = False,
+) -> subprocess.CompletedProcess:
+    """Run inline R code and handle errors by calling `run_r_script` with flag `-e`."""
+
+    result = run_r_script(
+        "-e",
+        [r_code],
+        function_name=function_name,
+        capture_output=capture_output,
+        text=text,
+    )
+
+    return result
+
+
 def plot_and_save_loc_forecast(
     model_run_dir: Path,
     n_forecast_days: int,
@@ -326,16 +345,13 @@ def create_hubverse_table(model_fit_path: Path) -> None:
     -------
     None
     """
-    run_r_script(
-        "-e",
-        [
-            f"""
+    run_r_code(
+        f"""
             forecasttools::write_tabular(
             hewr::model_fit_dir_to_hub_q_tbl('{model_fit_path}'),
             fs::path('{model_fit_path}', "hubverse_table", ext = "parquet")
             )
             """,
-        ],
         function_name="create_hubverse_table",
         text=True,
     )

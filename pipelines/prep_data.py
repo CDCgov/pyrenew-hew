@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 
-from pipelines.common_utils import run_r_script
+from pipelines.common_utils import run_r_code
 from pyrenew_hew.utils import approx_lognorm
 
 _disease_map = {
@@ -60,10 +60,8 @@ def get_nhsn(
             "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
         )
 
-        run_r_script(
-            "-e",
-            [
-                f"""
+        run_r_code(
+            f"""
             forecasttools::pull_data_cdc_gov_dataset(
                 dataset = "nhsn_hrd_prelim",
                 api_key_id = {py_scalar_to_r_scalar(api_key_id)},
@@ -81,7 +79,6 @@ def get_nhsn(
             dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
             forecasttools::write_tabular("{str(local_data_file)}")
             """,
-            ],
             function_name="get_nhsn",
         )
     raw_dat = pl.read_parquet(local_data_file)
