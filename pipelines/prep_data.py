@@ -2,7 +2,6 @@ import datetime as dt
 import json
 import logging
 import os
-import subprocess
 import tempfile
 from datetime import datetime
 from logging import Logger
@@ -13,6 +12,7 @@ import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 
+from pipelines.common_utils import run_r_code
 from pyrenew_hew.utils import approx_lognorm
 
 _disease_map = {
@@ -60,9 +60,7 @@ def get_nhsn(
             "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
         )
 
-        r_command = [
-            "Rscript",
-            "-e",
+        run_r_code(
             f"""
             forecasttools::pull_data_cdc_gov_dataset(
                 dataset = "nhsn_hrd_prelim",
@@ -81,12 +79,8 @@ def get_nhsn(
             dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
             forecasttools::write_tabular("{str(local_data_file)}")
             """,
-        ]
-
-        result = subprocess.run(r_command)
-
-        if result.returncode != 0:
-            raise RuntimeError(f"get_nhsn: {result.stderr.decode('utf-8')}")
+            function_name="get_nhsn",
+        )
     raw_dat = pl.read_parquet(local_data_file)
     dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
     return dat
