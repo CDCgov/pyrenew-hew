@@ -409,12 +409,7 @@ if __name__ == "__main__":
         ),
         default=None,
     )
-    parser.add_argument(
-        "--nhsn-data-path",
-        type=Path,
-        help=("Path to local NHSN data (for local testing)"),
-        default=None,
-    )
+
     parser.add_argument(
         "--rng-key",
         type=int,
