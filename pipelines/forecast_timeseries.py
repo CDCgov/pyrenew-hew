@@ -66,7 +66,7 @@ def main(
     output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
-    n_denominator_samples: int,
+    n_samples: int,
     model_letters: str,
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
@@ -187,7 +187,7 @@ def main(
     timeseries_ensemble_forecasts(
         ensemble_model_output_dir,
         n_days_past_last_training,
-        n_denominator_samples,
+        n_samples,
     )
     plot_and_save_loc_forecast(
         model_run_dir,
@@ -230,13 +230,8 @@ if __name__ == "__main__":
         "--n-samples",
         type=int,
         default=1000,
-        help=(
-            "Number of posterior samples to draw per chain using NUTS (default: 1000)."
-        ),
+        help=("Number of samples to draw (default: 1000)."),
     )
 
     args = parser.parse_args()
-    n_denominator_samples = args.n_samples * args.n_chains
-    delattr(args, "n_samples")
-    delattr(args, "n_chains")
-    main(**vars(args), n_denominator_samples=n_denominator_samples)
+    main(**vars(args))
