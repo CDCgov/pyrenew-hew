@@ -401,6 +401,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--n-chains",
+        type=int,
+        default=4,
+        help="Number of MCMC chains to run (default: 4).",
+    )
+
+    parser.add_argument(
         "--additional-forecast-letters",
         type=str,
         help=(
