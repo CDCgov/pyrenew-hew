@@ -101,7 +101,7 @@ def convert_to_epiautogp_json(
 
     # Read data_for_model_fit.json
     logger.info(f"Reading data from {data_for_model_fit_path}")
-    with open(data_for_model_fit_path, "r") as f:
+    with open(data_for_model_fit_path) as f:
         data_for_model_fit = json.load(f)
 
     # Read and process data based on target

@@ -132,7 +132,7 @@ class TestEpiAutoGPDataConversion:
         assert output_path.exists()
 
         # Read and verify JSON content
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             result = json.load(f)
 
         # Check structure
@@ -182,7 +182,7 @@ class TestEpiAutoGPDataConversion:
         assert output_path.exists()
 
         # Read and verify JSON content
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             result = json.load(f)
 
         # Check structure
@@ -218,7 +218,7 @@ class TestEpiAutoGPDataConversion:
             nowcast_reports=nowcast_reports,
         )
 
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             result = json.load(f)
 
         assert result["nowcast_dates"] == ["2024-09-08", "2024-09-15"]
