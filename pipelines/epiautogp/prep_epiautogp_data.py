@@ -15,8 +15,7 @@ import polars as pl
 
 
 def convert_to_epiautogp_json(
-    combined_training_data_path: Path,
-    nhsn_data_path: Optional[Path],
+    data_for_model_fit_path: Path,
     output_json_path: Path,
     disease: str,
     location: str,
@@ -25,7 +24,7 @@ def convert_to_epiautogp_json(
     nowcast_dates: Optional[list[dt.date]] = None,
     nowcast_reports: Optional[list[list[float]]] = None,
     logger: Optional[logging.Logger] = None,
-) -> None:
+) -> Path:
     """
     Convert surveillance data to EpiAutoGP JSON format.
 
@@ -36,12 +35,10 @@ def convert_to_epiautogp_json(
 
     Parameters
     ----------
-    combined_training_data_path : Path
-        Path to the combined_training_data.tsv file produced by
-        `process_and_save_loc_data` from `pipelines/prep_data.py`
-    nhsn_data_path : Optional[Path]
-        Path to NHSN parquet file with hospital admission data.
-        Required when target='nhsn'. Can be None when target='nssp'.
+    data_for_model_fit_path : Path
+        Path to the data_for_model_fit.json file produced by
+        `process_and_save_loc_data` from `pipelines/prep_data.py`.
+        This file contains both nssp_training_data and nhsn_training_data.
     output_json_path : Path
         Path where the EpiAutoGP JSON file will be saved
     disease : str
@@ -65,16 +62,16 @@ def convert_to_epiautogp_json(
 
     Returns
     -------
-    None
-        Writes JSON file to output_json_path
+    Path
+        Path to the created EpiAutoGP JSON file
 
     Raises
     ------
     ValueError
-        If target is not "nssp" or "nhsn", or if nhsn_data_path is
-        None when target="nhsn"
+        If target is not "nssp" or "nhsn", or if the required data
+        is not present in the data_for_model_fit.json file
     FileNotFoundError
-        If required input files don't exist
+        If data_for_model_fit.json doesn't exist
 
     Required Output Structure
     -----
@@ -97,23 +94,24 @@ def convert_to_epiautogp_json(
     if target not in ["nssp", "nhsn"]:
         raise ValueError(f"target must be 'nssp' or 'nhsn', got '{target}'")
 
-    # Validate NHSN requirements
-    if target == "nhsn" and nhsn_data_path is None:
-        raise ValueError("nhsn_data_path is required when target='nhsn'")
-
     # Set defaults for nowcasting
     if nowcast_dates is None:
         nowcast_dates = []
     if nowcast_reports is None:
         nowcast_reports = []
 
+    # Read data_for_model_fit.json
+    logger.info(f"Reading data from {data_for_model_fit_path}")
+    with open(data_for_model_fit_path, "r") as f:
+        data_for_model_fit = json.load(f)
+
     # Read and process data based on target
     if target == "nssp":
         dates, reports = _extract_nssp_data(
-            combined_training_data_path, disease, location, logger
+            data_for_model_fit, disease, location, logger
         )
     else:  # target == "nhsn"
-        dates, reports = _extract_nhsn_data(nhsn_data_path, location, logger)
+        dates, reports = _extract_nhsn_data(data_for_model_fit, location, logger)
 
     # Create EpiAutoGP input structure
     epiautogp_input = {
@@ -137,20 +135,23 @@ def convert_to_epiautogp_json(
         f"(target={target}) to {output_json_path}"
     )
 
+    return output_json_path
+
 
 def _extract_nssp_data(
-    combined_training_data_path: Path,
+    data_for_model_fit: dict,
     disease: str,
     location: str,
     logger: logging.Logger,
 ) -> tuple[list[dt.date], list[float]]:
     """
-    Extract NSSP ED visit percentage data from combined training data.
+    Extract NSSP ED visit percentage data from data_for_model_fit dict.
 
     Parameters
     ----------
-    combined_training_data_path : Path
-        Path to combined_training_data.tsv
+    data_for_model_fit : dict
+        Dictionary loaded from data_for_model_fit.json containing
+        nssp_training_data and nhsn_training_data
     disease : str
         Disease name
     location : str
@@ -165,32 +166,27 @@ def _extract_nssp_data(
     """
     logger.info(f"Extracting NSSP data for {disease} {location}")
 
-    # Read combined training data
-    df = pl.read_csv(combined_training_data_path, separator="\t")
+    # Get NSSP training data from the JSON
+    nssp_data = data_for_model_fit.get("nssp_training_data")
+    if nssp_data is None:
+        raise ValueError("No NSSP training data found in data_for_model_fit.json")
+
+    # Convert to DataFrame
+    df = pl.DataFrame(nssp_data)
 
     # Ensure date column is properly typed as Date
     df = df.with_columns(pl.col("date").cast(pl.Date))
 
-    # Filter for relevant disease, location, and ED visit data
-    # We need both observed_ed_visits and other_ed_visits to calculate percentage
-    ed_data = (
-        df.filter(
-            (pl.col("disease") == disease)
-            & (pl.col("geo_value") == location)
-            & (pl.col(".variable").is_in(["observed_ed_visits", "other_ed_visits"]))
-        )
-        .pivot(
-            index=["date", "geo_value", "disease"],
-            on=".variable",
-            values=".value",
-        )
-        .sort("date")
-    )
+    # Check if location matches (should be in geo_value column)
+    if "geo_value" not in df.columns:
+        # Data is already filtered for the location, no filtering needed
+        ed_data = df.sort("date")
+    else:
+        ed_data = df.filter(pl.col("geo_value") == location).sort("date")
 
     if ed_data.height == 0:
         raise ValueError(
-            f"No NSSP data found for {disease} {location} in "
-            f"{combined_training_data_path}"
+            f"No NSSP data found for {location} in data_for_model_fit.json"
         )
 
     # Calculate ED visit percentage
@@ -213,15 +209,16 @@ def _extract_nssp_data(
 
 
 def _extract_nhsn_data(
-    nhsn_data_path: Path, location: str, logger: logging.Logger
+    data_for_model_fit: dict, location: str, logger: logging.Logger
 ) -> tuple[list[dt.date], list[float]]:
     """
-    Extract NHSN hospital admission counts from parquet file.
+    Extract NHSN hospital admission counts from data_for_model_fit dict.
 
     Parameters
     ----------
-    nhsn_data_path : Path
-        Path to NHSN parquet file
+    data_for_model_fit : dict
+        Dictionary loaded from data_for_model_fit.json containing
+        nssp_training_data and nhsn_training_data
     location : str
         Location abbreviation
     logger : logging.Logger
@@ -234,14 +231,28 @@ def _extract_nhsn_data(
     """
     logger.info(f"Extracting NHSN data for {location}")
 
-    # Read NHSN parquet file
-    df = pl.read_parquet(nhsn_data_path)
+    # Get NHSN training data from the JSON
+    nhsn_data = data_for_model_fit.get("nhsn_training_data")
+    if nhsn_data is None:
+        raise ValueError("No NHSN training data found in data_for_model_fit.json")
 
-    # Filter for location and sort by date
-    hosp_data = df.filter(pl.col("jurisdiction") == location).sort("weekendingdate")
+    # Convert to DataFrame
+    df = pl.DataFrame(nhsn_data)
+
+    # Ensure date column is properly typed as Date
+    df = df.with_columns(pl.col("weekendingdate").cast(pl.Date))
+
+    # Check if location matches (should be in jurisdiction column)
+    if "jurisdiction" not in df.columns:
+        # Data is already filtered for the location, no filtering needed
+        hosp_data = df.sort("weekendingdate")
+    else:
+        hosp_data = df.filter(pl.col("jurisdiction") == location).sort("weekendingdate")
 
     if hosp_data.height == 0:
-        raise ValueError(f"No NHSN data found for {location} in {nhsn_data_path}")
+        raise ValueError(
+            f"No NHSN data found for {location} in data_for_model_fit.json"
+        )
 
     dates = hosp_data["weekendingdate"].to_list()
     reports = hosp_data["hospital_admissions"].cast(pl.Float64).to_list()
