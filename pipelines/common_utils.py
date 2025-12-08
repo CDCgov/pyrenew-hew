@@ -5,7 +5,7 @@ import logging
 import subprocess
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import polars as pl
 
@@ -274,14 +274,14 @@ def run_r_script(
 def run_julia_script(
     script_name: str,
     args: list[str],
-    function_name: str | None = None,
+    function_name: Optional[str] = None,
     capture_output: bool = True,
     text: bool = False,
 ) -> subprocess.CompletedProcess:
     """
     Run a Julia script and handle errors.
 
-    This is a convenience wrapper around run_command() for Julia scripts.
+    This is a convenience wrapper around `run_command` for Julia scripts.
 
     Parameters
     ----------
@@ -289,7 +289,7 @@ def run_julia_script(
         Name of the Julia script to run, or "-e" for inline Julia code.
     args : list[str]
         Arguments to pass to the Julia script.
-    function_name : str | None, optional
+    function_name : Optional[str]
         Name of the calling function for error messages. If None, uses script_name.
     capture_output : bool, optional
         Whether to capture stdout and stderr, by default True.
@@ -317,20 +317,20 @@ def run_julia_script(
 
 def run_julia_code(
     julia_code: str,
-    function_name: str | None = None,
+    function_name: Optional[str] = None,
     capture_output: bool = True,
     text: bool = False,
 ) -> subprocess.CompletedProcess:
     """
     Run inline Julia code and handle errors.
 
-    This is a convenience wrapper around run_inline_code() for Julia code.
+    This is a convenience wrapper around `run_inline_code` for Julia code.
 
     Parameters
     ----------
     julia_code : str
         The Julia code to execute.
-    function_name : str | None, optional
+    function_name : Optional[str]
         Name of the calling function for error messages.
     capture_output : bool, optional
         Whether to capture stdout and stderr, by default True.
