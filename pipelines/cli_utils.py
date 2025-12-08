@@ -76,13 +76,6 @@ def add_common_forecast_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
     parser.add_argument(
-        "--n-chains",
-        type=int,
-        default=4,
-        help="Number of MCMC chains to run (default: 4).",
-    )
-
-    parser.add_argument(
         "--exclude-last-n-days",
         type=int,
         default=0,
