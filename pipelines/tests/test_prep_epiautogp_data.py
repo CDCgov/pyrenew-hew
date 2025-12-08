@@ -6,6 +6,7 @@ import datetime as dt
 import json
 import logging
 
+import polars as pl
 import pytest
 
 from pipelines.epiautogp.prep_epiautogp_data import convert_to_epiautogp_json
@@ -15,14 +16,53 @@ class TestEpiAutoGPDataConversion:
     """Test suite for EpiAutoGP data conversion functions."""
 
     @pytest.fixture
+    def sample_epiweekly_data(self, tmp_path):
+        """Create a sample epiweekly_combined_training_data.tsv file with NSSP data."""
+        # Create weekly NSSP data in long format
+        data = {
+            "date": [
+                "2024-09-01",
+                "2024-09-01",
+                "2024-09-08",
+                "2024-09-08",
+                "2024-09-15",
+                "2024-09-15",
+            ],
+            "geo_value": ["CA", "CA", "CA", "CA", "CA", "CA"],
+            "disease": [
+                "COVID-19",
+                "COVID-19",
+                "COVID-19",
+                "COVID-19",
+                "COVID-19",
+                "COVID-19",
+            ],
+            "data_type": ["train", "train", "train", "train", "train", "train"],
+            ".variable": [
+                "observed_ed_visits",
+                "other_ed_visits",
+                "observed_ed_visits",
+                "other_ed_visits",
+                "observed_ed_visits",
+                "other_ed_visits",
+            ],
+            ".value": [50, 450, 60, 540, 70, 630],
+            "lab_site_index": ["NA", "NA", "NA", "NA", "NA", "NA"],
+        }
+        df = pl.DataFrame(data)
+        file_path = tmp_path / "epiweekly_combined_training_data.tsv"
+        df.write_csv(file_path, separator="\t")
+        return file_path
+
+    @pytest.fixture
     def sample_data_for_model_fit_nssp(self, tmp_path):
-        """Create a sample data_for_model_fit.json file with NSSP data."""
+        """Create a sample data_for_model_fit.json file with NHSN data."""
         data = {
             "loc_pop": 39512223,
             "right_truncation_offset": 0,
             "nwss_training_data": None,
             "nssp_training_data": {
-                "date": ["2024-09-01", "2024-09-08", "2024-09-15"],
+                "date": ["2024-09-01", "2024-09-02", "2024-09-03"],
                 "geo_value": ["CA", "CA", "CA"],
                 "data_type": ["train", "train", "train"],
                 "observed_ed_visits": [50, 60, 70],
@@ -73,18 +113,19 @@ class TestEpiAutoGPDataConversion:
         return file_path
 
     def test_convert_nssp_to_epiautogp_json(
-        self, sample_data_for_model_fit_nssp, tmp_path
+        self, sample_epiweekly_data, sample_data_for_model_fit_nssp, tmp_path
     ):
         """Test conversion of NSSP data to EpiAutoGP JSON format."""
         output_path = tmp_path / "epiautogp_input.json"
 
         convert_to_epiautogp_json(
+            target="nssp",
             data_for_model_fit_path=sample_data_for_model_fit_nssp,
+            epiweekly_data_path=sample_epiweekly_data,
             output_json_path=output_path,
             disease="COVID-19",
             location="CA",
             forecast_date=dt.date(2024, 9, 15),
-            target="nssp",
         )
 
         # Verify file was created
@@ -122,18 +163,19 @@ class TestEpiAutoGPDataConversion:
         assert result["reports"][2] == pytest.approx(10.0)
 
     def test_convert_nhsn_to_epiautogp_json(
-        self, sample_data_for_model_fit_nhsn, tmp_path
+        self, sample_data_for_model_fit_nhsn, sample_epiweekly_data, tmp_path
     ):
         """Test conversion of NHSN data to EpiAutoGP JSON format."""
         output_path = tmp_path / "epiautogp_input.json"
 
         convert_to_epiautogp_json(
+            target="nhsn",
             data_for_model_fit_path=sample_data_for_model_fit_nhsn,
+            epiweekly_data_path=sample_epiweekly_data,
             output_json_path=output_path,
             disease="COVID-19",
             location="CA",
             forecast_date=dt.date(2024, 9, 21),
-            target="nhsn",
         )
 
         # Verify file was created
@@ -155,7 +197,9 @@ class TestEpiAutoGPDataConversion:
         assert len(result["reports"]) == 3
         assert result["reports"] == [45.0, 52.0, 38.0]
 
-    def test_convert_with_nowcast_data(self, sample_data_for_model_fit_nssp, tmp_path):
+    def test_convert_with_nowcast_data(
+        self, sample_epiweekly_data, sample_data_for_model_fit_nssp, tmp_path
+    ):
         """Test conversion with nowcast dates and reports."""
         output_path = tmp_path / "epiautogp_input.json"
 
@@ -163,12 +207,13 @@ class TestEpiAutoGPDataConversion:
         nowcast_reports = [[58.0, 60.0, 62.0], [68.0, 70.0, 72.0]]
 
         convert_to_epiautogp_json(
+            target="nssp",
             data_for_model_fit_path=sample_data_for_model_fit_nssp,
+            epiweekly_data_path=sample_epiweekly_data,
             output_json_path=output_path,
             disease="COVID-19",
             location="CA",
             forecast_date=dt.date(2024, 9, 15),
-            target="nssp",
             nowcast_dates=nowcast_dates,
             nowcast_reports=nowcast_reports,
         )
@@ -180,22 +225,23 @@ class TestEpiAutoGPDataConversion:
         assert result["nowcast_reports"] == [[58.0, 60.0, 62.0], [68.0, 70.0, 72.0]]
 
     def test_invalid_target_raises_error(
-        self, sample_data_for_model_fit_nssp, tmp_path
+        self, sample_epiweekly_data, sample_data_for_model_fit_nssp, tmp_path
     ):
         """Test that invalid target raises ValueError."""
         output_path = tmp_path / "epiautogp_input.json"
 
         with pytest.raises(ValueError, match="target must be 'nssp' or 'nhsn'"):
             convert_to_epiautogp_json(
+                target="invalid_target",
                 data_for_model_fit_path=sample_data_for_model_fit_nssp,
+                epiweekly_data_path=sample_epiweekly_data,
                 output_json_path=output_path,
                 disease="COVID-19",
                 location="CA",
                 forecast_date=dt.date(2024, 9, 15),
-                target="invalid_target",
             )
 
-    def test_nhsn_without_data_raises_error(self, tmp_path):
+    def test_nhsn_without_data_raises_error(self, sample_epiweekly_data, tmp_path):
         """Test that NHSN target without NHSN data in JSON raises ValueError."""
         output_path = tmp_path / "epiautogp_input.json"
 
@@ -222,24 +268,39 @@ class TestEpiAutoGPDataConversion:
 
         with pytest.raises(ValueError, match="No NHSN training data found"):
             convert_to_epiautogp_json(
+                target="nhsn",
                 data_for_model_fit_path=data_file,
+                epiweekly_data_path=sample_epiweekly_data,
                 output_json_path=output_path,
                 disease="COVID-19",
                 location="CA",
                 forecast_date=dt.date(2024, 9, 15),
-                target="nhsn",
             )
 
     def test_missing_nssp_data_raises_error(self, tmp_path):
         """Test that missing NSSP data raises ValueError."""
         output_path = tmp_path / "epiautogp_input.json"
 
-        # Create data_for_model_fit.json without NSSP data
+        # Create empty epiweekly TSV (no NSSP data for the location/disease)
+        empty_data = {
+            "date": ["2024-09-01"],
+            "geo_value": ["NY"],  # Different location
+            "disease": ["COVID-19"],
+            "data_type": ["train"],
+            ".variable": ["observed_ed_visits"],
+            ".value": [50],
+            "lab_site_index": ["NA"],
+        }
+        df = pl.DataFrame(empty_data)
+        epiweekly_file = tmp_path / "epiweekly_empty.tsv"
+        df.write_csv(epiweekly_file, separator="\t")
+
+        # Create data_for_model_fit.json
         data = {
             "loc_pop": 39512223,
             "right_truncation_offset": 0,
             "nwss_training_data": None,
-            "nssp_training_data": None,  # No NSSP data
+            "nssp_training_data": None,
             "nhsn_training_data": {
                 "jurisdiction": ["CA"],
                 "weekendingdate": ["2024-09-07"],
@@ -254,29 +315,33 @@ class TestEpiAutoGPDataConversion:
         with open(data_file, "w") as f:
             json.dump(data, f)
 
-        with pytest.raises(ValueError, match="No NSSP training data found"):
+        with pytest.raises(ValueError, match="No NSSP data found"):
             convert_to_epiautogp_json(
+                target="nssp",
                 data_for_model_fit_path=data_file,
+                epiweekly_data_path=epiweekly_file,
                 output_json_path=output_path,
                 disease="COVID-19",
                 location="CA",
                 forecast_date=dt.date(2024, 9, 15),
-                target="nssp",
             )
 
-    def test_custom_logger(self, sample_data_for_model_fit_nhsn, tmp_path, caplog):
+    def test_custom_logger(
+        self, sample_data_for_model_fit_nhsn, sample_epiweekly_data, tmp_path, caplog
+    ):
         """Test that custom logger is used when provided."""
         output_path = tmp_path / "epiautogp_input.json"
         custom_logger = logging.getLogger("test_custom_logger")
 
         with caplog.at_level(logging.INFO, logger="test_custom_logger"):
             convert_to_epiautogp_json(
+                target="nhsn",
                 data_for_model_fit_path=sample_data_for_model_fit_nhsn,
+                epiweekly_data_path=sample_epiweekly_data,
                 output_json_path=output_path,
                 disease="COVID-19",
                 location="CA",
                 forecast_date=dt.date(2024, 9, 21),
-                target="nhsn",
                 logger=custom_logger,
             )
 

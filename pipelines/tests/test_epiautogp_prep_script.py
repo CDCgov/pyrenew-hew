@@ -140,18 +140,120 @@ def main():
 
     logger.info(f"Successfully created {data_for_model_fit_path}")
 
+    # Generate epiweekly data from the combined training data
+    logger.info("Generating epiweekly data using R script...")
+    import subprocess
+
+    # Create a temporary R script that only processes training data
+    temp_r_script = data_dir / "temp_generate_epiweekly.R"
+    r_script_content = """
+library(argparser)
+library(dplyr)
+library(forecasttools)
+library(fs)
+library(readr)
+library(lubridate)
+library(stringr)
+
+convert_daily_to_epiweekly <- function(
+  data_dir,
+  data_name,
+  strict = TRUE,
+  day_of_week = 7
+) {
+  data_path <- path(data_dir, data_name)
+
+  if (!file.exists(data_path)) {
+    cat(paste("Skipping", data_name, "- file does not exist\\n"))
+    return(invisible(NULL))
+  }
+
+  daily_data <- read_tsv(
+    data_path,
+    col_types = cols(
+      date = col_date(),
+      geo_value = col_character(),
+      disease = col_character(),
+      data_type = col_character(),
+      .variable = col_character(),
+      .value = col_double()
+    )
+  )
+
+  daily_ed_data <- daily_data |>
+    filter(str_ends(.variable, "_ed_visits"))
+
+  epiweekly_hosp_data <- daily_data |>
+    filter(.variable == "observed_hospital_admissions")
+
+  epiweekly_ed_data <- daily_ed_data |>
+    forecasttools::daily_to_epiweekly(
+      value_col = ".value",
+      weekly_value_name = ".value",
+      id_cols = c("geo_value", "disease", "data_type", ".variable"),
+      strict = strict
+    ) |>
+    mutate(
+      date = epiweek_to_date(epiweek, epiyear, day_of_week = day_of_week)
+    ) |>
+    select(date, geo_value, disease, data_type, .variable, .value)
+
+  epiweekly_data <- bind_rows(epiweekly_ed_data, epiweekly_hosp_data) |>
+    arrange(date, .variable)
+
+  output_file <- path(
+    data_dir,
+    glue::glue("epiweekly_{data_name}")
+  )
+
+  write_tsv(epiweekly_data, output_file)
+}
+
+args <- commandArgs(trailingOnly = TRUE)
+data_dir <- args[1]
+convert_daily_to_epiweekly(data_dir, "combined_training_data.tsv")
+"""
+
+    with open(temp_r_script, "w") as f:
+        f.write(r_script_content)
+
+    result = subprocess.run(
+        ["Rscript", str(temp_r_script), str(data_dir)], capture_output=True, text=True
+    )
+
+    # Clean up temp script
+    temp_r_script.unlink()
+
+    if result.returncode != 0:
+        print(
+            f"ERROR: Failed to generate epiweekly data: {result.stderr}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    epiweekly_data_path = data_dir / "epiweekly_combined_training_data.tsv"
+    if not epiweekly_data_path.exists():
+        print(
+            f"ERROR: epiweekly_combined_training_data.tsv not created at {epiweekly_data_path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    logger.info(f"Successfully created {epiweekly_data_path}")
+
     # Now use that data_for_model_fit.json to create EpiAutoGP input
     # Place it in the same data directory
     epiautogp_json_path = data_dir / f"epiautogp_input_{target}.json"
 
     try:
         result_path = convert_to_epiautogp_json(
+            target=target,
             data_for_model_fit_path=data_for_model_fit_path,
+            epiweekly_data_path=epiweekly_data_path,
             output_json_path=epiautogp_json_path,
             disease=disease,
             location=location,
             forecast_date=report_date,
-            target=target,
             logger=logger,
         )
         logger.info(f"Successfully created EpiAutoGP input at {result_path}")
