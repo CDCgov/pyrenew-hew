@@ -159,6 +159,8 @@ def main(
     )
     n_warmup = 200 if test else 1000
     n_samples = 200 if test else 500
+    n_chains = 4 if test else 2
+    n_total_samples = n_samples * n_chains
 
     # ==============
     # Location Setup
@@ -218,6 +220,8 @@ def main(
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
+            f"--n-samples {n_samples} "
+            f"--n-chains {n_chains} "
             f"--n-warmup {n_warmup} "
             "--nwss-data-dir nwss-vintages "
             "--priors-path pipelines/priors/prod_priors.py "
@@ -226,7 +230,7 @@ def main(
         )
     elif model_family == "timeseries":
         run_script = "forecast_timeseries.py"
-        additional_args = ""
+        additional_args = f"--n-samples {n_total_samples} "
     else:
         raise ValueError(
             f"Unsupported model family: {model_family}. "
@@ -242,7 +246,6 @@ def main(
         "--disease {disease} "
         "--loc {loc} "
         f"--n-training-days {n_training_days} "
-        f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir "
         "nssp-archival-vintages/gold "
