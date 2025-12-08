@@ -3,6 +3,7 @@
 import argparse
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 
 def add_common_forecast_arguments(parser: argparse.ArgumentParser) -> None:
