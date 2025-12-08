@@ -5,7 +5,7 @@ import logging
 import subprocess
 import tomllib
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import polars as pl
 
@@ -271,11 +271,64 @@ def run_r_script(
     )
 
 
+def run_r_code(
+    r_code: str,
+    executor_flags: list[str] | None = None,
+    function_name: str | None = None,
+    capture_output: bool = True,
+    text: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Run inline R code and handle errors.
+
+    This is a convenience wrapper around `run_r_script` for inline R code.
+    Supports the pattern: Rscript {FLAGS} -e {CODE}
+
+    Parameters
+    ----------
+    r_code : str
+        The R code to execute.
+    executor_flags : list[str] | None
+        Flags to pass to the Rscript executable.
+        For example: ["--vanilla", "--verbose"]
+    function_name : str | None
+        Name of the calling function for error messages.
+    capture_output : bool, optional
+        Whether to capture stdout and stderr, by default True.
+    text : bool, optional
+        Whether to decode output as text, by default False.
+
+    Returns
+    -------
+    subprocess.CompletedProcess
+        The completed process result.
+
+    Raises
+    ------
+    RuntimeError
+        If the R code execution fails.
+
+    Examples
+    --------
+    Run R code with vanilla mode:
+        >>> run_r_code("print('hello')", executor_flags=["--vanilla"])
+    """
+    flags_with_inline = (executor_flags or []) + ["-e"]
+    return run_r_script(
+        r_code,
+        [],
+        executor_flags=flags_with_inline,
+        function_name=function_name,
+        capture_output=capture_output,
+        text=text,
+    )
+
+
 def run_julia_script(
     script_name: str,
     args: list[str],
-    executor_flags: Optional[list[str]] = None,
-    function_name: Optional[str] = None,
+    executor_flags: list[str] | None = None,
+    function_name: str | None = None,
     capture_output: bool = True,
     text: bool = False,
 ) -> subprocess.CompletedProcess:
@@ -293,14 +346,14 @@ def run_julia_script(
         Name of the Julia script to run.
     args : list[str]
         Arguments to pass to the Julia script.
-    executor_flags : Optional[list[str]]
+    executor_flags : list[str] | None
         Flags to pass to the julia executable before the script name.
         Common flags include:
         - ["--project=PATH"] or ["--project=@."] to specify the project environment
         - ["--threads=N"] or ["--threads=auto"] to set number of threads
         - ["--optimize=2"] to set optimization level
         - ["-O3", "--check-bounds=no"] for maximum performance
-    function_name : Optional[str]
+    function_name : str | None
         Name of the calling function for error messages. If None, uses script_name.
     capture_output : bool, optional
         Whether to capture stdout and stderr, by default True.
@@ -331,8 +384,8 @@ def run_julia_script(
 
 def run_julia_code(
     julia_code: str,
-    executor_flags: Optional[list[str]] = None,
-    function_name: Optional[str] = None,
+    executor_flags: list[str] | None = None,
+    function_name: str | None = None,
     capture_output: bool = True,
     text: bool = False,
 ) -> subprocess.CompletedProcess:
@@ -346,13 +399,13 @@ def run_julia_code(
     ----------
     julia_code : str
         The Julia code to execute.
-    executor_flags : Optional[list[str]]
+    executor_flags : list[str] | None
         Flags to pass to the julia executable.
         Common flags include:
         - ["--project=@."] to specify the project environment
         - ["--threads=N"] or ["--threads=auto"] to set number of threads
         - ["--optimize=2"] to set optimization level
-    function_name : Optional[str]
+    function_name : str | None
         Name of the calling function for error messages.
     capture_output : bool, optional
         Whether to capture stdout and stderr, by default True.

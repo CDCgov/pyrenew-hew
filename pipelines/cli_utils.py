@@ -3,7 +3,6 @@
 import argparse
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
 def add_common_forecast_arguments(parser: argparse.ArgumentParser) -> None:
@@ -110,7 +109,7 @@ def add_common_forecast_arguments(parser: argparse.ArgumentParser) -> None:
 def run_command(
     executable: str,
     args: list[str],
-    function_name: Optional[str] = None,
+    function_name: str | None = None,
     capture_output: bool = True,
     text: bool = False,
 ) -> subprocess.CompletedProcess:
