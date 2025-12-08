@@ -541,7 +541,7 @@ def update_json_with_prior_predictive(
     to the JSON file.
     """
     # Read the existing JSON
-    with open(json_file_path, "r") as f:
+    with open(json_file_path) as f:
         data = json.load(f)
 
     # Find the draw index for the bootstrap location and disease
