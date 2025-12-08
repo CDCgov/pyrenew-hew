@@ -51,7 +51,7 @@ test = [
 fix = true
 
 [tool.ruff.lint]
-select = ["I", "E4", "E7", "E9", "F", "UP045"]
+select = ["I", "E4", "E7", "E9", "F", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "pipelines/tests"]

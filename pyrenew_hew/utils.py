@@ -2,8 +2,8 @@
 Pyrenew-HEW utilities
 """
 
+from collections.abc import Iterable
 from itertools import chain, combinations
-from typing import Iterable
 
 import jax.numpy as jnp
 import numpyro.distributions as dist

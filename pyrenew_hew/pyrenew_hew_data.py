@@ -88,7 +88,6 @@ class PyrenewHEWData:
         """
         with open(
             json_file_path,
-            "r",
         ) as file:
             model_data = json.load(file)
         nssp_training_data = (
