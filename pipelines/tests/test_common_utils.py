@@ -7,7 +7,10 @@ import logging
 import polars as pl
 import pytest
 
-from pipelines.cli_utils import add_common_forecast_arguments
+from pipelines.cli_utils import (
+    add_common_forecast_arguments,
+    run_command,
+)
 from pipelines.common_utils import (
     calculate_training_dates,
     get_available_reports,
@@ -173,3 +176,61 @@ class TestCLIUtils:
         assert args.n_training_days == 180  # default value
         assert args.n_forecast_days == 28  # default value
         assert args.exclude_last_n_days == 0  # default value
+
+    def test_run_command_with_python_echo(self):
+        """Smoke test run_command with simple Python echo."""
+        result = run_command(
+            "python",
+            ["-c", "print('hello from python')"],
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert "hello from python" in result.stdout
+
+    def test_run_command_with_inline_code_python(self):
+        """Smoke test run_command with inline Python code."""
+        result = run_command(
+            "python",
+            ["-c", "print('inline test')"],
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert "inline test" in result.stdout
+
+    def test_run_command_inline_code_failure_raises_runtime_error(self):
+        """Test that failed inline code raises RuntimeError."""
+        with pytest.raises(RuntimeError):
+            run_command(
+                "python",
+                ["-c", "import sys; sys.exit(1)"],
+                text=True,
+            )
+
+    def test_run_command_with_executor_flags_python(self, tmp_path):
+        """Test run_command with Python executor flags like -O for optimize."""
+        # Create a simple Python script that checks if __debug__ is False (optimization on)
+        # and therefore the executor flag worked.
+        script = tmp_path / "test_optimize.py"
+        script.write_text(
+            "import sys; print('optimized' if not __debug__ else 'debug')"
+        )
+
+        # Run without optimization
+        result_debug = run_command(
+            "python",
+            [str(script)],
+            text=True,
+        )
+        assert result_debug.returncode == 0
+        assert "debug" in result_debug.stdout
+
+        # Run with -O flag (optimize)
+        result_optimized = run_command(
+            "python",
+            ["-O", str(script)],
+            text=True,
+        )
+        assert result_optimized.returncode == 0
+        assert "optimized" in result_optimized.stdout
