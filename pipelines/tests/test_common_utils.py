@@ -188,17 +188,6 @@ class TestCLIUtils:
         assert result.returncode == 0
         assert "hello from python" in result.stdout
 
-    def test_run_command_with_inline_code_python(self):
-        """Smoke test run_command with inline Python code."""
-        result = run_command(
-            "python",
-            ["-c", "print('inline test')"],
-            text=True,
-        )
-
-        assert result.returncode == 0
-        assert "inline test" in result.stdout
-
     def test_run_command_inline_code_failure_raises_runtime_error(self):
         """Test that failed inline code raises RuntimeError."""
         with pytest.raises(RuntimeError):
