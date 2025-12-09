@@ -184,9 +184,10 @@ def _read_tsv_data(
     # Read TSV file
     df = pl.read_csv(tsv_path, separator="\t")
 
-    # Filter for the specified location and disease
+    # Filter for the specified location and disease (case-insensitive for disease)
     df = df.filter(
-        (pl.col("geo_value") == location) & (pl.col("disease") == disease.upper())
+        (pl.col("geo_value") == location)
+        & (pl.col("disease").str.to_uppercase() == disease.upper())
     )
 
     if df.height == 0:
