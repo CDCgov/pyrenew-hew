@@ -36,7 +36,7 @@ class PyrenewHEWParam:
         PyrenewHEWParam
             An instance of PyrenewHEWParam
         """
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             param_dict = json.load(f)
 
         return cls(
