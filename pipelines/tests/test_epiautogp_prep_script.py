@@ -27,10 +27,10 @@ from pipelines.prep_data import process_and_save_loc_data
 
 
 def main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) not in [6, 7, 8]:
         print(
             "Usage: python test_epiautogp_prep_script.py <target> <disease> "
-            "<location> <base_dir> <output_json>",
+            "<location> <base_dir> <output_json> [<frequency> [<use_percentage>]]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -40,6 +40,8 @@ def main():
     location = sys.argv[3]
     base_dir = Path(sys.argv[4])
     output_json = Path(sys.argv[5])
+    frequency = sys.argv[6] if len(sys.argv) >= 7 else "epiweekly"
+    use_percentage = sys.argv[7].lower() == "true" if len(sys.argv) >= 8 else False
 
     # Set up logging
     logging.basicConfig(level=logging.INFO)
@@ -241,33 +243,32 @@ convert_daily_to_epiweekly(data_dir, "combined_training_data.tsv")
 
     logger.info(f"Successfully created {epiweekly_data_path}")
 
-    # Now use that data_for_model_fit.json to create EpiAutoGP input
+    # Now create EpiAutoGP input using the TSV files
     # Place it in the same data directory
+    daily_data_path = data_dir / "combined_training_data.tsv"
     epiautogp_json_path = data_dir / f"epiautogp_input_{target}.json"
 
     try:
         result_path = convert_to_epiautogp_json(
-            target=target,
-            data_for_model_fit_path=data_for_model_fit_path,
-            epiweekly_data_path=epiweekly_data_path,
+            daily_training_data_path=daily_data_path,
+            epiweekly_training_data_path=epiweekly_data_path,
             output_json_path=epiautogp_json_path,
             disease=disease,
             location=location,
             forecast_date=report_date,
+            target=target,
+            frequency=frequency,
+            use_percentage=use_percentage,
             logger=logger,
         )
         logger.info(f"Successfully created EpiAutoGP input at {result_path}")
 
-        # Verify both files are in the same directory
-        assert result_path.parent == data_for_model_fit_path.parent, (
-            f"EpiAutoGP JSON not in same directory as data_for_model_fit.json: "
-            f"{result_path.parent} != {data_for_model_fit_path.parent}"
+        # Verify the file was created in the data directory
+        assert result_path.parent == data_dir, (
+            f"EpiAutoGP JSON not in data directory: {result_path.parent} != {data_dir}"
         )
 
-        logger.info(
-            f"Verified: Both data_for_model_fit.json and epiautogp_input_{target}.json "
-            f"are in {data_dir}"
-        )
+        logger.info(f"Verified: epiautogp_input_{target}.json is in {data_dir}")
 
         # Also copy to the requested output location for the test script
         import shutil

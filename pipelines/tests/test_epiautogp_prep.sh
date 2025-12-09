@@ -45,8 +45,6 @@ echo "TEST-MODE: Converting surveillance data to EpiAutoGP JSON format"
 for location in "${LOCATIONS[@]}"; do
 	for disease in "${DISEASES[@]}"; do
 		for target in "${TARGETS[@]}"; do
-			echo "TEST-MODE: Converting $target data for $disease, $location"
-
 			# Construct paths
 			if [ "$target" = "nhsn" ]; then
 				NHSN_PATH="$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
@@ -62,18 +60,46 @@ for location in "${LOCATIONS[@]}"; do
 			LOC_OUTPUT_DIR="$OUTPUT_DIR/${location}"
 			mkdir -p "$LOC_OUTPUT_DIR"
 
-			# Output JSON file name
-			OUTPUT_JSON="$LOC_OUTPUT_DIR/epiautogp_input_${target}_${disease// /-}.json"
+			# For NSSP, test both counts and percentages with epiweekly data
+			if [ "$target" = "nssp" ]; then
+				# Test 1: NSSP epiweekly counts
+				echo "TEST-MODE: Converting $target epiweekly counts for $disease, $location"
+				OUTPUT_JSON="$LOC_OUTPUT_DIR/epiautogp_input_${target}_epiweekly_counts_${disease// /-}.json"
+				uv run python pipelines/tests/test_epiautogp_prep_script.py \
+					"$target" "$disease" "$location" "$BASE_DIR" "$OUTPUT_JSON" "epiweekly" "false"
 
-			# Run conversion using Python script
-			uv run python pipelines/tests/test_epiautogp_prep_script.py \
-				"$target" "$disease" "$location" "$BASE_DIR" "$OUTPUT_JSON"
+				if [ "$?" -ne 0 ]; then
+					echo "TEST-MODE FAIL: Conversion failed for $target epiweekly counts, $disease, $location"
+					exit 1
+				else
+					echo "TEST-MODE: Successfully converted $target epiweekly counts for $disease, $location"
+				fi
 
-			if [ "$?" -ne 0 ]; then
-				echo "TEST-MODE FAIL: Conversion failed for $target data, $disease, $location"
-				exit 1
+				# Test 2: NSSP epiweekly percentage
+				echo "TEST-MODE: Converting $target epiweekly percentage for $disease, $location"
+				OUTPUT_JSON="$LOC_OUTPUT_DIR/epiautogp_input_${target}_epiweekly_percentage_${disease// /-}.json"
+				uv run python pipelines/tests/test_epiautogp_prep_script.py \
+					"$target" "$disease" "$location" "$BASE_DIR" "$OUTPUT_JSON" "epiweekly" "true"
+
+				if [ "$?" -ne 0 ]; then
+					echo "TEST-MODE FAIL: Conversion failed for $target epiweekly percentage, $disease, $location"
+					exit 1
+				else
+					echo "TEST-MODE: Successfully converted $target epiweekly percentage for $disease, $location"
+				fi
 			else
-				echo "TEST-MODE: Successfully converted $target data for $disease, $location"
+				# For NHSN, just test epiweekly counts (no percentage option)
+				echo "TEST-MODE: Converting $target epiweekly data for $disease, $location"
+				OUTPUT_JSON="$LOC_OUTPUT_DIR/epiautogp_input_${target}_epiweekly_${disease// /-}.json"
+				uv run python pipelines/tests/test_epiautogp_prep_script.py \
+					"$target" "$disease" "$location" "$BASE_DIR" "$OUTPUT_JSON" "epiweekly" "false"
+
+				if [ "$?" -ne 0 ]; then
+					echo "TEST-MODE FAIL: Conversion failed for $target data, $disease, $location"
+					exit 1
+				else
+					echo "TEST-MODE: Successfully converted $target data for $disease, $location"
+				fi
 			fi
 		done
 	done
