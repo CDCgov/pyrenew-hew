@@ -9,7 +9,60 @@ import logging
 import polars as pl
 import pytest
 
-from pipelines.epiautogp.prep_epiautogp_data import convert_to_epiautogp_json
+from pipelines.epiautogp.prep_epiautogp_data import (
+    _validate_epiautogp_parameters,
+    convert_to_epiautogp_json,
+)
+
+
+class TestValidateEpiAutoGPParameters:
+    """Test suite for parameter validation."""
+
+    def test_valid_nssp_daily(self):
+        """Test valid NSSP daily parameters."""
+        # Should not raise
+        _validate_epiautogp_parameters("nssp", "daily", False)
+
+    def test_valid_nssp_epiweekly(self):
+        """Test valid NSSP epiweekly parameters."""
+        # Should not raise
+        _validate_epiautogp_parameters("nssp", "epiweekly", False)
+
+    def test_valid_nssp_percentage(self):
+        """Test valid NSSP percentage parameters."""
+        # Should not raise
+        _validate_epiautogp_parameters("nssp", "epiweekly", True)
+
+    def test_valid_nhsn_epiweekly(self):
+        """Test valid NHSN epiweekly parameters."""
+        # Should not raise
+        _validate_epiautogp_parameters("nhsn", "epiweekly", False)
+
+    def test_invalid_target(self):
+        """Test invalid target raises ValueError."""
+        with pytest.raises(ValueError, match="target must be 'nssp' or 'nhsn'"):
+            _validate_epiautogp_parameters("invalid", "daily", False)
+
+    def test_invalid_frequency(self):
+        """Test invalid frequency raises ValueError."""
+        with pytest.raises(
+            ValueError, match="frequency must be 'daily' or 'epiweekly'"
+        ):
+            _validate_epiautogp_parameters("nssp", "hourly", False)
+
+    def test_nhsn_with_percentage(self):
+        """Test NHSN with percentage raises ValueError."""
+        with pytest.raises(
+            ValueError, match="use_percentage is only applicable when target='nssp'"
+        ):
+            _validate_epiautogp_parameters("nhsn", "epiweekly", True)
+
+    def test_nhsn_with_daily(self):
+        """Test NHSN with daily frequency raises ValueError."""
+        with pytest.raises(
+            ValueError, match="NHSN data is only available in epiweekly frequency"
+        ):
+            _validate_epiautogp_parameters("nhsn", "daily", False)
 
 
 class TestEpiAutoGPDataConversion:

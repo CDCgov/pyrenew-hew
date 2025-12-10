@@ -13,6 +13,38 @@ from pathlib import Path
 import polars as pl
 
 
+def _validate_epiautogp_parameters(
+    target: str,
+    frequency: str,
+    use_percentage: bool,
+) -> None:
+    """
+    Validate EpiAutoGP conversion parameters.
+
+    The inadmissible parameter combinations are:
+    - `target` not in ['nssp', 'nhsn']
+    - `frequency` not in ['daily', 'epiweekly']
+    - `use_percentage` is `True` when target is 'nhsn' (NHSN data are always counts)
+    - `frequency` is 'daily' when target is 'nhsn' (NHSN data are only epiweekly)
+    """
+    # Validate individual parameters
+    if target not in ["nssp", "nhsn"]:
+        raise ValueError(f"target must be 'nssp' or 'nhsn', got '{target}'")
+
+    if frequency not in ["daily", "epiweekly"]:
+        raise ValueError(f"frequency must be 'daily' or 'epiweekly', got '{frequency}'")
+
+    # Validate parameter combinations
+    if target == "nhsn" and use_percentage:
+        raise ValueError(
+            "use_percentage is only applicable when target='nssp'. "
+            "NHSN hospital admissions are always reported as counts."
+        )
+
+    if target == "nhsn" and frequency == "daily":
+        raise ValueError("NHSN data is only available in epiweekly frequency.")
+
+
 def convert_to_epiautogp_json(
     daily_training_data_path: Path,
     epiweekly_training_data_path: Path,
@@ -100,20 +132,8 @@ def convert_to_epiautogp_json(
     if logger is None:
         logger = logging.getLogger(__name__)
 
-    # Validate target
-    if target not in ["nssp", "nhsn"]:
-        raise ValueError(f"target must be 'nssp' or 'nhsn', got '{target}'")
-
-    # Validate frequency
-    if frequency not in ["daily", "epiweekly"]:
-        raise ValueError(f"frequency must be 'daily' or 'epiweekly', got '{frequency}'")
-
-    # Validate parameter combinations
-    if target == "nhsn" and use_percentage:
-        raise ValueError(
-            "use_percentage is only applicable when target='nssp'. "
-            "NHSN hospital admissions are always reported as counts."
-        )
+    # Validate parameters
+    _validate_epiautogp_parameters(target, frequency, use_percentage)
 
     # Set defaults for nowcasting
     if nowcast_dates is None:
