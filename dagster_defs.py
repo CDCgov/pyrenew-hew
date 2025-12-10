@@ -43,38 +43,17 @@ full_state_list = [
 ]
 # TODO: encode a way for people to customize excluded locations
 # TODO: get partition mapping figured out - we need to exclude on some assets
-DEFAULT_EXCLUDED_LOCATIONS: list[str] = ["AS", "GU", "MP", "PR", "UM", "VI"]
-state_list: list[str] = [state for state in full_state_list if state not in DEFAULT_EXCLUDED_LOCATIONS]
 
 # Disease Partitions
-# disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RSV'])
-non_w_disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RSV'])
-w_disease_partitions = dg.StaticPartitionsDefinition(['COVID-19'])
+disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RSV'])
 
 # State Partitions
-# state_partitions = dg.StaticPartitionsDefinition(state_list)
-non_e_state_partitions = dg.StaticPartitionsDefinition(state_list)
-e_state_partitions = dg.StaticPartitionsDefinition([state for state in state_list if state != 'WY'])
+state_partitions = dg.StaticPartitionsDefinition(full_state_list)
 
-e_partition_def = dg.MultiPartitionsDefinition(
-    {"disease": non_w_disease_partitions, "loc": e_state_partitions}
-)
-he_partition_def = dg.MultiPartitionsDefinition(
-    {"disease": non_w_disease_partitions, "loc": e_state_partitions}
-)
-hw_partition_def = dg.MultiPartitionsDefinition(
-    {"disease": non_w_disease_partitions, "loc": non_e_state_partitions}
-)
-hew_partition_def = dg.MultiPartitionsDefinition(
-    {"disease": non_w_disease_partitions, "loc": e_state_partitions}
-)
-h_partition_def = dg.MultiPartitionsDefinition(
-    {"disease": non_w_disease_partitions, "loc": non_e_state_partitions}
-)
 
-# multi_partition_def = dg.MultiPartitionsDefinition(
-#     {"disease": disease_partitions, "loc": state_partitions}
-# )
+multi_partition_def = dg.MultiPartitionsDefinition(
+    {"disease": disease_partitions, "state": state_partitions}
+)
 
 # ----------------------------------------------------------- #
 # Asset Definitions - What are we outputting in our pipeline?
@@ -89,9 +68,33 @@ def run_pyrenew_model(
     model_family: str,
     context: dg.AssetExecutionContext,
 ):
+
+    # Parsing partitions into call parameters for the job
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
+    DEFAULT_EXCLUDED_LOCATIONS: list[str] = ["AS", "GU", "MP", "PR", "UM", "VI"]
     disease = keys_by_dimension["disease"]
-    loc = keys_by_dimension["loc"]
+    state = keys_by_dimension["state"]
+
+    # Exclusions
+    if state in DEFAULT_EXCLUDED_LOCATIONS:
+        context.log.info(
+            f"Location {state} is in the default excluded locations. Skipping model run."
+            f"Excluded locations: {DEFAULT_EXCLUDED_LOCATIONS}"
+            "Future logic may be customizable."
+        )
+        return
+    if "w" in model_letters and disease != "COVID-19":
+        context.log.info(
+            f"Model letter 'w' is only applicable for COVID-19. Skipping model run for disease {disease}."
+        )
+        return
+    if "e" in model_letters and state == "WY":
+        context.log.info(
+            "Model letter 'e' is not applicable for location WY. Skipping model run."
+        )
+        return
+
+    # TODO: Make configurable in the UI
     n_training_days = 150
     n_samples = 500
     exclude_last_n_days = 1
@@ -122,7 +125,7 @@ def run_pyrenew_model(
         f"VIRTUAL_ENV=.venv && "
         f"uv run python pipelines/{run_script} "
         f"--disease {disease} "
-        f"--loc {loc} "
+        f"--loc {state} "
         f"--n-training-days {n_training_days} "
         f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
@@ -168,8 +171,8 @@ def nwss_data(context: dg.AssetExecutionContext):
 nssp_deps = ["nssp_gold","nssp_latest_comprehensive"]
 
 @dg.asset(
-        partitions_def=e_partition_def,
-        deps=nssp_deps
+    partitions_def=multi_partition_def,
+    deps=nssp_deps
 )
 def timeseries_e_output(context: dg.AssetExecutionContext):
     run_pyrenew_model(model_letters="e", model_family="timeseries")
@@ -177,7 +180,7 @@ def timeseries_e_output(context: dg.AssetExecutionContext):
 
 # Pyrenew E
 @dg.asset(
-    partitions_def=e_partition_def,
+    partitions_def=multi_partition_def,
     deps=["timeseries_e_output"]+nssp_deps
 )
 def pyrenew_e_output(context: dg.AssetExecutionContext):
@@ -186,7 +189,7 @@ def pyrenew_e_output(context: dg.AssetExecutionContext):
 
 # Pyrenew H
 @dg.asset(
-    partitions_def=h_partition_def,
+    partitions_def=multi_partition_def,
     deps=["nhsn_data"]
 )
 def pyrenew_h_output(context: dg.AssetExecutionContext):
@@ -195,7 +198,7 @@ def pyrenew_h_output(context: dg.AssetExecutionContext):
 
 # Pyrenew HE
 @dg.asset(
-    partitions_def=he_partition_def,
+    partitions_def=multi_partition_def,
     deps=["timeseries_e_output", "nhsn_data"]+nssp_deps
 )
 def pyrenew_he_output(context: dg.AssetExecutionContext):
@@ -204,7 +207,7 @@ def pyrenew_he_output(context: dg.AssetExecutionContext):
 
 # Pyrenew HW
 @dg.asset(
-    partitions_def=hw_partition_def,
+    partitions_def=multi_partition_def,
     deps=["nhsn_data", "nwss_data"]
 )
 def pyrenew_hw_output(context: dg.AssetExecutionContext):
@@ -213,7 +216,7 @@ def pyrenew_hw_output(context: dg.AssetExecutionContext):
 
 # Pyrenew HEW
 @dg.asset(
-    partitions_def=hew_partition_def,
+    partitions_def=multi_partition_def,
     deps=["timeseries_e_output"]+nssp_deps+["nhsn_data", "nwss_data"]
 )
 def pyrenew_hew_output(context: dg.AssetExecutionContext):
