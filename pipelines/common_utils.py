@@ -9,6 +9,8 @@ from typing import Any
 
 import polars as pl
 
+from pipelines.cli_utils import run_command
+
 
 def load_credentials(
     credentials_path: Path | str | None, logger: logging.Logger
@@ -217,6 +219,7 @@ def load_nssp_data(
 def run_r_script(
     script_name: str,
     args: list[str],
+    executor_flags: list[str] | None = None,
     function_name: str | None = None,
     capture_output: bool = True,
     text: bool = False,
@@ -224,13 +227,19 @@ def run_r_script(
     """
     Run an R script or command and handle errors.
 
+    This is a convenience wrapper around `run_command` for R scripts.
+    Supports the pattern: Rscript {FLAGS} {SCRIPT} {ARGS}
+
     Parameters
     ----------
     script_name : str
-        Name of the R script to run, or "-e" for inline R code.
+        Name of the R script to run.
     args : list[str]
         Arguments to pass to the R script.
-    function_name : str | None, optional
+    executor_flags : list[str] | None
+        Flags to pass to the Rscript executable before the script name.
+        For example: ["--vanilla", "--verbose"]
+    function_name : str | None
         Name of the calling function for error messages. If None, uses script_name.
     capture_output : bool, optional
         Whether to capture stdout and stderr, by default True.
@@ -246,40 +255,73 @@ def run_r_script(
     ------
     RuntimeError
         If the R script execution fails.
+
+    Examples
+    --------
+    Run a script with vanilla mode:
+        >>> run_r_script("script.R", ["--arg1", "value"], executor_flags=["--vanilla"])
     """
-    command = ["Rscript", script_name] + args
-
-    result = subprocess.run(
-        command,
-        capture_output=capture_output,
-        text=text,
-    )
-
-    if result.returncode != 0:
-        error_name = function_name or script_name
-        error_msg = result.stderr.decode("utf-8") if not text else result.stderr
-        raise RuntimeError(f"{error_name}: {error_msg}")
-
-    return result
-
-
-def run_r_code(
-    r_code: str,
-    function_name: str | None = None,
-    capture_output: bool = True,
-    text: bool = False,
-) -> subprocess.CompletedProcess:
-    """Run inline R code and handle errors by calling `run_r_script` with flag `-e`."""
-
-    result = run_r_script(
-        "-e",
-        [r_code],
+    command_args = (executor_flags or []) + [script_name] + args
+    return run_command(
+        "Rscript",
+        command_args,
         function_name=function_name,
         capture_output=capture_output,
         text=text,
     )
 
-    return result
+
+def run_r_code(
+    r_code: str,
+    executor_flags: list[str] | None = None,
+    function_name: str | None = None,
+    capture_output: bool = True,
+    text: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Run inline R code and handle errors.
+
+    This is a convenience wrapper around `run_r_script` for inline R code.
+    Supports the pattern: Rscript {FLAGS} -e {CODE}
+
+    Parameters
+    ----------
+    r_code : str
+        The R code to execute.
+    executor_flags : list[str] | None
+        Flags to pass to the Rscript executable.
+        For example: ["--vanilla", "--verbose"]
+    function_name : str | None
+        Name of the calling function for error messages.
+    capture_output : bool, optional
+        Whether to capture stdout and stderr, by default True.
+    text : bool, optional
+        Whether to decode output as text, by default False.
+
+    Returns
+    -------
+    subprocess.CompletedProcess
+        The completed process result.
+
+    Raises
+    ------
+    RuntimeError
+        If the R code execution fails.
+
+    Examples
+    --------
+    Run R code with vanilla mode:
+        >>> run_r_code("print('hello')", executor_flags=["--vanilla"])
+    """
+    flags_with_inline = (executor_flags or []) + ["-e"]
+    return run_r_script(
+        r_code,
+        [],
+        executor_flags=flags_with_inline,
+        function_name=function_name,
+        capture_output=capture_output,
+        text=text,
+    )
 
 
 def plot_and_save_loc_forecast(
