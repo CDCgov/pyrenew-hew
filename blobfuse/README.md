@@ -1,6 +1,6 @@
 # Pyrenew Blobfuse Configuration
 
-This directory serves as a project-specific fork of the [cfa-blobfuse-tutuorial](https://github.com/cdcent).
+This directory serves as a project-specific fork of the [cfa-blobfuse-tutorial](https://github.com/cdcent).
 
 > Make sure you have blobfuse2 installed before running this module.
 
