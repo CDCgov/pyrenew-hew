@@ -24,7 +24,9 @@ from dagster_azure.blob import (
 # ---------------------- #
 
 # function to start the dev server
-start_dev_env()
+start_dev_env(__name__)
+
+user = os.getenv("DAGSTER_USER")
 
 # --------------------------------------------------------------- #
 # Partitions: how are the data split and processed in Azure Batch?
@@ -41,8 +43,6 @@ full_state_list = [
     'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR',
     'UM', 'VI'
 ]
-# TODO: encode a way for people to customize excluded locations
-# TODO: get partition mapping figured out - we need to exclude on some assets
 
 # Disease Partitions
 disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RSV'])
@@ -50,7 +50,7 @@ disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RS
 # State Partitions
 state_partitions = dg.StaticPartitionsDefinition(full_state_list)
 
-
+# Multi Partitions
 multi_partition_def = dg.MultiPartitionsDefinition(
     {"disease": disease_partitions, "state": state_partitions}
 )
@@ -63,6 +63,7 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # Worker Function
 # ---------------
 
+# This function is NOT an asset itself, but is called by assets to run the pyrenew model
 def run_pyrenew_model(
     model_letters: str,
     model_family: str,
@@ -225,26 +226,20 @@ def pyrenew_hew_output(context: dg.AssetExecutionContext):
 
 
 # --------------------------------------------------------- #
-# Runtime Configuration: User, Working Directory, Executors
+# Runtime Configuration: Working Directory, Executors
 # - Executors define the runtime-location of an asset job
 # - See later on for Asset job definitions
-# --------------------------------------------------------- #
-
-user = os.getenv("DAGSTER_USER")
-
-# # Asset Config
-# class PyrenewAssetConfig(dg.Config):
-#     # when using the docker_executor, specify the image you'd like to use
-#     image: str = f"cfaprdbatchcr.azurecr.io/cfa-dagster-sandbox:{user}"
+# --------------------------------------------------------- #"
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
+image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
 
 # add this to a job or the Definitions class to use it
 docker_executor_configured = docker_executor.configured(
     {
         # specify a default image
-        "image": f"pyrenew-hew:dagster_latest_{user}",
+        "image": image,
         "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
         "container_kwargs": {
             "volumes": [
@@ -268,9 +263,10 @@ docker_executor_configured = docker_executor.configured(
 
 # configuring an executor to run workflow steps on Azure Container App Jobs
 # add this to a job or the Definitions class to use it
+# Container app jobs cant have mounted volumes, so we would need to refactor pyrenew-hew to use this
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
-        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
+        "image": image,
         "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
     }
 )
@@ -279,7 +275,7 @@ azure_caj_executor_configured = azure_caj_executor.configured(
 # add this to a job or the Definitions class to use it
 azure_batch_executor_configured = azure_batch_executor.configured(
     {   "pool_name": "pyrenew-pool",
-        "image": f"cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_{user}",
+        "image": image,
         "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
         "container_kwargs": {
             "volumes": [
@@ -312,14 +308,13 @@ upstream_asset_job = dg.define_asset_job(
     tags={"user": user},
 )
 
-# TODO: Error thrown because different execeptions.
-# pyrenew_asset_job = dg.define_asset_job(
-#     name="pyrenew_asset_job",
-#     executor_def=azure_batch_executor_configured,
-#     selection=[timeseries_e_output, pyrenew_e_output, pyrenew_h_output, pyrenew_he_output, pyrenew_hw_output, pyrenew_hew_output],
-#     # tag the run with your user to allow for easy filtering in the Dagster UI
-#     tags={"user": user},
-# )
+pyrenew_asset_job = dg.define_asset_job(
+    name="pyrenew_asset_job",
+    executor_def=azure_batch_executor_configured,
+    selection=[timeseries_e_output, pyrenew_e_output, pyrenew_h_output, pyrenew_he_output, pyrenew_hw_output, pyrenew_hew_output],
+    # tag the run with your user to allow for easy filtering in the Dagster UI
+    tags={"user": user},
+)
 
 upstream_every_wednesday = dg.ScheduleDefinition(
     name="weekly_upstream_cron",
@@ -327,11 +322,11 @@ upstream_every_wednesday = dg.ScheduleDefinition(
     job=upstream_asset_job
 )
 
-# pyrenew_every_wednesday = dg.ScheduleDefinition(
-#     name="weekly_pyrenew_cron",
-#     cron_schedule="0 9 * * 3",
-#     job=pyrenew_asset_job
-# )
+pyrenew_every_wednesday = dg.ScheduleDefinition(
+    name="weekly_pyrenew_cron",
+    cron_schedule="0 9 * * 3",
+    job=pyrenew_asset_job
+)
 
 # env variable set by Dagster CLI
 is_production = not os.getenv("DAGSTER_IS_DEV_CLI")
