@@ -216,12 +216,19 @@ function create_forecast_output(
     forecast_df[!, Symbol(".variable")] .= variable_name
     forecast_df[!, :resolution] .= "epiweekly"
 
+    # Add metadata columns for hubverse compatibility
+    forecast_df[!, :geo_value] .= input.location
+    forecast_df[!, :disease] .= input.pathogen
+
     # Convert date column to string for parquet compatibility
     forecast_df[!, :date] = string.(forecast_df[!, :date])
 
     # Save as parquet if requested
     if save_output
-        parquet_filename = "epiweekly_ts_ensemble_samples_e.parquet"
+        # Use model-specific naming with _e suffix (epiweekly resolution)
+        # This matches the convention: epiweekly_{model}_samples_e.parquet
+        output_letter = DEFAULT_TARGET_LETTER[input.target]
+        parquet_filename = "epiweekly_epiautogp_samples_$(output_letter).parquet"
         parquet_path = joinpath(output_dir, parquet_filename)
         mkpath(dirname(parquet_path))
         Parquet.write_parquet(parquet_path, forecast_df)

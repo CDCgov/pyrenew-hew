@@ -37,6 +37,10 @@ const DEFAULT_TARGET_DICT = Dict(
     "nhsn" => "hosp",
     "nssp" => "prop ed visits"
 )
+const DEFAULT_TARGET_LETTER = Dict(
+    "nhsn" => "h",
+    "nssp" => "e"
+)
 const DEFAULT_GROUP_NAME = "CFA"
 const DEFAULT_MODEL_NAME = "EpiAutoGP"
 
