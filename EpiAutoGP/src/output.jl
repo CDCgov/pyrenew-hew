@@ -2,47 +2,28 @@
     AbstractForecastOutput
 
 Abstract base type for all forecast output formats in EpiAutoGP.
-
-This type serves as the root of the forecast output type hierarchy, allowing for
-extensible output formatting while maintaining type safety and dispatch.
 """
 abstract type AbstractForecastOutput end
 
 """
     AbstractHubverseOutput <: AbstractForecastOutput
 
-Abstract type for hubverse-compatible forecast outputs.
-
-The hubverse is a standardized format for epidemiological forecasting used by
-the CDC and other public health organizations. All concrete subtypes must
-produce outputs compatible with hubverse table specifications, e.g. quantile-based
-forecasts, sample-based forecasts, etc.
+Abstract type for hubverse-compatible forecast outputs in CSV format.
 """
 abstract type AbstractHubverseOutput <: AbstractForecastOutput end
+
+"""
+    PipelineOutput <: AbstractForecastOutput
+
+Abstract type for directly outputting forecasts as typical pipeline outputs for
+    `pyrenew-hew`.
+"""
+abstract type PipelineOutput <: AbstractForecastOutput end
 
 """
     QuantileOutput <: AbstractHubverseOutput
 
 Configuration for quantile-based forecast outputs compatible with hubverse specifications.
-
-This struct defines the quantile levels to be computed and included in the
-hubverse-compatible output table. The default quantile levels follow CDC
-forecast hub standards.
-
-# Fields
-- `quantile_levels::Vector{Float64}`: Vector of quantile levels between 0 and 1
-
-# Examples
-```julia
-# Use default quantiles (23 levels from 0.01 to 0.99)
-output = QuantileOutput()
-
-# Custom quantiles for specific use case
-output = QuantileOutput(quantile_levels = [0.25, 0.5, 0.75])
-
-# Single quantile (median only)
-output = QuantileOutput(quantile_levels = [0.5])
-```
 """
 @kwdef struct QuantileOutput <: AbstractHubverseOutput
     quantile_levels::Vector{Float64} = [
@@ -65,14 +46,6 @@ date (when the forecast was made) and each target date.
 
 # Returns
 - `Vector{Int}`: Vector of horizons in weeks (integer division by 7 days)
-
-# Examples
-```julia
-ref_date = Date("2024-01-01")
-targets = [Date("2024-01-08"), Date("2024-01-15"), Date("2024-01-22")]
-horizons = _make_horizon_col(targets, ref_date)
-# Returns: [1, 2, 3]
-```
 """
 function _make_horizon_col(target_end_dates::Vector{Date}, reference_date::Date)
     return [Dates.value(d - reference_date) ÷ 7 for d in target_end_dates]
@@ -99,15 +72,6 @@ core forecast data needed for hubverse tables.
   - `value`: Computed quantile value
   - `target_end_date`: Date for which the forecast applies
   - `output_type`: Always "quantile" for this method
-
-# Examples
-```julia
-results = (forecast_dates = [Date("2024-01-08"), Date("2024-01-15")],
-           forecasts = rand(2, 100))  # 2 dates × 100 samples
-output_config = QuantileOutput(quantile_levels = [0.25, 0.5, 0.75])
-df = create_forecast_df(results, output_config)
-# Returns DataFrame with 6 rows (2 dates × 3 quantiles)
-```
 """
 function create_forecast_df(results::NamedTuple, output_type::QuantileOutput)
     # Extract relevant data
@@ -163,28 +127,6 @@ hubverse table, optionally saving it to disk.
   - `horizon`: Forecast horizon in weeks
   - `target_end_date`: Date for which forecast applies
   - `location`: Geographic location identifier
-
-# Examples
-```julia
-# Create and save hubverse table
-output_type = QuantileOutput()
-df = create_forecast_output(
-    input_data, results, "./output", output_type;
-    save_output = true,
-    group_name = "CDC",
-    model_name = "EpiAutoGP-v1"
-)
-
-# Create table without saving
-df = create_forecast_output(
-    input_data, results, "./output", output_type;
-    save_output = false
-)
-```
-
-# File Output
-When `save_output = true`, creates a CSV file with filename format:
-`{reference_date}-{group_name}-{model_name}-{location}-{disease_abbr}-{target}.csv`
 """
 function create_forecast_output(
         input::EpiAutoGPInput,
