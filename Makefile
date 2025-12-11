@@ -54,7 +54,7 @@ help:
 	@echo ""
 	@echo "Container Build Targets: "
 	@echo "  container_build     : Build the container image"
-	@echo "  dagster			 : Run dagster definitions locally"
+	@echo "  dagster            : Run dagster definitions locally"
 	@echo "  dagster_build       : Build the dagster container image"
 	@echo "  dagster_push        : Push the dagster container image to the Azure Container Registry and code location"
 	@echo "  container_tag       : Tag the container image"
