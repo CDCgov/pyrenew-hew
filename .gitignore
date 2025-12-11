@@ -29,6 +29,8 @@
 *.gif
 *.pdf
 *.png
+# except when in img/ folder
+!img/*.png
 
 # Compressed archives
 *.gz
