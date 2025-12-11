@@ -21,12 +21,6 @@ A NamedTuple containing:
 - `n_forecasts_per_nowcast::Int`: Number of forecast samples per nowcast scenario
 - `transformation::Function`: Forward transformation function
 - `inv_transformation::Function`: Inverse transformation function
-
-# Examples
-```julia
-input = EpiAutoGPInput(...)
-model_setup = prepare_for_modelling(input, "boxcox", 4, 1000)
-```
 """
 function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::String,
         n_forecast_weeks::Int, n_forecasts::Int)
@@ -84,14 +78,6 @@ combination with nowcast scenarios.
 
 # Returns
 - Fitted AutoGP model ready for forecasting
-
-# Examples
-```julia
-dates = [Date(2024,1,1), Date(2024,1,8), Date(2024,1,15)]
-values = [100.0, 120.0, 95.0]
-transform_func, _ = get_transformations("boxcox", values)
-model = fit_base_model(dates, values; transformation=transform_func)
-```
 """
 function fit_base_model(dates::Vector{Date}, values::Vector{<:Real};
         transformation::Function,
@@ -168,20 +154,6 @@ A NamedTuple containing:
 - `forecast_date::Date`: The reference date for forecasting (from input.forecast_date)
 - `location::String`: The location identifier (from input.location)
 - `disease::String`: The disease name (from input.disease)
-
-# Examples
-```julia
-# Basic forecasting
-input = EpiAutoGPInput(...)
-results = forecast_with_epiautogp(input)
-forecast_dates, forecasts = results.forecast_dates, results.forecasts
-
-# Custom parameters
-results = forecast_with_epiautogp(input;
-                                 n_forecast_weeks=4,
-                                 n_forecasts=1000,
-                                 transformation_name="positive")
-```
 """
 function forecast_with_epiautogp(input::EpiAutoGPInput;
         n_forecast_weeks::Int = 8,
@@ -241,15 +213,6 @@ with parsed command-line arguments to execute the full nowcasting and forecastin
 - `"smc-data-proportion"`: SMC data proportion
 - `"n-mcmc"`: Number of MCMC samples
 - `"n-hmc"`: Number of HMC samples
-
-# Examples
-```julia
-# Typical usage pattern
-args = parse_arguments()
-input_data = read_and_validate_data(args["json-input"])
-results = forecast_with_epiautogp(input_data, args)
-forecast_dates, forecasts = results.forecast_dates, results.forecasts
-```
 """
 function forecast_with_epiautogp(input::EpiAutoGPInput, args::Dict{String, Any})
     return forecast_with_epiautogp(input;
