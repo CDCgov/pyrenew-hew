@@ -31,7 +31,7 @@ user = os.getenv("DAGSTER_USER")
 # --------------------------------------------------------------- #
 # Partitions: how are the data split and processed in Azure Batch?
 # --------------------------------------------------------------- #
-
+# fmt: off
 full_state_list = [
     'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO',
     'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID',
@@ -43,9 +43,10 @@ full_state_list = [
     'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR',
     'UM', 'VI'
 ]
+# fmt: off
 
 # Disease Partitions
-disease_partitions = dg.StaticPartitionsDefinition(['COVID-19', 'Influenza', 'RSV'])
+disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "Influenza", "RSV"])
 
 # State Partitions
 state_partitions = dg.StaticPartitionsDefinition(full_state_list)
@@ -63,13 +64,13 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # Worker Function
 # ---------------
 
+
 # This function is NOT an asset itself, but is called by assets to run the pyrenew model
 def run_pyrenew_model(
     model_letters: str,
     model_family: str,
     context: dg.AssetExecutionContext,
 ):
-
     # Parsing partitions into call parameters for the job
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
     DEFAULT_EXCLUDED_LOCATIONS: list[str] = ["AS", "GU", "MP", "PR", "UM", "VI"]
@@ -103,9 +104,9 @@ def run_pyrenew_model(
     additional_forecast_letters = model_letters
     forecast_date = str(date.today())
     # TODO: parameterize this for dagster
-    output_dir="test-output"
+    output_dir = "test-output"
     output_subdir = f"{forecast_date}_forecasts"
-    full_output_dir=f"{output_dir}/{output_subdir}"
+    full_output_dir = f"{output_dir}/{output_subdir}"
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
@@ -145,81 +146,81 @@ def run_pyrenew_model(
     )
     subprocess.run(base_call, shell=True, check=True)
 
+
 # --------------------------------------------------------------------
 # Assets: these are the core of Dagster - functions that specify data
 # --------------------------------------------------------------------
 
 # Upstream Data #
 
+
 @dg.asset
 def nhsn_data(context: dg.AssetExecutionContext):
     return "nhsn_data"
+
 
 @dg.asset
 def nssp_gold(context: dg.AssetExecutionContext):
     return "nssp_gold"
 
+
 @dg.asset
 def nssp_latest_comprehensive(context: dg.AssetExecutionContext):
     return "nssp_latest_comprehensive"
+
 
 @dg.asset
 def nwss_data(context: dg.AssetExecutionContext):
     return "nwss_data"
 
+
 # Pyrenew Assets #
 
 # Timeseries E
-nssp_deps = ["nssp_gold","nssp_latest_comprehensive"]
+nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
-@dg.asset(
-    partitions_def=multi_partition_def,
-    deps=nssp_deps
-)
+
+@dg.asset(partitions_def=multi_partition_def, deps=nssp_deps)
 def timeseries_e_output(context: dg.AssetExecutionContext):
     run_pyrenew_model(model_letters="e", model_family="timeseries")
     return "timeseries_e_output"
 
+
 # Pyrenew E
-@dg.asset(
-    partitions_def=multi_partition_def,
-    deps=["timeseries_e_output"]+nssp_deps
-)
+@dg.asset(partitions_def=multi_partition_def, deps=["timeseries_e_output"] + nssp_deps)
 def pyrenew_e_output(context: dg.AssetExecutionContext):
     run_pyrenew_model(model_letters="e", model_family="pyrenew")
     return "pyrenew_e_output"
 
+
 # Pyrenew H
-@dg.asset(
-    partitions_def=multi_partition_def,
-    deps=["nhsn_data"]
-)
+@dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data"])
 def pyrenew_h_output(context: dg.AssetExecutionContext):
     run_pyrenew_model(model_letters="h", model_family="pyrenew")
     return "pyrenew_h_output"
 
+
 # Pyrenew HE
 @dg.asset(
     partitions_def=multi_partition_def,
-    deps=["timeseries_e_output", "nhsn_data"]+nssp_deps
+    deps=["timeseries_e_output", "nhsn_data"] + nssp_deps,
 )
 def pyrenew_he_output(context: dg.AssetExecutionContext):
     run_pyrenew_model(model_letters="he", model_family="pyrenew")
     return "pyrenew_he_output"
 
+
 # Pyrenew HW
-@dg.asset(
-    partitions_def=multi_partition_def,
-    deps=["nhsn_data", "nwss_data"]
-)
+@dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data", "nwss_data"])
 def pyrenew_hw_output(context: dg.AssetExecutionContext):
     run_pyrenew_model(model_letters="hw", model_family="pyrenew")
     return "pyrenew_hw_output"
 
+
 # Pyrenew HEW
 @dg.asset(
     partitions_def=multi_partition_def,
-    deps=["timeseries_e_output"]+nssp_deps+["nhsn_data", "nwss_data"]
+    deps=["timeseries_e_output"] + nssp_deps + ["nhsn_data", "nwss_data"],
 )
 def pyrenew_hew_output(context: dg.AssetExecutionContext):
     run_pyrenew_model(model_letters="hew", model_family="pyrenew")
@@ -241,7 +242,7 @@ docker_executor_configured = docker_executor.configured(
     {
         # specify a default image
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
@@ -268,16 +269,17 @@ docker_executor_configured = docker_executor.configured(
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
     }
 )
 
 # configuring an executor to run workflow steps on Azure Batch 4CPU 16GB RAM pool
 # add this to a job or the Definitions class to use it
 azure_batch_executor_configured = azure_batch_executor.configured(
-    {   "pool_name": "pyrenew-pool",
+    {
+        "pool_name": "pyrenew-pool",
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
@@ -293,7 +295,7 @@ azure_batch_executor_configured = azure_batch_executor.configured(
                 "pyrenew-hew-prod-output:/pyrenew-hew/output",
                 "pyrenew-test-output:/pyrenew-hew/test-output",
             ],
-            "working_dir":"/pyrenew-hew",
+            "working_dir": "/pyrenew-hew",
         },
     }
 )
@@ -312,21 +314,24 @@ upstream_asset_job = dg.define_asset_job(
 pyrenew_asset_job = dg.define_asset_job(
     name="pyrenew_asset_job",
     executor_def=azure_batch_executor_configured,
-    selection=[timeseries_e_output, pyrenew_e_output, pyrenew_h_output, pyrenew_he_output, pyrenew_hw_output, pyrenew_hew_output],
+    selection=[
+        timeseries_e_output,
+        pyrenew_e_output,
+        pyrenew_h_output,
+        pyrenew_he_output,
+        pyrenew_hw_output,
+        pyrenew_hew_output,
+    ],
     # tag the run with your user to allow for easy filtering in the Dagster UI
     tags={"user": user},
 )
 
 upstream_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_upstream_cron",
-    cron_schedule="0 9 * * 3",
-    job=upstream_asset_job
+    name="weekly_upstream_cron", cron_schedule="0 9 * * 3", job=upstream_asset_job
 )
 
 pyrenew_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_pyrenew_cron",
-    cron_schedule="0 9 * * 3",
-    job=pyrenew_asset_job
+    name="weekly_pyrenew_cron", cron_schedule="0 9 * * 3", job=pyrenew_asset_job
 )
 
 # env variable set by Dagster CLI
