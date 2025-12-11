@@ -17,7 +17,6 @@ TO_UNMOUNT=(
 	"pyrenew-test-output"
 	"nwss-vintages"
 	"pyrenew-hew-config"
-	"nssp-etl"
 )
 
 for dir in "${TO_UNMOUNT[@]}"; do
