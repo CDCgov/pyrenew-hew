@@ -159,7 +159,7 @@ def main(
     )
     n_warmup = 200 if test else 1000
     n_samples = 200 if test else 500
-    n_chains = 4 if test else 2
+    n_chains = 2 if test else 4
     n_total_samples = n_samples * n_chains
 
     # ==============
