@@ -1,6 +1,9 @@
 # Pyrenew Blobfuse Configuration
 
 This directory serves as a project-specific fork of the [cfa-blobfuse-tutuorial](https://github.com/cdcent).
+
+> Make sure you have blobfuse2 installed before running this module.
+
 This directory will mount pyrenew-hew blobs to `/mnt` and then symlink to a directory you specify (or the current directory if you don't supply an argument).
 
 To run, make sure you're in the top level as your working directory (`pyrenew-hew`, and not `pyrenew-hew/blobfuse`).

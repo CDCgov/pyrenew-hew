@@ -28,29 +28,6 @@ ENGINE=podman make container_build
 
 Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
 
-## PyRenew Dagster Sandbox
-> Adapated from the [CFA Dagster Sandbox](https://github.com/cdcent/cfa-dagster-sandbox)
-
-`dagster_defs.py` can be used to launch a dagster version of the batch pipeline specified in the `setup_job.py` script.
-
-### Setup Blobfuse
-Follow the instructions in `./blobfuse` before using dagster.
-
-### Running the sample asset workflow
-
-1. If you have never set up Dagster on your VAP before, you will need to set up a `~/.dagster_home/dagster.yaml` file: `uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/setup.py`
-2. Build the initial image for your test asset: `docker build -t pyrenew-hew:$(whoami)_dagster_latest -f Containerfile .`
-3. Start the Dagster UI by running `uv run dagster_defs.py --dev` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
-4. Materialize an asset!
-
-### Next Steps
-1. Push your updated image to ACR:
-    - `az login --identity`
-    - `az acr login -n cfaprdbatchcr`
-    - `docker build -t "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest_$USER -f Containerfile . --push`
-2. Modify the `dagster_defs.py` file to use the `azure_caj_executor` or `azure_batch_executor` instead of the `docker_executor`.
-4. Materialize your Asset again!
-
 ## Running Model Pipelines
 > [!NOTE]
 >
@@ -66,6 +43,51 @@ Pipelines can be run interactively or non-interactively:
 - The `Makefile` also provides targets that will run pipelines non-interactively. Run `make help` for more information.
 - Pipelines are run through the command line python interface when scheduled using [Pyrenew-Cron](https://github.com/cdcent/pyrenew-cron).
 
+## Experimental: Running Model Pipelines With Dagster
+
+When mature, our dagster implementation is intended to replace the `Azure Command Center` and `PyRenew-Cron`. Development is ongoing - you can test an early version by following the steps below.
+
+### Local Development
+
+#### Setup Blobfuse (Optional)
+> Note: This is only necessary if you want to use the local `Docker Executor` with dagster - which is for development and debugging only. Otherwise, we recommend skipping this.
+
+A `blobfuse/` directory allows local monitoring of inputs and outputs on Azure Blob as if they were in your local filesystem. This automates and replaces the process in the [CFA Blobfuse Tutorial](https://github.com/cdcent/cfa-blobfuse-tutorial). If you'd like to mount the Pyrenew project ecosystem's blobs to your working directory, follow the instructions in the `blobfuse/README.md`. This is only necessary for some debugging operations and for local testing, which isn't recommended unless you have a specific use-case and know what you're doing.
+
+#### Launching Dagster Locally
+> Prerequisites: `uv`. `docker`, a VAP VM with a registered managed identity in Azure, and rights to the cfaprdbatchcr container registry. Contact cfatoolsteam@cdc.gov for assistance with the latter two.
+
+The following instructions will set up Dagster on your VAP. However, based on the current configuration, actual execution will still run in the cloud via Azure Batch. You can change the `executor` option in `dagster_defs.py` to test using the local Docker Executor - this will require you to have setup Blobfuse.
+
+1. Setup your `uv virtual environment`:
+    - `uv sync`
+    - `source .venv/bin/activate`
+2. Login to Azure and the Batch Container Registry:
+    - `az login --identity && az acr login -n cfaprdbatchcr`
+3. Build and push the `pyrenew-hew:dagster_latest` image:
+    - `docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile . --push`
+3. Start the Dagster UI by running `uv run dagster_defs.py --configure` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
+    - Note: you only need the `--configure` flag the first time you run the Dagster UI.
+4. You should now see the dagster UI for Pyrenew-HEW. This is a local server that will only show PyRenew-HEW asssets as defined in your local git repository.
+5. Try materializing an asset by navigating to "Lineage" on the left sidebar. By default, these assets will submit jobs to Azure Batch and write to the `pyrenew-test-output` blob.
+    - We recommend materializing a few partitions at a time for testing purposes.
+    ![alt text](dagster_lineage.png)
+    - You will get a pop-up directing you to your asset runs, which provide progress logs.
+    ![alt text](dagster_runs.png)
+6. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
+
+#### Publishing to the Central Code Server
+> This section is under construction.
+
+Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
+
+#### Makefile Recipes for Dagster
+After you've familiarized yourself with the above instructions, feel free to use these convenient `make` recipes:
+- `make dagster_build`: builds your dagster image.
+- `make dagster_push`: builds your dagster image, then pushes it, then uploads the central dagster server's code for pyrenew-hew.
+- `make dagster`: runs the dagster UI locally.
+- `make mount`: mounts the pyrenew-relevant blobs using blobfuse.
+- `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
 

@@ -102,6 +102,7 @@ def run_pyrenew_model(
     n_warmup = 1000
     additional_forecast_letters = model_letters
     forecast_date = str(date.today())
+    # TODO: parameterize this for dagster
     output_dir="test-output"
     output_subdir = f"{forecast_date}_forecasts"
     full_output_dir=f"{output_dir}/{output_subdir}"
@@ -240,7 +241,7 @@ docker_executor_configured = docker_executor.configured(
     {
         # specify a default image
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
+        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.venv"],
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
@@ -267,7 +268,7 @@ docker_executor_configured = docker_executor.configured(
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
+        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.venv"],
     }
 )
 
@@ -276,7 +277,7 @@ azure_caj_executor_configured = azure_caj_executor.configured(
 azure_batch_executor_configured = azure_batch_executor.configured(
     {   "pool_name": "pyrenew-pool",
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.dg_venv"],
+        "env_vars": [f"DAGSTER_USER={user}","VIRTUAL_ENV=/pyrenew-hew/.venv"],
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
