@@ -230,6 +230,10 @@ function create_forecast_output(
     forecast_df[!, :geo_value] .= input.location
     forecast_df[!, :disease] .= input.pathogen
 
+    # Add metadata columns for hubverse compatibility
+    forecast_df[!, :geo_value] .= input.location
+    forecast_df[!, :disease] .= input.pathogen
+
     # Convert date column to string for parquet compatibility
     forecast_df[!, :date] = string.(forecast_df[!, :date])
 
