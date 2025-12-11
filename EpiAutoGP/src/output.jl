@@ -18,7 +18,7 @@ abstract type AbstractHubverseOutput <: AbstractForecastOutput end
 Abstract type for directly outputting forecasts as typical pipeline outputs for
     `pyrenew-hew`.
 """
-abstract type PipelineOutput <: AbstractForecastOutput end
+struct PipelineOutput <: AbstractForecastOutput end
 
 """
     QuantileOutput <: AbstractHubverseOutput
@@ -92,6 +92,23 @@ function create_forecast_df(results::NamedTuple, output_type::QuantileOutput)
     end
     # Add constant column for output_type, this method is specifically for quantiles
     forecast_df[!, "output_type"] .= "quantile"
+    return forecast_df
+end
+
+function create_forecast_df(results::NamedTuple, output_type::PipelineOutput)
+    # Extract relevant data
+    forecast_dates = results.forecast_dates
+    forecasts = results.forecasts
+
+    # Create a DataFrame with columns: date, .value, .draw
+    forecast_df = mapreduce(vcat, enumerate(eachcol(forecasts))) do (draw, sampled_values)
+        DataFrame(
+            :date => forecast_dates,
+            Symbol(".value") => sampled_values,
+            Symbol(".draw") => fill(draw, length(sampled_values))
+        )
+    end
+
     return forecast_df
 end
 
@@ -169,6 +186,47 @@ function create_forecast_output(
         CSV.write(csv_path, forecast_df)
 
         @info "Saved hubverse forecast table to $csv_path"
+    end
+
+    return forecast_df
+end
+
+function create_forecast_output(
+        input::EpiAutoGPInput,
+        results::NamedTuple,
+        output_dir::String,
+        output_type::PipelineOutput;
+        save_output::Bool,
+        disease_abbr::Dict{String, String} = DEFAULT_PATHOGEN_DICT,
+        target_abbr::Dict{String, String} = DEFAULT_TARGET_DICT,
+        group_name::String = DEFAULT_GROUP_NAME,
+        model_name::String = DEFAULT_MODEL_NAME
+)
+    # Create basic forecast DataFrame with date, .draw, .value
+    forecast_df = create_forecast_df(results, output_type)
+
+    # Determine variable name based on target
+    variable_name = if input.target == "nhsn"
+        "observed_hospital_admissions"
+    else  # nssp
+        "observed_ed_visits"
+    end
+
+    # Add .variable and resolution columns
+    forecast_df[!, Symbol(".variable")] .= variable_name
+    forecast_df[!, :resolution] .= "epiweekly"
+
+    # Convert date column to string for parquet compatibility
+    forecast_df[!, :date] = string.(forecast_df[!, :date])
+
+    # Save as parquet if requested
+    if save_output
+        parquet_filename = "epiweekly_ts_ensemble_samples_e.parquet"
+        parquet_path = joinpath(output_dir, parquet_filename)
+        mkpath(dirname(parquet_path))
+        Parquet.write_parquet(parquet_path, forecast_df)
+
+        @info "Saved pipeline forecast samples to $parquet_path"
     end
 
     return forecast_df
