@@ -1,6 +1,6 @@
 module EpiAutoGP
 using NowcastAutoGP # Core modeling package
-using CSV, DataFramesMeta, Dates, JSON3, StructTypes # Data handling packages
+using CSV, DataFramesMeta, Dates, JSON3, StructTypes, Parquet # Data handling packages
 using ArgParse # Command-line argument parsing
 using Statistics # For modeling functions
 
@@ -23,6 +23,7 @@ export prepare_for_modelling,
 export AbstractForecastOutput,
        AbstractHubverseOutput,
        QuantileOutput,
+       PipelineOutput,
        create_forecast_df,
        create_forecast_output
 
