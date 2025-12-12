@@ -10,55 +10,35 @@ from pipelines.common_utils import (
     run_r_script,
 )
 from pipelines.epiautogp import convert_to_epiautogp_json
-from pipelines.epiautogp.process_epiautogp_forecast import process_epiautogp_forecast
-from pipelines.forecast_utils import (
+from pipelines.epiautogp.epiautogp_forecast_utils import (
     prepare_model_data,
     setup_forecast_pipeline,
 )
+from pipelines.epiautogp.process_epiautogp_forecast import process_epiautogp_forecast
 
 
 def run_epiautogp_forecast(
     json_input_path: Path,
     model_dir: Path,
-    target: str,
-    n_forecast_weeks: int = 8,
-    n_particles: int = 24,
-    n_mcmc: int = 100,
-    n_hmc: int = 50,
-    n_forecast_draws: int = 2000,
-    transformation: str = "boxcox",
-    smc_data_proportion: float = 0.1,
+    params: dict,
+    execution_settings: dict,
 ) -> None:
     """
     Run EpiAutoGP forecasting model using Julia.
 
     Parameters
     ----------
+    json_input_path : Path
+        Path to the JSON input file for EpiAutoGP.
     model_dir : Path
-        Directory containing the model data and where outputs will be saved
-    target : str
-        Target data type: "nssp" for ED visit data or "nhsn" for hospital admissions
-    n_forecast_weeks : int, default=8
-        Number of weeks to forecast
-    n_particles : int, default=24
-        Number of particles for SMC
-    n_mcmc : int, default=100
-        Number of MCMC steps for GP kernel structure
-    n_hmc : int, default=50
-        Number of HMC steps for GP kernel hyperparameters
-    n_forecast_draws : int, default=2000
-        Number of forecast draws
-    transformation : str, default="boxcox"
-        Data transformation type
-    smc_data_proportion : float, default=0.1
-        Proportion of data used in each SMC step
+        Directory to save model outputs.
+    params : dict
+        Parameters to pass to EpiAutoGP.
+    execution_settings : dict
+        Execution settings for the Julia environment.
     """
-    # Use model_dir directly (not a subdirectory) to match R pipeline expectations
-    # The R plotting code expects parquet files at model_dir/filename.parquet
-    output_dir = Path(model_dir)
-
     # Ensure output directory exists
-    output_dir.mkdir(parents=True, exist_ok=True)
+    model_dir.mkdir(parents=True, exist_ok=True)
 
     # Instantiate julia environment for EpiAutoGP
     run_julia_code(
@@ -70,21 +50,21 @@ def run_epiautogp_forecast(
         function_name="setup_epiautogp_environment",
     )
 
+    # Add path arguments to pass to EpiAutoGP
+    params["json-input"] = str(json_input_path)
+    params["output-dir"] = str(model_dir)
+
+    # Convert Python dict keys (with underscores) to Julia CLI args (with hyphens)
+    args_to_epiautogp = [
+        f"--{key.replace('_', '-')}={value}" for key, value in params.items()
+    ]
+    executor_flags = [f"--{key}={value}" for key, value in execution_settings.items()]
+
     # Run Julia script
     run_julia_script(
         "EpiAutoGP/run.jl",
-        [
-            f"--json-input={json_input_path}",
-            f"--output-dir={output_dir}",
-            f"--n-forecast-weeks={n_forecast_weeks}",
-            f"--n-particles={n_particles}",
-            f"--n-mcmc={n_mcmc}",
-            f"--n-hmc={n_hmc}",
-            f"--n-forecast-draws={n_forecast_draws}",
-            f"--transformation={transformation}",
-            f"--smc-data-proportion={smc_data_proportion}",
-        ],
-        executor_flags=["--project=EpiAutoGP"],
+        args_to_epiautogp,
+        executor_flags=executor_flags,
         function_name="run_epiautogp_forecast",
     )
     return None
@@ -112,16 +92,37 @@ def main(
     n_mcmc: int = 100,
     n_hmc: int = 50,
     n_forecast_draws: int = 2000,
-    transformation: str = "boxcox",
     smc_data_proportion: float = 0.1,
+    n_threads: int = 1,
 ) -> None:
+    # Step 0: Set up logging, model name and params to pass to epiautogp
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
     # Generate model name
-    model_name = f"epiautogp_{target}"
+    model_name = f"epiautogp_{target}_{frequency}"
     if use_percentage:
         model_name += "_pct"
+
+    # Declare transformation type
+    if use_percentage:
+        transformation = "percentage"
+    else:
+        transformation = "boxcox"
+
+    # Epiautogp params and execution settings
+    params = {
+        "n_particles": n_particles,
+        "n_mcmc": n_mcmc,
+        "n_hmc": n_hmc,
+        "n_forecast_draws": n_forecast_draws,
+        "transformation": transformation,
+        "smc_data_proportion": smc_data_proportion,
+    }
+    execution_settings = {
+        "project": "EpiAutoGP",
+        "threads": n_threads,
+    }
 
     logger.info(
         "Starting single-location EpiAutoGP forecasting pipeline for "
@@ -134,6 +135,12 @@ def main(
         disease=disease,
         report_date=report_date,
         loc=loc,
+        target=target,
+        frequency=frequency,
+        use_percentage=use_percentage,
+        model_name=model_name,
+        eval_data_path=eval_data_path,
+        nhsn_data_path=nhsn_data_path,
         facility_level_nssp_data_dir=facility_level_nssp_data_dir,
         state_level_nssp_data_dir=state_level_nssp_data_dir,
         output_dir=output_dir,
@@ -144,71 +151,50 @@ def main(
         logger=logger,
     )
 
-    # Step 2: Prepare data (process location data, eval data, epiweekly data)
+    # Step 2: Prepare data for modelling (process location data, eval data, epiweekly data)
     # returns paths to prepared data files and directories
     paths = prepare_model_data(
         context=context,
-        model_name=model_name,
-        eval_data_path=eval_data_path,
-        nhsn_data_path=nhsn_data_path,
     )
 
     # Step 3: Convert data to EpiAutoGP JSON format
     logger.info("Converting data to EpiAutoGP JSON format...")
-    epiautogp_json_path = Path(paths.data_dir, f"epiautogp_input_{target}.json")
-
-    epiautogp_json_path = convert_to_epiautogp_json(
-        daily_training_data_path=paths.daily_training_data,
-        epiweekly_training_data_path=paths.epiweekly_training_data,
-        output_json_path=epiautogp_json_path,
-        disease=disease,
-        location=loc,
-        forecast_date=context.report_date,
-        target=target,
-        frequency=frequency,
-        use_percentage=use_percentage,
-        logger=logger,
+    epiautogp_input_json_path = convert_to_epiautogp_json(
+        context=context,
+        paths=paths,
     )
 
     # Step 4: Run EpiAutoGP forecast
     logger.info("Performing EpiAutoGP forecasting...")
     run_epiautogp_forecast(
-        json_input_path=epiautogp_json_path,
+        json_input_path=epiautogp_input_json_path,
         model_dir=paths.model_output_dir,
-        target=target,
-        n_forecast_weeks=n_forecast_weeks,
-        n_particles=n_particles,
-        n_mcmc=n_mcmc,
-        n_hmc=n_hmc,
-        n_forecast_draws=n_forecast_draws,
-        transformation=transformation,
-        smc_data_proportion=smc_data_proportion,
+        params=params,
+        execution_settings=execution_settings,
     )
 
-    # Step 5: Process forecast outputs (combine with observed, calculate CIs)
+    # Step 5: Process forecast outputs (add metadata, calculate CIs)
     logger.info("Processing forecast outputs...")
     process_epiautogp_forecast(
         model_run_dir=context.model_run_dir,
-        model_name=model_name,
+        model_name=context.model_name,
         target=target,
-        n_forecast_days=context.n_forecast_days,
         save=True,
     )
     logger.info("Forecast processing complete.")
 
     # Step 6: Create hubverse table
     logger.info("Creating hubverse table...")
-    create_hubverse_table(Path(context.model_run_dir, model_name))
+    create_hubverse_table(Path(context.model_run_dir, context.model_name))
     logger.info("Postprocessing complete.")
 
-    # Step 7: Generate forecast plots
+    # Step 7: Generate forecast plots using EpiAutoGP-specific plotting script
     logger.info("Generating forecast plots...")
     plot_script = Path(__file__).parent / "plot_epiautogp_forecast.R"
     run_r_script(
         str(plot_script),
-        [context.model_run_dir, "--epiautogp-model-name", model_name],
-        capture_output=False,
-        text=True,
+        [str(context.model_run_dir), "--epiautogp-model-name", context.model_name],
+        function_name="plot_epiautogp_forecast",
     )
     logger.info("Plotting complete.")
 
@@ -290,13 +276,6 @@ if __name__ == "__main__":
         type=int,
         default=2000,
         help="Number of forecast draws (default: 2000).",
-    )
-
-    parser.add_argument(
-        "--transformation",
-        type=str,
-        default="boxcox",
-        help="Data transformation type (default: boxcox).",
     )
 
     parser.add_argument(

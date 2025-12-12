@@ -12,6 +12,11 @@ from pathlib import Path
 
 import polars as pl
 
+from pipelines.epiautogp.epiautogp_forecast_utils import (
+    ForecastPipelineContext,
+    ModelPaths,
+)
+
 
 def _validate_epiautogp_parameters(
     target: str,
@@ -46,18 +51,10 @@ def _validate_epiautogp_parameters(
 
 
 def convert_to_epiautogp_json(
-    daily_training_data_path: Path,
-    epiweekly_training_data_path: Path,
-    output_json_path: Path,
-    disease: str,
-    location: str,
-    forecast_date: dt.date,
-    target: str = "nssp",
-    frequency: str = "epiweekly",
-    use_percentage: bool = False,
+    context: ForecastPipelineContext,
+    paths: ModelPaths,
     nowcast_dates: list[dt.date] | None = None,
     nowcast_reports: list[list[float]] | None = None,
-    logger: logging.Logger | None = None,
 ) -> Path:
     """
     Convert surveillance data to EpiAutoGP JSON format.
@@ -68,20 +65,12 @@ def convert_to_epiautogp_json(
 
     Parameters
     ----------
-    daily_training_data_path : Path
-        Path to the TSV file containing daily training data
-        (e.g., combined_training_data.tsv)
-    epiweekly_training_data_path : Path
-        Path to the TSV file containing epiweekly training data
-        (e.g., epiweekly_combined_training_data.tsv)
+    context : ForecastPipelineContext
+        Forecast pipeline context containing disease, location, report_date, and logger
+    paths : ModelPaths
+        Model paths containing daily and epiweekly training data paths
     output_json_path : Path
         Path where the EpiAutoGP JSON file will be saved
-    disease : str
-        Disease name (e.g., "COVID-19", "Influenza", "RSV")
-    location : str
-        Location abbreviation (e.g., "CA", "US", "DC")
-    forecast_date : dt.date
-        The reference date from which forecasting begins
     target : str, default="nssp"
         Target data type: "nssp" for ED visit data or
         "nhsn" for hospital admission counts
@@ -97,9 +86,6 @@ def convert_to_epiautogp_json(
     nowcast_reports : Optional[list[list[float]]], default=None
         Uncertainty bounds or samples for nowcast dates. If None,
         defaults to empty list. Not currently used.
-    logger : Optional[logging.Logger], default=None
-        Logger instance for logging messages. If None, a module-level
-        logger will be created.
 
     Returns
     -------
@@ -129,11 +115,12 @@ def convert_to_epiautogp_json(
         "nowcast_reports": [] # eventually vector of vectors for nowcast uncertainty
     }
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
+    logger = context.logger
 
     # Validate parameters
-    _validate_epiautogp_parameters(target, frequency, use_percentage)
+    _validate_epiautogp_parameters(
+        context.target, context.frequency, context.use_percentage
+    )
 
     # Set defaults for nowcasting
     if nowcast_dates is None:
@@ -141,21 +128,23 @@ def convert_to_epiautogp_json(
     if nowcast_reports is None:
         nowcast_reports = []
 
+    # Define input data JSON path
+    input_json_path = paths.model_output_dir / f"{context.model_name}_input.json"
     # Determine which data path to use based on frequency
-    if frequency == "daily":
-        data_path = daily_training_data_path
+    if context.frequency == "daily":
+        data_path = paths.daily_training_data
     else:  # epiweekly
-        data_path = epiweekly_training_data_path
+        data_path = paths.epiweekly_training_data
 
     # Read data from TSV
-    logger.info(f"Reading {frequency} data from {data_path}")
+    logger.info(f"Reading {context.frequency} data from {data_path}")
     dates, reports = _read_tsv_data(
         data_path,
-        disease,
-        location,
-        target,
-        frequency,
-        use_percentage,
+        context.disease,
+        context.loc,
+        context.target,
+        context.frequency,
+        context.use_percentage,
         logger,
     )
 
@@ -163,25 +152,26 @@ def convert_to_epiautogp_json(
     epiautogp_input = {
         "dates": [d.isoformat() for d in dates],
         "reports": reports,
-        "pathogen": disease,
-        "location": location,
-        "target": target,
-        "forecast_date": forecast_date.isoformat(),
+        "pathogen": context.disease,
+        "location": context.loc,
+        "target": context.target,
+        "use_percentage": context.use_percentage,
+        "forecast_date": context.report_date.isoformat(),
         "nowcast_dates": [d.isoformat() for d in nowcast_dates],
         "nowcast_reports": nowcast_reports,
     }
 
     # Write JSON file
-    output_json_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_json_path, "w") as f:
+    input_json_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(input_json_path, "w") as f:
         json.dump(epiautogp_input, f, indent=2)
 
     logger.info(
-        f"Saved EpiAutoGP input JSON for {disease} {location} "
-        f"(target={target}) to {output_json_path}"
+        f"Saved EpiAutoGP input JSON for {context.disease} {context.loc} "
+        f"(target={context.target}) to {input_json_path}"
     )
 
-    return output_json_path
+    return input_json_path
 
 
 def _read_tsv_data(
