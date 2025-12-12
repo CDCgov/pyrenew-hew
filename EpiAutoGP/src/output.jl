@@ -212,7 +212,8 @@ function create_forecast_output(
         if input.use_percentage
             "prop_disease_ed_visits"
         else
-            "observed_ed_visits"
+            # Use ed_visit_type to determine which ED visits column
+            input.ed_visit_type == "other" ? "other_ed_visits" : "observed_ed_visits"
         end
     end
 
@@ -223,7 +224,7 @@ function create_forecast_output(
 
     # Add .variable and resolution columns
     forecast_df[!, Symbol(".variable")] .= variable_name
-    forecast_df[!, :resolution] .= "epiweekly"
+    forecast_df[!, :resolution] .= input.frequency
 
     # Add metadata columns for hubverse compatibility
     forecast_df[!, :geo_value] .= input.location
@@ -234,10 +235,10 @@ function create_forecast_output(
 
     # Save as parquet if requested
     if save_output
-        # Use model-specific naming with _e suffix (epiweekly resolution)
-        # This matches the convention: epiweekly_{model}_samples_e.parquet
+        # Use model-specific naming with frequency prefix
+        # This matches the convention: {frequency}_{model}_samples_{target_letter}.parquet
         output_letter = DEFAULT_TARGET_LETTER[input.target]
-        parquet_filename = "epiweekly_epiautogp_samples_$(output_letter).parquet"
+        parquet_filename = "$(input.frequency)_epiautogp_samples_$(output_letter).parquet"
         parquet_path = joinpath(output_dir, parquet_filename)
         mkpath(dirname(parquet_path))
         Parquet.write_parquet(parquet_path, forecast_df)
