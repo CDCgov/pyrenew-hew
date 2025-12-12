@@ -153,7 +153,6 @@ def run_pyrenew_model(
 
 # Upstream Data #
 
-
 @dg.asset
 def nhsn_data(context: dg.AssetExecutionContext):
     return "nhsn_data"
@@ -182,21 +181,21 @@ nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
 @dg.asset(partitions_def=multi_partition_def, deps=nssp_deps)
 def timeseries_e_output(context: dg.AssetExecutionContext):
-    run_pyrenew_model(model_letters="e", model_family="timeseries")
+    run_pyrenew_model(context, model_letters="e", model_family="timeseries")
     return "timeseries_e_output"
 
 
 # Pyrenew E
 @dg.asset(partitions_def=multi_partition_def, deps=["timeseries_e_output"] + nssp_deps)
 def pyrenew_e_output(context: dg.AssetExecutionContext):
-    run_pyrenew_model(model_letters="e", model_family="pyrenew")
+    run_pyrenew_model(context, model_letters="e", model_family="pyrenew")
     return "pyrenew_e_output"
 
 
 # Pyrenew H
 @dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data"])
 def pyrenew_h_output(context: dg.AssetExecutionContext):
-    run_pyrenew_model(model_letters="h", model_family="pyrenew")
+    run_pyrenew_model(context, model_letters="h", model_family="pyrenew")
     return "pyrenew_h_output"
 
 
@@ -206,14 +205,14 @@ def pyrenew_h_output(context: dg.AssetExecutionContext):
     deps=["timeseries_e_output", "nhsn_data"] + nssp_deps,
 )
 def pyrenew_he_output(context: dg.AssetExecutionContext):
-    run_pyrenew_model(model_letters="he", model_family="pyrenew")
+    run_pyrenew_model(context, model_letters="he", model_family="pyrenew")
     return "pyrenew_he_output"
 
 
 # Pyrenew HW
 @dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data", "nwss_data"])
 def pyrenew_hw_output(context: dg.AssetExecutionContext):
-    run_pyrenew_model(model_letters="hw", model_family="pyrenew")
+    run_pyrenew_model(context, model_letters="hw", model_family="pyrenew")
     return "pyrenew_hw_output"
 
 
@@ -223,7 +222,7 @@ def pyrenew_hw_output(context: dg.AssetExecutionContext):
     deps=["timeseries_e_output"] + nssp_deps + ["nhsn_data", "nwss_data"],
 )
 def pyrenew_hew_output(context: dg.AssetExecutionContext):
-    run_pyrenew_model(model_letters="hew", model_family="pyrenew")
+    run_pyrenew_model(context, model_letters="hew", model_family="pyrenew")
     return "pyrenew_hew_output"
 
 
