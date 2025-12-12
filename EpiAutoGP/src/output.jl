@@ -205,11 +205,20 @@ function create_forecast_output(
     # Create basic forecast DataFrame with date, .draw, .value
     forecast_df = create_forecast_df(results, output_type)
 
-    # Determine variable name based on target
+    # Determine variable name based on target and whether using percentages
     variable_name = if input.target == "nhsn"
         "observed_hospital_admissions"
     else  # nssp
-        "observed_ed_visits"
+        if input.use_percentage
+            "prop_disease_ed_visits"
+        else
+            "observed_ed_visits"
+        end
+    end
+
+    # Convert percentage to proportion if needed (R expects proportions for prop_ variables)
+    if input.use_percentage && input.target == "nssp"
+        forecast_df[!, Symbol(".value")] = forecast_df[!, Symbol(".value")] ./ 100.0
     end
 
     # Add .variable and resolution columns
