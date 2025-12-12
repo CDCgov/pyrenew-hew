@@ -60,6 +60,7 @@ class ForecastPipelineContext:
     target: str
     frequency: str
     use_percentage: bool
+    ed_visit_type: str
     model_name: str
     param_data_dir: Path | None
     eval_data_path: Path | None
@@ -172,6 +173,7 @@ class ForecastPipelineContext:
             model_run_dir=self.model_run_dir,
             model_name=self.model_name,
             target=self.target,
+            frequency=self.frequency,
             save=True,
         )
         self.logger.info("Forecast processing complete.")
@@ -199,6 +201,7 @@ def setup_forecast_pipeline(
     target: str,
     frequency: str,
     use_percentage: bool,
+    ed_visit_type: str,
     model_name: str,
     param_data_dir: Path | None,
     eval_data_path: Path | None,
@@ -315,6 +318,7 @@ def setup_forecast_pipeline(
         target=target,
         frequency=frequency,
         use_percentage=use_percentage,
+        ed_visit_type=ed_visit_type,
         model_name=model_name,
         param_data_dir=param_data_dir,
         eval_data_path=eval_data_path,

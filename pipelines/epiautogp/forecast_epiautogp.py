@@ -79,11 +79,11 @@ def main(
     target: str,
     frequency: str,
     use_percentage: bool = False,
+    ed_visit_type: str = "observed",
     exclude_last_n_days: int = 0,
     eval_data_path: Path = None,
     credentials_path: Path = None,
     nhsn_data_path: Path = None,
-    n_forecast_weeks: int = 8,
     n_particles: int = 24,
     n_mcmc: int = 100,
     n_hmc: int = 50,
@@ -99,6 +99,8 @@ def main(
     model_name = f"epiautogp_{target}_{frequency}"
     if use_percentage:
         model_name += "_pct"
+    if ed_visit_type == "other":
+        model_name += "_other"
 
     # Declare transformation type
     if use_percentage:
@@ -106,8 +108,16 @@ def main(
     else:
         transformation = "boxcox"
 
+    # Calculate n_ahead based on frequency
+    # For epiweekly data, convert days to weeks (rounded up)
+    if frequency == "epiweekly":
+        n_ahead = (n_forecast_days + 6) // 7  # Round up to nearest week
+    else:
+        n_ahead = n_forecast_days
+
     # Epiautogp params and execution settings
     params = {
+        "n_ahead": n_ahead,
         "n_particles": n_particles,
         "n_mcmc": n_mcmc,
         "n_hmc": n_hmc,
@@ -134,6 +144,7 @@ def main(
         target=target,
         frequency=frequency,
         use_percentage=use_percentage,
+        ed_visit_type=ed_visit_type,
         model_name=model_name,
         param_data_dir=param_data_dir,
         eval_data_path=eval_data_path,
@@ -217,10 +228,15 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--n-forecast-weeks",
-        type=int,
-        default=8,
-        help="Number of weeks to forecast (default: 8).",
+        "--ed-visit-type",
+        type=str,
+        default="observed",
+        choices=["observed", "other"],
+        help=(
+            "Type of ED visits to model: 'observed' (disease-related) or "
+            "'other' (non-disease background). Only applicable for NSSP target "
+            "(default: observed)."
+        ),
     )
 
     parser.add_argument(

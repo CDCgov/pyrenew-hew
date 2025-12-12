@@ -22,6 +22,7 @@ def _validate_epiautogp_parameters(
     target: str,
     frequency: str,
     use_percentage: bool,
+    ed_visit_type: str,
 ) -> None:
     """
     Validate EpiAutoGP conversion parameters.
@@ -29,8 +30,10 @@ def _validate_epiautogp_parameters(
     The inadmissible parameter combinations are:
     - `target` not in ['nssp', 'nhsn']
     - `frequency` not in ['daily', 'epiweekly']
+    - `ed_visit_type` not in ['observed', 'other']
     - `use_percentage` is `True` when target is 'nhsn' (NHSN data are always counts)
     - `frequency` is 'daily' when target is 'nhsn' (NHSN data are only epiweekly)
+    - `ed_visit_type` is not 'observed' when target is 'nhsn'
     """
     # Validate individual parameters
     if target not in ["nssp", "nhsn"]:
@@ -38,6 +41,11 @@ def _validate_epiautogp_parameters(
 
     if frequency not in ["daily", "epiweekly"]:
         raise ValueError(f"frequency must be 'daily' or 'epiweekly', got '{frequency}'")
+
+    if ed_visit_type not in ["observed", "other"]:
+        raise ValueError(
+            f"ed_visit_type must be 'observed' or 'other', got '{ed_visit_type}'"
+        )
 
     # Validate parameter combinations
     if target == "nhsn" and use_percentage:
@@ -48,6 +56,12 @@ def _validate_epiautogp_parameters(
 
     if target == "nhsn" and frequency == "daily":
         raise ValueError("NHSN data is only available in epiweekly frequency.")
+
+    if target == "nhsn" and ed_visit_type != "observed":
+        raise ValueError(
+            "ed_visit_type is only applicable when target='nssp'. "
+            "For NHSN, ed_visit_type must be 'observed'."
+        )
 
 
 def convert_to_epiautogp_json(
@@ -119,7 +133,7 @@ def convert_to_epiautogp_json(
 
     # Validate parameters
     _validate_epiautogp_parameters(
-        context.target, context.frequency, context.use_percentage
+        context.target, context.frequency, context.use_percentage, context.ed_visit_type
     )
 
     # Set defaults for nowcasting
@@ -145,6 +159,7 @@ def convert_to_epiautogp_json(
         context.target,
         context.frequency,
         context.use_percentage,
+        context.ed_visit_type,
         logger,
     )
 
@@ -155,7 +170,9 @@ def convert_to_epiautogp_json(
         "pathogen": context.disease,
         "location": context.loc,
         "target": context.target,
+        "frequency": context.frequency,
         "use_percentage": context.use_percentage,
+        "ed_visit_type": context.ed_visit_type,
         "forecast_date": context.report_date.isoformat(),
         "nowcast_dates": [d.isoformat() for d in nowcast_dates],
         "nowcast_reports": nowcast_reports,
@@ -181,6 +198,7 @@ def _read_tsv_data(
     target: str,
     frequency: str,
     use_percentage: bool,
+    ed_visit_type: str,
     logger: logging.Logger,
 ) -> tuple[list[dt.date], list[float]]:
     """
@@ -217,7 +235,7 @@ def _read_tsv_data(
     # Extract data based on target
     if target == "nssp":
         dates, reports = _extract_nssp_from_pivot(
-            df_pivot, use_percentage, tsv_path, logger
+            df_pivot, use_percentage, ed_visit_type, tsv_path, logger
         )
     else:  # target == "nhsn"
         dates, reports = _extract_nhsn_from_pivot(df_pivot, tsv_path, logger)
@@ -233,38 +251,50 @@ def _read_tsv_data(
 def _extract_nssp_from_pivot(
     df_pivot: pl.DataFrame,
     use_percentage: bool,
+    ed_visit_type: str,
     tsv_path: Path,
     logger: logging.Logger,
 ) -> tuple[list[dt.date], list[float]]:
     """
     Extract NSSP ED visit data from pivoted DataFrame.
     """
+    # Determine which ED visit column to use
+    if ed_visit_type == "observed":
+        ed_column = "observed_ed_visits"
+    else:  # ed_visit_type == "other"
+        ed_column = "other_ed_visits"
+
     # Check required columns
-    if "observed_ed_visits" not in df_pivot.columns:
-        raise ValueError(f"Column 'observed_ed_visits' not found in {tsv_path}")
+    if ed_column not in df_pivot.columns:
+        raise ValueError(f"Column '{ed_column}' not found in {tsv_path}")
 
     if use_percentage:
+        # For percentage, we need both columns
+        if "observed_ed_visits" not in df_pivot.columns:
+            raise ValueError(
+                f"Column 'observed_ed_visits' required for percentage calculation but not found in {tsv_path}"
+            )
         if "other_ed_visits" not in df_pivot.columns:
             raise ValueError(
                 f"Column 'other_ed_visits' required for percentage calculation but not found in {tsv_path}"
             )
-        # Calculate percentage
+        # Calculate percentage using the selected column
         df_pivot = df_pivot.with_columns(
             (
-                pl.col("observed_ed_visits")
+                pl.col(ed_column)
                 / (pl.col("observed_ed_visits") + pl.col("other_ed_visits"))
                 * 100.0
             ).alias("value")
         )
         logger.info(
-            "Using ED visit percentage (observed_ed_visits / total_ed_visits * 100)"
+            f"Using {ed_visit_type} ED visit percentage ({ed_column} / total_ed_visits * 100)"
         )
     else:
         # Use raw counts
         df_pivot = df_pivot.with_columns(
-            pl.col("observed_ed_visits").cast(pl.Float64).alias("value")
+            pl.col(ed_column).cast(pl.Float64).alias("value")
         )
-        logger.info("Using raw ED visit counts")
+        logger.info(f"Using {ed_visit_type} ED visit counts ({ed_column})")
 
     # Filter out any rows with null values
     df_pivot = df_pivot.filter(pl.col("value").is_not_null())
