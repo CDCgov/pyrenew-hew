@@ -4,17 +4,15 @@ from pathlib import Path
 
 from pipelines.cli_utils import add_common_forecast_arguments
 from pipelines.common_utils import (
-    create_hubverse_table,
     run_julia_code,
     run_julia_script,
-    run_r_script,
 )
-from pipelines.epiautogp import convert_to_epiautogp_json
-from pipelines.epiautogp.epiautogp_forecast_utils import (
+from pipelines.epiautogp import (
+    convert_to_epiautogp_json,
+    post_process_forecast,
     prepare_model_data,
     setup_forecast_pipeline,
 )
-from pipelines.epiautogp.process_epiautogp_forecast import process_epiautogp_forecast
 
 
 def run_epiautogp_forecast(
@@ -139,6 +137,7 @@ def main(
         frequency=frequency,
         use_percentage=use_percentage,
         model_name=model_name,
+        param_data_dir=param_data_dir,
         eval_data_path=eval_data_path,
         nhsn_data_path=nhsn_data_path,
         facility_level_nssp_data_dir=facility_level_nssp_data_dir,
@@ -173,30 +172,8 @@ def main(
         execution_settings=execution_settings,
     )
 
-    # Step 5: Process forecast outputs (add metadata, calculate CIs)
-    logger.info("Processing forecast outputs...")
-    process_epiautogp_forecast(
-        model_run_dir=context.model_run_dir,
-        model_name=context.model_name,
-        target=target,
-        save=True,
-    )
-    logger.info("Forecast processing complete.")
-
-    # Step 6: Create hubverse table
-    logger.info("Creating hubverse table...")
-    create_hubverse_table(Path(context.model_run_dir, context.model_name))
-    logger.info("Postprocessing complete.")
-
-    # Step 7: Generate forecast plots using EpiAutoGP-specific plotting script
-    logger.info("Generating forecast plots...")
-    plot_script = Path(__file__).parent / "plot_epiautogp_forecast.R"
-    run_r_script(
-        str(plot_script),
-        [str(context.model_run_dir), "--epiautogp-model-name", context.model_name],
-        function_name="plot_epiautogp_forecast",
-    )
-    logger.info("Plotting complete.")
+    # Step 5: Post-process forecast outputs
+    post_process_forecast(context=context)
 
     logger.info(
         "Single-location EpiAutoGP pipeline complete "
