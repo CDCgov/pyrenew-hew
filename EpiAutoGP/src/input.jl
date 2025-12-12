@@ -23,6 +23,7 @@ struct EpiAutoGPInput
     pathogen::String
     location::String
     target::String
+    use_percentage::Bool
     forecast_date::Date
     nowcast_dates::Vector{Date}
     nowcast_reports::Vector{Vector{Real}}

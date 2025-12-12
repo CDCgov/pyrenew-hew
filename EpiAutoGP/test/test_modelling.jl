@@ -15,7 +15,7 @@
         end
 
         return EpiAutoGPInput(
-            dates, reports, "COVID-19", "US", "nhsn",
+            dates, reports, "COVID-19", "US", "nhsn", false,
             dates[end], nowcast_dates, nowcast_reports
         )
     end

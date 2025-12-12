@@ -45,6 +45,7 @@ end
             "COVID-19",
             "CA",
             "nhsn",
+            false,
             Date("2024-01-01"),
             Date[],
             Vector{Real}[]
