@@ -395,7 +395,7 @@ private_data/*
 
 # Ignore end to end test output
 pipelines/tests/end_to_end_test_output/*
-pipelines/tests/epiautogp_test_output/*
+pipelines/tests/epiautogp_end_to_end_test_output/*
 
 # subdirs reserved for mounting blob storage containers
 config
