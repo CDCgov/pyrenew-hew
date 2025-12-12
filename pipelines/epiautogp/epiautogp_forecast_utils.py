@@ -21,8 +21,9 @@ from pipelines.common_utils import (
     load_credentials,
     load_nssp_data,
     parse_and_validate_report_date,
-    plot_and_save_loc_forecast,
+    run_r_script,
 )
+from pipelines.epiautogp.process_epiautogp_forecast import process_epiautogp_forecast
 from pipelines.forecast_pyrenew import generate_epiweekly_data
 from pipelines.prep_data import process_and_save_loc_data
 from pipelines.prep_eval_data import save_eval_data
@@ -60,6 +61,7 @@ class ForecastPipelineContext:
     frequency: str
     use_percentage: bool
     model_name: str
+    param_data_dir: Path | None
     eval_data_path: Path | None
     nhsn_data_path: Path | None
     report_date: date
@@ -83,6 +85,7 @@ def setup_forecast_pipeline(
     frequency: str,
     use_percentage: bool,
     model_name: str,
+    param_data_dir: Path | None,
     eval_data_path: Path | None,
     nhsn_data_path: Path | None,
     facility_level_nssp_data_dir: Path | str,
@@ -198,6 +201,7 @@ def setup_forecast_pipeline(
         frequency=frequency,
         use_percentage=use_percentage,
         model_name=model_name,
+        param_data_dir=param_data_dir,
         eval_data_path=eval_data_path,
         nhsn_data_path=nhsn_data_path,
         report_date=report_date_parsed,
@@ -307,39 +311,49 @@ def prepare_model_data(
     )
 
 
-def postprocess_forecast(
+def post_process_forecast(
     context: ForecastPipelineContext,
-    model_name: str,
 ) -> None:
     """
-    Perform standard postprocessing on forecast outputs.
+    Post-process forecast outputs: process results, create hubverse table, and generate plots.
 
-    This function performs postprocessing steps that are common across
-    all forecast pipelines:
-    1. Plot and save location forecast
-    2. Create hubverse-compatible table
+    This function performs the final post-processing steps:
+    1. Process forecast outputs (add metadata, calculate CIs)
+    2. Create hubverse table
+    3. Generate forecast plots using EpiAutoGP-specific plotting script
 
     Parameters
     ----------
     context : ForecastPipelineContext
         Pipeline context with shared configuration
-    model_name : str
-        Name of the model (used for directory naming)
+
+    Returns
+    -------
+    None
     """
     logger = context.logger
 
-    logger.info("Performing postprocessing...")
-
-    n_days_past_last_training = context.n_forecast_days + context.exclude_last_n_days
-
-    # Plot and save forecast
-    plot_and_save_loc_forecast(
-        context.model_run_dir,
-        n_days_past_last_training,
-        timeseries_model_name=model_name,
+    # Process forecast outputs (add metadata, calculate CIs)
+    logger.info("Processing forecast outputs...")
+    process_epiautogp_forecast(
+        model_run_dir=context.model_run_dir,
+        model_name=context.model_name,
+        target=context.target,
+        save=True,
     )
+    logger.info("Forecast processing complete.")
 
     # Create hubverse table
-    create_hubverse_table(Path(context.model_run_dir, model_name))
-
+    logger.info("Creating hubverse table...")
+    create_hubverse_table(Path(context.model_run_dir, context.model_name))
     logger.info("Postprocessing complete.")
+
+    # Generate forecast plots using EpiAutoGP-specific plotting script
+    logger.info("Generating forecast plots...")
+    plot_script = Path(__file__).parent / "plot_epiautogp_forecast.R"
+    run_r_script(
+        str(plot_script),
+        [str(context.model_run_dir), "--epiautogp-model-name", context.model_name],
+        function_name="plot_epiautogp_forecast",
+    )
+    logger.info("Plotting complete.")
