@@ -46,7 +46,8 @@ class ModelPaths:
 @dataclass
 class ForecastPipelineContext:
     """
-    Container for common forecast pipeline data and configurations.
+    Container for common forecast pipeline data, input configurations and
+    the logger.
 
     This class holds all the shared state that gets passed around during
     a forecast pipeline run, reducing the number of parameters that need
@@ -55,6 +56,12 @@ class ForecastPipelineContext:
 
     disease: str
     loc: str
+    target: str
+    frequency: str
+    use_percentage: bool
+    model_name: str
+    eval_data_path: Path | None
+    nhsn_data_path: Path | None
     report_date: date
     first_training_date: date
     last_training_date: date
@@ -72,6 +79,12 @@ def setup_forecast_pipeline(
     disease: str,
     report_date: str,
     loc: str,
+    target: str,
+    frequency: str,
+    use_percentage: bool,
+    model_name: str,
+    eval_data_path: Path | None,
+    nhsn_data_path: Path | None,
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
     output_dir: Path | str,
@@ -181,6 +194,12 @@ def setup_forecast_pipeline(
     return ForecastPipelineContext(
         disease=disease,
         loc=loc,
+        target=target,
+        frequency=frequency,
+        use_percentage=use_percentage,
+        model_name=model_name,
+        eval_data_path=eval_data_path,
+        nhsn_data_path=nhsn_data_path,
         report_date=report_date_parsed,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
@@ -197,10 +216,6 @@ def setup_forecast_pipeline(
 
 def prepare_model_data(
     context: ForecastPipelineContext,
-    model_name: str,
-    eval_data_path: Path = None,
-    nhsn_data_path: Path = None,
-    loc_level_nwss_data: pl.DataFrame = None,
 ) -> ModelPaths:
     """
     Prepare training and evaluation data for a model.
@@ -238,7 +253,7 @@ def prepare_model_data(
     logger = context.logger
 
     # Create model output directory
-    model_output_dir = Path(context.model_run_dir, model_name)
+    model_output_dir = Path(context.model_run_dir, context.model_name)
     data_dir = Path(model_output_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
 
@@ -250,19 +265,18 @@ def prepare_model_data(
         disease=context.disease,
         facility_level_nssp_data=context.facility_level_nssp_data,
         loc_level_nssp_data=context.loc_level_nssp_data,
-        loc_level_nwss_data=loc_level_nwss_data,
         report_date=context.report_date,
         first_training_date=context.first_training_date,
         last_training_date=context.last_training_date,
         save_dir=data_dir,
         logger=logger,
         credentials_dict=context.credentials_dict,
-        nhsn_data_path=nhsn_data_path,
+        nhsn_data_path=context.nhsn_data_path,
     )
 
     # Save evaluation data
     logger.info("Getting eval data...")
-    if eval_data_path is None:
+    if context.eval_data_path is None:
         raise ValueError("No path to an evaluation dataset provided.")
 
     save_eval_data(
@@ -270,11 +284,11 @@ def prepare_model_data(
         disease=context.disease,
         first_training_date=context.first_training_date,
         last_training_date=context.last_training_date,
-        latest_comprehensive_path=eval_data_path,
+        latest_comprehensive_path=context.eval_data_path,
         output_data_dir=data_dir,
         last_eval_date=context.report_date + timedelta(days=context.n_forecast_days),
         credentials_dict=context.credentials_dict,
-        nhsn_data_path=nhsn_data_path,
+        nhsn_data_path=context.nhsn_data_path,
     )
     logger.info("Done getting eval data.")
 
