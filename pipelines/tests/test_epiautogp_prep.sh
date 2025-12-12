@@ -1,121 +1,153 @@
 #!/bin/bash
 
-# Test script for EpiAutoGP data preparation
-# This script tests the first step of the EpiAutoGP workflow:
+# Integration test for EpiAutoGP pipeline
+# Tests the complete workflow following the same structure as test_end_to_end.sh
 # 1. Generate test data
-# 2. Convert to EpiAutoGP JSON format
+# 2. Run EpiAutoGP forecast pipeline
+# 3. Verify outputs
+#
+# Usage:
+#   bash pipelines/tests/test_epiautogp_prep.sh [--force]
+#
+# Options:
+#   --force    Delete existing test output directory
+
+set -e # Exit on any error
 
 BASE_DIR=pipelines/tests/epiautogp_test_output
-LOCATIONS=(US CA MT DC)
-DISEASES=(Influenza COVID-19 RSV)
-TARGETS=(nssp nhsn)
+LOCATION=CA
+DISEASE=COVID-19
+TARGET=nhsn
+FORECAST_DATE=2024-12-21
+# Convert disease to lowercase for directory name
+DISEASE_LOWER=$(echo "$DISEASE" | tr '[:upper:]' '[:lower:]')
 
-echo "TEST-MODE: Running EpiAutoGP data preparation test with base directory $BASE_DIR"
+echo "========================================"
+echo "EpiAutoGP Integration Test"
+echo "========================================"
+echo "Location: $LOCATION"
+echo "Disease: $DISEASE"
+echo "Target: $TARGET"
+echo "Forecast date: $FORECAST_DATE"
+echo ""
 
+# Step 0: Clean up previous run
 if [ -d "$BASE_DIR" ]; then
-	if [ "$1" = "--force" ]; then
-		rm -r "$BASE_DIR"
+	if [[ "$*" == *"--force"* ]]; then
+		echo "[0/4] Cleaning previous test output..."
+		rm -rf "$BASE_DIR"
 	else
-		# make the user delete the directory, to avoid accidental deletes of
-		# test output
-		echo "TEST-MODE FAIL: test output directory $BASE_DIR already exists. Delete the directory and re-run the test, or run with the --force flag".
-		echo "DETAILS: The test output directory persists after each run to allow the user to examine output. It must be deleted and recreated at the start of each new end-to-end test run to ensure that old output does not compromise test validity."
+		echo "ERROR: Test output directory exists: $BASE_DIR"
+		echo "Delete it or run with --force flag"
 		exit 1
 	fi
 fi
 
-echo "TEST-MODE: Generating test data..."
+# Step 1: Generate test data
+echo "[1/4] Generating test data..."
 uv run python pipelines/generate_test_data.py "$BASE_DIR"
+echo "✓ Test data generated"
+echo ""
 
-if [ "$?" -ne 0 ]; then
-	echo "TEST-MODE FAIL: Generating test data failed"
+# Step 2: Run data preparation (equivalent to forecast_epiautogp.py setup)
+echo "[2/4] Running EpiAutoGP pipeline..."
+uv run python -c "
+from pathlib import Path
+from pipelines.epiautogp.forecast_epiautogp import main
+
+# Run the complete pipeline
+# Output follows end-to-end test pattern: BASE_DIR/FORECAST_DATE_forecasts/
+main(
+    disease='$DISEASE',
+    report_date='$FORECAST_DATE',
+    loc='$LOCATION',
+    facility_level_nssp_data_dir=Path('$BASE_DIR/private_data/nssp_etl_gold'),
+    state_level_nssp_data_dir=Path('$BASE_DIR/private_data/nssp_state_level_gold'),
+    param_data_dir=Path('$BASE_DIR/private_data/prod_param_estimates'),
+    output_dir=Path('$BASE_DIR/${FORECAST_DATE}_forecasts'),
+    n_training_days=90,
+    n_forecast_days=28,
+    target='$TARGET',
+    frequency='epiweekly',
+    use_percentage=False,
+    eval_data_path=Path('$BASE_DIR/private_data/nssp_state_level_gold/$FORECAST_DATE.parquet'),
+    n_forecast_weeks=4,
+    n_particles=2,  # Small for testing
+    n_mcmc=2,       # Small for testing
+    n_hmc=2,        # Small for testing
+    n_forecast_draws=100,  # Small for testing
+)
+"
+if [ $? -ne 0 ]; then
+	echo "ERROR: Pipeline failed"
 	exit 1
-else
-	echo "TEST-MODE: Finished generating test data"
+fi
+echo "✓ Pipeline complete"
+echo ""
+
+# Step 3: Verify outputs exist
+echo "[3/4] Verifying pipeline outputs..."
+
+# Debug: Show what was created
+if [ ! -d "$BASE_DIR/${FORECAST_DATE}_forecasts" ]; then
+	echo "ERROR: Forecasts directory does not exist: $BASE_DIR/${FORECAST_DATE}_forecasts"
+	exit 1
 fi
 
-# Create output directory for JSON files
-FORECAST_DATE="2024-12-21"
-OUTPUT_DIR="$BASE_DIR/${FORECAST_DATE}_epiautogp_inputs"
-mkdir -p "$OUTPUT_DIR"
+echo "Checking forecasts directory structure..."
+ls -la "$BASE_DIR/${FORECAST_DATE}_forecasts/"
 
-echo "TEST-MODE: Converting surveillance data to EpiAutoGP JSON format"
+# Find the model run directory (lowercase disease name in directory)
+DISEASE_LOWER=$(echo "$DISEASE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+MODEL_BATCH_DIR=$(find "$BASE_DIR/${FORECAST_DATE}_forecasts" -maxdepth 1 -type d -name "*${DISEASE_LOWER}*r_*" 2>/dev/null | head -1)
+if [ -z "$MODEL_BATCH_DIR" ]; then
+	echo "ERROR: Model batch directory not found"
+	echo "Expected pattern containing: ${DISEASE_LOWER}"
+	echo "In directory: $BASE_DIR/${FORECAST_DATE}_forecasts/"
+	exit 1
+fi
 
-# Test conversion for each location, disease, and target combination
-for location in "${LOCATIONS[@]}"; do
-	for disease in "${DISEASES[@]}"; do
-		for target in "${TARGETS[@]}"; do
-			# Construct paths
-			if [ "$target" = "nhsn" ]; then
-				NHSN_PATH="$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
+echo "Found model batch directory: $MODEL_BATCH_DIR"
 
-				# Check if NHSN data exists for this combination
-				if [ ! -f "$NHSN_PATH" ]; then
-					echo "TEST-MODE: Skipping NHSN conversion for $disease, $location (no data file)"
-					continue
-				fi
-			fi
+MODEL_RUN_DIR="$MODEL_BATCH_DIR/model_runs/$LOCATION"
+MODEL_NAME="epiautogp_$TARGET"
+MODEL_DIR="$MODEL_RUN_DIR/$MODEL_NAME"
 
-			# Create location-specific output directory
-			LOC_OUTPUT_DIR="$OUTPUT_DIR/${location}"
-			mkdir -p "$LOC_OUTPUT_DIR"
+# Determine the target suffix for file naming
+if [ "$TARGET" = "nhsn" ]; then
+	TARGET_SUFFIX="h"
+else
+	TARGET_SUFFIX="e"
+fi
 
-			# For NSSP, test both counts and percentages with epiweekly data
-			if [ "$target" = "nssp" ]; then
-				# Test 1: NSSP epiweekly counts
-				echo "TEST-MODE: Converting $target epiweekly counts for $disease, $location"
-				OUTPUT_JSON="$LOC_OUTPUT_DIR/epiautogp_input_${target}_epiweekly_counts_${disease// /-}.json"
-				uv run python pipelines/tests/test_epiautogp_prep_script.py \
-					"$target" "$disease" "$location" "$BASE_DIR" "$OUTPUT_JSON" "epiweekly" "false"
+# Check for required files
+REQUIRED_FILES=(
+	"$MODEL_DIR/data/combined_training_data.tsv"
+	"$MODEL_DIR/data/epiweekly_combined_training_data.tsv"
+	"$MODEL_DIR/epiweekly_epiautogp_samples_${TARGET_SUFFIX}.parquet"
+	"$MODEL_DIR/samples.parquet"
+	"$MODEL_DIR/ci.parquet"
+	"$MODEL_DIR/hubverse_table.parquet"
+)
 
-				if [ "$?" -ne 0 ]; then
-					echo "TEST-MODE FAIL: Conversion failed for $target epiweekly counts, $disease, $location"
-					exit 1
-				else
-					echo "TEST-MODE: Successfully converted $target epiweekly counts for $disease, $location"
-				fi
-
-				# Test 2: NSSP epiweekly percentage
-				echo "TEST-MODE: Converting $target epiweekly percentage for $disease, $location"
-				OUTPUT_JSON="$LOC_OUTPUT_DIR/epiautogp_input_${target}_epiweekly_percentage_${disease// /-}.json"
-				uv run python pipelines/tests/test_epiautogp_prep_script.py \
-					"$target" "$disease" "$location" "$BASE_DIR" "$OUTPUT_JSON" "epiweekly" "true"
-
-				if [ "$?" -ne 0 ]; then
-					echo "TEST-MODE FAIL: Conversion failed for $target epiweekly percentage, $disease, $location"
-					exit 1
-				else
-					echo "TEST-MODE: Successfully converted $target epiweekly percentage for $disease, $location"
-				fi
-			else
-				# For NHSN, just test epiweekly counts (no percentage option)
-				echo "TEST-MODE: Converting $target epiweekly data for $disease, $location"
-				OUTPUT_JSON="$LOC_OUTPUT_DIR/epiautogp_input_${target}_epiweekly_${disease// /-}.json"
-				uv run python pipelines/tests/test_epiautogp_prep_script.py \
-					"$target" "$disease" "$location" "$BASE_DIR" "$OUTPUT_JSON" "epiweekly" "false"
-
-				if [ "$?" -ne 0 ]; then
-					echo "TEST-MODE FAIL: Conversion failed for $target data, $disease, $location"
-					exit 1
-				else
-					echo "TEST-MODE: Successfully converted $target data for $disease, $location"
-				fi
-			fi
-		done
-	done
+for file in "${REQUIRED_FILES[@]}"; do
+	if [ ! -f "$file" ]; then
+		echo "ERROR: Missing required file: $file"
+		exit 1
+	fi
 done
 
-echo "TEST-MODE: All conversions complete."
-echo "TEST-MODE: JSON files are in $OUTPUT_DIR"
+echo "✓ All expected output files exist"
+echo ""
 
-# Verify some JSON files were created
-JSON_COUNT=$(find "$OUTPUT_DIR" -name "*.json" | wc -l)
-echo "TEST-MODE: Created $JSON_COUNT JSON files"
-
-if [ "$JSON_COUNT" -eq 0 ]; then
-	echo "TEST-MODE FAIL: No JSON files were created"
-	exit 1
-fi
-
-echo "TEST-MODE: All finished successfully."
-echo "TEST-MODE: You can examine the output files in $OUTPUT_DIR"
+# Step 4: Summary
+echo "[4/4] Test summary"
+echo "========================================"
+echo "Test output directory: $BASE_DIR"
+echo "Model directory: $MODEL_DIR"
+echo ""
+echo "Generated files:"
+ls -lh "$MODEL_DIR"/*.parquet 2>/dev/null || true
+echo ""
+echo "✓ Integration test PASSED"
+echo "========================================"
