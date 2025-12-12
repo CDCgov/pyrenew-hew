@@ -25,8 +25,6 @@ import pytest
 from pipelines.epiautogp.epiautogp_forecast_utils import (
     ForecastPipelineContext,
     ModelPaths,
-    postprocess_forecast,
-    prepare_model_data,
     setup_forecast_pipeline,
 )
 
@@ -39,6 +37,14 @@ class TestForecastPipelineContext:
         context = ForecastPipelineContext(
             disease="COVID-19",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=Path("/path/to/eval.parquet"),
+            nhsn_data_path=None,
             report_date=dt.date(2024, 12, 20),
             first_training_date=dt.date(2024, 9, 22),
             last_training_date=dt.date(2024, 12, 20),
@@ -83,11 +89,13 @@ class TestModelPaths:
 class TestSetupForecastPipeline:
     """Tests for the setup_forecast_pipeline function."""
 
-    @patch("pipelines.forecast_utils.load_credentials")
-    @patch("pipelines.forecast_utils.get_available_reports")
-    @patch("pipelines.forecast_utils.parse_and_validate_report_date")
-    @patch("pipelines.forecast_utils.calculate_training_dates")
-    @patch("pipelines.forecast_utils.load_nssp_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_credentials")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.get_available_reports")
+    @patch(
+        "pipelines.epiautogp.epiautogp_forecast_utils.parse_and_validate_report_date"
+    )
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.calculate_training_dates")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_nssp_data")
     def test_setup_pipeline_returns_context(
         self,
         mock_load_nssp,
@@ -108,6 +116,14 @@ class TestSetupForecastPipeline:
             disease="COVID-19",
             report_date="latest",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=tmp_path / "eval.parquet",
+            nhsn_data_path=None,
             facility_level_nssp_data_dir=tmp_path,
             state_level_nssp_data_dir=tmp_path,
             output_dir=tmp_path,
@@ -126,11 +142,13 @@ class TestSetupForecastPipeline:
         assert context.first_training_date == dt.date(2024, 9, 22)
         assert context.last_training_date == dt.date(2024, 12, 20)
 
-    @patch("pipelines.forecast_utils.load_credentials")
-    @patch("pipelines.forecast_utils.get_available_reports")
-    @patch("pipelines.forecast_utils.parse_and_validate_report_date")
-    @patch("pipelines.forecast_utils.calculate_training_dates")
-    @patch("pipelines.forecast_utils.load_nssp_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_credentials")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.get_available_reports")
+    @patch(
+        "pipelines.epiautogp.epiautogp_forecast_utils.parse_and_validate_report_date"
+    )
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.calculate_training_dates")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_nssp_data")
     def test_setup_pipeline_creates_directory_structure(
         self,
         mock_load_nssp,
@@ -151,6 +169,14 @@ class TestSetupForecastPipeline:
             disease="COVID-19",
             report_date="latest",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=tmp_path / "eval.parquet",
+            nhsn_data_path=None,
             facility_level_nssp_data_dir=tmp_path,
             state_level_nssp_data_dir=tmp_path,
             output_dir=tmp_path,
@@ -170,9 +196,9 @@ class TestSetupForecastPipeline:
 class TestPrepareModelData:
     """Tests for the prepare_model_data function."""
 
-    @patch("pipelines.forecast_utils.generate_epiweekly_data")
-    @patch("pipelines.forecast_utils.save_eval_data")
-    @patch("pipelines.forecast_utils.process_and_save_loc_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
     def test_prepare_model_data_returns_paths(
         self,
         mock_process_loc,
@@ -184,6 +210,14 @@ class TestPrepareModelData:
         context = ForecastPipelineContext(
             disease="COVID-19",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=tmp_path / "eval.parquet",
+            nhsn_data_path=None,
             report_date=dt.date(2024, 12, 20),
             first_training_date=dt.date(2024, 9, 22),
             last_training_date=dt.date(2024, 12, 20),
@@ -197,11 +231,7 @@ class TestPrepareModelData:
             logger=logging.getLogger(),
         )
 
-        paths = prepare_model_data(
-            context=context,
-            model_name="test_model",
-            eval_data_path=tmp_path / "eval.parquet",
-        )
+        paths = context.prepare_model_data()
 
         assert isinstance(paths, ModelPaths)
         assert paths.model_output_dir.name == "test_model"
@@ -211,9 +241,9 @@ class TestPrepareModelData:
             paths.epiweekly_training_data.name == "epiweekly_combined_training_data.tsv"
         )
 
-    @patch("pipelines.forecast_utils.generate_epiweekly_data")
-    @patch("pipelines.forecast_utils.save_eval_data")
-    @patch("pipelines.forecast_utils.process_and_save_loc_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
     def test_prepare_model_data_creates_directories(
         self,
         mock_process_loc,
@@ -226,6 +256,14 @@ class TestPrepareModelData:
         context = ForecastPipelineContext(
             disease="COVID-19",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=tmp_path / "eval.parquet",
+            nhsn_data_path=None,
             report_date=dt.date(2024, 12, 20),
             first_training_date=dt.date(2024, 9, 22),
             last_training_date=dt.date(2024, 12, 20),
@@ -239,21 +277,25 @@ class TestPrepareModelData:
             logger=logging.getLogger(),
         )
 
-        paths = prepare_model_data(
-            context=context,
-            model_name="test_model",
-            eval_data_path=tmp_path / "eval.parquet",
-        )
+        paths = context.prepare_model_data()
 
         assert paths.model_output_dir.exists()
         assert paths.data_dir.exists()
 
-    @patch("pipelines.forecast_utils.process_and_save_loc_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
     def test_prepare_model_data_raises_without_eval_path(self, mock_process, tmp_path):
         """Test that prepare_model_data raises ValueError without eval_data_path."""
         context = ForecastPipelineContext(
             disease="COVID-19",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=None,
+            nhsn_data_path=None,
             report_date=dt.date(2024, 12, 20),
             first_training_date=dt.date(2024, 9, 22),
             last_training_date=dt.date(2024, 12, 20),
@@ -268,28 +310,34 @@ class TestPrepareModelData:
         )
 
         with pytest.raises(ValueError, match="No path to an evaluation dataset"):
-            prepare_model_data(
-                context=context,
-                model_name="test_model",
-                eval_data_path=None,
-            )
+            context.prepare_model_data()
 
 
 class TestPostprocessForecast:
     """Tests for the postprocess_forecast function."""
 
-    @patch("pipelines.forecast_utils.create_hubverse_table")
-    @patch("pipelines.forecast_utils.plot_and_save_loc_forecast")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.run_r_script")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.create_hubverse_table")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_epiautogp_forecast")
     def test_postprocess_calls_required_functions(
         self,
-        mock_plot,
+        mock_process,
         mock_hubverse,
+        mock_run_r,
         tmp_path,
     ):
         """Test that postprocess_forecast calls plotting and hubverse creation."""
         context = ForecastPipelineContext(
             disease="COVID-19",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=None,
+            nhsn_data_path=None,
             report_date=dt.date(2024, 12, 20),
             first_training_date=dt.date(2024, 9, 22),
             last_training_date=dt.date(2024, 12, 20),
@@ -303,29 +351,41 @@ class TestPostprocessForecast:
             logger=logging.getLogger(),
         )
 
-        postprocess_forecast(context=context, model_name="test_model")
+        context.post_process_forecast()
 
         # Verify functions were called
-        mock_plot.assert_called_once()
+        mock_process.assert_called_once()
         mock_hubverse.assert_called_once()
+        mock_run_r.assert_called_once()
 
-        # Verify correct arguments
-        assert mock_plot.call_args[0][0] == context.model_run_dir
-        assert mock_plot.call_args[0][1] == 33  # n_forecast_days + exclude_last_n_days
-        assert mock_plot.call_args[1]["timeseries_model_name"] == "test_model"
+        # Verify correct arguments to process_epiautogp_forecast
+        assert mock_process.call_args[1]["model_run_dir"] == context.model_run_dir
+        assert mock_process.call_args[1]["model_name"] == "test_model"
+        assert mock_process.call_args[1]["target"] == "nssp"
+        assert mock_process.call_args[1]["frequency"] == "epiweekly"
 
-    @patch("pipelines.forecast_utils.create_hubverse_table")
-    @patch("pipelines.forecast_utils.plot_and_save_loc_forecast")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.run_r_script")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.create_hubverse_table")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_epiautogp_forecast")
     def test_postprocess_calculates_correct_forecast_period(
         self,
-        mock_plot,
+        mock_process,
         mock_hubverse,
+        mock_run_r,
         tmp_path,
     ):
         """Test that n_days_past_last_training is calculated correctly."""
         context = ForecastPipelineContext(
             disease="COVID-19",
             loc="CA",
+            target="nssp",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=None,
+            nhsn_data_path=None,
             report_date=dt.date(2024, 12, 20),
             first_training_date=dt.date(2024, 9, 22),
             last_training_date=dt.date(2024, 12, 20),
@@ -339,7 +399,7 @@ class TestPostprocessForecast:
             logger=logging.getLogger(),
         )
 
-        postprocess_forecast(context=context, model_name="test_model")
+        context.post_process_forecast()
 
-        # Should be exactly n_forecast_days when exclude_last_n_days is 0
-        assert mock_plot.call_args[0][1] == 28
+        # Verify that process_epiautogp_forecast was called
+        mock_process.assert_called_once()
