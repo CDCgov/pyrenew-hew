@@ -19,7 +19,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "jupyter>=1.0.0",
     "ipykernel>=6.29.5",
-    "polars<1.35",
+    "polars>=1.36",
     "pypdf>=5.1.0",
     "pyarrow>=18.0.0",
     "pygit2>=1.17.0",
