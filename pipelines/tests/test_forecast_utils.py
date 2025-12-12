@@ -22,7 +22,7 @@ from unittest.mock import patch
 import polars as pl
 import pytest
 
-from pipelines.epiautogp.forecast_utils import (
+from pipelines.epiautogp.epiautogp_forecast_utils import (
     ForecastPipelineContext,
     ModelPaths,
     postprocess_forecast,
