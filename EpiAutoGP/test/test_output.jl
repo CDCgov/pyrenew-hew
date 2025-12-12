@@ -47,6 +47,7 @@ end
             "nhsn",
             "epiweekly",
             false,
+            "observed",
             Date("2024-01-01"),
             Date[],
             Vector{Real}[]

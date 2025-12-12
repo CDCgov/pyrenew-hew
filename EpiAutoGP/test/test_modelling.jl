@@ -15,7 +15,7 @@
         end
 
         return EpiAutoGPInput(
-            dates, reports, "COVID-19", "US", "nhsn", "epiweekly", false,
+            dates, reports, "COVID-19", "US", "nhsn", "epiweekly", false, "observed",
             dates[end], nowcast_dates, nowcast_reports
         )
     end
@@ -76,7 +76,7 @@
         reports = Float64[100 + 10*sin(i/5) + 2*i for i in 1:30]
 
         input = EpiAutoGPInput(
-            dates, reports, "COVID-19", "US", "nhsn", "daily", false,
+            dates, reports, "COVID-19", "US", "nhsn", "daily", false, "observed",
             dates[end], Date[], Vector{Float64}[]
         )
 

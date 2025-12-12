@@ -15,6 +15,7 @@ with nowcasting requirements and forecast parameters.
 - `target::String`: Target data type (e.g., "nssp", "nhsn")
 - `frequency::String`: Temporal frequency of data ("daily" or "epiweekly")
 - `use_percentage::Bool`: Whether data represents percentage values
+- `ed_visit_type::String`: Type of ED visits ("observed" or "other"), only applicable for NSSP target
 - `forecast_date::Date`: Reference date from which forecasting begins, often this will be a nowcast date
 - `nowcast_dates::Vector{Date}`: Dates requiring nowcasting (typically recent dates with incomplete data)
 - `nowcast_reports::Vector{Vector{Real}}`: Uncertainty bounds or samples for nowcast dates
@@ -28,6 +29,7 @@ struct EpiAutoGPInput
     target::String
     frequency::String
     use_percentage::Bool
+    ed_visit_type::String
     forecast_date::Date
     nowcast_dates::Vector{Date}
     nowcast_reports::Vector{Vector{Real}}
