@@ -15,7 +15,7 @@
         end
 
         return EpiAutoGPInput(
-            dates, reports, "COVID-19", "US", "nhsn",
+            dates, reports, "COVID-19", "US", "nhsn", "epiweekly", false, "observed",
             dates[end], nowcast_dates, nowcast_reports
         )
     end
@@ -59,7 +59,7 @@
 
         forecast_dates,
         forecasts = forecast_with_epiautogp(input;
-            n_forecast_weeks = 2, n_forecasts = 10,
+            n_ahead = 2, n_forecasts = 10,
             transformation_name = "positive",
             n_particles = 1, smc_data_proportion = 0.5, n_mcmc = 3, n_hmc = 3
         )
@@ -68,5 +68,33 @@
         @test size(forecasts, 1) == 3
         @test size(forecasts, 2) == 10
         @test all(forecasts .> 0)
+    end
+
+    @testset "forecast_with_epiautogp - daily frequency" begin
+        # Create daily frequency test data
+        dates = [Date(2024, 1, 1) + Day(i-1) for i in 1:30]
+        reports = Float64[100 + 10*sin(i/5) + 2*i for i in 1:30]
+
+        input = EpiAutoGPInput(
+            dates, reports, "COVID-19", "US", "nhsn", "daily", false, "observed",
+            dates[end], Date[], Vector{Float64}[]
+        )
+
+        forecast_dates,
+        forecasts = forecast_with_epiautogp(input;
+            n_ahead = 7, n_forecasts = 10,
+            transformation_name = "positive",
+            n_particles = 1, smc_data_proportion = 0.5, n_mcmc = 3, n_hmc = 3
+        )
+
+        @test length(forecast_dates) == 8  # 0, 1, 2, ..., 7 days ahead
+        @test size(forecasts, 1) == 8
+        @test size(forecasts, 2) == 10
+        @test all(forecasts .> 0)
+
+        # Verify forecast dates increment by Day(1)
+        @test forecast_dates[1] == dates[end]
+        @test forecast_dates[2] == dates[end] + Day(1)
+        @test forecast_dates[end] == dates[end] + Day(7)
     end
 end
