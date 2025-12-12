@@ -9,8 +9,6 @@ from pipelines.common_utils import (
 )
 from pipelines.epiautogp import (
     convert_to_epiautogp_json,
-    post_process_forecast,
-    prepare_model_data,
     setup_forecast_pipeline,
 )
 
@@ -152,9 +150,7 @@ def main(
 
     # Step 2: Prepare data for modelling (process location data, eval data, epiweekly data)
     # returns paths to prepared data files and directories
-    paths = prepare_model_data(
-        context=context,
-    )
+    paths = context.prepare_model_data()
 
     # Step 3: Convert data to EpiAutoGP JSON format
     logger.info("Converting data to EpiAutoGP JSON format...")
@@ -173,7 +169,7 @@ def main(
     )
 
     # Step 5: Post-process forecast outputs
-    post_process_forecast(context=context)
+    context.post_process_forecast()
 
     logger.info(
         "Single-location EpiAutoGP pipeline complete "

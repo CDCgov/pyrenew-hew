@@ -76,6 +76,121 @@ class ForecastPipelineContext:
     loc_level_nssp_data: pl.LazyFrame
     logger: logging.Logger
 
+    def prepare_model_data(self) -> ModelPaths:
+        """
+        Prepare training and evaluation data for a model.
+
+        This function performs the data preparation steps that are common across
+        all forecast pipelines:
+        1. Create model output directory
+        2. Process and save location data
+        3. Save evaluation data
+        4. Generate epiweekly datasets
+
+        Returns
+        -------
+        ModelPaths
+            Object containing all model output directory and file paths
+
+        Raises
+        ------
+        ValueError
+            If eval_data_path is None
+        """
+        # Create model output directory
+        model_output_dir = Path(self.model_run_dir, self.model_name)
+        data_dir = Path(model_output_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)
+
+        self.logger.info(f"Processing data for {self.loc}")
+
+        # Process and save location data
+        process_and_save_loc_data(
+            loc_abb=self.loc,
+            disease=self.disease,
+            facility_level_nssp_data=self.facility_level_nssp_data,
+            loc_level_nssp_data=self.loc_level_nssp_data,
+            report_date=self.report_date,
+            first_training_date=self.first_training_date,
+            last_training_date=self.last_training_date,
+            save_dir=data_dir,
+            logger=self.logger,
+            credentials_dict=self.credentials_dict,
+            nhsn_data_path=self.nhsn_data_path,
+        )
+
+        # Save evaluation data
+        self.logger.info("Getting eval data...")
+        if self.eval_data_path is None:
+            raise ValueError("No path to an evaluation dataset provided.")
+
+        save_eval_data(
+            loc=self.loc,
+            disease=self.disease,
+            first_training_date=self.first_training_date,
+            last_training_date=self.last_training_date,
+            latest_comprehensive_path=self.eval_data_path,
+            output_data_dir=data_dir,
+            last_eval_date=self.report_date + timedelta(days=self.n_forecast_days),
+            credentials_dict=self.credentials_dict,
+            nhsn_data_path=self.nhsn_data_path,
+        )
+        self.logger.info("Done getting eval data.")
+
+        # Generate epiweekly datasets
+        self.logger.info("Generating epiweekly datasets from daily datasets...")
+        generate_epiweekly_data(data_dir)
+
+        self.logger.info("Data preparation complete.")
+
+        # Return structured paths object
+        return ModelPaths(
+            model_output_dir=model_output_dir,
+            data_dir=data_dir,
+            daily_training_data=Path(data_dir, "combined_training_data.tsv"),
+            epiweekly_training_data=Path(
+                data_dir, "epiweekly_combined_training_data.tsv"
+            ),
+        )
+
+    def post_process_forecast(self) -> None:
+        """
+        Post-process forecast outputs: process results, create hubverse table, and generate plots.
+
+        This function performs the final post-processing steps:
+        1. Process forecast outputs (add metadata, calculate CIs)
+        2. Create hubverse table
+        3. Generate forecast plots using EpiAutoGP-specific plotting script
+
+        Returns
+        -------
+        None
+        """
+        # Process forecast outputs (add metadata, calculate CIs)
+        self.logger.info("Processing forecast outputs...")
+        process_epiautogp_forecast(
+            model_run_dir=self.model_run_dir,
+            model_name=self.model_name,
+            target=self.target,
+            save=True,
+        )
+        self.logger.info("Forecast processing complete.")
+
+        # Create hubverse table
+        self.logger.info("Creating hubverse table...")
+        create_hubverse_table(Path(self.model_run_dir, self.model_name))
+        self.logger.info("Postprocessing complete.")
+
+        # Generate forecast plots using EpiAutoGP-specific plotting script
+        self.logger.info("Generating forecast plots...")
+        plot_script = Path(__file__).parent / "plot_epiautogp_forecast.R"
+        run_r_script(
+            str(plot_script),
+            [str(self.model_run_dir), "--epiautogp-model-name", self.model_name],
+            function_name="plot_epiautogp_forecast",
+        )
+        self.logger.info("Plotting complete.")
+
 
 def setup_forecast_pipeline(
     disease: str,
@@ -216,144 +331,3 @@ def setup_forecast_pipeline(
         loc_level_nssp_data=loc_level_nssp_data,
         logger=logger,
     )
-
-
-def prepare_model_data(
-    context: ForecastPipelineContext,
-) -> ModelPaths:
-    """
-    Prepare training and evaluation data for a model.
-
-    This function performs the data preparation steps that are common across
-    all forecast pipelines:
-    1. Create model output directory
-    2. Process and save location data
-    3. Save evaluation data
-    4. Generate epiweekly datasets
-
-    Parameters
-    ----------
-    context : ForecastPipelineContext
-        Pipeline context with shared configuration
-    model_name : str
-        Name of the model (used for directory naming)
-    eval_data_path : Path, optional
-        Path to evaluation dataset
-    nhsn_data_path : Path, optional
-        Path to NHSN data (for local testing)
-    loc_level_nwss_data : pl.DataFrame, optional
-        Wastewater surveillance data (for pyrenew models)
-
-    Returns
-    -------
-    ModelPaths
-        Object containing all model output directory and file paths
-
-    Raises
-    ------
-    ValueError
-        If eval_data_path is None
-    """
-    logger = context.logger
-
-    # Create model output directory
-    model_output_dir = Path(context.model_run_dir, context.model_name)
-    data_dir = Path(model_output_dir, "data")
-    os.makedirs(data_dir, exist_ok=True)
-
-    logger.info(f"Processing data for {context.loc}")
-
-    # Process and save location data
-    process_and_save_loc_data(
-        loc_abb=context.loc,
-        disease=context.disease,
-        facility_level_nssp_data=context.facility_level_nssp_data,
-        loc_level_nssp_data=context.loc_level_nssp_data,
-        report_date=context.report_date,
-        first_training_date=context.first_training_date,
-        last_training_date=context.last_training_date,
-        save_dir=data_dir,
-        logger=logger,
-        credentials_dict=context.credentials_dict,
-        nhsn_data_path=context.nhsn_data_path,
-    )
-
-    # Save evaluation data
-    logger.info("Getting eval data...")
-    if context.eval_data_path is None:
-        raise ValueError("No path to an evaluation dataset provided.")
-
-    save_eval_data(
-        loc=context.loc,
-        disease=context.disease,
-        first_training_date=context.first_training_date,
-        last_training_date=context.last_training_date,
-        latest_comprehensive_path=context.eval_data_path,
-        output_data_dir=data_dir,
-        last_eval_date=context.report_date + timedelta(days=context.n_forecast_days),
-        credentials_dict=context.credentials_dict,
-        nhsn_data_path=context.nhsn_data_path,
-    )
-    logger.info("Done getting eval data.")
-
-    # Generate epiweekly datasets
-    logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(data_dir)
-
-    logger.info("Data preparation complete.")
-
-    # Return structured paths object
-    return ModelPaths(
-        model_output_dir=model_output_dir,
-        data_dir=data_dir,
-        daily_training_data=Path(data_dir, "combined_training_data.tsv"),
-        epiweekly_training_data=Path(data_dir, "epiweekly_combined_training_data.tsv"),
-    )
-
-
-def post_process_forecast(
-    context: ForecastPipelineContext,
-) -> None:
-    """
-    Post-process forecast outputs: process results, create hubverse table, and generate plots.
-
-    This function performs the final post-processing steps:
-    1. Process forecast outputs (add metadata, calculate CIs)
-    2. Create hubverse table
-    3. Generate forecast plots using EpiAutoGP-specific plotting script
-
-    Parameters
-    ----------
-    context : ForecastPipelineContext
-        Pipeline context with shared configuration
-
-    Returns
-    -------
-    None
-    """
-    logger = context.logger
-
-    # Process forecast outputs (add metadata, calculate CIs)
-    logger.info("Processing forecast outputs...")
-    process_epiautogp_forecast(
-        model_run_dir=context.model_run_dir,
-        model_name=context.model_name,
-        target=context.target,
-        save=True,
-    )
-    logger.info("Forecast processing complete.")
-
-    # Create hubverse table
-    logger.info("Creating hubverse table...")
-    create_hubverse_table(Path(context.model_run_dir, context.model_name))
-    logger.info("Postprocessing complete.")
-
-    # Generate forecast plots using EpiAutoGP-specific plotting script
-    logger.info("Generating forecast plots...")
-    plot_script = Path(__file__).parent / "plot_epiautogp_forecast.R"
-    run_r_script(
-        str(plot_script),
-        [str(context.model_run_dir), "--epiautogp-model-name", context.model_name],
-        function_name="plot_epiautogp_forecast",
-    )
-    logger.info("Plotting complete.")
