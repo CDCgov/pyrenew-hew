@@ -12,6 +12,9 @@ with nowcasting requirements and forecast parameters.
 - `reports::Vector{Real}`: Vector of case counts/measurements corresponding to each date
 - `pathogen::String`: Disease identifier (e.g., "COVID-19", "Influenza", "RSV")
 - `location::String`: Geographic location identifier (e.g., "CA", "NY", "US")
+- `target::String`: Target data type (e.g., "nssp", "nhsn")
+- `frequency::String`: Temporal frequency of data ("daily" or "epiweekly")
+- `use_percentage::Bool`: Whether data represents percentage values
 - `forecast_date::Date`: Reference date from which forecasting begins, often this will be a nowcast date
 - `nowcast_dates::Vector{Date}`: Dates requiring nowcasting (typically recent dates with incomplete data)
 - `nowcast_reports::Vector{Vector{Real}}`: Uncertainty bounds or samples for nowcast dates
@@ -23,6 +26,7 @@ struct EpiAutoGPInput
     pathogen::String
     location::String
     target::String
+    frequency::String
     use_percentage::Bool
     forecast_date::Date
     nowcast_dates::Vector{Date}
