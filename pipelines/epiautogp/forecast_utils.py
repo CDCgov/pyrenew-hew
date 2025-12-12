@@ -29,7 +29,7 @@ from pipelines.prep_eval_data import save_eval_data
 
 
 @dataclass
-class ModelOutputPaths:
+class ModelPaths:
     """
     Container for model output directory structure and file paths.
 
@@ -201,7 +201,7 @@ def prepare_model_data(
     eval_data_path: Path = None,
     nhsn_data_path: Path = None,
     loc_level_nwss_data: pl.DataFrame = None,
-) -> ModelOutputPaths:
+) -> ModelPaths:
     """
     Prepare training and evaluation data for a model.
 
@@ -227,7 +227,7 @@ def prepare_model_data(
 
     Returns
     -------
-    ModelOutputPaths
+    ModelPaths
         Object containing all model output directory and file paths
 
     Raises
@@ -285,7 +285,7 @@ def prepare_model_data(
     logger.info("Data preparation complete.")
 
     # Return structured paths object
-    return ModelOutputPaths(
+    return ModelPaths(
         model_output_dir=model_output_dir,
         data_dir=data_dir,
         daily_training_data=Path(data_dir, "combined_training_data.tsv"),
