@@ -22,9 +22,9 @@ from unittest.mock import patch
 import polars as pl
 import pytest
 
-from pipelines.forecast_utils import (
+from pipelines.epiautogp.forecast_utils import (
     ForecastPipelineContext,
-    ModelOutputPaths,
+    ModelPaths,
     postprocess_forecast,
     prepare_model_data,
     setup_forecast_pipeline,
@@ -58,12 +58,12 @@ class TestForecastPipelineContext:
         assert context.exclude_last_n_days == 0
 
 
-class TestModelOutputPaths:
-    """Tests for the ModelOutputPaths dataclass."""
+class TestModelPaths:
+    """Tests for the ModelPaths dataclass."""
 
     def test_paths_initialization(self):
-        """Test that ModelOutputPaths can be initialized with all fields."""
-        paths = ModelOutputPaths(
+        """Test that ModelPaths can be initialized with all fields."""
+        paths = ModelPaths(
             model_output_dir=Path("/output/model"),
             data_dir=Path("/output/model/data"),
             daily_training_data=Path("/output/model/data/combined_training_data.tsv"),
@@ -180,7 +180,7 @@ class TestPrepareModelData:
         mock_gen_epiweekly,
         tmp_path,
     ):
-        """Test that prepare_model_data returns ModelOutputPaths."""
+        """Test that prepare_model_data returns ModelPaths."""
         context = ForecastPipelineContext(
             disease="COVID-19",
             loc="CA",
@@ -203,7 +203,7 @@ class TestPrepareModelData:
             eval_data_path=tmp_path / "eval.parquet",
         )
 
-        assert isinstance(paths, ModelOutputPaths)
+        assert isinstance(paths, ModelPaths)
         assert paths.model_output_dir.name == "test_model"
         assert paths.data_dir.name == "data"
         assert paths.daily_training_data.name == "combined_training_data.tsv"
