@@ -22,7 +22,7 @@ echo "========================================"
 echo "Testing configurations:"
 echo "  Locations: ${LOCATIONS[*]}"
 echo "  Diseases: ${DISEASES[*]}"
-echo "  Targets: NHSN (weekly), NSSP (weekly percentage)"
+echo "  Targets: NHSN (weekly), NSSP (weekly percentage), NSSP (daily counts), NSSP (daily other ED visits)"
 echo "  Forecast date: $FORECAST_DATE"
 echo ""
 
@@ -64,7 +64,7 @@ for location in "${LOCATIONS[@]}"; do
 		echo "-----------------------------------------"
 
 		# Test 1: Weekly NHSN (hospital admissions)
-		echo "  [1/2] Running weekly NHSN forecast..."
+		echo "  [1/4] Running weekly NHSN forecast..."
 		bash pipelines/tests/test_epiautogp_fit.sh \
 			"$BASE_DIR" \
 			"$disease" \
@@ -81,7 +81,7 @@ for location in "${LOCATIONS[@]}"; do
 		fi
 
 		# Test 2: Weekly NSSP percentage (ED visits as percentage)
-		echo "  [2/2] Running weekly NSSP percentage forecast..."
+		echo "  [2/4] Running weekly NSSP percentage forecast..."
 		bash pipelines/tests/test_epiautogp_fit.sh \
 			"$BASE_DIR" \
 			"$disease" \
@@ -97,6 +97,41 @@ for location in "${LOCATIONS[@]}"; do
 			echo "  ✓ Weekly NSSP percentage forecast complete"
 		fi
 
+		# Test 3: Daily NSSP counts (ED visit counts, not percentages)
+		echo "  [3/4] Running daily NSSP count forecast..."
+		bash pipelines/tests/test_epiautogp_fit.sh \
+			"$BASE_DIR" \
+			"$disease" \
+			"$location" \
+			"nssp" \
+			"daily" \
+			"false"
+
+		if [ "$?" -ne 0 ]; then
+			echo "TEST-MODE FAIL: NSSP daily count forecast failed for $disease, $location"
+			exit 1
+		else
+			echo "  ✓ Daily NSSP count forecast complete"
+		fi
+
+		# Test 4: Daily NSSP other ED visits (non-target background)
+		echo "  [4/4] Running daily NSSP other ED visits forecast..."
+		bash pipelines/tests/test_epiautogp_fit.sh \
+			"$BASE_DIR" \
+			"$disease" \
+			"$location" \
+			"nssp" \
+			"daily" \
+			"false" \
+			"other"
+
+		if [ "$?" -ne 0 ]; then
+			echo "TEST-MODE FAIL: NSSP daily other ED visits forecast failed for $disease, $location"
+			exit 1
+		else
+			echo "  ✓ Daily NSSP other ED visits forecast complete"
+		fi
+
 		echo "✓ All forecasts complete for $disease, $location"
 	done
 done
@@ -106,8 +141,8 @@ echo "========================================="
 echo "Step 3: Verifying outputs"
 echo "========================================="
 
-# Count expected outputs (2 targets × number of locations × number of diseases)
-EXPECTED_MODELS=$((2 * ${#LOCATIONS[@]} * ${#DISEASES[@]}))
+# Count expected outputs (4 targets × number of locations × number of diseases)
+EXPECTED_MODELS=$((4 * ${#LOCATIONS[@]} * ${#DISEASES[@]}))
 ACTUAL_MODELS=$(find "$BASE_DIR/${FORECAST_DATE}_forecasts" -type d -name "epiautogp_*" | wc -l)
 
 echo "Expected models: $EXPECTED_MODELS"
