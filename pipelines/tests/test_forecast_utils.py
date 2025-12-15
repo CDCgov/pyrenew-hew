@@ -312,6 +312,128 @@ class TestPrepareModelData:
         with pytest.raises(ValueError, match="No path to an evaluation dataset"):
             context.prepare_model_data()
 
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
+    def test_prepare_model_data_passes_nhsn_data_path(
+        self,
+        mock_process_loc,
+        mock_save_eval,
+        mock_gen_epiweekly,
+        tmp_path,
+    ):
+        """Test that prepare_model_data passes nhsn_data_path to data functions."""
+        nhsn_path = tmp_path / "nhsn_data.parquet"
+        context = ForecastPipelineContext(
+            disease="COVID-19",
+            loc="CA",
+            target="nhsn",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="test_model",
+            param_data_dir=None,
+            eval_data_path=tmp_path / "eval.parquet",
+            nhsn_data_path=nhsn_path,
+            report_date=dt.date(2024, 12, 20),
+            first_training_date=dt.date(2024, 9, 22),
+            last_training_date=dt.date(2024, 12, 20),
+            n_forecast_days=28,
+            exclude_last_n_days=0,
+            model_batch_dir=tmp_path / "batch",
+            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
+            credentials_dict={},
+            facility_level_nssp_data=pl.LazyFrame(),
+            loc_level_nssp_data=pl.LazyFrame(),
+            logger=logging.getLogger(),
+        )
+
+        _ = context.prepare_model_data()
+
+        # Verify nhsn_data_path was passed to process_and_save_loc_data
+        mock_process_loc.assert_called_once()
+        assert mock_process_loc.call_args[1]["nhsn_data_path"] == nhsn_path
+
+        # Verify nhsn_data_path was passed to save_eval_data
+        mock_save_eval.assert_called_once()
+        assert mock_save_eval.call_args[1]["nhsn_data_path"] == nhsn_path
+
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
+    def test_prepare_model_data_with_nhsn_target(
+        self,
+        mock_process_loc,
+        mock_save_eval,
+        mock_gen_epiweekly,
+        tmp_path,
+    ):
+        """Test prepare_model_data with NHSN target and data."""
+        nhsn_path = tmp_path / "nhsn_hospital_admissions.parquet"
+        eval_path = tmp_path / "eval.parquet"
+
+        context = ForecastPipelineContext(
+            disease="COVID-19",
+            loc="CA",
+            target="nhsn",
+            frequency="epiweekly",
+            use_percentage=False,
+            ed_visit_type="observed",
+            model_name="epiautogp_nhsn_epiweekly",
+            param_data_dir=None,
+            eval_data_path=eval_path,
+            nhsn_data_path=nhsn_path,
+            report_date=dt.date(2024, 12, 20),
+            first_training_date=dt.date(2024, 9, 22),
+            last_training_date=dt.date(2024, 12, 20),
+            n_forecast_days=28,
+            exclude_last_n_days=0,
+            model_batch_dir=tmp_path / "batch",
+            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
+            credentials_dict={"key": "value"},
+            facility_level_nssp_data=pl.LazyFrame(),
+            loc_level_nssp_data=pl.LazyFrame(),
+            logger=logging.getLogger(),
+        )
+
+        paths = context.prepare_model_data()
+
+        # Verify the method returns valid paths
+        assert isinstance(paths, ModelPaths)
+        assert paths.model_output_dir.name == "epiautogp_nhsn_epiweekly"
+        assert paths.data_dir.name == "data"
+
+        # Verify process_and_save_loc_data was called with NHSN parameters
+        mock_process_loc.assert_called_once_with(
+            loc_abb="CA",
+            disease="COVID-19",
+            facility_level_nssp_data=context.facility_level_nssp_data,
+            loc_level_nssp_data=context.loc_level_nssp_data,
+            report_date=dt.date(2024, 12, 20),
+            first_training_date=dt.date(2024, 9, 22),
+            last_training_date=dt.date(2024, 12, 20),
+            save_dir=paths.data_dir,
+            logger=context.logger,
+            credentials_dict={"key": "value"},
+            nhsn_data_path=nhsn_path,
+        )
+
+        # Verify save_eval_data was called with NHSN parameters
+        mock_save_eval.assert_called_once_with(
+            loc="CA",
+            disease="COVID-19",
+            first_training_date=dt.date(2024, 9, 22),
+            last_training_date=dt.date(2024, 12, 20),
+            latest_comprehensive_path=eval_path,
+            output_data_dir=paths.data_dir,
+            last_eval_date=dt.date(2024, 12, 20) + dt.timedelta(days=28),
+            credentials_dict={"key": "value"},
+            nhsn_data_path=nhsn_path,
+        )
+
+        # Verify epiweekly data generation was called
+        mock_gen_epiweekly.assert_called_once_with(paths.data_dir)
+
 
 class TestPostprocessForecast:
     """Tests for the postprocess_forecast function."""
