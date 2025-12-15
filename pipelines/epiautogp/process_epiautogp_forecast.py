@@ -28,6 +28,12 @@ def calculate_credible_intervals(
     -------
     pl.DataFrame
         Credible intervals with columns for median, .lower, .upper at each width
+
+    Notes
+    -----
+    The output format matches R's ggdist::median_qi output, with separate rows
+    for each credible interval width. For example, if ci_widths=[0.5, 0.95],
+    each group will have two rows: one for the 50% CI and one for the 95% CI.
     """
     # Group by everything except .draw and .value
     group_cols = [c for c in samples.columns if c not in [".draw", ".value"]]
@@ -105,6 +111,22 @@ def process_epiautogp_forecast(
         Dictionary with keys:
         - "samples": Forecast samples with metadata
         - "ci": Credible intervals
+
+    Raises
+    ------
+    FileNotFoundError
+        If the EpiAutoGP forecast parquet file doesn't exist
+
+    Notes
+    -----
+    The function reads Julia-generated parquet files with the naming convention:
+    `{frequency}_epiautogp_samples_{suffix}.parquet` where suffix is:
+    - "h" for NHSN hospital admissions
+    - "e" for NSSP emergency department visits
+
+    The aggregated_numerator and aggregated_denominator flags are set to False
+    and None respectively because EpiAutoGP produces forecasts directly at the
+    specified frequency without aggregation from daily to epiweekly.
     """
     model_dir = Path(model_run_dir) / model_name
 
