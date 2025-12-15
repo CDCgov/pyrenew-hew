@@ -347,8 +347,10 @@ process_model_samples.timeseries <- function(
 #' @return Character string with model type ("pyrenew", "timeseries", etc.)
 #' @keywords internal
 detect_model_type <- function(model_name) {
-  if (grepl("^ts_", model_name) ||
-      grepl("timeseries", model_name, ignore.case = TRUE)) {
+  if (
+    grepl("^ts_", model_name) ||
+      grepl("timeseries", model_name, ignore.case = TRUE)
+  ) {
     return("timeseries")
   } else if (grepl("epiautogp", model_name, ignore.case = TRUE)) {
     return("epiautogp")
@@ -663,7 +665,10 @@ process_forecast <- function(
 
   epiweekly_training_dat <- readr::read_tsv(
     fs::path(
-      model_dir, "data", "epiweekly_combined_training_data", ext = "tsv"
+      model_dir,
+      "data",
+      "epiweekly_combined_training_data",
+      ext = "tsv"
     ),
     col_types = data_col_types
   )
