@@ -217,7 +217,7 @@ function create_forecast_output(
         end
     end
 
-    # Convert percentage to proportion if needed (R expects proportions for prop_ variables)
+    # Input is in percentage format (0-100); convert to proportion (0-1) as R expects proportions for prop_ variables
     if input.use_percentage && input.target == "nssp"
         forecast_df[!, Symbol(".value")] = forecast_df[!, Symbol(".value")] ./ 100.0
     end
