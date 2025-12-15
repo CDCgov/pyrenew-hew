@@ -29,9 +29,32 @@ def run_epiautogp_forecast(
     model_dir : Path
         Directory to save model outputs.
     params : dict
-        Parameters to pass to EpiAutoGP.
+        Parameters to pass to EpiAutoGP. Expected keys:
+        - n_ahead: Number of time steps to forecast
+        - n_particles: Number of particles for SMC
+        - n_mcmc: Number of MCMC steps for GP kernel structure
+        - n_hmc: Number of HMC steps for GP kernel hyperparameters
+        - n_forecast_draws: Number of forecast draws to generate
+        - transformation: Type of transformation ("percentage" or "boxcox")
+        - smc_data_proportion: Proportion of data used in each SMC step
     execution_settings : dict
-        Execution settings for the Julia environment.
+        Execution settings for the Julia environment. Expected keys:
+        - project: Julia project name
+        - threads: Number of threads to use
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    RuntimeError
+        If Julia environment setup or script execution fails
+
+    Notes
+    -----
+    This function sets up the EpiAutoGP Julia environment and runs the
+    forecasting script. The output is saved to model_dir.
     """
     # Ensure output directory exists
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -91,6 +114,92 @@ def main(
     smc_data_proportion: float = 0.1,
     n_threads: int = 1,
 ) -> None:
+    """
+    Run the complete EpiAutoGP forecasting pipeline for a single location.
+
+    This function orchestrates the full EpiAutoGP forecasting pipeline:
+    1. Sets up logging and generates model name
+    2. Loads and validates data
+    3. Prepares training and evaluation datasets
+    4. Converts data to EpiAutoGP JSON format
+    5. Runs EpiAutoGP forecasting model
+    6. Post-processes forecast outputs and generates plots
+
+    Parameters
+    ----------
+    disease : str
+        Disease to model (e.g., "COVID-19", "Influenza", "RSV")
+    report_date : str
+        Report date in YYYY-MM-DD format or "latest"
+    loc : str
+        Two-letter USPS location abbreviation (e.g., "CA", "NY")
+    facility_level_nssp_data_dir : Path | str
+        Directory containing facility-level NSSP ED visit data
+    state_level_nssp_data_dir : Path | str
+        Directory containing state-level NSSP ED visit data
+    param_data_dir : Path | str
+        Directory containing parameter data for the model
+    output_dir : Path | str
+        Root directory for output
+    n_training_days : int
+        Number of days of training data
+    n_forecast_days : int
+        Number of days ahead to forecast
+    target : str
+        Target data type: "nssp" for ED visit data or
+        "nhsn" for hospital admission counts
+    frequency : str
+        Data frequency: "daily" or "epiweekly"
+    use_percentage : bool, default=False
+        If True, convert ED visits to percentage of total ED visits
+        (only applicable for NSSP target)
+    ed_visit_type : str, default="observed"
+        Type of ED visits to model: "observed" (disease-related) or
+        "other" (non-disease background). Only applicable for NSSP target
+    exclude_last_n_days : int, default=0
+        Number of recent days to exclude from training
+    eval_data_path : Path | None, default=None
+        Path to evaluation data file
+    credentials_path : Path | None, default=None
+        Path to credentials file for data access
+    nhsn_data_path : Path | None, default=None
+        Path to NHSN hospital admission data
+    n_particles : int, default=24
+        Number of particles for Sequential Monte Carlo (SMC)
+    n_mcmc : int, default=100
+        Number of MCMC steps for GP kernel structure learning
+    n_hmc : int, default=50
+        Number of Hamiltonian Monte Carlo steps for GP hyperparameters
+    n_forecast_draws : int, default=2000
+        Number of forecast draws to generate
+    smc_data_proportion : float, default=0.1
+        Proportion of data used in each SMC step
+    n_threads : int, default=1
+        Number of threads for Julia execution
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If invalid parameter combinations are provided (e.g., use_percentage=True
+        with target="nhsn", or frequency="daily" with target="nhsn")
+    FileNotFoundError
+        If required data files or directories don't exist
+    RuntimeError
+        If Julia execution or R plotting fails
+
+    Notes
+    -----
+    For epiweekly forecasts, n_forecast_days is converted to weeks by dividing
+    by 7 and rounding up. The transformation type is set to "percentage" if
+    use_percentage=True, otherwise "boxcox" is used.
+
+    The model name is automatically generated based on target, frequency,
+    use_percentage, and ed_visit_type parameters.
+    """
     # Step 0: Set up logging, model name and params to pass to epiautogp
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
