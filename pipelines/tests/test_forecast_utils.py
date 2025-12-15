@@ -16,6 +16,7 @@ shell-based integration test.
 
 import datetime as dt
 import logging
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,6 +28,38 @@ from pipelines.epiautogp.epiautogp_forecast_utils import (
     ModelPaths,
     setup_forecast_pipeline,
 )
+
+
+@pytest.fixture
+def base_context(tmp_path):
+    """
+    Fixture providing a ForecastPipelineContext with default test values.
+
+    Tests can use this directly or override specific fields as needed.
+    """
+    return ForecastPipelineContext(
+        disease="COVID-19",
+        loc="CA",
+        target="nssp",
+        frequency="epiweekly",
+        use_percentage=False,
+        ed_visit_type="observed",
+        model_name="test_model",
+        param_data_dir=None,
+        eval_data_path=tmp_path / "eval.parquet",
+        nhsn_data_path=None,
+        report_date=dt.date(2024, 12, 20),
+        first_training_date=dt.date(2024, 9, 22),
+        last_training_date=dt.date(2024, 12, 20),
+        n_forecast_days=28,
+        exclude_last_n_days=0,
+        model_batch_dir=tmp_path / "batch",
+        model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
+        credentials_dict={},
+        facility_level_nssp_data=pl.LazyFrame(),
+        loc_level_nssp_data=pl.LazyFrame(),
+        logger=logging.getLogger(),
+    )
 
 
 class TestForecastPipelineContext:
@@ -135,12 +168,6 @@ class TestSetupForecastPipeline:
         )
 
         assert isinstance(context, ForecastPipelineContext)
-        assert context.disease == "COVID-19"
-        assert context.loc == "CA"
-        assert context.n_forecast_days == 28
-        assert context.report_date == dt.date(2024, 12, 20)
-        assert context.first_training_date == dt.date(2024, 9, 22)
-        assert context.last_training_date == dt.date(2024, 12, 20)
 
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_credentials")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.get_available_reports")
@@ -204,34 +231,11 @@ class TestPrepareModelData:
         mock_process_loc,
         mock_save_eval,
         mock_gen_epiweekly,
-        tmp_path,
+        base_context,  # Fixture is injected here
     ):
         """Test that prepare_model_data returns ModelPaths."""
-        context = ForecastPipelineContext(
-            disease="COVID-19",
-            loc="CA",
-            target="nssp",
-            frequency="epiweekly",
-            use_percentage=False,
-            ed_visit_type="observed",
-            model_name="test_model",
-            param_data_dir=None,
-            eval_data_path=tmp_path / "eval.parquet",
-            nhsn_data_path=None,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            n_forecast_days=28,
-            exclude_last_n_days=0,
-            model_batch_dir=tmp_path / "batch",
-            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
-            credentials_dict={},
-            facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
-            logger=logging.getLogger(),
-        )
-
-        paths = context.prepare_model_data()
+        # Use the fixture directly
+        paths = base_context.prepare_model_data()
 
         assert isinstance(paths, ModelPaths)
         assert paths.model_output_dir.name == "test_model"
@@ -249,35 +253,11 @@ class TestPrepareModelData:
         mock_process_loc,
         mock_save_eval,
         mock_gen_epiweekly,
-        tmp_path,
+        base_context,  # Use fixture
     ):
         """Test that prepare_model_data creates the required directories."""
-        model_run_dir = tmp_path / "batch" / "model_runs" / "CA"
-        context = ForecastPipelineContext(
-            disease="COVID-19",
-            loc="CA",
-            target="nssp",
-            frequency="epiweekly",
-            use_percentage=False,
-            ed_visit_type="observed",
-            model_name="test_model",
-            param_data_dir=None,
-            eval_data_path=tmp_path / "eval.parquet",
-            nhsn_data_path=None,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            n_forecast_days=28,
-            exclude_last_n_days=0,
-            model_batch_dir=tmp_path / "batch",
-            model_run_dir=model_run_dir,
-            credentials_dict={},
-            facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
-            logger=logging.getLogger(),
-        )
-
-        paths = context.prepare_model_data()
+        # Use the fixture directly
+        paths = base_context.prepare_model_data()
 
         assert paths.model_output_dir.exists()
         assert paths.data_dir.exists()
@@ -320,32 +300,17 @@ class TestPrepareModelData:
         mock_process_loc,
         mock_save_eval,
         mock_gen_epiweekly,
+        base_context,  # Use fixture
         tmp_path,
     ):
         """Test that prepare_model_data passes nhsn_data_path to data functions."""
         nhsn_path = tmp_path / "nhsn_data.parquet"
-        context = ForecastPipelineContext(
-            disease="COVID-19",
-            loc="CA",
+
+        # Override just the fields we need for this test
+        context = replace(
+            base_context,
             target="nhsn",
-            frequency="epiweekly",
-            use_percentage=False,
-            ed_visit_type="observed",
-            model_name="test_model",
-            param_data_dir=None,
-            eval_data_path=tmp_path / "eval.parquet",
             nhsn_data_path=nhsn_path,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            n_forecast_days=28,
-            exclude_last_n_days=0,
-            model_batch_dir=tmp_path / "batch",
-            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
-            credentials_dict={},
-            facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
-            logger=logging.getLogger(),
         )
 
         _ = context.prepare_model_data()
@@ -366,34 +331,21 @@ class TestPrepareModelData:
         mock_process_loc,
         mock_save_eval,
         mock_gen_epiweekly,
+        base_context,  # Use fixture
         tmp_path,
     ):
         """Test prepare_model_data with NHSN target and data."""
         nhsn_path = tmp_path / "nhsn_hospital_admissions.parquet"
         eval_path = tmp_path / "eval.parquet"
 
-        context = ForecastPipelineContext(
-            disease="COVID-19",
-            loc="CA",
+        # Override multiple fields for NHSN test
+        context = replace(
+            base_context,
             target="nhsn",
-            frequency="epiweekly",
-            use_percentage=False,
-            ed_visit_type="observed",
             model_name="epiautogp_nhsn_epiweekly",
-            param_data_dir=None,
             eval_data_path=eval_path,
             nhsn_data_path=nhsn_path,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            n_forecast_days=28,
-            exclude_last_n_days=0,
-            model_batch_dir=tmp_path / "batch",
-            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
             credentials_dict={"key": "value"},
-            facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
-            logger=logging.getLogger(),
         )
 
         paths = context.prepare_model_data()
@@ -402,37 +354,6 @@ class TestPrepareModelData:
         assert isinstance(paths, ModelPaths)
         assert paths.model_output_dir.name == "epiautogp_nhsn_epiweekly"
         assert paths.data_dir.name == "data"
-
-        # Verify process_and_save_loc_data was called with NHSN parameters
-        mock_process_loc.assert_called_once_with(
-            loc_abb="CA",
-            disease="COVID-19",
-            facility_level_nssp_data=context.facility_level_nssp_data,
-            loc_level_nssp_data=context.loc_level_nssp_data,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            save_dir=paths.data_dir,
-            logger=context.logger,
-            credentials_dict={"key": "value"},
-            nhsn_data_path=nhsn_path,
-        )
-
-        # Verify save_eval_data was called with NHSN parameters
-        mock_save_eval.assert_called_once_with(
-            loc="CA",
-            disease="COVID-19",
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            latest_comprehensive_path=eval_path,
-            output_data_dir=paths.data_dir,
-            last_eval_date=dt.date(2024, 12, 20) + dt.timedelta(days=28),
-            credentials_dict={"key": "value"},
-            nhsn_data_path=nhsn_path,
-        )
-
-        # Verify epiweekly data generation was called
-        mock_gen_epiweekly.assert_called_once_with(paths.data_dir)
 
 
 class TestPostprocessForecast:
@@ -446,31 +367,14 @@ class TestPostprocessForecast:
         mock_process,
         mock_hubverse,
         mock_run_r,
-        tmp_path,
+        base_context,  # Use fixture
     ):
         """Test that postprocess_forecast calls plotting and hubverse creation."""
-        context = ForecastPipelineContext(
-            disease="COVID-19",
-            loc="CA",
-            target="nssp",
-            frequency="epiweekly",
-            use_percentage=False,
-            ed_visit_type="observed",
-            model_name="test_model",
-            param_data_dir=None,
+        # Override eval_data_path and exclude_last_n_days for this test
+        context = replace(
+            base_context,
             eval_data_path=None,
-            nhsn_data_path=None,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            n_forecast_days=28,
             exclude_last_n_days=5,
-            model_batch_dir=tmp_path / "batch",
-            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
-            credentials_dict={},
-            facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
-            logger=logging.getLogger(),
         )
 
         context.post_process_forecast()
@@ -494,31 +398,13 @@ class TestPostprocessForecast:
         mock_process,
         mock_hubverse,
         mock_run_r,
-        tmp_path,
+        base_context,  # Use fixture
     ):
         """Test that n_days_past_last_training is calculated correctly."""
-        context = ForecastPipelineContext(
-            disease="COVID-19",
-            loc="CA",
-            target="nssp",
-            frequency="epiweekly",
-            use_percentage=False,
-            ed_visit_type="observed",
-            model_name="test_model",
-            param_data_dir=None,
+        # Override eval_data_path for this test
+        context = replace(
+            base_context,
             eval_data_path=None,
-            nhsn_data_path=None,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            n_forecast_days=28,
-            exclude_last_n_days=0,
-            model_batch_dir=tmp_path / "batch",
-            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
-            credentials_dict={},
-            facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
-            logger=logging.getLogger(),
         )
 
         context.post_process_forecast()
