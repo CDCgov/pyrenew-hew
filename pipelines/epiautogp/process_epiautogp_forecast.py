@@ -155,8 +155,8 @@ def process_epiautogp_forecast(
         forecast_samples = forecast_samples.with_columns(pl.col("date").str.to_date())
 
     # Add aggregation metadata columns for compatibility with plotting functions
-    # EpiAutoGP produces epiweekly forecasts, so aggregated_numerator = False
-    # (not aggregated from daily to epiweekly by the pipeline)
+    # EpiAutoGP produces forecasts at the specified frequency (daily or epiweekly),
+    # so aggregated_numerator = False (no aggregation from daily to epiweekly is performed by the pipeline)
     model_samples_tidy = forecast_samples.with_columns(
         [
             pl.lit(False).alias("aggregated_numerator"),
