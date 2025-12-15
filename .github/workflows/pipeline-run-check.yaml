@@ -53,7 +53,7 @@ jobs:
         run: uv run python pipelines/generate_test_data.py ${{ env.BASE_DIR }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
@@ -89,7 +89,7 @@ jobs:
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
 
       - name: Upload model fitting output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: |
             test-fit-ts-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
@@ -155,7 +155,7 @@ jobs:
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
 
       - name: Upload model fitting output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: |
             test-fit-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
