@@ -131,59 +131,53 @@ test_that("process_model_samples.timeseries validates ts_samples", {
   )
 })
 
-test_that(
-  "process_loc_forecast delegates to process_forecast with model_name",
-  {
-    # Test that process_loc_forecast calls process_forecast when
-    # model_name is provided by checking that it doesn't use the
-    # legacy code path
+test_that("process_loc_forecast delegates to process_forecast with model_name", { # nolint
+  # Test that process_loc_forecast calls process_forecast when
+  # model_name is provided by checking that it doesn't use the
+  # legacy code path
 
-    # Create a simple test: when model_name is provided, function
-    # should attempt to call process_forecast, which will try to
-    # read files. When model_name is NA, it uses the legacy path
-    # with different error message
+  # Create a simple test: when model_name is provided, function
+  # should attempt to call process_forecast, which will try to
+  # read files. When model_name is NA, it uses the legacy path
+  # with different error message
 
-    # Test with model_name provided (new interface)
-    expect_error(
-      process_loc_forecast(
-        model_run_dir = "/fake/dir",
-        n_forecast_days = 7,
-        model_name = "test_model",
-        save = FALSE
-      ),
-      # This error comes from process_forecast trying to read
-      # training data
-      "does not exist"
-    )
+  # Test with model_name provided (new interface)
+  expect_error(
+    process_loc_forecast(
+      model_run_dir = "/fake/dir",
+      n_forecast_days = 7,
+      model_name = "test_model",
+      save = FALSE
+    ),
+    # This error comes from process_forecast trying to read
+    # training data
+    "does not exist"
+  )
 
-    # Test with legacy interface - should give different error
-    expect_error(
-      process_loc_forecast(
-        model_run_dir = "/fake/dir",
-        n_forecast_days = 7,
-        model_name = NA,
-        pyrenew_model_name = NA,
-        timeseries_model_name = NA
-      ),
-      "Either `model_name` or `pyrenew_model_name`"
-    )
-  }
-)
+  # Test with legacy interface - should give different error
+  expect_error(
+    process_loc_forecast(
+      model_run_dir = "/fake/dir",
+      n_forecast_days = 7,
+      model_name = NA,
+      pyrenew_model_name = NA,
+      timeseries_model_name = NA
+    ),
+    "Either `model_name` or `pyrenew_model_name`"
+  )
+})
 
-test_that(
-  "process_loc_forecast validates legacy interface parameters",
-  {
-    # Should error when neither model_name nor pyrenew/timeseries
-    # names provided
-    expect_error(
-      process_loc_forecast(
-        model_run_dir = "/fake/dir",
-        n_forecast_days = 7,
-        model_name = NA,
-        pyrenew_model_name = NA,
-        timeseries_model_name = NA
-      ),
-      "Either `model_name` or `pyrenew_model_name`"
-    )
-  }
-)
+test_that("process_loc_forecast validates legacy interface parameters", {
+  # Should error when neither model_name nor pyrenew/timeseries
+  # names provided
+  expect_error(
+    process_loc_forecast(
+      model_run_dir = "/fake/dir",
+      n_forecast_days = 7,
+      model_name = NA,
+      pyrenew_model_name = NA,
+      timeseries_model_name = NA
+    ),
+    "Either `model_name` or `pyrenew_model_name`"
+  )
+})
