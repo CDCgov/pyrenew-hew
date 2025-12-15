@@ -12,7 +12,7 @@ import polars as pl
 
 def calculate_credible_intervals(
     samples: pl.DataFrame,
-    ci_widths: list[float] = [0.5, 0.8, 0.95],
+    ci_widths: list[float] | None = None,
 ) -> pl.DataFrame:
     """
     Calculate median and credible intervals from posterior samples.
@@ -21,8 +21,9 @@ def calculate_credible_intervals(
     ----------
     samples : pl.DataFrame
         Samples with .draw, .value, and grouping columns
-    ci_widths : list[float]
-        Widths of credible intervals to compute (e.g., 0.5 = 50% interval)
+    ci_widths : list[float] | None, default=None
+        Widths of credible intervals to compute (e.g., 0.5 = 50% interval).
+        If None, defaults to [0.5, 0.8, 0.95].
 
     Returns
     -------
@@ -35,6 +36,9 @@ def calculate_credible_intervals(
     for each credible interval width. For example, if ci_widths=[0.5, 0.95],
     each group will have two rows: one for the 50% CI and one for the 95% CI.
     """
+    if ci_widths is None:
+        ci_widths = [0.5, 0.8, 0.95]
+
     # Group by everything except .draw and .value
     group_cols = [c for c in samples.columns if c not in [".draw", ".value"]]
 
@@ -80,7 +84,7 @@ def process_epiautogp_forecast(
     model_name: str,
     target: str,
     frequency: str,
-    ci_widths: list[float] = [0.5, 0.8, 0.95],
+    ci_widths: list[float] | None = None,
     save: bool = True,
 ) -> dict[str, pl.DataFrame]:
     """
@@ -100,9 +104,10 @@ def process_epiautogp_forecast(
         Target type ("nhsn" or "nssp")
     frequency : str
         Forecast frequency ("daily" or "epiweekly")
-    ci_widths : list[float]
-        Widths of credible intervals to compute
-    save : bool
+    ci_widths : list[float] | None, default=None
+        Widths of credible intervals to compute.
+        If None, defaults to [0.5, 0.8, 0.95].
+    save : bool, default=True
         Whether to save the output DataFrames as parquet files
 
     Returns
@@ -128,6 +133,9 @@ def process_epiautogp_forecast(
     and None respectively because EpiAutoGP produces forecasts directly at the
     specified frequency without aggregation from daily to epiweekly.
     """
+    if ci_widths is None:
+        ci_widths = [0.5, 0.8, 0.95]
+
     model_dir = Path(model_run_dir) / model_name
 
     # Map target to file suffix (matching Julia's DEFAULT_TARGET_LETTER)
