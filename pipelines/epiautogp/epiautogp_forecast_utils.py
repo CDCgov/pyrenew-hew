@@ -235,6 +235,22 @@ def setup_forecast_pipeline(
         Report date in YYYY-MM-DD format or "latest"
     loc : str
         Two-letter USPS location abbreviation (e.g., "CA", "NY")
+    target : str
+        Target data type: "nssp" or "nhsn"
+    frequency : str
+        Data frequency: "daily" or "epiweekly"
+    use_percentage : bool
+        If True, use percentage values for ED visits (NSSP only)
+    ed_visit_type : str
+        Type of ED visits: "observed" or "other" (NSSP only)
+    model_name : str
+        Name of the model configuration
+    param_data_dir : Path | None
+        Directory containing parameter data
+    eval_data_path : Path | None
+        Path to evaluation data file
+    nhsn_data_path : Path | None
+        Path to NHSN hospital admission data
     facility_level_nssp_data_dir : Path | str
         Directory containing facility-level NSSP ED visit data
     state_level_nssp_data_dir : Path | str
@@ -247,9 +263,9 @@ def setup_forecast_pipeline(
         Number of days ahead to forecast
     exclude_last_n_days : int, default=0
         Number of recent days to exclude from training
-    credentials_path : Path, optional
+    credentials_path : Path | None, default=None
         Path to credentials file
-    logger : logging.Logger, optional
+    logger : logging.Logger | None, default=None
         Logger instance. If None, creates a new logger
 
     Returns
