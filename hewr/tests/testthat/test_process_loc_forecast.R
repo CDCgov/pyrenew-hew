@@ -131,7 +131,7 @@ test_that("process_model_samples.timeseries validates ts_samples", {
   )
 })
 
-test_that("process_loc_forecast delegates to process_forecast with model_name", { # nolint
+test_that("process_loc_forecast delegates correctly", {
   # Test that process_loc_forecast calls process_forecast when
   # model_name is provided by checking that it doesn't use the
   # legacy code path
