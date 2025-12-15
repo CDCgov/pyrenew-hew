@@ -85,11 +85,11 @@ def convert_to_epiautogp_json(
     paths : ModelPaths
         Model paths containing daily and epiweekly training data paths,
         and model_output_dir where the JSON file will be saved
-    nowcast_dates : list[dt.date] | None, default=None
+    nowcast_dates : list[dt.date] | `None`, default=`None`
         Dates requiring nowcasting (typically recent dates with
-        incomplete data). If None, defaults to empty list. Not currently used.
-    nowcast_reports : list[list[float]] | None, default=None
-        Samples for nowcast dates to represent nowcast uncertainty. If None,
+        incomplete data). If `None`, defaults to empty list. Not currently used.
+    nowcast_reports : list[list[float]] | `None`, default=`None`
+        Samples for nowcast dates to represent nowcast uncertainty. If `None`,
         defaults to empty list. Not currently used.
 
     Returns
