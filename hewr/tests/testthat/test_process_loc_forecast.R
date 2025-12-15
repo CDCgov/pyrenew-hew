@@ -81,3 +81,104 @@ test_that("to_tidy_draws_timeseries() works as expected", {
 
   expect_equal(result, expected)
 })
+
+test_that("detect_model_type() correctly identifies model types", {
+  # Test timeseries detection with ts_ prefix
+  expect_equal(detect_model_type("ts_model_v1"), "timeseries")
+  expect_equal(detect_model_type("ts_ensemble"), "timeseries")
+
+  # Test timeseries detection with name containing "timeseries"
+  expect_equal(detect_model_type("timeseries_model"), "timeseries")
+  expect_equal(detect_model_type("my_TimeSeries_model"), "timeseries")
+
+  # Test epiautogp detection
+  expect_equal(detect_model_type("epiautogp_model"), "epiautogp")
+  expect_equal(detect_model_type("EpiAutoGP_v2"), "epiautogp")
+
+  # Test default to pyrenew
+  expect_equal(detect_model_type("pyrenew_hew"), "pyrenew")
+  expect_equal(detect_model_type("pyrenew_e"), "pyrenew")
+  expect_equal(detect_model_type("some_other_model"), "pyrenew")
+})
+
+test_that("process_model_samples S3 dispatch works correctly", {
+  # Test that the generic function exists and has the right class
+  expect_true(is.function(process_model_samples))
+
+  # Test that methods exist for expected classes
+  expect_true(
+    "process_model_samples.pyrenew" %in%
+      methods("process_model_samples")
+  )
+  expect_true(
+    "process_model_samples.timeseries" %in%
+      methods("process_model_samples")
+  )
+})
+
+test_that("process_model_samples.timeseries validates ts_samples", {
+  # Should error when ts_samples is NULL
+  expect_error(
+    process_model_samples.timeseries(
+      model_type = "timeseries",
+      model_run_dir = "/fake/dir",
+      model_name = "ts_model",
+      ts_samples = NULL,
+      required_columns_e = c("date", ".value"),
+      n_forecast_days = 7
+    ),
+    "ts_samples must be provided for timeseries model type"
+  )
+})
+
+test_that(
+  "process_loc_forecast delegates to process_forecast with model_name",
+  {
+    # Test that process_loc_forecast calls process_forecast when
+    # model_name is provided by checking that it doesn't use the
+    # legacy code path
+
+    # Create a simple test: when model_name is provided, the function
+    # should attempt to call process_forecast, which will try to read
+    # files. When model_name is NA, it uses the legacy path with
+    # different error message
+
+    # Test with model_name provided (new interface)
+    expect_error(
+      process_loc_forecast(
+        model_run_dir = "/fake/dir",
+        n_forecast_days = 7,
+        model_name = "test_model",
+        save = FALSE
+      ),
+      # This error comes from process_forecast trying to read training data
+      "does not exist"
+    )
+
+    # Test with legacy interface - should give different error
+    expect_error(
+      process_loc_forecast(
+        model_run_dir = "/fake/dir",
+        n_forecast_days = 7,
+        model_name = NA,
+        pyrenew_model_name = NA,
+        timeseries_model_name = NA
+      ),
+      "Either `model_name` or `pyrenew_model_name`"
+    )
+  }
+)
+
+test_that("process_loc_forecast validates legacy interface parameters", {
+  # Should error when neither model_name nor pyrenew/timeseries names provided
+  expect_error(
+    process_loc_forecast(
+      model_run_dir = "/fake/dir",
+      n_forecast_days = 7,
+      model_name = NA,
+      pyrenew_model_name = NA,
+      timeseries_model_name = NA
+    ),
+    "Either `model_name` or `pyrenew_model_name`/`timeseries_model_name`"
+  )
+})
