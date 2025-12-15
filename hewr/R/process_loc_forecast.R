@@ -286,12 +286,9 @@ to_tidy_draws_timeseries <- function(
 #'
 #' @param model_type Character string indicating model type
 #'   ("pyrenew", "timeseries", "epiautogp")
-#' @param model_run_dir Model run directory
-#' @param model_name Name of directory containing model outputs
-#' @param ts_samples Timeseries samples (if available)
-#' @param required_columns_e Required columns for output
-#' @param n_forecast_days Number of forecast days
-#' @param ... Additional arguments for specific methods
+#' @param ... Additional arguments passed to methods. See specific methods
+#'   for details: [process_model_samples.pyrenew()],
+#'   [process_model_samples.timeseries()]
 #' @return Tibble of model samples
 #' @export
 process_model_samples <- function(model_type, ...) {
@@ -300,6 +297,14 @@ process_model_samples <- function(model_type, ...) {
 
 #' Process PyRenew model samples
 #'
+#' @param model_type Character string indicating model type
+#' @param model_run_dir Model run directory
+#' @param model_name Name of directory containing model outputs
+#' @param ts_samples Timeseries samples (if available)
+#' @param required_columns_e Required columns for output
+#' @param n_forecast_days Number of forecast days
+#' @param ... Additional arguments (unused)
+#' @return Tibble of PyRenew model samples
 #' @exportS3Method
 process_model_samples.pyrenew <- function(
   model_type,
@@ -321,6 +326,14 @@ process_model_samples.pyrenew <- function(
 
 #' Process timeseries model samples
 #'
+#' @param model_type Character string indicating model type
+#' @param model_run_dir Model run directory
+#' @param model_name Name of directory containing model outputs
+#' @param ts_samples Timeseries samples (required for this method)
+#' @param required_columns_e Required columns for output
+#' @param n_forecast_days Number of forecast days
+#' @param ... Additional arguments (unused)
+#' @return Tibble of timeseries model samples
 #' @exportS3Method
 process_model_samples.timeseries <- function(
   model_type,

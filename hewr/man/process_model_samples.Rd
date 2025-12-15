@@ -10,17 +10,9 @@ process_model_samples(model_type, ...)
 \item{model_type}{Character string indicating model type
 ("pyrenew", "timeseries", "epiautogp")}
 
-\item{...}{Additional arguments for specific methods}
-
-\item{model_run_dir}{Model run directory}
-
-\item{model_name}{Name of directory containing model outputs}
-
-\item{ts_samples}{Timeseries samples (if available)}
-
-\item{required_columns_e}{Required columns for output}
-
-\item{n_forecast_days}{Number of forecast days}
+\item{...}{Additional arguments passed to methods. See specific methods
+for details: \code{\link[=process_model_samples.pyrenew]{process_model_samples.pyrenew()}},
+\code{\link[=process_model_samples.timeseries]{process_model_samples.timeseries()}}}
 }
 \value{
 Tibble of model samples

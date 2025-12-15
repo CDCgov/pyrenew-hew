@@ -14,6 +14,24 @@
   ...
 )
 }
+\arguments{
+\item{model_type}{Character string indicating model type}
+
+\item{model_run_dir}{Model run directory}
+
+\item{model_name}{Name of directory containing model outputs}
+
+\item{ts_samples}{Timeseries samples (if available)}
+
+\item{required_columns_e}{Required columns for output}
+
+\item{n_forecast_days}{Number of forecast days}
+
+\item{...}{Additional arguments (unused)}
+}
+\value{
+Tibble of PyRenew model samples
+}
 \description{
 Process PyRenew model samples
 }
