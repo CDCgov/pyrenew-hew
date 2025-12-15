@@ -131,10 +131,12 @@ test_that("process_model_samples.timeseries validates ts_samples", {
   )
 })
 
-test_that("process_loc_forecast delegates to process_forecast with model_name", {
-  # Test that process_loc_forecast calls process_forecast when
-  # model_name is provided by checking that it doesn't use the
-  # legacy code path
+test_that(
+  "process_loc_forecast delegates to process_forecast with model_name",
+  {
+    # Test that process_loc_forecast calls process_forecast when
+    # model_name is provided by checking that it doesn't use the
+    # legacy code path
 
   # Create a simple test: when model_name is provided, the function
   # should attempt to call process_forecast, which will try to read

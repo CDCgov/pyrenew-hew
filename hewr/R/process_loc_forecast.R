@@ -300,7 +300,7 @@ process_model_samples <- function(model_type, ...) {
 
 #' Process PyRenew model samples
 #'
-#' @export
+#' @exportS3Method
 process_model_samples.pyrenew <- function(
   model_type,
   model_run_dir,
@@ -321,7 +321,7 @@ process_model_samples.pyrenew <- function(
 
 #' Process timeseries model samples
 #'
-#' @export
+#' @exportS3Method
 process_model_samples.timeseries <- function(
   model_type,
   model_run_dir,
