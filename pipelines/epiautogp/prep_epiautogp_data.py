@@ -331,7 +331,8 @@ def _extract_nssp_from_pivot(
         raise ValueError(f"Column '{ed_column}' not found in {tsv_path}")
 
     if use_percentage:
-        # For percentage, we need both columns
+        # For percentage, we need both columns regardless of ed_visit_type
+        # because the denominator is always total ED visits (observed + other)
         if "observed_ed_visits" not in df_pivot.columns:
             raise ValueError(
                 f"Column 'observed_ed_visits' required for percentage calculation but not found in {tsv_path}"
@@ -340,7 +341,7 @@ def _extract_nssp_from_pivot(
             raise ValueError(
                 f"Column 'other_ed_visits' required for percentage calculation but not found in {tsv_path}"
             )
-        # Calculate percentage using the selected column
+        # Calculate percentage: ed_column / total_ed_visits * 100
         df_pivot = df_pivot.with_columns(
             (
                 pl.col(ed_column)
