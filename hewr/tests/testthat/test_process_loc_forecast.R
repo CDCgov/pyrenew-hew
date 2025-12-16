@@ -1,3 +1,20 @@
+# Common test fixtures
+fake_dir <- "/fake/dir"
+minimal_required_columns <- c("date", ".value")
+full_required_columns <- c(
+  ".chain",
+  ".iteration",
+  ".draw",
+  "date",
+  "geo_value",
+  "disease",
+  ".variable",
+  ".value",
+  "resolution",
+  "aggregated_numerator",
+  "aggregated_denominator"
+)
+
 example_train_dat <- tibble::tibble(
   geo_value = "CA",
   disease = "COVID-19",
@@ -121,10 +138,10 @@ test_that("process_model_samples.timeseries validates ts_samples", {
   expect_error(
     process_model_samples.timeseries(
       model_type = "timeseries",
-      model_run_dir = "/fake/dir",
+      model_run_dir = fake_dir,
       model_name = "ts_model",
       ts_samples = NULL,
-      required_columns_e = c("date", ".value"),
+      required_columns_e = minimal_required_columns,
       n_forecast_days = 7
     ),
     "ts_samples must be provided for timeseries model type"
@@ -149,10 +166,10 @@ test_that("process_model_samples.timeseries returns ts_samples", {
 
   result <- process_model_samples.timeseries(
     model_type = "timeseries",
-    model_run_dir = "/fake/dir",
+    model_run_dir = fake_dir,
     model_name = "ts_model",
     ts_samples = mock_ts_samples,
-    required_columns_e = c("date", ".value"),
+    required_columns_e = minimal_required_columns,
     n_forecast_days = 7
   )
 
@@ -171,7 +188,7 @@ test_that("process_model_samples.pyrenew dispatches correctly", {
       model_run_dir = "any_path",
       model_name = "pyrenew_h",
       ts_samples = NULL,
-      required_columns_e = c("date", ".value"),
+      required_columns_e = minimal_required_columns,
       n_forecast_days = 7
     )
   )
@@ -195,7 +212,7 @@ test_that("process_loc_forecast delegates correctly", {
   # Test with model_name provided (new interface)
   expect_error(
     process_loc_forecast(
-      model_run_dir = "/fake/dir",
+      model_run_dir = fake_dir,
       n_forecast_days = 7,
       model_name = "test_model",
       save = FALSE
@@ -208,7 +225,7 @@ test_that("process_loc_forecast delegates correctly", {
   # Test with legacy interface - should give different error
   expect_error(
     process_loc_forecast(
-      model_run_dir = "/fake/dir",
+      model_run_dir = fake_dir,
       n_forecast_days = 7,
       model_name = NA,
       pyrenew_model_name = NA,
@@ -223,7 +240,7 @@ test_that("process_loc_forecast validates legacy interface parameters", {
   # names provided
   expect_error(
     process_loc_forecast(
-      model_run_dir = "/fake/dir",
+      model_run_dir = fake_dir,
       n_forecast_days = 7,
       model_name = NA,
       pyrenew_model_name = NA,
