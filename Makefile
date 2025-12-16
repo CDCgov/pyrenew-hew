@@ -220,7 +220,7 @@ run_hw_model: config
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hw" \
 		--job-id "pyrenew-hw-${ENVIRONMENT}_${FORECAST_DATE}_makefile" \
-		--pool-id pyrenew-pool-32gb \
+		--pool-id pyrenew-pool \
 		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
@@ -235,7 +235,7 @@ run_hew_model: config
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
 		--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}_makefile" \
-		--pool-id pyrenew-pool-32gb \
+		--pool-id pyrenew-pool \
 		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
