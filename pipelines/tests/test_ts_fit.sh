@@ -19,10 +19,10 @@ python pipelines/forecast_timeseries.py \
 	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
 	--output-dir "$BASE_DIR/2024-12-21_forecasts" \
 	--n-training-days 90 \
-	--n-chains 2 \
-	--n-samples 250 \
+	--n-samples 500 \
 	--model-letters "$model_letters" \
-	--eval-data-path "$BASE_DIR/private_data/nssp-etl"
+	--eval-data-path "$BASE_DIR/private_data/nssp-etl" \
+	--nhsn-data-path "$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"
 	exit 1

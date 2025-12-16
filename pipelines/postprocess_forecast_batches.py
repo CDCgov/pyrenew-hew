@@ -9,11 +9,11 @@ and .tsv-format hubverse tables.
 import argparse
 import datetime as dt
 import logging
-import subprocess
 from pathlib import Path
 
 import collate_plots as cp
 
+from pipelines.common_utils import run_r_script
 from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
 
@@ -32,19 +32,14 @@ def combine_hubverse_tables(model_batch_dir_path: str | Path) -> None:
 
     output_path = Path(model_batch_dir_path, output_file_name)
 
-    result = subprocess.run(
+    run_r_script(
+        "pipelines/combine_hubverse_tables.R",
         [
-            "Rscript",
-            "pipelines/combine_hubverse_tables.R",
             f"{model_batch_dir_path}",
             f"{output_path}",
         ],
-        capture_output=True,
+        function_name="combine_hubverse_tables",
     )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"combine_hubverse_tables: {result.stdout}\n{result.stderr.decode('utf-8')}"
-        )
     return None
 
 
@@ -62,7 +57,7 @@ def main(
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-    to_process = get_all_forecast_dirs(base_forecast_dir, diseases)
+    to_process = get_all_forecast_dirs(base_forecast_dir, list(diseases))
     for batch_dir in to_process:
         logger.info(f"Processing {batch_dir}...")
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)

@@ -31,14 +31,16 @@ Container images pushed to the Azure Container Registry are automatically tagged
 > [!NOTE]
 >
 > Please contact a project maintainer if you believe you need access to pipelines.
+> CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
 
-> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-team-materials/routine_forecast_sop.html).
+> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
 
 > Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
 
 Pipelines can be run interactively or non-interactively:
 - `pipelines/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
 - The `Makefile` also provides targets that will run pipelines non-interactively. Run `make help` for more information.
+- Pipelines are run through the command line python interface when scheduled using [Pyrenew-Cron](https://github.com/cdcent/pyrenew-cron).
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.

@@ -7,6 +7,12 @@ import jax.numpy as jnp
 import numpy as np
 import polars as pl
 from jax.typing import ArrayLike
+from pyrenew.time import (
+    create_date_time_spine,
+    get_end_date,
+    get_n_data_days,
+    validate_mmwr_dates,
+)
 
 
 class PyrenewHEWData:
@@ -48,15 +54,7 @@ class PyrenewHEWData:
         self.right_truncation_offset = right_truncation_offset
         self.population_size = population_size
 
-        if (
-            first_hospital_admissions_date is not None
-            and not first_hospital_admissions_date.astype(dt.datetime).weekday() == 5
-        ):
-            raise ValueError(
-                "Dates for hospital admissions timeseries must "
-                "be Saturdays (MMWR epiweek end "
-                "days)."
-            )
+        validate_mmwr_dates([first_hospital_admissions_date])
 
         self.first_ed_visits_date_ = first_ed_visits_date
         self.first_hospital_admissions_date_ = first_hospital_admissions_date
@@ -90,7 +88,6 @@ class PyrenewHEWData:
         """
         with open(
             json_file_path,
-            "r",
         ) as file:
             model_data = json.load(file)
         nssp_training_data = (
@@ -139,30 +136,32 @@ class PyrenewHEWData:
             nwss_training_data=nwss_training_data,
             population_size=jnp.array(model_data["loc_pop"]).item(),
             right_truncation_offset=model_data["right_truncation_offset"],
-            nhsn_step_size=model_data["nhsn_step_size"],
-            nssp_step_size=model_data["nssp_step_size"],
-            nwss_step_size=model_data["nwss_step_size"],
+            nhsn_step_size=model_data["nhsn_step_size"]
+            if fit_hospital_admissions
+            else None,
+            nssp_step_size=model_data["nssp_step_size"] if fit_ed_visits else None,
+            nwss_step_size=model_data["nwss_step_size"] if fit_wastewater else None,
         )
 
     @property
     def n_ed_visits_data_days(self):
-        return self.get_n_data_days(
-            n_datapoints=self.n_ed_visits_data_days_,
+        return get_n_data_days(
+            n_points=self.n_ed_visits_data_days_,
             date_array=self.dates_observed_ed_visits,
         )
 
     @property
     def n_hospital_admissions_data_days(self):
-        return self.get_n_data_days(
-            n_datapoints=self.n_hospital_admissions_data_days_,
+        return get_n_data_days(
+            n_points=self.n_hospital_admissions_data_days_,
             date_array=self.dates_observed_hospital_admissions,
             timestep_days=7,
         )
 
     @property
     def n_wastewater_data_days(self):
-        return self.get_n_data_days(
-            n_datapoints=self.n_wastewater_data_days_,
+        return get_n_data_days(
+            n_points=self.n_wastewater_data_days_,
             date_array=self.dates_observed_disease_wastewater,
         )
 
@@ -203,7 +202,7 @@ class PyrenewHEWData:
 
     @property
     def last_wastewater_date(self):
-        return self.get_end_date(
+        return get_end_date(
             self.first_wastewater_date,
             self.n_wastewater_data_days,
             timestep_days=1,
@@ -211,7 +210,7 @@ class PyrenewHEWData:
 
     @property
     def last_ed_visits_date(self):
-        return self.get_end_date(
+        return get_end_date(
             self.first_ed_visits_date,
             self.n_ed_visits_data_days,
             timestep_days=1,
@@ -219,7 +218,7 @@ class PyrenewHEWData:
 
     @property
     def last_hospital_admissions_date(self):
-        return self.get_end_date(
+        return get_end_date(
             self.first_hospital_admissions_date,
             self.n_hospital_admissions_data_days,
             timestep_days=7,
@@ -314,21 +313,9 @@ class PyrenewHEWData:
 
     @property
     def date_time_spine(self):
-        date_time_spine = (
-            pl.DataFrame(
-                {
-                    "date": pl.date_range(
-                        start=self.first_data_date_overall,
-                        end=self.last_data_date_overall,
-                        interval="1d",
-                        eager=True,
-                    )
-                }
-            )
-            .with_row_index("t")
-            .with_columns(pl.col("t").cast(pl.Int64))
+        return create_date_time_spine(
+            self.first_data_date_overall, self.last_data_date_overall
         )
-        return date_time_spine
 
     @property
     def wastewater_data_extended(self):
@@ -439,69 +426,49 @@ class PyrenewHEWData:
             )
         return self.lab_site_to_subpop_map_
 
-    def get_end_date(
-        self,
-        first_date: np.datetime64,
-        n_datapoints: int,
-        timestep_days: int = 1,
-    ) -> np.datetime64:
-        """
-        Get end date from a first date and a number of datapoints,
-        with handling of None values and non-daily timeseries
-        """
-        if first_date is None:
-            if n_datapoints != 0:
-                raise ValueError(
-                    "Must provide an initial date if "
-                    "n_datapoints is non-zero. "
-                    f"Got n_datapoints = {n_datapoints} "
-                    "but first_date was `None`"
-                )
-            result = None
-        else:
-            result = first_date + np.timedelta64(
-                (n_datapoints - 1) * timestep_days, "D"
-            )
-        return result
-
-    def get_n_data_days(
-        self,
-        n_datapoints: int = None,
-        date_array: ArrayLike = None,
-        timestep_days: int = 1,
-    ) -> int:
-        if n_datapoints is None and date_array is None:
-            return 0
-        elif date_array is not None and n_datapoints is not None:
-            raise ValueError(
-                "Must provide at most one out of a "
-                "number of datapoints to simulate and "
-                "an array of dates data is observed."
-            )
-        elif date_array is not None:
-            return (
-                (max(date_array) - min(date_array))
-                // np.timedelta64((timestep_days), "D")
-                + 1
-            ).item()
-        else:
-            return n_datapoints
-
     def to_forecast_data(self, n_forecast_points: int) -> Self:
+        """
+        Create a new PyrenewHEWData instance for forecasting.
+
+        This method extends the current data object to include forecast points,
+        converting from observed data to a structure suitable for forecasting.
+
+        Parameters
+        ----------
+        n_forecast_points : int
+            Number of additional days to forecast beyond the current data.
+
+        Returns
+        -------
+        PyrenewHEWData
+            A new instance configured for forecasting with extended time range.
+
+        Notes
+        -----
+        The method handles different temporal resolutions for data streams:
+
+        - ED visits and wastewater data are daily, so they extend by
+          n_forecast_points days.
+        - Hospital admissions are weekly (MMWR epiweeks), so the number of
+          weeks is calculated as total days divided by 7 (integer division).
+        """
+        # Calculate total forecast period
         n_days = self.n_days_post_init + n_forecast_points
         n_weeks = n_days // 7
+
+        # Find the first Saturday on or after first_data_date_overall
         first_dow = self.first_data_date_overall.astype(dt.datetime).weekday()
-        to_first_sat = (5 - first_dow) % 7
+        to_first_sat = (5 - first_dow) % 7  # Saturday is weekday 5
         first_mmwr_ending_date = self.first_data_date_overall + np.timedelta64(
             to_first_sat, "D"
         )
+
         return PyrenewHEWData(
             n_ed_visits_data_days=n_days,
             n_hospital_admissions_data_days=n_weeks,
             n_wastewater_data_days=n_days,
             first_ed_visits_date=self.first_data_date_overall,
             first_hospital_admissions_date=first_mmwr_ending_date,
-            # admissions are MMWR epiweekly
             first_wastewater_date=self.first_data_date_overall,
             right_truncation_offset=None,  # by default, want forecasts of complete reports
             n_ww_lab_sites=self.n_ww_lab_sites,

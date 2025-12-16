@@ -2,7 +2,6 @@ import datetime as dt
 import json
 import logging
 import os
-import subprocess
 import tempfile
 from datetime import datetime
 from logging import Logger
@@ -13,6 +12,7 @@ import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 
+from pipelines.common_utils import run_r_code
 from pyrenew_hew.utils import approx_lognorm
 
 _disease_map = {
@@ -60,17 +60,16 @@ def get_nhsn(
             "nhsn_api_key_secret", os.getenv("NHSN_API_KEY_SECRET")
         )
 
-        r_command = [
-            "Rscript",
-            "-e",
+        run_r_code(
             f"""
-            forecasttools::pull_nhsn(
+            forecasttools::pull_data_cdc_gov_dataset(
+                dataset = "nhsn_hrd_prelim",
                 api_key_id = {py_scalar_to_r_scalar(api_key_id)},
                 api_key_secret = {py_scalar_to_r_scalar(api_key_secret)},
                 start_date = {py_scalar_to_r_scalar(start_date)},
                 end_date = {py_scalar_to_r_scalar(end_date)},
                 columns = {py_scalar_to_r_scalar(columns)},
-                jurisdictions = {py_scalar_to_r_scalar(loc_abb_for_query)}
+                locations = {py_scalar_to_r_scalar(loc_abb_for_query)}
             ) |>
             dplyr::mutate(weekendingdate = as.Date(weekendingdate)) |>
             dplyr::mutate(jurisdiction = dplyr::if_else(jurisdiction == "USA", "US",
@@ -80,12 +79,8 @@ def get_nhsn(
             dplyr::mutate(hospital_admissions = as.numeric(hospital_admissions)) |>
             forecasttools::write_tabular("{str(local_data_file)}")
             """,
-        ]
-
-        result = subprocess.run(r_command)
-
-        if result.returncode != 0:
-            raise RuntimeError(f"pull_and_save_nhsn: {result.stderr.decode('utf-8')}")
+            function_name="get_nhsn",
+        )
     raw_dat = pl.read_parquet(local_data_file)
     dat = raw_dat.with_columns(weekendingdate=pl.col("weekendingdate").cast(pl.Date))
     return dat
@@ -448,7 +443,7 @@ def process_and_save_loc_data(
     report_date: datetime.date,
     first_training_date: datetime.date,
     last_training_date: datetime.date,
-    model_run_dir: Path,
+    save_dir: Path,
     logger: Logger = None,
     facility_level_nssp_data: pl.LazyFrame = None,
     loc_level_nssp_data: pl.LazyFrame = None,
@@ -458,6 +453,8 @@ def process_and_save_loc_data(
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+
+    os.makedirs(save_dir, exist_ok=True)
 
     if facility_level_nssp_data is None and loc_level_nssp_data is None:
         raise ValueError(
@@ -543,10 +540,7 @@ def process_and_save_loc_data(
         "nwss_step_size": 1,
     }
 
-    data_dir = Path(model_run_dir, "data")
-    os.makedirs(data_dir, exist_ok=True)
-
-    with open(Path(data_dir, "data_for_model_fit.json"), "w") as json_file:
+    with open(Path(save_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file, default=str)
 
     combined_training_dat = combine_surveillance_data(
@@ -557,10 +551,10 @@ def process_and_save_loc_data(
     )
 
     if logger is not None:
-        logger.info(f"Saving {loc_abb} to {data_dir}")
+        logger.info(f"Saving {loc_abb} to {save_dir}")
 
     combined_training_dat.write_csv(
-        Path(data_dir, "combined_training_data.tsv"), separator="\t"
+        Path(save_dir, "combined_training_data.tsv"), separator="\t"
     )
     return None
 
@@ -571,7 +565,7 @@ def process_and_save_loc_param(
     loc_level_nwss_data,
     param_estimates,
     fit_ed_visits,
-    model_run_dir,
+    save_dir,
 ) -> None:
     loc_pop_df = get_loc_pop_df()
     loc_pop = loc_pop_df.filter(pl.col("abb") == loc_abb).item(0, "population")
@@ -618,7 +612,7 @@ def process_and_save_loc_param(
         "inf_to_hosp_admit_lognormal_scale": inf_to_hosp_admit_lognormal_scale,
         "inf_to_hosp_admit_pmf": pmfs["delay_pmf"],
     }
-    with open(Path(model_run_dir, "model_params.json"), "w") as json_file:
+    with open(Path(save_dir, "model_params.json"), "w") as json_file:
         json.dump(model_params, json_file, default=str)
 
     return None
