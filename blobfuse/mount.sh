@@ -33,13 +33,55 @@ done
 echo ""
 echo "Creating symlinks in $(pwd)..."
 
-ln -s "/mnt/prod-param-estimates" "./params"
-ln -s "/mnt/pyrenew-hew-prod-output" "./output"
-ln -s "/mnt/pyrenew-test-output" "./test-output"
-ln -s "/mnt/nwss-vintages" "./nwss-vintages"
-ln -s "/mnt/pyrenew-hew-config" "./config"
-ln -s "/mnt/nssp-etl" "./nssp-etl"
-ln -s "/mnt/nssp-archival-vintages" "./nssp-archival-vintages"
+# Create symlinks only if they do not already exist, and inform the user
+if [[ -L "./params" ]]; then
+	echo "Symlink './params' already exists, skipping."
+else
+	ln -s "/mnt/prod-param-estimates" "./params"
+	echo "Created symlink './params' -> '/mnt/prod-param-estimates'"
+fi
+
+if [[ -L "./output" ]]; then
+	echo "Symlink './output' already exists, skipping."
+else
+	ln -s "/mnt/pyrenew-hew-prod-output" "./output"
+	echo "Created symlink './output' -> '/mnt/pyrenew-hew-prod-output'"
+fi
+
+if [[ -L "./test-output" ]]; then
+	echo "Symlink './test-output' already exists, skipping."
+else
+	ln -s "/mnt/pyrenew-test-output" "./test-output"
+	echo "Created symlink './test-output' -> '/mnt/pyrenew-test-output'"
+fi
+
+if [[ -L "./nwss-vintages" ]]; then
+	echo "Symlink './nwss-vintages' already exists, skipping."
+else
+	ln -s "/mnt/nwss-vintages" "./nwss-vintages"
+	echo "Created symlink './nwss-vintages' -> '/mnt/nwss-vintages'"
+fi
+
+if [[ -L "./config" ]]; then
+	echo "Symlink './config' already exists, skipping."
+else
+	ln -s "/mnt/pyrenew-hew-config" "./config"
+	echo "Created symlink './config' -> '/mnt/pyrenew-hew-config'"
+fi
+
+if [[ -L "./nssp-etl" ]]; then
+	echo "Symlink './nssp-etl' already exists, skipping."
+else
+	ln -s "/mnt/nssp-etl" "./nssp-etl"
+	echo "Created symlink './nssp-etl' -> '/mnt/nssp-etl'"
+fi
+
+if [[ -L "./nssp-archival-vintages" ]]; then
+	echo "Symlink './nssp-archival-vintages' already exists, skipping."
+else
+	ln -s "/mnt/nssp-archival-vintages" "./nssp-archival-vintages"
+	echo "Created symlink './nssp-archival-vintages' -> '/mnt/nssp-archival-vintages'"
+fi
 
 echo "Setting environment variables for the Azure Command Center..."
 export NSSP_ETL_PATH="$(pwd)/nssp-etl"

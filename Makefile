@@ -54,7 +54,7 @@ help:
 	@echo ""
 	@echo "Container Build Targets: "
 	@echo "  container_build     : Build the container image"
-	@echo "  dagster            : Run dagster definitions locally"
+	@echo "  dagster             1: Run dagster definitions locally"
 	@echo "  dagster_build       : Build the dagster container image"
 	@echo "  dagster_push        : Push the dagster container image to the Azure Container Registry and code location"
 	@echo "  container_tag       : Tag the container image"
@@ -62,6 +62,7 @@ help:
 	@echo "  container_push      : Push the container image to the Azure Container Registry"
 	@echo ""
 	@echo "Model Fit Targets: "
+	@echo "  acc                 : Run the Azure Command Center for routine production jobs"
 	@echo "  run_timeseries      : Run the timeseries model fit job"
 	@echo "  run_e_model         : Run an e model fit job"
 	@echo "  run_h_models        : Run an h model fit job"
@@ -92,10 +93,10 @@ help:
 # ----------------------- #
 
 mount:
-	sudo ./blobfuse/mount.sh
+	sudo bash -c "source ./blobfuse/mount.sh"
 
 unmount:
-	sudo ./blobfuse/cleanup.sh
+	sudo bash -c "source ./blobfuse/cleanup.sh"
 
 # ----------------------- #
 # Container Build Targets
@@ -132,6 +133,9 @@ config:
 # ---------------- #
 # Model Fit Targets
 # ---------------- #
+
+acc: mount config
+	uv run pipelines/azure_command_center.py
 
 # Auto-set TEST/ENVIRONMENT based on each other
 ifeq ($(shell echo $(ENVIRONMENT) | tr A-Z a-z),test)
