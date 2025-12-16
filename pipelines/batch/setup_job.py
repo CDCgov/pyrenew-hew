@@ -183,7 +183,9 @@ def main(
     # ===============
     # Container Setup
     # ===============
-    container_image_full_string = f"{container_registry}/{container_image_name}:{container_image_version}"
+    container_image_full_string = (
+        f"{container_registry}/{container_image_name}:{container_image_version}"
+    )
     container_settings = get_container_settings(
         container_image_full_string,
         working_directory="containerImageDefault",
@@ -399,10 +401,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--container-registry",
         type=str,
-        help=(
-            "Container registry URL (e.g. ghcr.io/cdcgov) "
-            "to use for the job."
-        ),
+        help=("Container registry URL (e.g. ghcr.io/cdcgov) to use for the job."),
         default="ghcr.io/cdcgov",
     )
     parser.add_argument(
