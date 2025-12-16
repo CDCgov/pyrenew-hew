@@ -160,6 +160,7 @@ run_timeseries: config
 		--model-family timeseries \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "e" \
+		--locations-exclude "WY" \
 		--job-id "timeseries-e-${ENVIRONMENT}_${FORECAST_DATE}_makefile" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
@@ -174,6 +175,7 @@ run_e_model: config
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "e" \
+		--locations-exclude "WY" \
 		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}_makefile" \
 		--pool-id pyrenew-pool \
 		--rng-key "$(RNG_KEY)" \
@@ -204,6 +206,7 @@ run_he_model: config
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "he" \
+		--locations-exclude "WY" \
 		--job-id "pyrenew-he-${ENVIRONMENT}_${FORECAST_DATE}_makefile" \
 		--pool-id pyrenew-pool \
 		--rng-key "$(RNG_KEY)" \
@@ -219,6 +222,7 @@ run_hw_model: config
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hw" \
+		--diseases "COVID-19" \
 		--job-id "pyrenew-hw-${ENVIRONMENT}_${FORECAST_DATE}_makefile" \
 		--pool-id pyrenew-pool \
 		--rng-key "$(RNG_KEY)" \
@@ -234,6 +238,8 @@ run_hew_model: config
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
+		--locations-exclude "WY" \
+		--diseases "COVID-19" \
 		--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}_makefile" \
 		--pool-id pyrenew-pool \
 		--rng-key "$(RNG_KEY)" \
