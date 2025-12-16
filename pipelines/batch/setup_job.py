@@ -38,6 +38,7 @@ def main(
     diseases: str | list[str],
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
+    container_registry: str = "ghcr.io/cdcgov",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     n_training_days: int = 150,
@@ -182,9 +183,9 @@ def main(
     # ===============
     # Container Setup
     # ===============
-    container_image = f"ghcr.io/cdcgov/{container_image_name}:{container_image_version}"
+    container_image_full_string = f"{container_registry}/{container_image_name}:{container_image_version}"
     container_settings = get_container_settings(
-        container_image,
+        container_image_full_string,
         working_directory="containerImageDefault",
         mount_pairs=[
             {
@@ -284,8 +285,7 @@ def main(
     table.add_row("Diseases", ", ".join(disease_list))
     table.add_row("Output Storage Container", str(pyrenew_hew_output_container))
     table.add_row("Output Subdirectory", str(output_subdir))
-    table.add_row("Container Image", str(container_image))
-    table.add_row("Container Version", str(container_image_version))
+    table.add_row("Container Image Full String", str(container_image_full_string))
     table.add_row("Training Days", str(n_training_days))
     table.add_row("Exclude Last N Days", str(exclude_last_n_days))
     table.add_row("RNG Key", str(rng_key))
@@ -395,6 +395,15 @@ if __name__ == "__main__":
             "in which to save results."
         ),
         default="./",
+    )
+    parser.add_argument(
+        "--container-registry",
+        type=str,
+        help=(
+            "Container registry URL (e.g. ghcr.io/cdcgov) "
+            "to use for the job."
+        ),
+        default="ghcr.io/cdcgov",
     )
     parser.add_argument(
         "--container-image-name",
