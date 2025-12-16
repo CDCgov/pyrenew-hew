@@ -282,6 +282,7 @@ def main(
     table.add_row("Model Letters", str(model_letters))
     table.add_row("Additional Forecast Letters", str(additional_forecast_letters))
     table.add_row("Diseases", ", ".join(disease_list))
+    table.add_row("Output Storage Container", str(pyrenew_hew_output_container))
     table.add_row("Output Subdirectory", str(output_subdir))
     table.add_row("Container Image", str(container_image))
     table.add_row("Container Version", str(container_image_version))
