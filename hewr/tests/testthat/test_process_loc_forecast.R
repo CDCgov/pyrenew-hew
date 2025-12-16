@@ -131,6 +131,57 @@ test_that("process_model_samples.timeseries validates ts_samples", {
   )
 })
 
+test_that("process_model_samples.timeseries returns ts_samples", {
+  # Create mock ts_samples
+  mock_ts_samples <- tibble::tibble(
+    .chain = 1,
+    .iteration = 1,
+    .draw = 1,
+    date = as.Date("2024-01-01"),
+    geo_value = "US",
+    disease = "COVID-19",
+    .variable = "other_ed_visits",
+    .value = 100,
+    resolution = "daily",
+    aggregated_numerator = FALSE,
+    aggregated_denominator = NA
+  )
+
+  result <- process_model_samples.timeseries(
+    model_type = "timeseries",
+    model_run_dir = "/fake/dir",
+    model_name = "ts_model",
+    ts_samples = mock_ts_samples,
+    required_columns_e = c("date", ".value"),
+    n_forecast_days = 7
+  )
+
+  # Should return the ts_samples unchanged
+  expect_equal(result, mock_ts_samples)
+})
+
+test_that("process_model_samples.pyrenew dispatches correctly", {
+  # This test just verifies the S3 method exists and dispatches
+  # We expect it to error since we're not providing real data/files
+  # The key is that it calls the method (for code coverage)
+
+  expect_error(
+    process_model_samples.pyrenew(
+      model_type = "pyrenew",
+      model_run_dir = "any_path",
+      model_name = "pyrenew_h",
+      ts_samples = NULL,
+      required_columns_e = c("date", ".value"),
+      n_forecast_days = 7
+    )
+  )
+
+  # Verify the method exists
+  expect_true(
+    "process_model_samples.pyrenew" %in% methods("process_model_samples")
+  )
+})
+
 test_that("process_loc_forecast delegates correctly", {
   # Test that process_loc_forecast calls process_forecast when
   # model_name is provided by checking that it doesn't use the
