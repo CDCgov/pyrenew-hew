@@ -133,12 +133,20 @@ config:
 # Model Fit Targets
 # ---------------- #
 
+# Auto-set TEST/ENVIRONMENT based on each other
+ifeq ($(shell echo $(ENVIRONMENT) | tr A-Z a-z),test)
+override TEST = True
+endif
+ifeq ($(shell echo $(TEST) | tr A-Z a-z),true)
+override ENVIRONMENT = test
+endif
+
 run_timeseries: config
 	uv run python pipelines/batch/setup_job.py \
 		--model-family timeseries \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "e" \
-		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}_t" \
+		--job-id "pyrenew-e-${ENVIRONMENT}_${FORECAST_DATE}_ts" \
 		--pool-id pyrenew-pool \
 		--test "$(TEST)" \
 		--dry-run "$(DRY_RUN)" \
@@ -197,7 +205,7 @@ run_hew_model: config
 		--model-family pyrenew \
 		--output-subdir "${FORECAST_DATE}_forecasts" \
 		--model-letters "hew" \
-	--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}" \
+		--job-id "pyrenew-hew-${ENVIRONMENT}_${FORECAST_DATE}" \
 		--pool-id pyrenew-pool-32gb \
 		--rng-key "$(RNG_KEY)" \
 		--test "$(TEST)" \
