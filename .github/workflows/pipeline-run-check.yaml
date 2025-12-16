@@ -53,7 +53,7 @@ jobs:
         run: uv run python pipelines/generate_test_data.py ${{ env.BASE_DIR }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
@@ -78,7 +78,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download test data
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
@@ -89,7 +89,7 @@ jobs:
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
 
       - name: Upload model fitting output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: |
             test-fit-ts-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
@@ -136,14 +136,14 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download test data
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
       - name: Download timeseries output
         if: ${{ matrix.model != 'hw' && matrix.model != 'h' }}
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: test-fit-ts-*
           path: ${{ env.BASE_DIR }}
@@ -155,7 +155,7 @@ jobs:
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
 
       - name: Upload model fitting output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: |
             test-fit-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
@@ -174,7 +174,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download model fitting output
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: test-fit-*
           path: ${{ env.BASE_DIR }}
