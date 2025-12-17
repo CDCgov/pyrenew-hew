@@ -21,9 +21,8 @@ from pipelines.common_utils import (
     load_credentials,
     load_nssp_data,
     parse_and_validate_report_date,
-    run_r_script,
+    plot_and_save_loc_forecast,
 )
-from pipelines.epiautogp.process_epiautogp_forecast import process_epiautogp_forecast
 from pipelines.forecast_pyrenew import generate_epiweekly_data
 from pipelines.prep_data import process_and_save_loc_data
 from pipelines.prep_eval_data import save_eval_data
@@ -156,42 +155,33 @@ class ForecastPipelineContext:
 
     def post_process_forecast(self) -> None:
         """
-        Post-process forecast outputs: process results, create hubverse table, and generate plots.
+        Post-process forecast outputs: create hubverse table and generate plots.
 
         This function performs the final post-processing steps:
-        1. Process forecast outputs (add metadata, calculate CIs)
-        2. Create hubverse table
-        3. Generate forecast plots using EpiAutoGP-specific plotting script
+        1. Generate forecast plots using hewr via plot_and_save_loc_forecast
+           (which also processes samples via hewr::process_loc_forecast)
+        2. Create hubverse table from processed outputs
 
         Returns
         -------
         None
         """
-        # Process forecast outputs (add metadata, calculate CIs)
-        self.logger.info("Processing forecast outputs...")
-        process_epiautogp_forecast(
+        # Generate forecast plots and process samples using hewr
+        # The plot_and_save_loc_forecast function calls hewr::process_loc_forecast
+        # which dispatches to process_model_samples.epiautogp() to read Julia samples,
+        # add metadata columns, calculate credible intervals, and save outputs
+        self.logger.info("Processing forecast and generating plots...")
+        plot_and_save_loc_forecast(
             model_run_dir=self.model_run_dir,
-            model_name=self.model_name,
-            target=self.target,
-            frequency=self.frequency,
-            save=True,
+            n_forecast_days=self.n_forecast_days,
+            epiautogp_model_name=self.model_name,
         )
-        self.logger.info("Forecast processing complete.")
+        self.logger.info("Processing and plotting complete.")
 
-        # Create hubverse table
+        # Create hubverse table from processed outputs
         self.logger.info("Creating hubverse table...")
         create_hubverse_table(Path(self.model_run_dir, self.model_name))
         self.logger.info("Postprocessing complete.")
-
-        # Generate forecast plots using EpiAutoGP-specific plotting script
-        self.logger.info("Generating forecast plots...")
-        plot_script = Path(__file__).parent / "plot_epiautogp_forecast.R"
-        run_r_script(
-            str(plot_script),
-            [str(self.model_run_dir), "--epiautogp-model-name", self.model_name],
-            function_name="plot_epiautogp_forecast",
-        )
-        self.logger.info("Plotting complete.")
 
 
 def setup_forecast_pipeline(
