@@ -359,14 +359,12 @@ class TestPrepareModelData:
 class TestPostprocessForecast:
     """Tests for the postprocess_forecast function."""
 
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.run_r_script")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.plot_and_save_loc_forecast")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.create_hubverse_table")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_epiautogp_forecast")
     def test_postprocess_calls_required_functions(
         self,
-        mock_process,
         mock_hubverse,
-        mock_run_r,
+        mock_plot,
         base_context,  # Use fixture
     ):
         """Test that postprocess_forecast calls plotting and hubverse creation."""
@@ -380,27 +378,23 @@ class TestPostprocessForecast:
         context.post_process_forecast()
 
         # Verify functions were called
-        mock_process.assert_called_once()
+        mock_plot.assert_called_once()
         mock_hubverse.assert_called_once()
-        mock_run_r.assert_called_once()
 
-        # Verify correct arguments to process_epiautogp_forecast
-        assert mock_process.call_args[1]["model_run_dir"] == context.model_run_dir
-        assert mock_process.call_args[1]["model_name"] == "test_model"
-        assert mock_process.call_args[1]["target"] == "nssp"
-        assert mock_process.call_args[1]["frequency"] == "epiweekly"
+        # Verify correct arguments to plot_and_save_loc_forecast
+        assert mock_plot.call_args[1]["model_run_dir"] == context.model_run_dir
+        assert mock_plot.call_args[1]["n_forecast_days"] == context.n_forecast_days
+        assert mock_plot.call_args[1]["epiautogp_model_name"] == "test_model"
 
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.run_r_script")
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.plot_and_save_loc_forecast")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.create_hubverse_table")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_epiautogp_forecast")
     def test_postprocess_calculates_correct_forecast_period(
         self,
-        mock_process,
         mock_hubverse,
-        mock_run_r,
+        mock_plot,
         base_context,  # Use fixture
     ):
-        """Test that n_days_past_last_training is calculated correctly."""
+        """Test that n_forecast_days is passed correctly."""
         # Override eval_data_path for this test
         context = replace(
             base_context,
@@ -409,5 +403,6 @@ class TestPostprocessForecast:
 
         context.post_process_forecast()
 
-        # Verify that process_epiautogp_forecast was called
-        mock_process.assert_called_once()
+        # Verify that plot_and_save_loc_forecast was called with correct n_forecast_days
+        mock_plot.assert_called_once()
+        assert mock_plot.call_args[1]["n_forecast_days"] == context.n_forecast_days
