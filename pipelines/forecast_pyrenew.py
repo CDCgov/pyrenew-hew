@@ -73,11 +73,12 @@ def copy_and_record_priors(priors_path: Path, model_dir: Path):
     else:
         metadata = {}
 
-    _new_metadata = {
+    new_metadata = {
         "priors_path": str(priors_path),
     }
 
-    metadata.update(_new_metadata)
+    metadata.update(new_metadata)
+
     with open(metadata_file, "wb") as file:
         tomli_w.dump(metadata, file)
 
