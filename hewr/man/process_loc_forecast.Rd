@@ -7,10 +7,8 @@
 process_loc_forecast(
   model_run_dir,
   n_forecast_days,
-  model_name = NA,
   pyrenew_model_name = NA,
   timeseries_model_name = NA,
-  model_type = NULL,
   ci_widths = c(0.5, 0.8, 0.95),
   save = TRUE
 )
@@ -20,20 +18,11 @@ process_loc_forecast(
 
 \item{n_forecast_days}{An integer specifying the number of days to forecast.}
 
-\item{model_name}{Name of directory containing model outputs.
-If provided, uses new S3 dispatch interface (overrides
-pyrenew_model_name/timeseries_model_name).}
-
 \item{pyrenew_model_name}{Name of directory containing pyrenew
-model outputs (legacy interface)}
+model outputs}
 
 \item{timeseries_model_name}{Name of directory containing timeseries
-model outputs (legacy interface)}
-
-\item{model_type}{Optional character string specifying model type
-explicitly. Only used with model_name parameter.
-If NULL (default), will auto-detect from model_name.
-Options: "pyrenew", "timeseries", "epiautogp"}
+model outputs}
 
 \item{ci_widths}{Vector of probabilities indicating one or more
 central credible intervals to compute. Passed as the \code{.width}
@@ -43,7 +32,15 @@ argument to \code{\link[ggdist:point_interval]{ggdist::median_qi()}}. Default \c
 to parquet files. Default \code{TRUE}.}
 }
 \value{
-a list of 2 tibbles: \code{samples} and \code{ci}
+a list of 8 tibbles:
+\code{daily_combined_training_eval_data},
+\code{epiweekly_combined_training_eval_data},
+\code{daily_samples},
+\code{epiweekly_samples},
+\code{epiweekly_with_epiweekly_other_samples},
+\code{daily_ci},
+\code{epiweekly_ci},
+\code{epiweekly_with_epiweekly_other_ci}
 }
 \description{
 Process loc forecast
