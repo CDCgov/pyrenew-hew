@@ -3,32 +3,14 @@ name: Pipeline Run Check
 on:
   pull_request:
     branches: [main]
-    paths:
-      # Explicitly include paths that should trigger the workflow
-      - 'pipelines/**'
-      - 'pyrenew_hew/**'
-      - '.github/workflows/pipeline-run-check.yaml'
-      - '.github/actions/**'
-      - 'uv.lock'
-      - 'pyproject.toml'
-      - '.python-version'
-      # Explicitly exclude batch script changes from triggering this workflow
-      - '!pipelines/batch/**'
-      - '!pipelines/azure_command_center.py'
+    paths-ignore:
+      - 'pipelines/batch/**'
+      - 'pipelines/azure_command_center.py'
   push:
     branches: [main]
-    paths:
-      # Explicitly include paths that should trigger the workflow
-      - 'pipelines/**'
-      - 'pyrenew_hew/**'
-      - '.github/workflows/pipeline-run-check.yaml'
-      - '.github/actions/**'
-      - 'uv.lock'
-      - 'pyproject.toml'
-      - '.python-version'
-      # Explicitly exclude batch script changes from triggering this workflow
-      - '!pipelines/batch/**'
-      - '!pipelines/azure_command_center.py'
+    paths-ignore:
+      - 'pipelines/batch/**'
+      - 'pipelines/azure_command_center.py'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
