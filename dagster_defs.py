@@ -5,8 +5,8 @@ from pathlib import Path
 
 import dagster as dg
 from cfa_dagster import (
-    AzureContainerAppJobRunLauncher,
     ADLS2PickleIOManager,
+    AzureContainerAppJobRunLauncher,
     azure_batch_executor,
     collect_definitions,
     docker_executor,
