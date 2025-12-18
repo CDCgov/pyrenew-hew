@@ -4,19 +4,28 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '.github/workflows/update-dagster-code.yaml'
+      - 'dagster_defs.py'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/update-dagster-code.yaml'
+      - 'dagster_defs.py'
   workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
     environment: production
-    name: Run Dagster job
+    name: Update Dagster Code Location
     steps:
-      - name: Run job
+      - name: Run update script with cfa runner-action
         uses: CDCgov/cfa-actions/runner-action@v1.5.0
         with:
-          github_app_id: ${{ secrets.CDCENT_ACTOR_APP_ID }}
-          github_app_pem: ${{ secrets.CDCENT_ACTOR_APP_PEM }}
+          github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
+          github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
           script: |
             echo "Running update script"
             uv run \
