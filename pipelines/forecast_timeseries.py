@@ -1,8 +1,7 @@
 import argparse
+import datetime as dt
 import logging
 import os
-import shutil
-from datetime import timedelta
 from pathlib import Path
 
 from prep_data import process_and_save_loc_data
@@ -25,33 +24,22 @@ from pipelines.forecast_pyrenew import (
 
 
 def timeseries_ensemble_forecasts(
-    model_dir: Path, n_forecast_days: int, n_samples: int
+    model_dir: Path, n_forecast_days: int, n_samples: int, epiweekly: bool = False
 ) -> None:
+    script_args = [
+        "--model-dir",
+        f"{model_dir}",
+        "--n-forecast-days",
+        f"{n_forecast_days}",
+        "--n-samples",
+        f"{n_samples}",
+    ]
+    if epiweekly:
+        script_args.append("--epiweekly")
     run_r_script(
         "pipelines/forecast_timeseries_ensemble.R",
-        [
-            "--model-dir",
-            f"{model_dir}",
-            "--n-forecast-days",
-            f"{n_forecast_days}",
-            "--n-samples",
-            f"{n_samples}",
-        ],
+        script_args,
         function_name="timeseries_ensemble_forecasts",
-    )
-    return None
-
-
-def cdc_flat_baseline_forecasts(model_dir: str, n_forecast_days: int) -> None:
-    run_r_script(
-        "pipelines/forecast_cdc_flat_baseline.R",
-        [
-            "--model-dir",
-            f"{model_dir}",
-            "--n-forecast-days",
-            f"{n_forecast_days}",
-        ],
-        function_name="cdc_flat_baseline_forecasts",
     )
     return None
 
@@ -68,10 +56,10 @@ def main(
     n_forecast_days: int,
     n_samples: int,
     model_letters: str,
+    eval_data_path: Path,
     exclude_last_n_days: int = 0,
-    eval_data_path: Path = None,
-    credentials_path: Path = None,
-    nhsn_data_path: Path = None,
+    credentials_path: Path | None = None,
+    nhsn_data_path: Path | None = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -82,7 +70,6 @@ def main(
         )
 
     ensemble_model_name = f"ts_ensemble_{model_letters}"
-    baseline_model_name = f"baseline_cdc_{model_letters}"
 
     logger.info(
         "Starting single-location timeseries forecasting pipeline for "
@@ -127,11 +114,9 @@ def main(
     model_batch_dir = Path(output_dir, model_batch_dir_name)
 
     model_run_dir = Path(model_batch_dir, "model_runs", loc)
-    baseline_model_output_dir = Path(model_run_dir, baseline_model_name)
     ensemble_model_output_dir = Path(model_run_dir, ensemble_model_name)
 
     os.makedirs(model_run_dir, exist_ok=True)
-    os.makedirs(baseline_model_output_dir, exist_ok=True)
     os.makedirs(ensemble_model_output_dir, exist_ok=True)
 
     logger.info(f"Processing {loc}")
@@ -144,51 +129,41 @@ def main(
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
-        save_dir=Path(baseline_model_output_dir, "data"),
+        save_dir=Path(ensemble_model_output_dir, "data"),
         logger=logger,
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
 
     logger.info("Getting eval data...")
-    if eval_data_path is None:
-        raise ValueError("No path to an evaluation dataset provided.")
     save_eval_data(
         loc=loc,
         disease=disease,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
         latest_comprehensive_path=eval_data_path,
-        output_data_dir=Path(baseline_model_output_dir, "data"),
-        last_eval_date=report_date + timedelta(days=n_forecast_days),
+        output_data_dir=Path(ensemble_model_output_dir, "data"),
+        last_eval_date=report_date + dt.timedelta(days=n_forecast_days),
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
     logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(Path(baseline_model_output_dir, "data"))
-
-    logger.info("Copying data from baseline to ensemble directory...")
-    shutil.copytree(
-        Path(baseline_model_output_dir, "data"), Path(ensemble_model_output_dir, "data")
-    )
+    generate_epiweekly_data(Path(ensemble_model_output_dir, "data"))
 
     logger.info("Data preparation complete.")
 
-    logger.info("Performing baseline forecasting and postprocessing...")
-
     n_days_past_last_training = n_forecast_days + exclude_last_n_days
-    cdc_flat_baseline_forecasts(baseline_model_output_dir, n_days_past_last_training)
-
-    create_hubverse_table(Path(model_run_dir, baseline_model_name))
 
     logger.info("Performing timeseries ensemble forecasting")
     timeseries_ensemble_forecasts(
-        ensemble_model_output_dir,
-        n_days_past_last_training,
-        n_samples,
+        ensemble_model_output_dir, n_days_past_last_training, n_samples, epiweekly=False
     )
+    timeseries_ensemble_forecasts(
+        ensemble_model_output_dir, n_days_past_last_training, n_samples, epiweekly=True
+    )
+
     plot_and_save_loc_forecast(
         model_run_dir,
         n_days_past_last_training,
