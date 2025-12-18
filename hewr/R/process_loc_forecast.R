@@ -352,6 +352,62 @@ process_model_samples.timeseries <- function(
   ts_samples
 }
 
+#' Process EpiAutoGP model samples
+#'
+#' Reads EpiAutoGP (Julia) model output from parquet files and formats
+#' into standardized tidy format for downstream processing.
+#'
+#' @param model_type Character string indicating model type
+#' @param model_run_dir Model run directory
+#' @param model_name Name of directory containing model outputs
+#' @param ts_samples Timeseries samples (unused for EpiAutoGP)
+#' @param required_columns_e Required columns for output
+#' @param n_forecast_days Number of forecast days
+#' @param ... Additional arguments (unused)
+#' @return Tibble of EpiAutoGP model samples with columns:
+#'   .draw, date, geo_value, disease, .variable, .value, resolution,
+#'   aggregated_numerator, aggregated_denominator
+#' @exportS3Method
+process_model_samples.epiautogp <- function(
+  model_type,
+  model_run_dir,
+  model_name,
+  ts_samples = NULL,
+  required_columns_e,
+  n_forecast_days,
+  ...
+) {
+  model_dir <- fs::path(model_run_dir, model_name)
+
+  # Determine the frequency from model name
+  if (grepl("epiweekly", model_name, ignore.case = TRUE)) {
+    samples_file <- "epiweekly_epiautogp_samples_h.parquet"
+  } else {
+    samples_file <- "daily_epiautogp_samples_h.parquet"
+  }
+
+  # Read EpiAutoGP samples
+  samples_path <- fs::path(model_dir, samples_file)
+  if (!fs::file_exists(samples_path)) {
+    stop(sprintf("EpiAutoGP samples file not found: %s", samples_path))
+  }
+
+  epiautogp_samples <- forecasttools::read_tabular(samples_path)
+
+  # EpiAutoGP output already has all required columns from Julia:
+  # date, .value, .draw, .variable, resolution, geo_value, disease
+  # Just need to add aggregated_numerator and aggregated_denominator
+  samples_tidy <- epiautogp_samples |>
+    dplyr::mutate(
+      date = lubridate::as_date(.data$date),
+      aggregated_numerator = FALSE,
+      aggregated_denominator = NA
+    ) |>
+    dplyr::select(tidyselect::any_of(required_columns_e))
+
+  return(samples_tidy)
+}
+
 #' Detect model type from model name
 #'
 #' Internal helper function to infer model type from naming conventions
