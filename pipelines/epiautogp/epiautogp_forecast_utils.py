@@ -162,19 +162,23 @@ class ForecastPipelineContext:
            (which also processes samples via hewr::process_loc_forecast)
         2. Create hubverse table from processed outputs
 
+        The plot_and_save_loc_forecast function with model_name auto-detects
+        the model type and dispatches to process_model_samples.epiautogp(),
+        which reads Julia output samples, adds metadata, calculates credible
+        intervals, and saves formatted outputs.
+
         Returns
         -------
         None
         """
         # Generate forecast plots and process samples using hewr
-        # The plot_and_save_loc_forecast function calls hewr::process_loc_forecast
-        # which dispatches to process_model_samples.epiautogp() to read Julia samples,
-        # add metadata columns, calculate credible intervals, and save outputs
+        # The model_name parameter triggers auto-detection and S3 dispatch to
+        # process_model_samples.epiautogp() which handles Julia output format
         self.logger.info("Processing forecast and generating plots...")
         plot_and_save_loc_forecast(
             model_run_dir=self.model_run_dir,
             n_forecast_days=self.n_forecast_days,
-            epiautogp_model_name=self.model_name,
+            model_name=self.model_name,
         )
         self.logger.info("Processing and plotting complete.")
 
