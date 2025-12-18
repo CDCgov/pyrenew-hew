@@ -384,7 +384,7 @@ class TestPostprocessForecast:
         # Verify correct arguments to plot_and_save_loc_forecast
         assert mock_plot.call_args[1]["model_run_dir"] == context.model_run_dir
         assert mock_plot.call_args[1]["n_forecast_days"] == context.n_forecast_days
-        assert mock_plot.call_args[1]["epiautogp_model_name"] == "test_model"
+        assert mock_plot.call_args[1]["model_name"] == "test_model"
 
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.plot_and_save_loc_forecast")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.create_hubverse_table")
