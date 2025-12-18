@@ -383,5 +383,12 @@ if __name__ == "__main__":
         help="Proportion of data used in each SMC step (default: 0.1).",
     )
 
+    parser.add_argument(
+        "--n-threads",
+        type=int,
+        default=1,
+        help="Number of threads to use for EpiAutoGP computations (default: 1).",
+    )
+
     args = parser.parse_args()
     main(**vars(args))
