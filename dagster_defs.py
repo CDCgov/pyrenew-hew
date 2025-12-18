@@ -326,12 +326,15 @@ pyrenew_asset_job = dg.define_asset_job(
     tags={"user": user},
 )
 
+# Every wednesday this will run at hours 11 through 20 UTC (6am-3pm EST)
 upstream_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_upstream_cron", cron_schedule="0 9 * * 3", job=upstream_asset_job
+    name="weekly_upstream_cron", cron_schedule="0 11-20 * * WED", job=upstream_asset_job
 )
 
+# Every wednesday this will run at hours 12 through 21 UTC (7am-4pm EST)
+# This is staggered an hour after upstream to allow for data availability (we can tweak later if needed)
 pyrenew_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_pyrenew_cron", cron_schedule="0 9 * * 3", job=pyrenew_asset_job
+    name="weekly_pyrenew_cron", cron_schedule="0 12-21 * * WED", job=pyrenew_asset_job
 )
 
 # env variable set by Dagster CLI
