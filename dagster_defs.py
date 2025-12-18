@@ -68,9 +68,9 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 
 # This function is NOT an asset itself, but is called by assets to run the pyrenew model
 def run_pyrenew_model(
-    model_letters: str,
-    model_family: str,
     context: dg.AssetExecutionContext,
+    model_letters: str = "h",
+    model_family: str = "pyrenew",
 ):
     # Parsing partitions into call parameters for the job
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
