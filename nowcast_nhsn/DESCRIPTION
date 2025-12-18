@@ -1,0 +1,29 @@
+Package: nowcastNHSN
+Title: NHSN Nowcasting with Reporting Triangles
+Version: 0.0.0.9000
+Authors@R:
+    person("CDC", "CFA", , "cfa@cdc.gov", role = c("aut", "cre"))
+Description: Functions for generating reporting triangles from versioned epidatr
+    data and running nowcasts using baselinenowcast for NHSN hospital admissions.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.0
+Imports:
+    baselinenowcast,
+    dplyr,
+    epidatr,
+    lubridate,
+    purrr,
+    rlang,
+    tibble,
+    tidyr
+Remotes:
+    github::cmu-delphi/epidatr,
+    github::epinowcast/baselinenowcast
+Suggests:
+    ggplot2,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

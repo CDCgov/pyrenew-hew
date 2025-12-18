@@ -1,0 +1,6 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^renv$
+^renv\.lock$
+^\.Rprofile$
+^plan-baselinenowcast\.md$

@@ -207,9 +207,10 @@ cython_debug/
 # R
 # https://github.com/github/gitignore/blob/main/R.gitignore
 
-.Rprofile
-renv/
-renv.lock
+# renv - track lockfile and activate script, but not installed packages
+renv/library/
+renv/local/
+renv/staging/
 
 # History files
 .Rhistory
