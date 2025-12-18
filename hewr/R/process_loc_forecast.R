@@ -379,12 +379,27 @@ process_model_samples.epiautogp <- function(
 ) {
   model_dir <- fs::path(model_run_dir, model_name)
 
-  # Determine the frequency from model name
-  if (grepl("epiweekly", model_name, ignore.case = TRUE)) {
-    samples_file <- "epiweekly_epiautogp_samples_h.parquet"
+  # Determine the frequency and target from model name
+  frequency <- if (grepl("epiweekly", model_name, ignore.case = TRUE)) {
+    "epiweekly"
   } else {
-    samples_file <- "daily_epiautogp_samples_h.parquet"
+    "daily"
   }
+
+  # Determine target letter (h for NHSN, e for NSSP)
+  target_letter <- if (grepl("nhsn", model_name, ignore.case = TRUE)) {
+    "h"
+  } else if (grepl("nssp", model_name, ignore.case = TRUE)) {
+    "e"
+  } else {
+    stop("Cannot determine target type from model name: ", model_name)
+  }
+
+  samples_file <- sprintf(
+    "%s_epiautogp_samples_%s.parquet",
+    frequency,
+    target_letter
+  )
 
   # Read EpiAutoGP samples
   samples_path <- fs::path(model_dir, samples_file)
