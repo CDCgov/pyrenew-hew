@@ -125,7 +125,7 @@ def run_pyrenew_model(
     output_dir = config.output_dir
     output_subdir = config.output_subdir
     full_dir = config.full_dir
-    
+
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
@@ -212,7 +212,7 @@ nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
 
 @dg.asset(
-    partitions_def=multi_partition_def, 
+    partitions_def=multi_partition_def,
     deps=nssp_deps,
 )
 def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -222,7 +222,7 @@ def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew E
 @dg.asset(
-    partitions_def=multi_partition_def, 
+    partitions_def=multi_partition_def,
     deps=["timeseries_e"] + nssp_deps,
 )
 def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -232,7 +232,7 @@ def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew H
 @dg.asset(
-    partitions_def=multi_partition_def, 
+    partitions_def=multi_partition_def,
     deps=["nhsn_data"],
 )
 def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
