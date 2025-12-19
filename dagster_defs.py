@@ -106,7 +106,7 @@ def run_pyrenew_model(
     # TODO: parameterize this for dagster
     output_dir = "test-output"
     output_subdir = f"{forecast_date}_forecasts"
-    full_output_dir = f"{output_dir}/{output_subdir}"
+    full_dir = f"{output_dir}/{output_subdir}"
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
@@ -134,7 +134,7 @@ def run_pyrenew_model(
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--state-level-nssp-data-dir nssp-archival-vintages/gold "
         "--param-data-dir params "
-        f"--output-dir {full_output_dir} "
+        f"--output-dir {full_dir} "
         "--credentials-path config/creds.toml "
         f"--report-date latest "
         f"--exclude-last-n-days {exclude_last_n_days} "
@@ -180,50 +180,50 @@ nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
 
 @dg.asset(partitions_def=multi_partition_def, deps=nssp_deps)
-def timeseries_e_output(context: dg.AssetExecutionContext):
+def timeseries_e(context: dg.AssetExecutionContext):
     run_pyrenew_model(context, model_letters="e", model_family="timeseries")
-    return "timeseries_e_output"
+    return "timeseries_e"
 
 
 # Pyrenew E
-@dg.asset(partitions_def=multi_partition_def, deps=["timeseries_e_output"] + nssp_deps)
-def pyrenew_e_output(context: dg.AssetExecutionContext):
+@dg.asset(partitions_def=multi_partition_def, deps=["timeseries_e"] + nssp_deps)
+def pyrenew_e(context: dg.AssetExecutionContext):
     run_pyrenew_model(context, model_letters="e", model_family="pyrenew")
-    return "pyrenew_e_output"
+    return "pyrenew_e"
 
 
 # Pyrenew H
 @dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data"])
-def pyrenew_h_output(context: dg.AssetExecutionContext):
+def pyrenew_h(context: dg.AssetExecutionContext):
     run_pyrenew_model(context, model_letters="h", model_family="pyrenew")
-    return "pyrenew_h_output"
+    return "pyrenew_h"
 
 
 # Pyrenew HE
 @dg.asset(
     partitions_def=multi_partition_def,
-    deps=["timeseries_e_output", "nhsn_data"] + nssp_deps,
+    deps=["timeseries_e", "nhsn_data"] + nssp_deps,
 )
-def pyrenew_he_output(context: dg.AssetExecutionContext):
+def pyrenew_he(context: dg.AssetExecutionContext):
     run_pyrenew_model(context, model_letters="he", model_family="pyrenew")
-    return "pyrenew_he_output"
+    return "pyrenew_he"
 
 
 # Pyrenew HW
 @dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data", "nwss_data"])
-def pyrenew_hw_output(context: dg.AssetExecutionContext):
+def pyrenew_hw(context: dg.AssetExecutionContext):
     run_pyrenew_model(context, model_letters="hw", model_family="pyrenew")
-    return "pyrenew_hw_output"
+    return "pyrenew_hw"
 
 
 # Pyrenew HEW
 @dg.asset(
     partitions_def=multi_partition_def,
-    deps=["timeseries_e_output"] + nssp_deps + ["nhsn_data", "nwss_data"],
+    deps=["timeseries_e"] + nssp_deps + ["nhsn_data", "nwss_data"],
 )
-def pyrenew_hew_output(context: dg.AssetExecutionContext):
+def pyrenew_hew(context: dg.AssetExecutionContext):
     run_pyrenew_model(context, model_letters="hew", model_family="pyrenew")
-    return "pyrenew_hew_output"
+    return "pyrenew_hew"
 
 
 # --------------------------------------------------------- #
@@ -304,7 +304,7 @@ azure_batch_executor_configured = azure_batch_executor.configured(
 # -------------------------------------------------------------------------- #
 upstream_asset_job = dg.define_asset_job(
     name="upstream_asset_job",
-    executor_def=dg.in_process_executor,
+    executor_def=dg.in_process_executor, # these are lightweight and do not have partitions
     selection=["nhsn_data", "nssp_gold", "nssp_latest_comprehensive", "nwss_data"],
     # tag the run with your user to allow for easy filtering in the Dagster UI
     tags={"user": user},
@@ -312,14 +312,14 @@ upstream_asset_job = dg.define_asset_job(
 
 pyrenew_asset_job = dg.define_asset_job(
     name="pyrenew_asset_job",
-    executor_def=azure_batch_executor_configured,
+    executor_def=azure_batch_executor_configured, # these will need parallelized compute
     selection=[
-        timeseries_e_output,
-        pyrenew_e_output,
-        pyrenew_h_output,
-        pyrenew_he_output,
-        pyrenew_hw_output,
-        pyrenew_hew_output,
+        timeseries_e,
+        pyrenew_e,
+        pyrenew_h,
+        pyrenew_he,
+        pyrenew_hw,
+        pyrenew_hew,
     ],
     # tag the run with your user to allow for easy filtering in the Dagster UI
     tags={"user": user},
