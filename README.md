@@ -30,31 +30,31 @@ Container images pushed to the Azure Container Registry are automatically tagged
 
 ## Running Model Pipelines
 > [!NOTE]
->
-> Please contact a project maintainer if you believe you need access to pipelines.
-> CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
+PyRenew-HEW Azure Batch Modeling Pipelines can only be run by CDC internal users on the CFA Virtual Analyst Platform.
 
-> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
+There are four ways to run PyRenew-HEW Azure Batch Modeling Code:
+1. [PyRenew-Cron](#1-pyrenew-cron) - a separate repository on cdcent github (see below) - automated in Github Actions.
+2. [Dagster Workflow Orchestration](#2-dagster-workflow-orchestration) - automated, feature rich GUI.
+3. [The Azure Command Center](#3-azure-command-center) - interactive/manual.
+4. [Makefile targets](#4-makefile-targets) - interactive/manual.
 
-> Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
+### 1. PyRenew-Cron
 
-Pipelines can be run interactively or non-interactively:
-- `pipelines/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
-- The `Makefile` also provides targets that will run pipelines non-interactively. Run `make help` for more information.
-- Pipelines are run through the command line python interface when scheduled using [Pyrenew-Cron](https://github.com/cdcent/pyrenew-cron).
+> [!IMPORTANT]
+> - CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
+> - Note that these jobs rely upon this repository, so changes to the CLIs here have the potential to break things over there. 
 
-## Experimental: Running Model Pipelines With Dagster
+PyRenew-Cron is our first approach to scheduling and automating pipelines in production. 
+- Pyrenew-Cron checks for data availability, launches jobs based on that availability, and re-polls to check for job completions.
+- As of December 2025, this pipeline is production ready and reliably produces production outputs as intended.
+- See the `Pyrenew-Cron` [repository](https://github.com/cdcent/pyrenew-cron) for more information.
 
-When mature, our dagster implementation is intended to replace the `Azure Command Center` and `PyRenew-Cron`. Development is ongoing - you can test an early version by following the steps below.
+### 2. Dagster Workflow Orchestration
 
-### Local Development
+When mature, our dagster implementation is intended to replace the `Azure Command Center` and `PyRenew-Cron`.  
+Development is ongoing - you can test an early version by following the steps below.
 
-#### Setup Blobfuse (Optional)
-> Note: This is only necessary if you want to use the local `Docker Executor` with dagster - which is for development and debugging only. Otherwise, we recommend skipping this.
-
-A `blobfuse/` directory allows local monitoring of inputs and outputs on Azure Blob as if they were in your local filesystem. This automates and replaces the process in the [CFA Blobfuse Tutorial](https://github.com/cdcent/cfa-blobfuse-tutorial). If you'd like to mount the Pyrenew project ecosystem's blobs to your working directory, follow the instructions in the `blobfuse/README.md`. This is only necessary for some debugging operations and for local testing, which isn't recommended unless you have a specific use-case and know what you're doing.
-
-#### Launching Dagster Locally
+#### Local Development and Testing
 > Prerequisites: `uv`. `docker`, a VAP VM with a registered managed identity in Azure, and rights to the cfaprdbatchcr container registry. Contact cfatoolsteam@cdc.gov for assistance with the latter two.
 
 The following instructions will set up Dagster on your VAP. However, based on the current configuration, actual execution will still run in the cloud via Azure Batch. You can change the `executor` option in `dagster_defs.py` to test using the local Docker Executor - this will require you to have setup Blobfuse.
@@ -76,20 +76,35 @@ The following instructions will set up Dagster on your VAP. However, based on th
     ![alt text](img/dagster_runs.png)
 6. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
 
-#### Publishing to the Central Code Server
+#### Production Scheduling
 > This section is under construction.
 
 Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
 
 To manually update the code location while we evaluate dagster, you can run `make dagster_push. This manual approachn will be deprecated and discouraged once we move to using dagster in production.
 
-#### Makefile Recipes for Dagster
-After you've familiarized yourself with the above instructions, feel free to use these convenient `make` recipes:
+#### Makefile Targets for Dagster
+After you've familiarized yourself with the above instructions, feel free to use these convenient `make` targets:
 - `make dagster_build`: builds your dagster image.
 - `make dagster_push`: builds your dagster image, then pushes it, then uploads the central dagster server's code for pyrenew-hew.
 - `make dagster`: runs the dagster UI locally.
 - `make mount`: mounts the pyrenew-relevant blobs using blobfuse.
 - `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
+
+### 3. Azure Command Center
+> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
+
+You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch the Azure Command Center. 
+- The Azure Command Center will check for necessary data before offering to run pipelines.
+- You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.  
+- The Azure Command Center is meant to be a streamlined interface for interactively running in production. 
+
+### 4. Makefile Targets
+Run `make help` to see the Makefile targets you can use to run Azure Batch pipelines.
+- This method is useful for supplying custom parameters to the batch pipelines, and also lets you perform 'Dry Runs' which will tell you what _would_ happen if you ran the code.
+- You will need to check data availability manually or with the Azure Command Center.
+
+----
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
