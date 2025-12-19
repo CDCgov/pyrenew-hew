@@ -39,13 +39,9 @@ Imports:
     tidybayes,
     tidyr,
     tidyselect,
-    epipredict,
-    epiprocess,
     urca
 Remotes:
     github::cdcgov/forecasttools,
-    github::cmu-delphi/epipredict,
-    github::cmu-delphi/epiprocess,
     github::mjskay/ggdist
 Suggests:
     checkmate,

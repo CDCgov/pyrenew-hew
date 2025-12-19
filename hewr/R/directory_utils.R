@@ -28,7 +28,7 @@ parse_model_batch_dir_path <- function(model_batch_dir_path) {
     pattern
   )
 
-  if (any(is.na(matches))) {
+  if (anyNA(matches)) {
     stop(
       "Invalid format for model batch directory name; ",
       "could not parse. Expected ",
@@ -60,7 +60,7 @@ parse_model_batch_dir_path <- function(model_batch_dir_path) {
       )
     )
 
-  if (any(is.na(result))) {
+  if (anyNA(result)) {
     stop(
       "Could not parse extracted disease and/or date ",
       "values expected 'disease' to be one of 'covid-19' ",

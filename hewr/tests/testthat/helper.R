@@ -53,7 +53,7 @@ create_observation_data <- function(
     location = locations,
     target = target
   ) |>
-    dplyr::mutate(value = sample(1:100, dplyr::n(), replace = TRUE))
+    dplyr::mutate(value = sample.int(100, dplyr::n(), replace = TRUE))
   return(data)
 }
 
@@ -78,7 +78,7 @@ create_hubverse_table <- function(
     dplyr::arrange(output_type_id, .by_group = TRUE) |>
     dplyr::mutate(
       value = sort(
-        sample(1:1000, dplyr::n(), replace = TRUE),
+        sample.int(1000, dplyr::n(), replace = TRUE),
         decreasing = FALSE
       ),
       target = "wk inc covid prop ed visits",
