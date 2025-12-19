@@ -1,4 +1,4 @@
-.PHONY: help container_build CONTAINER_IMAGE_VERSION ghcr_login container_push run_timeseries run_e_model run_h_models post_process run_he_model run_hw_model acc mount unmount config dagster dagster_build dagster_push
+.PHONY: help container_build ghcr_login container_push run_timeseries run_e_model run_h_models post_process run_he_model run_hw_model acc mount unmount config dagster dagster_build dagster_push
 
 # Build parameters
 

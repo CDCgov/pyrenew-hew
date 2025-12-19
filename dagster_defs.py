@@ -61,6 +61,23 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # ----------------------------------------------------------- #
 
 # ---------------
+# Asset Configs
+# ---------------
+
+# TODO: Parametrize prod vs test and other variables
+# This can be given to our automated jobs
+
+# class PyrenewAssetConfig(dg.Config):
+#     output_dir = "test-output"
+#     n_training_days = 150
+#     n_samples = 500
+#     exclude_last_n_days = 1
+#     n_warmup = 1000
+#     additional_forecast_letters = model_letters
+#     forecast_date = str(date.today())
+#     output_subdir = f"{forecast_date}_forecasts"
+
+# ---------------
 # Worker Function
 # ---------------
 
