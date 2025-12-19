@@ -67,24 +67,25 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # TODO: Parametrize prod vs test and other variables
 # This can be given to our automated jobs
 
-# class PyrenewAssetConfig(dg.Config):
-#     output_dir = "test-output"
-#     n_training_days = 150
-#     n_samples = 500
-#     exclude_last_n_days = 1
-#     n_warmup = 1000
-#     additional_forecast_letters = model_letters
-#     forecast_date = str(date.today())
-#     output_subdir = f"{forecast_date}_forecasts"
+class PyrenewAssetConfig(dg.Config):
+    n_training_days: int = 150
+    n_samples: int = 500
+    exclude_last_n_days: int = 1
+    n_warmup: int = 1000
+    additional_forecast_letters: str = ""
+    forecast_date: str = date.today().isoformat()
+    output_dir: str = "test-output"
+    output_subdir: str = f"{forecast_date}_forecasts"
+    full_dir: str = f"{output_dir}/{output_subdir}"
 
 # ---------------
 # Worker Function
 # ---------------
 
-
 # This function is NOT an asset itself, but is called by assets to run the pyrenew model
 def run_pyrenew_model(
     context: dg.AssetExecutionContext,
+    config: PyrenewAssetConfig,
     model_letters: str = "h",
     model_family: str = "pyrenew",
 ):
@@ -113,17 +114,18 @@ def run_pyrenew_model(
         )
         return
 
-    # TODO: Make configurable in the UI
-    n_training_days = 150
-    n_samples = 500
-    exclude_last_n_days = 1
-    n_warmup = 1000
-    additional_forecast_letters = model_letters
-    forecast_date = str(date.today())
-    # TODO: parameterize this for dagster
-    output_dir = "test-output"
-    output_subdir = f"{forecast_date}_forecasts"
-    full_dir = f"{output_dir}/{output_subdir}"
+    # Configuration inherited from PyrewnewAssetConfig
+    context.log.debug(f"config: '{config}'")
+    n_training_days = config.n_training_days
+    n_samples = config.n_samples
+    exclude_last_n_days = config.exclude_last_n_days
+    n_warmup = config.n_warmup
+    additional_forecast_letters = config.additional_forecast_letters
+    forecast_date = config.forecast_date
+    output_dir = config.output_dir
+    output_subdir = config.output_subdir
+    full_dir = config.full_dir
+    
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
@@ -196,23 +198,32 @@ def nwss_data(context: dg.AssetExecutionContext):
 nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
 
-@dg.asset(partitions_def=multi_partition_def, deps=nssp_deps)
-def timeseries_e(context: dg.AssetExecutionContext):
-    run_pyrenew_model(context, model_letters="e", model_family="timeseries")
+@dg.asset(
+    partitions_def=multi_partition_def, 
+    deps=nssp_deps,
+)
+def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+    run_pyrenew_model(context, config, model_letters="e", model_family="timeseries")
     return "timeseries_e"
 
 
 # Pyrenew E
-@dg.asset(partitions_def=multi_partition_def, deps=["timeseries_e"] + nssp_deps)
-def pyrenew_e(context: dg.AssetExecutionContext):
-    run_pyrenew_model(context, model_letters="e", model_family="pyrenew")
+@dg.asset(
+    partitions_def=multi_partition_def, 
+    deps=["timeseries_e"] + nssp_deps,
+)
+def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+    run_pyrenew_model(context, config, model_letters="e", model_family="pyrenew")
     return "pyrenew_e"
 
 
 # Pyrenew H
-@dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data"])
-def pyrenew_h(context: dg.AssetExecutionContext):
-    run_pyrenew_model(context, model_letters="h", model_family="pyrenew")
+@dg.asset(
+    partitions_def=multi_partition_def, 
+    deps=["nhsn_data"],
+)
+def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+    run_pyrenew_model(context, config, model_letters="h", model_family="pyrenew")
     return "pyrenew_h"
 
 
@@ -221,15 +232,18 @@ def pyrenew_h(context: dg.AssetExecutionContext):
     partitions_def=multi_partition_def,
     deps=["timeseries_e", "nhsn_data"] + nssp_deps,
 )
-def pyrenew_he(context: dg.AssetExecutionContext):
-    run_pyrenew_model(context, model_letters="he", model_family="pyrenew")
+def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+    run_pyrenew_model(context, config, model_letters="he", model_family="pyrenew")
     return "pyrenew_he"
 
 
 # Pyrenew HW
-@dg.asset(partitions_def=multi_partition_def, deps=["nhsn_data", "nwss_data"])
-def pyrenew_hw(context: dg.AssetExecutionContext):
-    run_pyrenew_model(context, model_letters="hw", model_family="pyrenew")
+@dg.asset(
+    partitions_def=multi_partition_def,
+    deps=["nhsn_data", "nwss_data"],
+)
+def pyrenew_hw(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+    run_pyrenew_model(context, config, model_letters="hw", model_family="pyrenew")
     return "pyrenew_hw"
 
 
@@ -238,8 +252,8 @@ def pyrenew_hw(context: dg.AssetExecutionContext):
     partitions_def=multi_partition_def,
     deps=["timeseries_e"] + nssp_deps + ["nhsn_data", "nwss_data"],
 )
-def pyrenew_hew(context: dg.AssetExecutionContext):
-    run_pyrenew_model(context, model_letters="hew", model_family="pyrenew")
+def pyrenew_hew(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+    run_pyrenew_model(context, config, model_letters="hew", model_family="pyrenew")
     return "pyrenew_hew"
 
 
