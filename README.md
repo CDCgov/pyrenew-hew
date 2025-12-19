@@ -42,16 +42,16 @@ There are four ways to run PyRenew-HEW Azure Batch Modeling Code:
 
 > [!IMPORTANT]
 > - CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
-> - Note that these jobs rely upon this repository, so changes to the CLIs here have the potential to break things over there. 
+> - Note that these jobs rely upon this repository, so changes to the CLIs here have the potential to break things over there.
 
-PyRenew-Cron is our first approach to scheduling and automating pipelines in production. 
+PyRenew-Cron is our first approach to scheduling and automating pipelines in production.
 - Pyrenew-Cron checks for data availability, launches jobs based on that availability, and re-polls to check for job completions.
 - As of December 2025, this pipeline is production ready and reliably produces production outputs as intended.
 - See the `Pyrenew-Cron` [repository](https://github.com/cdcent/pyrenew-cron) for more information.
 
 ### 2. Dagster Workflow Orchestration
 
-When mature, our dagster implementation is intended to replace the `Azure Command Center` and `PyRenew-Cron`.  
+When mature, our dagster implementation is intended to replace the `Azure Command Center` and `PyRenew-Cron`.
 Development is ongoing - you can test an early version by following the steps below.
 
 #### Local Development and Testing
@@ -94,10 +94,10 @@ After you've familiarized yourself with the above instructions, feel free to use
 ### 3. Azure Command Center
 > Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
 
-You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch the Azure Command Center. 
+You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch the Azure Command Center.
 - The Azure Command Center will check for necessary data before offering to run pipelines.
-- You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.  
-- The Azure Command Center is meant to be a streamlined interface for interactively running in production. 
+- You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.
+- The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
 ### 4. Makefile Targets
 Run `make help` to see the Makefile targets you can use to run Azure Batch pipelines.
