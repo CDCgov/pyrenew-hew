@@ -53,7 +53,7 @@ test_that("format_timeseries_output formats forecast data correctly", {
   expect_true(all(result$resolution == "daily"))
 
   # Check aggregation flags
-  expect_true(all(result$aggregated_numerator == FALSE))
+  expect_true(!any(result$aggregated_numerator))
 
   # Check that data was pivoted (should have 2 variables x 3 dates = 6 rows)
   expect_equal(nrow(result), 6)
@@ -140,7 +140,7 @@ test_that("epiweekly_samples_from_daily aggregates correctly", {
   expect_s3_class(result, "data.frame")
   expect_true(nrow(result) >= 1)
   expect_true(all(result$resolution == "epiweekly"))
-  expect_true(all(result$aggregated_numerator == TRUE))
+  expect_true(all(result$aggregated_numerator))
   expect_true(all(result$.variable == "observed_ed_visits"))
 })
 
@@ -172,7 +172,7 @@ test_that("to_tidy_draws_timeseries combines forecast and observed", {
   expect_equal(colnames(result)[1], ".draw")
 
   # All rows should have .draw values
-  expect_true(all(!is.na(result$.draw)))
+  expect_false(anyNA(result$.draw))
 
   # Check observed dates all have same value across draws
   obs_dates <- observed$date
