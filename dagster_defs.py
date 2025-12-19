@@ -194,6 +194,19 @@ def nwss_data(context: dg.AssetExecutionContext):
 
 # Pyrenew Assets #
 
+# TODO: adapt materialize results for asset returns. Currently returning simple strings.
+# i.e.
+# return dg.MaterializeResult(
+#         value=output_path,
+#         metadata={
+#             "config": config,
+#             "output_path": output_path,
+#             "storage_account": STORAGE_ACCOUNT,
+#             "storage_container": OUTPUT_CONTAINER,
+#             "blob_path": job_id,
+#         }
+#     )
+
 # Timeseries E
 nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
@@ -341,7 +354,7 @@ upstream_asset_job = dg.define_asset_job(
     tags={"user": user},
 )
 
-pyrenew_asset_job = dg.define_asset_job(
+pyrenew_test_asset_job = dg.define_asset_job(
     name="pyrenew_asset_job",
     executor_def=azure_batch_executor_configured, # these will need parallelized compute
     selection=[
@@ -364,7 +377,7 @@ upstream_every_wednesday = dg.ScheduleDefinition(
 # Every wednesday this will run at hours 12 through 21 UTC (7am-4pm EST)
 # This is staggered an hour after upstream to allow for data availability (we can tweak later if needed)
 pyrenew_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_pyrenew_cron", cron_schedule="0 12-21 * * WED", job=pyrenew_asset_job
+    name="weekly_pyrenew_cron", cron_schedule="0 12-21 * * WED", job=pyrenew_test_asset_job
 )
 
 # env variable set by Dagster CLI
