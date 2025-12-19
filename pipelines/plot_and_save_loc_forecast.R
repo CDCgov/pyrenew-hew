@@ -26,8 +26,6 @@ save_forecast_figures <- function(
   timeseries_model_name = NA,
   model_name = NA
 ) {
-
-
   if (all(is.na(c(pyrenew_model_name, timeseries_model_name, model_name)))) {
     stop(
       "At least one of `pyrenew_model_name`, `timeseries_model_name`, ",
