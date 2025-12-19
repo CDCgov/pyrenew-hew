@@ -479,8 +479,8 @@ process_pyrenew_model <- function(
 #' @param model_run_dir Model run directory
 #' @param n_forecast_days An integer specifying the number of days to forecast.
 #' @param model_name Name of directory containing model outputs.
-#'   If provided, uses new S3 dispatch interface (overrides
-#'   pyrenew_model_name/timeseries_model_name).
+#'   If provided, uses new S3 dispatch interface with auto-detection
+#'   (overrides pyrenew_model_name/timeseries_model_name).
 #' @param pyrenew_model_name Name of directory containing pyrenew
 #'   model outputs (legacy interface)
 #' @param timeseries_model_name Name of directory containing timeseries
@@ -506,7 +506,7 @@ process_loc_forecast <- function(
   ci_widths = c(0.5, 0.8, 0.95),
   save = TRUE
 ) {
-  # New interface: delegate to process_forecast
+  # New interface: delegate to process_forecast with auto-detection
   if (!is.na(model_name)) {
     return(process_forecast(
       model_run_dir = model_run_dir,
@@ -521,8 +521,8 @@ process_loc_forecast <- function(
   # Legacy interface validation
   if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
     stop(
-      "Either `model_name` or `pyrenew_model_name`/",
-      "`timeseries_model_name` must be provided."
+      "At least one of `model_name`, `pyrenew_model_name`, ",
+      "or `timeseries_model_name` must be provided."
     )
   }
   model_name <- dplyr::if_else(
