@@ -3,4 +3,6 @@
 ^renv$
 ^renv\.lock$
 ^\.Rprofile$
+^\.Renviron$
+^\.Renviron\.example$
 ^plan-baselinenowcast\.md$
