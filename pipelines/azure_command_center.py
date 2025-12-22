@@ -7,7 +7,6 @@ from pathlib import Path
 import polars as pl
 import requests
 from dotenv import load_dotenv
-from postprocess_forecast_batches import main as postprocess
 from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, IntPrompt, Prompt
@@ -15,6 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from pipelines.batch.setup_job import main as setup_job
+from pipelines.postprocess_forecast_batches import main as postprocess
 
 DEFAULT_RNG_KEY = 12345
 load_dotenv()
