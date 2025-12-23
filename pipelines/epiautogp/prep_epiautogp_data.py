@@ -12,11 +12,17 @@ from pathlib import Path
 
 import polars as pl
 
+from pipelines.epiautogp.epiautogp_forecast_utils import (
+    ForecastPipelineContext,
+    ModelPaths,
+)
+
 
 def _validate_epiautogp_parameters(
     target: str,
     frequency: str,
     use_percentage: bool,
+    ed_visit_type: str,
 ) -> None:
     """
     Validate EpiAutoGP conversion parameters.
@@ -24,8 +30,10 @@ def _validate_epiautogp_parameters(
     The inadmissible parameter combinations are:
     - `target` not in ['nssp', 'nhsn']
     - `frequency` not in ['daily', 'epiweekly']
+    - `ed_visit_type` not in ['observed', 'other']
     - `use_percentage` is `True` when target is 'nhsn' (NHSN data are always counts)
     - `frequency` is 'daily' when target is 'nhsn' (NHSN data are only epiweekly)
+    - `ed_visit_type` is not 'observed' when target is 'nhsn'
     """
     # Validate individual parameters
     if target not in ["nssp", "nhsn"]:
@@ -33,6 +41,11 @@ def _validate_epiautogp_parameters(
 
     if frequency not in ["daily", "epiweekly"]:
         raise ValueError(f"frequency must be 'daily' or 'epiweekly', got '{frequency}'")
+
+    if ed_visit_type not in ["observed", "other"]:
+        raise ValueError(
+            f"ed_visit_type must be 'observed' or 'other', got '{ed_visit_type}'"
+        )
 
     # Validate parameter combinations
     if target == "nhsn" and use_percentage:
@@ -44,20 +57,18 @@ def _validate_epiautogp_parameters(
     if target == "nhsn" and frequency == "daily":
         raise ValueError("NHSN data is only available in epiweekly frequency.")
 
+    if target == "nhsn" and ed_visit_type != "observed":
+        raise ValueError(
+            "ed_visit_type is only applicable when target='nssp'. "
+            "For NHSN, ed_visit_type must be 'observed'."
+        )
+
 
 def convert_to_epiautogp_json(
-    daily_training_data_path: Path,
-    epiweekly_training_data_path: Path,
-    output_json_path: Path,
-    disease: str,
-    location: str,
-    forecast_date: dt.date,
-    target: str = "nssp",
-    frequency: str = "epiweekly",
-    use_percentage: bool = False,
+    context: ForecastPipelineContext,
+    paths: ModelPaths,
     nowcast_dates: list[dt.date] | None = None,
     nowcast_reports: list[list[float]] | None = None,
-    logger: logging.Logger | None = None,
 ) -> Path:
     """
     Convert surveillance data to EpiAutoGP JSON format.
@@ -68,38 +79,18 @@ def convert_to_epiautogp_json(
 
     Parameters
     ----------
-    daily_training_data_path : Path
-        Path to the TSV file containing daily training data
-        (e.g., combined_training_data.tsv)
-    epiweekly_training_data_path : Path
-        Path to the TSV file containing epiweekly training data
-        (e.g., epiweekly_combined_training_data.tsv)
-    output_json_path : Path
-        Path where the EpiAutoGP JSON file will be saved
-    disease : str
-        Disease name (e.g., "COVID-19", "Influenza", "RSV")
-    location : str
-        Location abbreviation (e.g., "CA", "US", "DC")
-    forecast_date : dt.date
-        The reference date from which forecasting begins
-    target : str, default="nssp"
-        Target data type: "nssp" for ED visit data or
-        "nhsn" for hospital admission counts
-    frequency : str, default="epiweekly"
-        Data frequency: "daily" or "epiweekly"
-    use_percentage : bool, default=False
-        If True, convert ED visits to percentage:
-        observed_ed_visits / (observed_ed_visits + other_ed_visits) * 100
-        Only applicable for NSSP target.
-    nowcast_dates : Optional[list[dt.date]], default=None
+    context : ForecastPipelineContext
+        Forecast pipeline context containing disease, location, report_date,
+        target, frequency, use_percentage, ed_visit_type, and logger
+    paths : ModelPaths
+        Model paths containing daily and epiweekly training data paths,
+        and model_output_dir where the JSON file will be saved
+    nowcast_dates : list[dt.date] | `None`, default=`None`
         Dates requiring nowcasting (typically recent dates with
-        incomplete data). If None, defaults to empty list. Not currently used.
-    nowcast_reports : Optional[list[list[float]]], default=None
-        Uncertainty bounds or samples for nowcast dates. If None,
+        incomplete data). If `None`, defaults to empty list. Not currently used.
+    nowcast_reports : list[list[float]] | `None`, default=`None`
+        Samples for nowcast dates to represent nowcast uncertainty. If `None`,
         defaults to empty list. Not currently used.
-    logger : Optional[logging.Logger], default=None
-        Logger instance for logging messages. If None, a module-level
-        logger will be created.
 
     Returns
     -------
@@ -111,29 +102,38 @@ def convert_to_epiautogp_json(
     ValueError
         If target is not "nssp" or "nhsn", if frequency is not "daily" or
         "epiweekly", if use_percentage is True when target is "nhsn",
-        or if the required data is not present
+        if frequency is "daily" when target is "nhsn",
+        if ed_visit_type is not "observed" when target is "nhsn",
+        or if the required data is not present in the TSV files
     FileNotFoundError
         If data files don't exist
 
-    Required Output Structure
+    Notes
     -----
-    The output JSON for `EpiAutoGP` must have the following structure:
+    The output JSON file is saved to:
+    `paths.model_output_dir / f"{context.model_name}_input.json"`
+
+    The output JSON for EpiAutoGP has the following structure:
     {
         "dates": ["2024-01-01", "2024-01-02", ...],
         "reports": [45.0, 52.0, ...],
         "pathogen": "COVID-19",
         "location": "CA",
         "target": "nssp",
+        "frequency": "epiweekly",
+        "use_percentage": false,
+        "ed_visit_type": "observed",
         "forecast_date": "2024-01-02",
-        "nowcast_dates": [], # eventually vector of dates for nowcasting
-        "nowcast_reports": [] # eventually vector of vectors for nowcast uncertainty
+        "nowcast_dates": [],
+        "nowcast_reports": []
     }
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
+    logger = context.logger
 
     # Validate parameters
-    _validate_epiautogp_parameters(target, frequency, use_percentage)
+    _validate_epiautogp_parameters(
+        context.target, context.frequency, context.use_percentage, context.ed_visit_type
+    )
 
     # Set defaults for nowcasting
     if nowcast_dates is None:
@@ -141,21 +141,24 @@ def convert_to_epiautogp_json(
     if nowcast_reports is None:
         nowcast_reports = []
 
+    # Define input data JSON path
+    input_json_path = paths.model_output_dir / f"{context.model_name}_input.json"
     # Determine which data path to use based on frequency
-    if frequency == "daily":
-        data_path = daily_training_data_path
+    if context.frequency == "daily":
+        data_path = paths.daily_training_data
     else:  # epiweekly
-        data_path = epiweekly_training_data_path
+        data_path = paths.epiweekly_training_data
 
     # Read data from TSV
-    logger.info(f"Reading {frequency} data from {data_path}")
+    logger.info(f"Reading {context.frequency} data from {data_path}")
     dates, reports = _read_tsv_data(
         data_path,
-        disease,
-        location,
-        target,
-        frequency,
-        use_percentage,
+        context.disease,
+        context.loc,
+        context.target,
+        context.frequency,
+        context.use_percentage,
+        context.ed_visit_type,
         logger,
     )
 
@@ -163,25 +166,28 @@ def convert_to_epiautogp_json(
     epiautogp_input = {
         "dates": [d.isoformat() for d in dates],
         "reports": reports,
-        "pathogen": disease,
-        "location": location,
-        "target": target,
-        "forecast_date": forecast_date.isoformat(),
+        "pathogen": context.disease,
+        "location": context.loc,
+        "target": context.target,
+        "frequency": context.frequency,
+        "use_percentage": context.use_percentage,
+        "ed_visit_type": context.ed_visit_type,
+        "forecast_date": context.report_date.isoformat(),
         "nowcast_dates": [d.isoformat() for d in nowcast_dates],
         "nowcast_reports": nowcast_reports,
     }
 
     # Write JSON file
-    output_json_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_json_path, "w") as f:
+    input_json_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(input_json_path, "w") as f:
         json.dump(epiautogp_input, f, indent=2)
 
     logger.info(
-        f"Saved EpiAutoGP input JSON for {disease} {location} "
-        f"(target={target}) to {output_json_path}"
+        f"Saved EpiAutoGP input JSON for {context.disease} {context.loc} "
+        f"(target={context.target}) to {input_json_path}"
     )
 
-    return output_json_path
+    return input_json_path
 
 
 def _read_tsv_data(
@@ -191,10 +197,48 @@ def _read_tsv_data(
     target: str,
     frequency: str,
     use_percentage: bool,
+    ed_visit_type: str,
     logger: logging.Logger,
 ) -> tuple[list[dt.date], list[float]]:
     """
-    Read surveillance data from TSV files.
+    Read surveillance data from TSV files and extract target variable.
+
+    Reads a TSV file containing surveillance data, filters for the specified
+    disease and location, pivots the data, and extracts the appropriate
+    target variable (NSSP ED visits or NHSN hospital admissions).
+
+    Parameters
+    ----------
+    tsv_path : Path
+        Path to the TSV file containing surveillance data
+    disease : str
+        Disease name (case-insensitive)
+    location : str
+        Geographic location code (e.g., "CA", "US")
+    target : str
+        Target data type: "nssp" or "nhsn"
+    frequency : str
+        Data frequency: "daily" or "epiweekly"
+    use_percentage : bool
+        If True, convert ED visits to percentage (only for NSSP)
+    ed_visit_type : str
+        Type of ED visits: "observed" or "other" (only for NSSP)
+    logger : logging.Logger
+        Logger for progress messages
+
+    Returns
+    -------
+    tuple[list[dt.date], list[float]]
+        Tuple of (dates, reports) where dates is a list of dates and
+        reports is a list of corresponding values
+
+    Raises
+    ------
+    FileNotFoundError
+        If the TSV file doesn't exist
+    ValueError
+        If no data is found for the specified disease and location,
+        or if required columns are missing
     """
     if not tsv_path.exists():
         raise FileNotFoundError(f"TSV file not found: {tsv_path}")
@@ -227,7 +271,7 @@ def _read_tsv_data(
     # Extract data based on target
     if target == "nssp":
         dates, reports = _extract_nssp_from_pivot(
-            df_pivot, use_percentage, tsv_path, logger
+            df_pivot, use_percentage, ed_visit_type, tsv_path, logger
         )
     else:  # target == "nhsn"
         dates, reports = _extract_nhsn_from_pivot(df_pivot, tsv_path, logger)
@@ -243,38 +287,77 @@ def _read_tsv_data(
 def _extract_nssp_from_pivot(
     df_pivot: pl.DataFrame,
     use_percentage: bool,
+    ed_visit_type: str,
     tsv_path: Path,
     logger: logging.Logger,
 ) -> tuple[list[dt.date], list[float]]:
     """
     Extract NSSP ED visit data from pivoted DataFrame.
+
+    Extracts emergency department visit data from NSSP (National Syndromic
+    Surveillance Program) and optionally converts to percentage format.
+
+    Parameters
+    ----------
+    df_pivot : pl.DataFrame
+        Pivoted DataFrame with columns for dates and ED visit types
+    use_percentage : bool
+        If True, calculate percentage: ed_visits / total_ed_visits * 100
+    ed_visit_type : str
+        Type of ED visits to extract: "observed" or "other"
+    tsv_path : Path
+        Path to source TSV file (for error messages)
+    logger : logging.Logger
+        Logger for progress messages
+
+    Returns
+    -------
+    tuple[list[dt.date], list[float]]
+        Tuple of (dates, reports) with ED visit counts or percentages
+
+    Raises
+    ------
+    ValueError
+        If required columns are missing from the DataFrame
     """
+    # Determine which ED visit column to use
+    if ed_visit_type == "observed":
+        ed_column = "observed_ed_visits"
+    else:  # ed_visit_type == "other"
+        ed_column = "other_ed_visits"
+
     # Check required columns
-    if "observed_ed_visits" not in df_pivot.columns:
-        raise ValueError(f"Column 'observed_ed_visits' not found in {tsv_path}")
+    if ed_column not in df_pivot.columns:
+        raise ValueError(f"Column '{ed_column}' not found in {tsv_path}")
 
     if use_percentage:
+        # For percentage, we need both columns regardless of ed_visit_type
+        # because the denominator is always total ED visits (observed + other)
+        if "observed_ed_visits" not in df_pivot.columns:
+            raise ValueError(
+                f"Column 'observed_ed_visits' required for percentage calculation but not found in {tsv_path}"
+            )
         if "other_ed_visits" not in df_pivot.columns:
             raise ValueError(
                 f"Column 'other_ed_visits' required for percentage calculation but not found in {tsv_path}"
             )
-        # Calculate percentage
+        # Calculate percentage: ed_column / total_ed_visits * 100
         df_pivot = df_pivot.with_columns(
             (
-                pl.col("observed_ed_visits")
+                pl.col(ed_column)
                 / (pl.col("observed_ed_visits") + pl.col("other_ed_visits"))
                 * 100.0
             ).alias("value")
         )
         logger.info(
-            "Using ED visit percentage (observed_ed_visits / total_ed_visits * 100)"
+            f"Using {ed_visit_type} ED visit percentage ({ed_column} / total_ed_visits * 100)"
         )
     else:
         # Use raw counts
         df_pivot = df_pivot.with_columns(
-            pl.col("observed_ed_visits").cast(pl.Float64).alias("value")
+            pl.col(ed_column).cast(pl.Float64).alias("value")
         )
-        logger.info("Using raw ED visit counts")
+        logger.info(f"Using {ed_visit_type} ED visit counts ({ed_column})")
 
     # Filter out any rows with null values
     df_pivot = df_pivot.filter(pl.col("value").is_not_null())
@@ -292,6 +375,28 @@ def _extract_nhsn_from_pivot(
 ) -> tuple[list[dt.date], list[float]]:
     """
     Extract NHSN hospital admission data from pivoted DataFrame.
+
+    Extracts hospital admission counts from NHSN (National Healthcare Safety
+    Network) data. NHSN data is always reported as counts, not percentages.
+
+    Parameters
+    ----------
+    df_pivot : pl.DataFrame
+        Pivoted DataFrame with columns for dates and hospital admissions
+    tsv_path : Path
+        Path to source TSV file (for error messages)
+    logger : logging.Logger
+        Logger for progress messages
+
+    Returns
+    -------
+    tuple[list[dt.date], list[float]]
+        Tuple of (dates, reports) with hospital admission counts
+
+    Raises
+    ------
+    ValueError
+        If the 'observed_hospital_admissions' column is missing
     """
     if "observed_hospital_admissions" not in df_pivot.columns:
         raise ValueError(
