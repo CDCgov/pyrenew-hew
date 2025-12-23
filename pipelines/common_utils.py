@@ -329,6 +329,7 @@ def plot_and_save_loc_forecast(
     n_forecast_days: int,
     pyrenew_model_name: str = None,
     timeseries_model_name: str = None,
+    model_name: str = None,
 ) -> None:
     """Plot and save location forecast using R script.
 
@@ -339,9 +340,12 @@ def plot_and_save_loc_forecast(
     n_forecast_days : int
         Number of days to forecast.
     pyrenew_model_name : str, optional
-        Name of the PyRenew model.
+        Name of the PyRenew model (legacy).
     timeseries_model_name : str, optional
-        Name of the timeseries model.
+        Name of the timeseries model (legacy).
+    model_name : str, optional
+        Generic model name. When provided, auto-detects model type
+        and dispatches to appropriate processing method.
 
     Returns
     -------
@@ -364,6 +368,13 @@ def plot_and_save_loc_forecast(
             [
                 "--timeseries-model-name",
                 f"{timeseries_model_name}",
+            ]
+        )
+    if model_name is not None:
+        args.extend(
+            [
+                "--model-name",
+                f"{model_name}",
             ]
         )
 
