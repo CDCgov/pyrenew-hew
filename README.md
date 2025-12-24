@@ -80,7 +80,7 @@ The following instructions will set up Dagster on your VAP. However, based on th
 
 Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
 
-To manually update the code location while we evaluate dagster, you can run `make dagster_push. This manual approachn will be deprecated and discouraged once we move to using dagster in production.
+To manually update the code location while we evaluate dagster, you can run `make dagster_push`. This manual approach will be deprecated and discouraged once we move to using dagster in production.
 
 #### Makefile Targets for Dagster
 After you've familiarized yourself with the above instructions, feel free to use these convenient `make` targets:
