@@ -29,6 +29,8 @@
 *.gif
 *.pdf
 *.png
+# except when in img/ folder
+!img/*.png
 
 # Compressed archives
 *.gz
@@ -401,7 +403,16 @@ nssp-etl
 output
 params
 nwss-vintages
+mounts
+prod-param-estimates
+pyrenew-hew-config
+pyrenew-hew-prod-output
+pyrenew-test-output
+test-output
 
 # Azure configuration files
 azureconfig.env
 azureconfig.sh
+
+# blobfuse
+config.yaml
