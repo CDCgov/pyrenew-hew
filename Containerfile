@@ -35,7 +35,7 @@ COPY ./pipelines ./pipelines
 COPY ./tests ./tests
 COPY README.md ./
 
-# -- VENV MANAGEMENT AND DEPENDENCY SYNCING -- # 
+# -- VENV MANAGEMENT AND DEPENDENCY SYNCING -- #
 
 # Copy in the UV/python dependency management configs
 COPY ./pyproject.toml ./
@@ -50,9 +50,9 @@ RUN --mount=type=cache,target=/root/.cache/uv
 ENV VIRTUAL_ENV=/pyrenew-hew/.venv
 RUN uv sync
 
-# Copy in the dagster definitions python file. 
+# Copy in the dagster definitions python file.
 # All dagster definitions are defined here.
-# Dagster Definitions are updated more frequently than other code, 
+# Dagster Definitions are updated more frequently than other code,
 # so it is much quicker for the build cache to worry about it last
 COPY ./dagster_defs.py ./
 
