@@ -114,7 +114,7 @@ def run_pyrenew_model(
         )
         return
 
-    # Configuration inherited from PyrewnewAssetConfig
+    # Configuration inherited from PyrenewAssetConfig
     context.log.debug(f"config: '{config}'")
     n_training_days = config.n_training_days
     n_samples = config.n_samples
