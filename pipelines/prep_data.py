@@ -508,7 +508,7 @@ def process_and_save_loc_data(
             values="ed_visits",
         )
         .rename({disease: "observed_ed_visits"})
-        .with_columns(other_ed_visits=pl.col("observed_ed_visits") - pl.col("Total"))
+        .with_columns(other_ed_visits=pl.col("Total") - pl.col("observed_ed_visits"))
         .drop(pl.col("Total"))
         .sort("date")
     )

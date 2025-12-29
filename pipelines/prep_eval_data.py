@@ -48,7 +48,9 @@ def save_eval_data(
             on="disease",
             values="ed_visits",
         )
-        .rename({disease: "observed_ed_visits", "Total": "other_ed_visits"})
+        .rename({disease: "observed_ed_visits"})
+        .with_columns(other_ed_visits=pl.col("Total") - pl.col("observed_ed_visits"))
+        .drop(pl.col("Total"))
         .sort("date")
     )
 
