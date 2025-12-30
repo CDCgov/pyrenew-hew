@@ -540,7 +540,8 @@ def process_and_save_loc_data(
         )
 
     nssp_training_data = clean_nssp_data(
-        pl.concat([loc_level_data, aggregated_facility_data]),
+        data=pl.concat([loc_level_data, aggregated_facility_data]),
+        disease=disease,
         data_type="train",
         last_data_date=last_training_date,
     )

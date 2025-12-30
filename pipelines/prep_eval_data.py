@@ -40,7 +40,8 @@ def save_eval_data(
     )
 
     nssp_data = clean_nssp_data(
-        raw_nssp_data,
+        data=raw_nssp_data,
+        disease=disease,
         data_type="eval",
         last_data_date=last_eval_date,
     )
