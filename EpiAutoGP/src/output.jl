@@ -2,47 +2,28 @@
     AbstractForecastOutput
 
 Abstract base type for all forecast output formats in EpiAutoGP.
-
-This type serves as the root of the forecast output type hierarchy, allowing for
-extensible output formatting while maintaining type safety and dispatch.
 """
 abstract type AbstractForecastOutput end
 
 """
     AbstractHubverseOutput <: AbstractForecastOutput
 
-Abstract type for hubverse-compatible forecast outputs.
-
-The hubverse is a standardized format for epidemiological forecasting used by
-the CDC and other public health organizations. All concrete subtypes must
-produce outputs compatible with hubverse table specifications, e.g. quantile-based
-forecasts, sample-based forecasts, etc.
+Abstract type for hubverse-compatible forecast outputs in CSV format.
 """
 abstract type AbstractHubverseOutput <: AbstractForecastOutput end
+
+"""
+    PipelineOutput <: AbstractForecastOutput
+
+Abstract type for directly outputting forecasts as typical pipeline outputs for
+    `pyrenew-hew`.
+"""
+struct PipelineOutput <: AbstractForecastOutput end
 
 """
     QuantileOutput <: AbstractHubverseOutput
 
 Configuration for quantile-based forecast outputs compatible with hubverse specifications.
-
-This struct defines the quantile levels to be computed and included in the
-hubverse-compatible output table. The default quantile levels follow CDC
-forecast hub standards.
-
-# Fields
-- `quantile_levels::Vector{Float64}`: Vector of quantile levels between 0 and 1
-
-# Examples
-```julia
-# Use default quantiles (23 levels from 0.01 to 0.99)
-output = QuantileOutput()
-
-# Custom quantiles for specific use case
-output = QuantileOutput(quantile_levels = [0.25, 0.5, 0.75])
-
-# Single quantile (median only)
-output = QuantileOutput(quantile_levels = [0.5])
-```
 """
 @kwdef struct QuantileOutput <: AbstractHubverseOutput
     quantile_levels::Vector{Float64} = [
@@ -65,14 +46,6 @@ date (when the forecast was made) and each target date.
 
 # Returns
 - `Vector{Int}`: Vector of horizons in weeks (integer division by 7 days)
-
-# Examples
-```julia
-ref_date = Date("2024-01-01")
-targets = [Date("2024-01-08"), Date("2024-01-15"), Date("2024-01-22")]
-horizons = _make_horizon_col(targets, ref_date)
-# Returns: [1, 2, 3]
-```
 """
 function _make_horizon_col(target_end_dates::Vector{Date}, reference_date::Date)
     return [Dates.value(d - reference_date) ÷ 7 for d in target_end_dates]
@@ -99,15 +72,6 @@ core forecast data needed for hubverse tables.
   - `value`: Computed quantile value
   - `target_end_date`: Date for which the forecast applies
   - `output_type`: Always "quantile" for this method
-
-# Examples
-```julia
-results = (forecast_dates = [Date("2024-01-08"), Date("2024-01-15")],
-           forecasts = rand(2, 100))  # 2 dates × 100 samples
-output_config = QuantileOutput(quantile_levels = [0.25, 0.5, 0.75])
-df = create_forecast_df(results, output_config)
-# Returns DataFrame with 6 rows (2 dates × 3 quantiles)
-```
 """
 function create_forecast_df(results::NamedTuple, output_type::QuantileOutput)
     # Extract relevant data
@@ -128,6 +92,23 @@ function create_forecast_df(results::NamedTuple, output_type::QuantileOutput)
     end
     # Add constant column for output_type, this method is specifically for quantiles
     forecast_df[!, "output_type"] .= "quantile"
+    return forecast_df
+end
+
+function create_forecast_df(results::NamedTuple, output_type::PipelineOutput)
+    # Extract relevant data
+    forecast_dates = results.forecast_dates
+    forecasts = results.forecasts
+
+    # Create a DataFrame with columns: date, .value, .draw
+    forecast_df = mapreduce(vcat, enumerate(eachcol(forecasts))) do (draw, sampled_values)
+        DataFrame(
+            :date => forecast_dates,
+            Symbol(".value") => sampled_values,
+            Symbol(".draw") => fill(draw, length(sampled_values))
+        )
+    end
+
     return forecast_df
 end
 
@@ -163,28 +144,6 @@ hubverse table, optionally saving it to disk.
   - `horizon`: Forecast horizon in weeks
   - `target_end_date`: Date for which forecast applies
   - `location`: Geographic location identifier
-
-# Examples
-```julia
-# Create and save hubverse table
-output_type = QuantileOutput()
-df = create_forecast_output(
-    input_data, results, "./output", output_type;
-    save_output = true,
-    group_name = "CDC",
-    model_name = "EpiAutoGP-v1"
-)
-
-# Create table without saving
-df = create_forecast_output(
-    input_data, results, "./output", output_type;
-    save_output = false
-)
-```
-
-# File Output
-When `save_output = true`, creates a CSV file with filename format:
-`{reference_date}-{group_name}-{model_name}-{location}-{disease_abbr}-{target}.csv`
 """
 function create_forecast_output(
         input::EpiAutoGPInput,
@@ -227,6 +186,68 @@ function create_forecast_output(
         CSV.write(csv_path, forecast_df)
 
         @info "Saved hubverse forecast table to $csv_path"
+    end
+
+    return forecast_df
+end
+
+function create_forecast_output(
+        input::EpiAutoGPInput,
+        results::NamedTuple,
+        output_dir::String,
+        output_type::PipelineOutput;
+        save_output::Bool,
+        disease_abbr::Dict{String, String} = DEFAULT_PATHOGEN_DICT,
+        target_abbr::Dict{String, String} = DEFAULT_TARGET_DICT,
+        group_name::String = DEFAULT_GROUP_NAME,
+        model_name::String = DEFAULT_MODEL_NAME
+)
+    # Create basic forecast DataFrame with date, .draw, .value
+    forecast_df = create_forecast_df(results, output_type)
+
+    # Determine variable name based on target and whether using percentages
+    variable_name = if input.target == "nhsn"
+        "observed_hospital_admissions"
+    else  # nssp
+        if input.use_percentage
+            "prop_disease_ed_visits"
+        else
+            # Use ed_visit_type to determine which ED visits column
+            input.ed_visit_type == "other" ? "other_ed_visits" : "observed_ed_visits"
+        end
+    end
+
+    # Input is in percentage format (0-100); convert to proportion (0-1) as R expects proportions for prop_ variables
+    if input.use_percentage && input.target == "nssp"
+        forecast_df[!, Symbol(".value")] = forecast_df[!, Symbol(".value")] ./ 100.0
+    end
+
+    # Add .variable and resolution columns
+    forecast_df[!, Symbol(".variable")] .= variable_name
+    forecast_df[!, :resolution] .= input.frequency
+
+    # Add metadata columns for hubverse compatibility
+    forecast_df[!, :geo_value] .= input.location
+    forecast_df[!, :disease] .= input.pathogen
+
+    # Add metadata columns for hubverse compatibility
+    forecast_df[!, :geo_value] .= input.location
+    forecast_df[!, :disease] .= input.pathogen
+
+    # Convert date column to string for parquet compatibility
+    forecast_df[!, :date] = string.(forecast_df[!, :date])
+
+    # Save as parquet if requested
+    if save_output
+        # Use model-specific naming with frequency prefix
+        # This matches the convention: {frequency}_{model}_samples_{target_letter}.parquet
+        output_letter = DEFAULT_TARGET_LETTER[input.target]
+        parquet_filename = "$(input.frequency)_epiautogp_samples_$(output_letter).parquet"
+        parquet_path = joinpath(output_dir, parquet_filename)
+        mkpath(dirname(parquet_path))
+        Parquet.write_parquet(parquet_path, forecast_df)
+
+        @info "Saved pipeline forecast samples to $parquet_path"
     end
 
     return forecast_df

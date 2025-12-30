@@ -1,6 +1,6 @@
 module EpiAutoGP
 using NowcastAutoGP # Core modeling package
-using CSV, DataFramesMeta, Dates, JSON3, StructTypes # Data handling packages
+using CSV, DataFramesMeta, Dates, JSON3, StructTypes, Parquet # Data handling packages
 using ArgParse # Command-line argument parsing
 using Statistics # For modeling functions
 
@@ -23,6 +23,7 @@ export prepare_for_modelling,
 export AbstractForecastOutput,
        AbstractHubverseOutput,
        QuantileOutput,
+       PipelineOutput,
        create_forecast_df,
        create_forecast_output
 
@@ -35,6 +36,10 @@ const DEFAULT_PATHOGEN_DICT = Dict(
 const DEFAULT_TARGET_DICT = Dict(
     "nhsn" => "hosp",
     "nssp" => "prop ed visits"
+)
+const DEFAULT_TARGET_LETTER = Dict(
+    "nhsn" => "h",
+    "nssp" => "e"
 )
 const DEFAULT_GROUP_NAME = "CFA"
 const DEFAULT_MODEL_NAME = "EpiAutoGP"

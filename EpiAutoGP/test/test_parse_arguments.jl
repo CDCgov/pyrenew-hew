@@ -18,7 +18,7 @@
             @test parsed["output-dir"] == "/path/to/output"
 
             # Test key default values
-            @test parsed["n-forecast-weeks"] == 8
+            @test parsed["n-ahead"] == 8
             @test parsed["transformation"] == "boxcox"
 
         finally
