@@ -5,6 +5,7 @@ from pathlib import Path
 import polars as pl
 
 from pipelines.prep_data import (
+    clean_nssp_data,
     combine_surveillance_data,
     get_loc_pop_df,
     get_nhsn,
@@ -30,28 +31,18 @@ def save_eval_data(
     logger.info("Reading in truth data...")
     loc_level_nssp_data = pl.scan_parquet(latest_comprehensive_path)
 
-    if last_eval_date is not None:
-        loc_level_nssp_data = loc_level_nssp_data.filter(
-            pl.col("reference_date") <= last_eval_date
-        )
+    raw_nssp_data = process_loc_level_data(
+        loc_level_nssp_data=loc_level_nssp_data,
+        loc_abb=loc,
+        disease=disease,
+        first_training_date=first_training_date,
+        loc_pop_df=get_loc_pop_df(),
+    )
 
-    nssp_data = (
-        process_loc_level_data(
-            loc_level_nssp_data=loc_level_nssp_data,
-            loc_abb=loc,
-            disease=disease,
-            first_training_date=first_training_date,
-            loc_pop_df=get_loc_pop_df(),
-        )
-        .with_columns(data_type=pl.lit("eval"))
-        .pivot(
-            on="disease",
-            values="ed_visits",
-        )
-        .rename({disease: "observed_ed_visits"})
-        .with_columns(other_ed_visits=pl.col("Total") - pl.col("observed_ed_visits"))
-        .drop(pl.col("Total"))
-        .sort("date")
+    nssp_data = clean_nssp_data(
+        raw_nssp_data,
+        data_type="eval",
+        last_data_date=last_eval_date,
     )
 
     nhsn_data = (

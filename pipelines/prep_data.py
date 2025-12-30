@@ -4,7 +4,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import date, datetime
 from logging import Logger
 from pathlib import Path
 
@@ -20,6 +20,52 @@ _disease_map = {
 }
 
 _inverse_disease_map = {v: k for k, v in _disease_map.items()}
+
+
+def clean_nssp_data(
+    data: pl.DataFrame,
+    disease: str,
+    data_type: str,
+    last_data_date: date | None = None,
+) -> pl.DataFrame:
+    """
+    Filter, reformat, and annotate a raw `pl.DataFrame` of NSSP data,
+    yielding a `pl.DataFrame` in the format expected by
+    `combine_surveillance_data`.
+
+    Parameters
+    ----------
+    data
+       Data to clean
+
+    disease
+       Name of the disease for which to prep data.
+
+    data_type
+       Value for the data_type annotation column in the
+       output dataframe.
+
+    last_data_date
+       If provided, filter the dataset to include only dates
+       prior to this date. Default `None` (no filter).
+    """
+    if last_data_date is not None:
+        data = data.filter(pl.col("date") <= last_data_date)
+
+    return (
+        data.filter(pl.col("disease").is_in([disease, "Total"]))
+        .pivot(
+            on="disease",
+            values="ed_visits",
+        )
+        .rename({disease: "observed_ed_visits"})
+        .with_columns(
+            other_ed_visits=pl.col("Total") - pl.col("observed_ed_visits"),
+            data_type=pl.lit(data_type),
+        )
+        .drop(pl.col("Total"))
+        .sort("date")
+    )
 
 
 def get_nhsn(
@@ -499,18 +545,10 @@ def process_and_save_loc_data(
             pl.col("date") < first_facility_level_data_date
         )
 
-    nssp_training_data = (
-        pl.concat([loc_level_data, aggregated_facility_data])
-        .filter(pl.col("date") <= last_training_date)
-        .with_columns(pl.lit("train").alias("data_type"))
-        .pivot(
-            on="disease",
-            values="ed_visits",
-        )
-        .rename({disease: "observed_ed_visits"})
-        .with_columns(other_ed_visits=pl.col("Total") - pl.col("observed_ed_visits"))
-        .drop(pl.col("Total"))
-        .sort("date")
+    nssp_training_data = clean_nssp_data(
+        pl.concat([loc_level_data, aggregated_facility_data]),
+        data_type="train",
+        last_data_date=last_training_date,
     )
 
     nhsn_training_data = (
