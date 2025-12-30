@@ -45,15 +45,26 @@ full_state_list = [
 ]
 # fmt: off
 
+disease_list = [
+    "COVID-19", "Influenza", "RSV"
+]
+
 # Disease Partitions
-disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "Influenza", "RSV"])
+disease_partitions = dg.StaticPartitionsDefinition(
+    disease_list
+)
 
 # State Partitions
-state_partitions = dg.StaticPartitionsDefinition(full_state_list)
+state_partitions = dg.StaticPartitionsDefinition(
+    full_state_list
+)
 
 # Multi Partitions
 multi_partition_def = dg.MultiPartitionsDefinition(
-    {"disease": disease_partitions, "state": state_partitions}
+    {
+        "disease": disease_partitions,
+          "state": state_partitions
+    }
 )
 
 # ----------------------------------------------------------- #
@@ -68,6 +79,10 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # This can be given to our automated jobs
 
 class PyrenewAssetConfig(dg.Config):
+    """
+    Configuration for the Pyrenew model assets.
+    These default values can be modified in the Dagster asset materialization launchpad.
+    """
     n_training_days: int = 150
     n_samples: int = 500
     exclude_last_n_days: int = 1
