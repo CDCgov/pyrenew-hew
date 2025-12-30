@@ -17,7 +17,7 @@ def test_get_loc_pop_df():
     and expected column names
     """
     df = prep_data.get_loc_pop_df()
-    assert df.height == 58  # 50 US states, 7 other jursidictions, US national
+    assert df.height == 58  # 50 US states, 7 other jurisdictions, US national
     assert set(df.columns) == set(["name", "abb", "population"])
 
 
