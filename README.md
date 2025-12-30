@@ -11,7 +11,7 @@ The PyRenew-HEW project aims to create short-term forecasts of respiratory disea
 
 This is a work in progress, and not all data sources are currently integrated into the model.
 
-This repository contains code for the [PyRenew-HEW model](https://github.com/CDCgov/pyrenew-hew/blob/main/pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](https://github.com/CDCgov/pyrenew-hew/tree/main/pyrenew_hew) for running the model in production, and [utilities](https://github.com/CDCgov/pyrenew-hew/tree/main/hewr) for working with model outputs.
+This repository contains code for the [PyRenew-HEW model](https://github.com/CDCgov/pyrenew-hew/blob/main/pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](https://github.com/CDCgov/pyrenew-hew/tree/main/pipelines/) for running the model in production, and [utilities](https://github.com/CDCgov/pyrenew-hew/tree/main/hewr) for working with model outputs.
 
 ## Containers
 
@@ -66,8 +66,7 @@ The following instructions will set up Dagster on your VAP. However, based on th
     - `az login --identity && az acr login -n cfaprdbatchcr`
 3. Build and push the `pyrenew-hew:dagster_latest` image:
     - `docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile . --push`
-3. Start the Dagster UI by running `uv run dagster_defs.py --configure` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
-    - Note: you only need the `--configure` flag the first time you run the Dagster UI.
+3. Start the Dagster UI by running `uv run dagster_defs.py` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
 4. You should now see the dagster UI for Pyrenew-HEW. This is a local server that will only show PyRenew-HEW asssets as defined in your local git repository.
 5. Try materializing an asset by navigating to "Lineage" on the left sidebar. By default, these assets will submit jobs to Azure Batch and write to the `pyrenew-test-output` blob.
     - We recommend materializing a few partitions at a time for testing purposes.
@@ -81,7 +80,7 @@ The following instructions will set up Dagster on your VAP. However, based on th
 
 Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
 
-To manually update the code location while we evaluate dagster, you can run `make dagster_push. This manual approachn will be deprecated and discouraged once we move to using dagster in production.
+To manually update the code location while we evaluate dagster, you can run `make dagster_push`. This manual approach will be deprecated and discouraged once we move to using dagster in production.
 
 #### Makefile Targets for Dagster
 After you've familiarized yourself with the above instructions, feel free to use these convenient `make` targets:
