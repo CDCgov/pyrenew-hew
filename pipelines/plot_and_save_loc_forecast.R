@@ -23,12 +23,13 @@ save_forecast_figures <- function(
   model_run_dir,
   n_forecast_days,
   pyrenew_model_name = NA,
-  timeseries_model_name = NA
+  timeseries_model_name = NA,
+  model_name = NA
 ) {
-  if (is.na(pyrenew_model_name) && is.na(timeseries_model_name)) {
+  if (all(is.na(c(pyrenew_model_name, timeseries_model_name, model_name)))) {
     stop(
-      "Either `pyrenew_model_name` or `timeseries_model_name`",
-      "must be provided."
+      "At least one of `pyrenew_model_name`, `timeseries_model_name`, ",
+      "or `model_name` must be provided."
     )
   }
 
@@ -52,23 +53,26 @@ save_forecast_figures <- function(
       str_replace_all("_+", "_")
   }
 
-  model_name <- dplyr::if_else(
-    is.na(pyrenew_model_name),
-    timeseries_model_name,
-    pyrenew_model_name
+  # Determine which model name to use (prioritize in order)
+  final_model_name <- dplyr::case_when(
+    !is.na(model_name) ~ model_name,
+    !is.na(pyrenew_model_name) ~ pyrenew_model_name,
+    !is.na(timeseries_model_name) ~ timeseries_model_name,
+    TRUE ~ NA_character_
   )
 
-  model_dir <- fs::path(model_run_dir, model_name)
+  model_dir <- fs::path(model_run_dir, final_model_name)
   figure_dir <- fs::path(model_dir, "figures")
   data_dir <- fs::path(model_dir, "data")
   dir_create(figure_dir)
 
   parsed_model_run_dir <- parse_model_run_dir_path(model_run_dir)
   processed_forecast <- process_loc_forecast(
-    model_run_dir,
-    n_forecast_days,
-    pyrenew_model_name,
-    timeseries_model_name,
+    model_run_dir = model_run_dir,
+    n_forecast_days = n_forecast_days,
+    pyrenew_model_name = pyrenew_model_name,
+    timeseries_model_name = timeseries_model_name,
+    model_name = model_name,
     save = TRUE
   )
 
@@ -128,7 +132,7 @@ save_forecast_figures <- function(
     ) |>
     mutate(
       file_name = create_file_name(
-        model_name,
+        final_model_name,
         .data$.variable,
         .data$resolution,
         .data$aggregated_numerator,
@@ -168,6 +172,10 @@ p <- arg_parser("Generate forecast figures") |>
   add_argument(
     "--n-forecast-days",
     help = "Number of days to forecast"
+  ) |>
+  add_argument(
+    "--model-name",
+    help = "Name of directory with model outputs (auto-detects type)"
   )
 
 argv <- parse_args(p)
@@ -176,10 +184,12 @@ model_run_dir <- path(argv$model_run_dir)
 n_forecast_days <- as.numeric(argv$n_forecast_days)
 pyrenew_model_name <- argv$pyrenew_model_name
 timeseries_model_name <- argv$timeseries_model_name
+model_name <- argv$model_name
 
 save_forecast_figures(
   model_run_dir,
   n_forecast_days,
   pyrenew_model_name,
-  timeseries_model_name
+  timeseries_model_name,
+  model_name
 )

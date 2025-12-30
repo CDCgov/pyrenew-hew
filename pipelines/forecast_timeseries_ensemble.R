@@ -8,8 +8,6 @@ script_packages <- c(
   "fable",
   "glue",
   "argparser",
-  "epipredict",
-  "epiprocess",
   "rlang",
   "hewr",
   "forecasttools"
@@ -181,23 +179,23 @@ p <- arg_parser(
     "--n-samples",
     help = "Number of samples to generate.",
     default = 2000L
+  ) |>
+  add_argument(
+    "--epiweekly",
+    help = "Whether to use epiweekly data.",
+    flag = TRUE
   )
 
 argv <- parse_args(p)
 model_dir <- path(argv$model_dir)
 n_forecast_days <- argv$n_forecast_days
 n_samples <- argv$n_samples
+epiweekly <- argv$epiweekly
 
-# Baseline forecasts on 1 day resolution
-main(
-  model_dir,
-  n_forecast_days = n_forecast_days,
-  n_samples = n_samples
-)
-# Baseline forecasts on 1 (epi)week resolution
+
 main(
   model_dir,
   n_forecast_days = n_forecast_days,
   n_samples = n_samples,
-  epiweekly = TRUE
+  epiweekly = epiweekly
 )

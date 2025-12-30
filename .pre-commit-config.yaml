@@ -13,20 +13,20 @@ repos:
   #####
   # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.0
+    rev: v0.14.10
     hooks:
       # Sort imports
       - id: ruff-check
         # Run the formatter
       - id: ruff-format
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.2
+    rev: 0.9.18
     hooks:
       - id: uv-lock
   #####
   # R
   - repo: https://github.com/lorenzwalthert/precommit
-    rev: v0.4.3.9015
+    rev: v0.4.3.9017
     hooks:
       - id: lintr
   #####

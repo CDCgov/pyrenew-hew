@@ -5,6 +5,8 @@ from pathlib import Path
 
 import arviz as az
 import forecasttools as ft
+import jax
+import numpy as np
 import polarbayes as pb
 import polars as pl
 
@@ -22,7 +24,16 @@ def generate_and_save_predictions(
     predict_ed_visits: bool = False,
     predict_hospital_admissions: bool = False,
     predict_wastewater: bool = False,
+    rng_key: int | None = None,
 ) -> None:
+    if rng_key is None:
+        rng_key = np.random.randint(0, 10000)
+    if isinstance(rng_key, int):
+        rng_key = jax.random.key(rng_key)
+    else:
+        raise ValueError(
+            "rng_key must be an integer with which to seed `jax.random.key`"
+        )
     model_run_dir = Path(model_run_dir)
     model_dir = Path(model_run_dir, model_name)
     if not model_dir.exists():
@@ -54,6 +65,7 @@ def generate_and_save_predictions(
 
     posterior_predictive = my_model.posterior_predictive(
         data=forecast_data,
+        rng_key=rng_key,
         sample_ed_visits=predict_ed_visits,
         sample_hospital_admissions=predict_hospital_admissions,
         sample_wastewater=predict_wastewater,
@@ -63,27 +75,44 @@ def generate_and_save_predictions(
 
     ft.arviz.replace_all_dim_suffix(idata, ["time", "site_id"], inplace=True)
 
-    date_details_df = pl.DataFrame(
-        {
-            "dim_name": [
-                "observed_ed_visits_time",
-                "observed_hospital_admissions_time",
-                "site_level_log_ww_conc_time",
-            ],
-            "start_date": [
-                forecast_data.first_data_dates["ed_visits"].astype(dt.datetime),
-                forecast_data.first_data_dates["hospital_admissions"].astype(
+    available_dims = ft.arviz.get_all_dims(idata)
+
+    date_details_rows = []
+
+    if "observed_ed_visits_time" in available_dims:
+        date_details_rows.append(
+            {
+                "dim_name": "observed_ed_visits_time",
+                "start_date": forecast_data.first_data_dates["ed_visits"].astype(
                     dt.datetime
                 ),
-                forecast_data.first_data_dates["wastewater"].astype(dt.datetime),
-            ],
-            "interval": [
-                dt.timedelta(days=my_data.nssp_step_size),
-                dt.timedelta(days=my_data.nhsn_step_size),
-                dt.timedelta(days=my_data.nwss_step_size),
-            ],
-        }
-    ).filter(pl.col("dim_name").is_in(ft.arviz.get_all_dims(idata)))
+                "interval": dt.timedelta(days=my_data.nssp_step_size),
+            }
+        )
+
+    if "observed_hospital_admissions_time" in available_dims:
+        date_details_rows.append(
+            {
+                "dim_name": "observed_hospital_admissions_time",
+                "start_date": forecast_data.first_data_dates[
+                    "hospital_admissions"
+                ].astype(dt.datetime),
+                "interval": dt.timedelta(days=my_data.nhsn_step_size),
+            }
+        )
+
+    if "site_level_log_ww_conc_time" in available_dims:
+        date_details_rows.append(
+            {
+                "dim_name": "site_level_log_ww_conc_time",
+                "start_date": forecast_data.first_data_dates["wastewater"].astype(
+                    dt.datetime
+                ),
+                "interval": dt.timedelta(days=my_data.nwss_step_size),
+            }
+        )
+
+    date_details_df = pl.DataFrame(date_details_rows)
 
     for row in date_details_df.iter_rows(named=True):
         ft.arviz.assign_coords_from_start_step(idata, **row, inplace=True)
@@ -156,7 +185,15 @@ if __name__ == "__main__":
         action=argparse.BooleanOptionalAction,
         help="If provided, generate posterior predictions for wastewater.",
     )
-
+    parser.add_argument(
+        "--rng-key",
+        type=int,
+        help=(
+            "Integer seed for a JAX random number generator. "
+            "If not provided, a random integer will be chosen."
+        ),
+        default=None,
+    )
     args = parser.parse_args()
 
     generate_and_save_predictions(**vars(args))

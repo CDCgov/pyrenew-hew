@@ -3,32 +3,14 @@ name: Pipeline Run Check
 on:
   pull_request:
     branches: [main]
-    paths:
-      # Explicitly include paths that should trigger the workflow
-      - 'pipelines/**'
-      - 'pyrenew_hew/**'
-      - '.github/workflows/pipeline-run-check.yaml'
-      - '.github/actions/**'
-      - 'uv.lock'
-      - 'pyproject.toml'
-      - '.python-version'
-      # Explicitly exclude batch script changes from triggering this workflow
-      - '!pipelines/batch/**'
-      - '!pipelines/azure_command_center.py'
+    paths-ignore:
+      - 'pipelines/batch/**'
+      - 'pipelines/azure_command_center.py'
   push:
     branches: [main]
-    paths:
-      # Explicitly include paths that should trigger the workflow
-      - 'pipelines/**'
-      - 'pyrenew_hew/**'
-      - '.github/workflows/pipeline-run-check.yaml'
-      - '.github/actions/**'
-      - 'uv.lock'
-      - 'pyproject.toml'
-      - '.python-version'
-      # Explicitly exclude batch script changes from triggering this workflow
-      - '!pipelines/batch/**'
-      - '!pipelines/azure_command_center.py'
+    paths-ignore:
+      - 'pipelines/batch/**'
+      - 'pipelines/azure_command_center.py'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -44,7 +26,7 @@ jobs:
   generate-data:
     runs-on:  ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -53,7 +35,7 @@ jobs:
         run: uv run python pipelines/generate_test_data.py ${{ env.BASE_DIR }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
@@ -69,7 +51,7 @@ jobs:
         disease: [COVID-19, Influenza, RSV]
         location: [US, CA, MT, DC]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -78,7 +60,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download test data
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
@@ -89,7 +71,7 @@ jobs:
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
 
       - name: Upload model fitting output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: |
             test-fit-ts-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
@@ -127,7 +109,7 @@ jobs:
           - model: hew
             location: US
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -136,14 +118,14 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download test data
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
       - name: Download timeseries output
         if: ${{ matrix.model != 'hw' && matrix.model != 'h' }}
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           pattern: test-fit-ts-*
           path: ${{ env.BASE_DIR }}
@@ -155,7 +137,7 @@ jobs:
           ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.model }}
 
       - name: Upload model fitting output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: |
             test-fit-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.model }}
@@ -165,7 +147,7 @@ jobs:
     needs: fit-pyrenew-models
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Pyrenew-HEW via UV
         uses: ./.github/actions/setup-pyrenew-hew
@@ -174,7 +156,7 @@ jobs:
         uses: ./.github/actions/setup-hewr
 
       - name: Download model fitting output
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           pattern: test-fit-*
           path: ${{ env.BASE_DIR }}
