@@ -33,6 +33,7 @@
             pkgs.libxml2.dev
             pkgs.zlib
             pkgs.zlib.dev
+            
 
             # devtools
             devtools
