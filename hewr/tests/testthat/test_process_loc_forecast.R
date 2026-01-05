@@ -231,7 +231,7 @@ test_that("process_loc_forecast delegates correctly", {
       pyrenew_model_name = NA,
       timeseries_model_name = NA
     ),
-    "Either `model_name` or `pyrenew_model_name`"
+    "At least one of"
   )
 })
 
@@ -246,6 +246,6 @@ test_that("process_loc_forecast validates legacy interface parameters", {
       pyrenew_model_name = NA,
       timeseries_model_name = NA
     ),
-    "Either `model_name` or `pyrenew_model_name`"
+    "At least one of"
   )
 })
