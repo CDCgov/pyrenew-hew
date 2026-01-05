@@ -7,7 +7,7 @@ Parses command-line arguments for the EpiAutoGP model.
 
 - `--json-input::String` (required): Path to JSON file containing model input data.
 - `--output-dir::String` (required): Directory for saving model outputs.
-- `--n-forecast-weeks::Int` (default: 8): Number of weeks to forecast.
+- `--n-ahead::Int` (default: 8): Number of time steps (days or epiweeks) to forecast.
 - `--n-particles::Int` (default: 24): Number of particles for SMC.
 - `--n-mcmc::Int` (default: 100): Number of MCMC steps for GP kernel structure.
 - `--n-hmc::Int` (default: 50): Number of HMC steps for GP kernel hyperparameters.
@@ -31,8 +31,8 @@ function parse_arguments()
         help = "Directory for saving model outputs"
         arg_type = String
         required = true
-        "--n-forecast-weeks"
-        help = "Number of weeks to forecast"
+        "--n-ahead"
+        help = "Number of time steps (days or epiweeks) to forecast"
         arg_type = Int
         default = 8
         "--n-particles"
