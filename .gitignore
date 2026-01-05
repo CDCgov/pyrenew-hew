@@ -405,3 +405,4 @@ nwss-vintages
 # Azure configuration files
 azureconfig.env
 azureconfig.sh
+config.yaml
