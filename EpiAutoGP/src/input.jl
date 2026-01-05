@@ -12,26 +12,14 @@ with nowcasting requirements and forecast parameters.
 - `reports::Vector{Real}`: Vector of case counts/measurements corresponding to each date
 - `pathogen::String`: Disease identifier (e.g., "COVID-19", "Influenza", "RSV")
 - `location::String`: Geographic location identifier (e.g., "CA", "NY", "US")
+- `target::String`: Target data type (e.g., "nssp", "nhsn")
+- `frequency::String`: Temporal frequency of data ("daily" or "epiweekly")
+- `use_percentage::Bool`: Whether data represents percentage values
+- `ed_visit_type::String`: Type of ED visits ("observed" or "other"), only applicable for NSSP target
 - `forecast_date::Date`: Reference date from which forecasting begins, often this will be a nowcast date
 - `nowcast_dates::Vector{Date}`: Dates requiring nowcasting (typically recent dates with incomplete data)
 - `nowcast_reports::Vector{Vector{Real}}`: Uncertainty bounds or samples for nowcast dates
 
-# Examples
-```julia
-# Create a simple input dataset
-data = EpiAutoGPInput(
-    [Date("2024-01-01"), Date("2024-01-02"), Date("2024-01-03")],
-    [45.0, 52.0, 38.0],
-    "COVID-19",
-    "CA",
-    Date("2024-01-03"),
-    [Date("2024-01-02"), Date("2024-01-03")],
-    [[50.0, 52.0, 54.0], [36.0, 38.0, 40.0]]
-)
-
-# Validate the input
-validate_input(data)  # returns true if valid
-```
 """
 struct EpiAutoGPInput
     dates::Vector{Date}
@@ -39,6 +27,9 @@ struct EpiAutoGPInput
     pathogen::String
     location::String
     target::String
+    frequency::String
+    use_percentage::Bool
+    ed_visit_type::String
     forecast_date::Date
     nowcast_dates::Vector{Date}
     nowcast_reports::Vector{Vector{Real}}
@@ -65,30 +56,6 @@ Performs comprehensive validation including:
 
 # Returns
 - `Bool`: Returns `true` if validation passes
-
-# Throws
-- `ArgumentError`: If any validation check fails, with descriptive error message
-
-# Examples
-```julia
-# Valid data passes validation
-valid_data = EpiAutoGPInput(
-    [Date("2024-01-01"), Date("2024-01-02")],
-    [45.0, 52.0],
-    "COVID-19", "CA", Date("2024-01-02"),
-    Date[], Vector{Real}[]
-)
-validate_input(valid_data)  # returns true
-
-# Invalid data throws ArgumentError
-invalid_data = EpiAutoGPInput(
-    [Date("2024-01-01")],
-    [-5.0],  # negative values not allowed
-    "COVID-19", "CA", Date("2024-01-01"),
-    Date[], Vector{Real}[]
-)
-validate_input(invalid_data)  # throws ArgumentError
-```
 """
 function validate_input(data::EpiAutoGPInput; valid_targets = ["nhsn", "nssp"])
     @assert data.target in valid_targets "Target must be one of $(valid_targets), got '$(data.target)'"
@@ -221,41 +188,6 @@ end
     read_and_validate_data(path_to_json::String) -> EpiAutoGPInput
 
 Read epidemiological data from JSON file with automatic validation.
-
-This is the recommended function for loading input data in production workflows.
-It combines [`read_data`](@ref) and [`validate_input`](@ref) to ensure that
-loaded data is both structurally correct and passes all validation checks.
-
-# Arguments
-- `path_to_json::String`: Path to the JSON file containing input data
-
-# Returns
-- `EpiAutoGPInput`: Validated data structure ready for modeling
-
-# Throws
-- `SystemError`: If the file cannot be read
-- `JSON3.StructuralError`: If JSON structure is invalid
-- `ArgumentError`: If data fails validation checks
-
-# Examples
-```julia
-# Load and validate data in one step
-data = read_and_validate_data("epidata.json")
-
-# This is equivalent to:
-data = read_data("epidata.json")
-validate_input(data)
-
-# Use in a try-catch block for error handling
-try
-    data = read_and_validate_data("uncertain_data.json")
-    println("Data loaded successfully")
-catch e
-    @error "Failed to load data" exception=e
-end
-```
-
-See also: [`read_data`](@ref), [`validate_input`](@ref), [`EpiAutoGPInput`](@ref)
 """
 function read_and_validate_data(path_to_json::String)
     data = read_data(path_to_json)

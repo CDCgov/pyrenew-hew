@@ -22,9 +22,7 @@ from pipelines.common_utils import (
     run_r_script,
 )
 from pipelines.fit_pyrenew_model import fit_and_save_model
-from pipelines.generate_predictive import (
-    generate_and_save_predictions,
-)
+from pipelines.generate_predictive import generate_and_save_predictions
 from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
 from pipelines.prep_eval_data import save_eval_data
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
