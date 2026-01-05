@@ -33,8 +33,8 @@ load_and_aggregate_ts <- function(
     dplyr::mutate(
       data = purrr::pmap(
         list(.data$samples, .data$observed),
-        function(samples, observed, epiweekly) {
-          to_tidy_draws_timeseries(
+        function(samples, observed) {
+          augment_timeseries_draws_with_obs(
             tidy_forecast = samples,
             observed = observed
           )
@@ -239,24 +239,22 @@ read_and_combine_data <- function(model_dir) {
 #' @param value_colname Name of the column in
 #' `tidy_forecast` for the sampled values.
 #' Default `".value"`.
-#' @param epiweekly Is the timeseries epiweekly (as opposed
-#' to daily)? Boolean, default `FALSE` (i.e. daily timeseries).
 #' @export
-to_tidy_draws_timeseries <- function(
+augment_timeseries_draws_with_obs <- function(
   tidy_forecast,
   observed,
   date_colname = "date",
   sample_id_colname = ".draw",
-  value_colname = ".value",
-  epiweekly = FALSE
+  value_colname = ".value"
 ) {
   first_forecast_date <- min(tidy_forecast[[date_colname]])
   resolution <- unique(tidy_forecast$resolution)
-  day_count <- ifelse(resolution == "epiweekly", 7, 1)
+  checkmate::assert_scalar(resolution)
+  step_size_days <- dplyr::if_else(resolution == "epiweekly", 7, 1)
   n_draws <- max(tidy_forecast[[sample_id_colname]])
-
   target_variables <- unique(tidy_forecast$.variable)
-  transformed_obs <- observed |>
+
+  obs_as_samples <- observed |>
     dplyr::filter(
       .data[[date_colname]] < !!first_forecast_date,
       .data$.variable %in% target_variables
@@ -265,13 +263,13 @@ to_tidy_draws_timeseries <- function(
     dplyr::mutate(resolution = !!resolution)
 
   stopifnot(
-    max(as.Date(transformed_obs[[date_colname]])) +
-      lubridate::ddays(day_count) ==
+    max(as.Date(obs_as_samples[[date_colname]])) +
+      lubridate::ddays(step_size_days) ==
       first_forecast_date
   )
 
   dplyr::bind_rows(
-    transformed_obs,
+    obs_as_samples,
     tidy_forecast
   ) |>
     dplyr::select(!!sample_id_colname, tidyselect::everything())

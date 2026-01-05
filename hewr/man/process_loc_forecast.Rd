@@ -21,8 +21,8 @@ process_loc_forecast(
 \item{n_forecast_days}{An integer specifying the number of days to forecast.}
 
 \item{model_name}{Name of directory containing model outputs.
-If provided, uses new S3 dispatch interface (overrides
-pyrenew_model_name/timeseries_model_name).}
+If provided, uses new S3 dispatch interface with auto-detection
+(overrides pyrenew_model_name/timeseries_model_name).}
 
 \item{pyrenew_model_name}{Name of directory containing pyrenew
 model outputs (legacy interface)}
