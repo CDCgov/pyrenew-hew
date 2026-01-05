@@ -1,5 +1,5 @@
 """
-    prepare_for_modelling(input::EpiAutoGPInput, transformation_name::String, n_forecast_weeks::Int, n_forecasts::Int) -> NamedTuple
+    prepare_for_modelling(input::EpiAutoGPInput, transformation_name::String, n_ahead::Int, n_forecasts::Int) -> NamedTuple
 
 Prepare all data and configuration needed for NowcastAutoGP modeling.
 
@@ -9,7 +9,7 @@ formats nowcast data for the modeling pipeline, and calculates forecast dates an
 # Arguments
 - `input::EpiAutoGPInput`: The input data structure containing dates, reports, and nowcast information
 - `transformation_name::String`: Name of transformation to apply ("boxcox", "positive", "percentage")
-- `n_forecast_weeks::Int`: Number of weeks to forecast into the future
+- `n_ahead::Int`: Number of time steps (days or epiweeks) to forecast into the future
 - `n_forecasts::Int`: Total number of forecast samples desired
 
 # Returns
@@ -21,15 +21,9 @@ A NamedTuple containing:
 - `n_forecasts_per_nowcast::Int`: Number of forecast samples per nowcast scenario
 - `transformation::Function`: Forward transformation function
 - `inv_transformation::Function`: Inverse transformation function
-
-# Examples
-```julia
-input = EpiAutoGPInput(...)
-model_setup = prepare_for_modelling(input, "boxcox", 4, 1000)
-```
 """
 function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::String,
-        n_forecast_weeks::Int, n_forecasts::Int)
+        n_ahead::Int, n_forecasts::Int)
     # Extract stable confirmed data, excluding recent uncertain dates with nowcasts
     stable_data_idxs = findall(d -> !(d in input.nowcast_dates), input.dates)
     stable_data_dates = input.dates[stable_data_idxs]
@@ -47,8 +41,10 @@ function prepare_for_modelling(input::EpiAutoGPInput, transformation_name::Strin
                    # Create nowcast data structure when nowcasts exist
                    create_nowcast_data(input.nowcast_reports, input.nowcast_dates; transformation)
 
-    # Calculate forecasting dates (starting from forecast_date and going up to n_forecast_weeks ahead)
-    forecast_dates = [input.forecast_date + Week(i) for i in 0:n_forecast_weeks]
+    # Calculate forecasting dates (starting from forecast_date and going n_ahead time steps forward)
+    # Use Day or Week based on frequency
+    time_step = input.frequency == "epiweekly" ? Week(1) : Day(1)
+    forecast_dates = [input.forecast_date + i * time_step for i in 0:n_ahead]
 
     # Calculate number of forecasts per nowcast sample
     n_forecasts_per_nowcast = isnothing(nowcast_data) ?
@@ -84,14 +80,6 @@ combination with nowcast scenarios.
 
 # Returns
 - Fitted AutoGP model ready for forecasting
-
-# Examples
-```julia
-dates = [Date(2024,1,1), Date(2024,1,8), Date(2024,1,15)]
-values = [100.0, 120.0, 95.0]
-transform_func, _ = get_transformations("boxcox", values)
-model = fit_base_model(dates, values; transformation=transform_func)
-```
 """
 function fit_base_model(dates::Vector{Date}, values::Vector{<:Real};
         transformation::Function,
@@ -136,7 +124,7 @@ end
 
 """
     forecast_with_epiautogp(input::EpiAutoGPInput;
-                           n_forecast_weeks::Int=8,
+                           n_ahead::Int=8,
                            n_forecasts::Int=20,
                            transformation_name::String="boxcox",
                            n_particles::Int=24,
@@ -153,7 +141,7 @@ This function implements the complete nowcasting and forecasting workflow:
 
 # Arguments
 - `input::EpiAutoGPInput`: The input data structure with dates, reports, and nowcast information
-- `n_forecast_weeks::Int=8`: Number of weeks to forecast ahead from forecast_date
+- `n_ahead::Int=8`: Number of time steps (days or epiweeks) to forecast ahead from forecast_date
 - `n_forecasts::Int=20`: Total number of forecast samples to generate
 - `transformation_name::String="boxcox"`: Data transformation type ("boxcox", "positive", "percentage")
 - `n_particles::Int=24`: Number of SMC particles for GP model fitting
@@ -168,23 +156,9 @@ A NamedTuple containing:
 - `forecast_date::Date`: The reference date for forecasting (from input.forecast_date)
 - `location::String`: The location identifier (from input.location)
 - `disease::String`: The disease name (from input.disease)
-
-# Examples
-```julia
-# Basic forecasting
-input = EpiAutoGPInput(...)
-results = forecast_with_epiautogp(input)
-forecast_dates, forecasts = results.forecast_dates, results.forecasts
-
-# Custom parameters
-results = forecast_with_epiautogp(input;
-                                 n_forecast_weeks=4,
-                                 n_forecasts=1000,
-                                 transformation_name="positive")
-```
 """
 function forecast_with_epiautogp(input::EpiAutoGPInput;
-        n_forecast_weeks::Int = 8,
+        n_ahead::Int = 8,
         n_forecasts::Int = 20,
         transformation_name::String = "boxcox",
         n_particles::Int = 24,
@@ -193,7 +167,7 @@ function forecast_with_epiautogp(input::EpiAutoGPInput;
         n_hmc::Int = 50)
 
     # Prepare training data, nowcasting data and forecasting dates
-    model_info = prepare_for_modelling(input, transformation_name, n_forecast_weeks, n_forecasts)
+    model_info = prepare_for_modelling(input, transformation_name, n_ahead, n_forecasts)
 
     # Fit base model on confirmed/stable data
     base_model = fit_base_model(
@@ -234,26 +208,17 @@ with parsed command-line arguments to execute the full nowcasting and forecastin
 - Same as forecast_with_epiautogp(): NamedTuple with forecast results and metadata
 
 # Expected command-line arguments
-- `"n-forecast-weeks"`: Number of weeks to forecast
+- `"n-ahead"`: Number of time steps (days or epiweeks) to forecast
 - `"n-forecast-draws"`: Total number of forecast samples
 - `"transformation"`: Data transformation type
 - `"n-particles"`: Number of SMC particles
 - `"smc-data-proportion"`: SMC data proportion
 - `"n-mcmc"`: Number of MCMC samples
 - `"n-hmc"`: Number of HMC samples
-
-# Examples
-```julia
-# Typical usage pattern
-args = parse_arguments()
-input_data = read_and_validate_data(args["json-input"])
-results = forecast_with_epiautogp(input_data, args)
-forecast_dates, forecasts = results.forecast_dates, results.forecasts
-```
 """
 function forecast_with_epiautogp(input::EpiAutoGPInput, args::Dict{String, Any})
     return forecast_with_epiautogp(input;
-        n_forecast_weeks = args["n-forecast-weeks"],
+        n_ahead = args["n-ahead"],
         n_forecasts = args["n-forecast-draws"],
         transformation_name = args["transformation"],
         n_particles = args["n-particles"],
