@@ -2,7 +2,7 @@
 
 S3method(process_model_samples,pyrenew)
 S3method(process_model_samples,timeseries)
-export(augment_timeseries_draws_with_obs)
+export(augment_timeseries_draws_w_obs)
 export(epiweekly_samples_from_daily)
 export(format_timeseries_output)
 export(generate_exp_growth_pois)

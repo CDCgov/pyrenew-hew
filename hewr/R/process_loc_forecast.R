@@ -34,7 +34,7 @@ load_and_aggregate_ts <- function(
       data = purrr::pmap(
         list(.data$samples, .data$observed),
         function(samples, observed) {
-          augment_timeseries_draws_with_obs(
+          augment_timeseries_draws_w_obs(
             tidy_forecast = samples,
             observed = observed
           )
@@ -240,7 +240,7 @@ read_and_combine_data <- function(model_dir) {
 #' `tidy_forecast` for the sampled values.
 #' Default `".value"`.
 #' @export
-augment_timeseries_draws_with_obs <- function(
+augment_timeseries_draws_w_obs <- function(
   tidy_forecast,
   observed,
   date_colname = "date",

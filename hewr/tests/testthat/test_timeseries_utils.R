@@ -144,7 +144,7 @@ test_that("epiweekly_samples_from_daily aggregates correctly", {
   expect_true(all(result$.variable == "observed_ed_visits"))
 })
 
-test_that("augment_timeseries_draws_with_obs combines forecast and observed", {
+test_that("augment_timeseries_draws_w_obs combines forecast and observed", {
   # Create minimal forecast data - 3 forecast dates x 2 draws = 6 rows
   tidy_forecast <- tibble::tibble(
     date = rep(as.Date("2024-01-08") + 0:2, each = 2),
@@ -160,7 +160,7 @@ test_that("augment_timeseries_draws_with_obs combines forecast and observed", {
     .value = 10:16
   )
 
-  result <- augment_timeseries_draws_with_obs(
+  result <- augment_timeseries_draws_w_obs(
     tidy_forecast = tidy_forecast,
     observed = observed
   )
