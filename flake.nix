@@ -75,7 +75,7 @@
         shellHook = ''
             # Ensure libcurl is available during R package builds
             # Force OpenSSL 3.x by adding its libraries to LD_LIBRARY_PATH
-            # export LD_LIBRARY_PATH="${pkgs.openssl_3.out}/lib:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH="${pkgs.openssl_3.out}/lib:$LD_LIBRARY_PATH"
             
             # Ensure dynamic linker uses the R-specific libraries
             export R_HOME=$(R RHOME)
