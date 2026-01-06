@@ -217,18 +217,17 @@ def main(
     data_dir = Path(model_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
 
-    if fit_ed_visits:
-        timeseries_model_name = "ts_ensemble_e"
+    timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
 
-        if not os.path.exists(Path(model_run_dir, timeseries_model_name)):
-            raise ValueError(
-                f"{timeseries_model_name} model run not found. "
-                "Please ensure that the timeseries forecasts "
-                "for the ED visits (E) signal are generated "
-                "before fitting Pyrenew models with the E signal. "
-                "If running a batch job, set the flag --model-family "
-                "'timeseries' to fit timeseries model."
-            )
+    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
+        raise ValueError(
+            f"{timeseries_model_name} model run not found. "
+            "Please ensure that the timeseries forecasts "
+            "for the ED visits (E) signal are generated "
+            "before fitting Pyrenew models with the E signal. "
+            "If running a batch job, set the flag --model-family "
+            "'timeseries' to fit timeseries model."
+        )
 
     logger.info("Recording git info...")
     record_git_info(model_dir)

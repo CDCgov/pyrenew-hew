@@ -25,13 +25,6 @@ def add_common_forecast_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
     parser.add_argument(
-        "--report-date",
-        type=str,
-        default="latest",
-        help="Report date in YYYY-MM-DD format or latest (default: latest).",
-    )
-
-    parser.add_argument(
         "--facility-level-nssp-data-dir",
         type=Path,
         default=Path("private_data", "nssp_etl_gold"),

@@ -44,7 +44,6 @@ def timeseries_ensemble_forecasts(
 
 def main(
     disease: str,
-    report_date: dt.date,
     param_data_dir: Path,
     loc: str,
     facility_level_nssp_data_dir: Path | str,
@@ -69,7 +68,7 @@ def main(
 
     logger.info(
         "Starting single-location timeseries forecasting pipeline for "
-        f"location {loc}, and report date {report_date}"
+        f"location {loc}, and latest report date."
     )
 
     credentials_dict = load_credentials(credentials_path, logger)

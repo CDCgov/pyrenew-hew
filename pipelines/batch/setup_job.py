@@ -250,7 +250,6 @@ def main(
         "--param-data-dir params "
         "--output-dir {output_dir} "
         "--credentials-path config/creds.toml "
-        "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
         f"{additional_args}"
@@ -340,7 +339,6 @@ def main(
             base_call=base_call.format(
                 loc=loc,
                 disease=disease,
-                report_date="latest",
                 output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,
