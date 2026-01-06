@@ -8,7 +8,6 @@ reporting periods from the training data.
 import datetime as dt
 import json
 import logging
-from pathlib import Path
 
 import polars as pl
 import pytest
@@ -34,23 +33,27 @@ def sample_tsv_data():
     data = []
     for date in dates:
         # Add observed_ed_visits data
-        data.append({
-            "date": date,
-            "geo_value": "CA",
-            "disease": "COVID-19",
-            "data_type": "observed",
-            ".variable": "observed_ed_visits",
-            ".value": 100.0,
-        })
+        data.append(
+            {
+                "date": date,
+                "geo_value": "CA",
+                "disease": "COVID-19",
+                "data_type": "observed",
+                ".variable": "observed_ed_visits",
+                ".value": 100.0,
+            }
+        )
         # Add other_ed_visits data
-        data.append({
-            "date": date,
-            "geo_value": "CA",
-            "disease": "COVID-19",
-            "data_type": "observed",
-            ".variable": "other_ed_visits",
-            ".value": 900.0,
-        })
+        data.append(
+            {
+                "date": date,
+                "geo_value": "CA",
+                "disease": "COVID-19",
+                "data_type": "observed",
+                ".variable": "other_ed_visits",
+                ".value": 900.0,
+            }
+        )
 
     return pl.DataFrame(data)
 
