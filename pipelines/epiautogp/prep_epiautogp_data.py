@@ -69,6 +69,7 @@ def convert_to_epiautogp_json(
     paths: ModelPaths,
     nowcast_dates: list[dt.date] | None = None,
     nowcast_reports: list[list[float]] | None = None,
+    exclude_date_ranges: list[tuple[dt.date, dt.date]] | None = None,
 ) -> Path:
     """
     Convert surveillance data to EpiAutoGP JSON format.
@@ -91,6 +92,12 @@ def convert_to_epiautogp_json(
     nowcast_reports : list[list[float]] | `None`, default=`None`
         Samples for nowcast dates to represent nowcast uncertainty. If `None`,
         defaults to empty list. Not currently used.
+    exclude_date_ranges : list[tuple[dt.date, dt.date]] | `None`, default=`None`
+        List of date ranges to exclude from the data. Each tuple represents
+        (start_date, end_date) where both dates are inclusive. This is useful
+        for removing periods with known reporting problems. If `None`, no
+        dates are excluded. GPs don't require regular sequential data, so
+        gaps from excluded periods are acceptable.
 
     Returns
     -------
@@ -135,11 +142,13 @@ def convert_to_epiautogp_json(
         context.target, context.frequency, context.use_percentage, context.ed_visit_type
     )
 
-    # Set defaults for nowcasting
+    # Set defaults for nowcasting and date exclusion
     if nowcast_dates is None:
         nowcast_dates = []
     if nowcast_reports is None:
         nowcast_reports = []
+    if exclude_date_ranges is None:
+        exclude_date_ranges = []
 
     # Define input data JSON path
     input_json_path = paths.model_output_dir / f"{context.model_name}_input.json"
@@ -160,6 +169,7 @@ def convert_to_epiautogp_json(
         context.use_percentage,
         context.ed_visit_type,
         logger,
+        exclude_date_ranges=exclude_date_ranges,
     )
 
     # Create EpiAutoGP input structure
@@ -199,6 +209,7 @@ def _read_tsv_data(
     use_percentage: bool,
     ed_visit_type: str,
     logger: logging.Logger,
+    exclude_date_ranges: list[tuple[dt.date, dt.date]] | None = None,
 ) -> tuple[list[dt.date], list[float]]:
     """
     Read surveillance data from TSV files and extract target variable.
@@ -225,6 +236,10 @@ def _read_tsv_data(
         Type of ED visits: "observed" or "other" (only for NSSP)
     logger : logging.Logger
         Logger for progress messages
+    exclude_date_ranges : list[tuple[dt.date, dt.date]] | `None`, default=`None`
+        List of date ranges to exclude from the data. Each tuple represents
+        (start_date, end_date) where both dates are inclusive. If `None`,
+        no dates are excluded.
 
     Returns
     -------
@@ -267,6 +282,17 @@ def _read_tsv_data(
     # Ensure date column is properly typed
     df_pivot = df_pivot.with_columns(pl.col("date").cast(pl.Date))
     df_pivot = df_pivot.sort("date")
+
+    # Filter out excluded date ranges if specified
+    if exclude_date_ranges is not None and len(exclude_date_ranges) > 0:
+        logger.info(f"Excluding {len(exclude_date_ranges)} date range(s) from data")
+        for start_date, end_date in exclude_date_ranges:
+            # Filter out dates in the range [start_date, end_date] (inclusive)
+            df_pivot = df_pivot.filter(
+                ~((pl.col("date") >= start_date) & (pl.col("date") <= end_date))
+            )
+            logger.info(f"Excluded dates from {start_date} to {end_date}")
+
 
     # Extract data based on target
     if target == "nssp":
