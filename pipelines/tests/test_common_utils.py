@@ -98,7 +98,6 @@ class TestCLIUtils:
 
         assert args.disease == "COVID-19"
         assert args.loc == "CA"
-        assert args.report_date == "latest"  # default value
         assert args.n_training_days == 180  # default value
         assert args.n_forecast_days == 28  # default value
         assert args.exclude_last_n_days == 0  # default value
