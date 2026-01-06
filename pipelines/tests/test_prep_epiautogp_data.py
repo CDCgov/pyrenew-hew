@@ -6,6 +6,7 @@ reporting periods from the training data.
 """
 
 import datetime as dt
+import json
 import logging
 from pathlib import Path
 
@@ -262,7 +263,6 @@ class TestConvertToEpiautogpJsonWithExclusions:
         assert json_path.exists()
 
         # Read and verify JSON content
-        import json
         with open(json_path) as f:
             json_data = json.load(f)
 
@@ -306,7 +306,6 @@ class TestConvertToEpiautogpJsonWithExclusions:
         assert json_path.exists()
 
         # Read and verify JSON content
-        import json
         with open(json_path) as f:
             json_data = json.load(f)
 

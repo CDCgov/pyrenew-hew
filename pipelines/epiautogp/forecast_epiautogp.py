@@ -262,7 +262,6 @@ def main(
             f"Will exclude {len(parsed_exclude_date_ranges)} date range(s) from training data"
         )
 
-
     # Epiautogp params and execution settings
     params = {
         "n_ahead": n_ahead,
