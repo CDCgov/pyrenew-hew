@@ -166,7 +166,7 @@ def main(
     n_forecast_draws: int = 2000,
     smc_data_proportion: float = 0.1,
     n_threads: int = 1,
-    exclude_date_ranges: str = None,
+    exclude_date_ranges: str | None = None,
 ) -> None:
     """
     Run the complete EpiAutoGP forecasting pipeline for a single location.
