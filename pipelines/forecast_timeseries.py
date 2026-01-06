@@ -1,5 +1,4 @@
 import argparse
-import datetime as dt
 import logging
 import os
 from pathlib import Path
