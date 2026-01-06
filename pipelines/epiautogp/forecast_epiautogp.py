@@ -1,5 +1,4 @@
 import argparse
-import datetime as dt
 import logging
 from pathlib import Path
 
@@ -12,58 +11,6 @@ from pipelines.epiautogp import (
     convert_to_epiautogp_json,
     setup_forecast_pipeline,
 )
-
-
-def _parse_exclude_date_ranges(
-    exclude_date_ranges_str: str | None,
-) -> list[tuple[dt.date, dt.date]] | None:
-    """
-    Parse comma-separated date ranges from string to list of tuples.
-
-    Parameters
-    ----------
-    exclude_date_ranges_str : str | None
-        Comma-separated list of date ranges in format 'start:end'.
-        Example: '2024-01-15:2024-01-20,2024-03-01:2024-03-07'
-
-    Returns
-    -------
-    list[tuple[dt.date, dt.date]] | None
-        List of (start_date, end_date) tuples, or None if input is None/empty
-
-    Raises
-    ------
-    ValueError
-        If date range format is invalid, dates can't be parsed, or start > end
-    """
-    if exclude_date_ranges_str is None or not exclude_date_ranges_str.strip():
-        return None
-
-    parsed_ranges = []
-    for date_range_str in exclude_date_ranges_str.split(","):
-        date_range_str = date_range_str.strip()
-        if ":" not in date_range_str:
-            raise ValueError(
-                f"Invalid date range format: '{date_range_str}'. "
-                "Expected format: 'start_date:end_date' (e.g., '2024-01-15:2024-01-20')"
-            )
-        start_str, end_str = date_range_str.split(":", 1)
-        try:
-            start_date = dt.datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
-            end_date = dt.datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
-        except ValueError as e:
-            raise ValueError(
-                f"Invalid date format in range '{date_range_str}'. "
-                f"Expected YYYY-MM-DD format. Error: {e}"
-            )
-        if start_date > end_date:
-            raise ValueError(
-                f"Invalid date range '{date_range_str}': "
-                f"start_date ({start_date}) must be <= end_date ({end_date})"
-            )
-        parsed_ranges.append((start_date, end_date))
-
-    return parsed_ranges
 
 
 def run_epiautogp_forecast(
@@ -166,7 +113,6 @@ def main(
     n_forecast_draws: int = 2000,
     smc_data_proportion: float = 0.1,
     n_threads: int = 1,
-    exclude_date_ranges: str | None = None,
 ) -> None:
     """
     Run the complete EpiAutoGP forecasting pipeline for a single location.
@@ -230,12 +176,6 @@ def main(
         Proportion of data used in each SMC step
     n_threads : int, default=1
         Number of threads for Julia execution
-    exclude_date_ranges : str | None, default=None
-        Comma-separated list of date ranges to exclude from training data.
-        Each range should be specified as 'start:end' (both dates inclusive).
-        Example: '2024-01-15:2024-01-20,2024-03-01:2024-03-07' excludes
-        two periods with known reporting problems. GPs don't require regular
-        sequential data, so gaps are acceptable.
 
     Returns
     -------
@@ -283,13 +223,6 @@ def main(
         n_ahead = (n_forecast_days + 6) // 7  # Round up to nearest week
     else:
         n_ahead = n_forecast_days
-
-    # Parse exclude_date_ranges from string to list of tuples
-    parsed_exclude_date_ranges = _parse_exclude_date_ranges(exclude_date_ranges)
-    if parsed_exclude_date_ranges:
-        logger.info(
-            f"Will exclude {len(parsed_exclude_date_ranges)} date range(s) from training data"
-        )
 
     # Epiautogp params and execution settings
     params = {
@@ -344,7 +277,6 @@ def main(
     epiautogp_input_json_path = convert_to_epiautogp_json(
         context=context,
         paths=paths,
-        exclude_date_ranges=parsed_exclude_date_ranges,
     )
 
     # Step 4: Run EpiAutoGP forecast
@@ -456,19 +388,6 @@ if __name__ == "__main__":
         type=int,
         default=1,
         help="Number of threads to use for EpiAutoGP computations (default: 1).",
-    )
-
-    parser.add_argument(
-        "--exclude-date-ranges",
-        type=str,
-        default=None,
-        help=(
-            "Comma-separated list of date ranges to exclude from training data. "
-            "Each range should be 'start:end' (both dates inclusive, YYYY-MM-DD format). "
-            "Example: '2024-01-15:2024-01-20,2024-03-01:2024-03-07' "
-            "excludes two periods with known reporting problems. "
-            "GPs don't require regular sequential data, so gaps are acceptable."
-        ),
     )
 
     args = parser.parse_args()
