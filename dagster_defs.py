@@ -136,9 +136,6 @@ def run_pyrenew_model(
     exclude_last_n_days = config.exclude_last_n_days
     n_warmup = config.n_warmup
     additional_forecast_letters = config.additional_forecast_letters
-    forecast_date = config.forecast_date
-    output_dir = config.output_dir
-    output_subdir = config.output_subdir
     full_dir = config.full_dir
 
     if model_family == "pyrenew":
