@@ -1,4 +1,4 @@
-.PHONY: help container_build ghcr_login container_push run_timeseries run_e_model run_h_models post_process run_he_model run_hw_model acc mount unmount config dagster dagster_build dagster_push
+.PHONY: help container_build container_tag ghcr_login container_push run_timeseries run_e_model run_h_models post_process run_he_model run_hw_model acc mount unmount config dagster dagster_build
 
 # Build parameters
 
@@ -65,7 +65,7 @@ help:
 	@echo "  dagster             : Run dagster definitions locally"
 	@echo "  dagster_build       : Build the dagster container image"
 	@echo "  dagster_push        : Push the dagster container image to the Azure Container Registry and code location"
-	@echo "  CONTAINER_IMAGE_VERSION : Tag the container image"
+	@echo "  container_tag       : Tag the container image"
 	@echo "  ghcr_login          : Log in to the Github Container Registry. Requires GH_USERNAME and GH_PAT env vars"
 	@echo "  container_push      : Push the container image to the Azure Container Registry"
 	@echo ""
@@ -118,17 +118,10 @@ container_build: ghcr_login
 dagster_build:
 	docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile .
 
-dagster_push: dagster_build
-	az login --identity && \
-	az acr login -n cfaprdbatchcr && \
-	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest" && \
-	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
-	--registry_image "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
-
 dagster:
 	uv run dagster_defs.py
 
-CONTAINER_IMAGE_VERSION:
+container_tag:
 	$(ENGINE) tag $(CONTAINER_IMAGE_NAME) $(CONTAINER_REMOTE_NAME)
 
 ghcr_login:
