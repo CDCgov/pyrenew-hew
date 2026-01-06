@@ -7,8 +7,6 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-import polars as pl
-
 from pipelines.cli_utils import run_command
 
 
