@@ -284,7 +284,7 @@ def _read_tsv_data(
     df_pivot = df_pivot.sort("date")
 
     # Filter out excluded date ranges if specified
-    if exclude_date_ranges is not None and len(exclude_date_ranges) > 0:
+    if exclude_date_ranges:
         logger.info(f"Excluding {len(exclude_date_ranges)} date range(s) from data")
         for start_date, end_date in exclude_date_ranges:
             # Filter out dates in the range [start_date, end_date] (inclusive)
