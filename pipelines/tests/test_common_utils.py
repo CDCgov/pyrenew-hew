@@ -4,7 +4,6 @@ import argparse
 import datetime as dt
 import logging
 
-import polars as pl
 import pytest
 
 from pipelines.cli_utils import (
