@@ -21,15 +21,9 @@ repos:
       - id: ruff-format
   #####extra
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.18
+    rev: 0.9.21
     hooks:
       - id: uv-lock
-  #####
-  # R
-  - repo: https://github.com/lorenzwalthert/precommit
-    rev: v0.4.3.9017
-    hooks:
-      - id: lintr
   #####
   # Bash
   - repo: https://github.com/scop/pre-commit-shfmt
