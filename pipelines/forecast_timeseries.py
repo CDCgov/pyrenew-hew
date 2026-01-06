@@ -4,14 +4,14 @@ import logging
 import os
 from pathlib import Path
 
+import polars as pl
+
 from pipelines.cli_utils import add_common_forecast_arguments
 from pipelines.common_utils import (
     calculate_training_dates,
     create_hubverse_table,
     get_available_reports,
     load_credentials,
-    load_nssp_data,
-    parse_and_validate_report_date,
     plot_and_save_loc_forecast,
     run_r_script,
 )
@@ -19,7 +19,6 @@ from pipelines.forecast_pyrenew import (
     generate_epiweekly_data,
 )
 from pipelines.prep_data import process_and_save_loc_data
-from pipelines.prep_eval_data import save_eval_data
 
 
 def timeseries_ensemble_forecasts(
@@ -45,17 +44,15 @@ def timeseries_ensemble_forecasts(
 
 def main(
     disease: str,
-    report_date: str,
+    report_date: dt.date,
+    param_data_dir: Path,
     loc: str,
     facility_level_nssp_data_dir: Path | str,
-    state_level_nssp_data_dir: Path | str,
-    param_data_dir: Path | str,
     output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
     n_samples: int,
     model_letters: str,
-    eval_data_path: Path,
     exclude_last_n_days: int = 0,
     credentials_path: Path | None = None,
     nhsn_data_path: Path | None = None,
@@ -80,14 +77,9 @@ def main(
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
-    available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
 
-    report_date, loc_report_date = parse_and_validate_report_date(
-        report_date,
-        available_facility_level_reports,
-        available_loc_level_reports,
-        logger,
-    )
+    report_date = max(available_facility_level_reports)
+    facility_datafile = f"{report_date}.parquet"
 
     first_training_date, last_training_date = calculate_training_dates(
         report_date,
@@ -96,14 +88,8 @@ def main(
         logger,
     )
 
-    facility_level_nssp_data, loc_level_nssp_data = load_nssp_data(
-        report_date,
-        loc_report_date,
-        available_facility_level_reports,
-        available_loc_level_reports,
-        facility_level_nssp_data_dir,
-        state_level_nssp_data_dir,
-        logger,
+    facility_level_nssp_data = pl.scan_parquet(
+        Path(facility_level_nssp_data_dir, facility_datafile)
     )
 
     model_batch_dir_name = (
@@ -123,7 +109,6 @@ def main(
         loc_abb=loc,
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
-        loc_level_nssp_data=loc_level_nssp_data,
         loc_level_nwss_data=None,
         report_date=report_date,
         first_training_date=first_training_date,
@@ -133,20 +118,6 @@ def main(
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
-
-    logger.info("Getting eval data...")
-    save_eval_data(
-        loc=loc,
-        disease=disease,
-        first_training_date=first_training_date,
-        last_training_date=last_training_date,
-        latest_comprehensive_path=eval_data_path,
-        output_data_dir=Path(ensemble_model_output_dir, "data"),
-        last_eval_date=report_date + dt.timedelta(days=n_forecast_days),
-        credentials_dict=credentials_dict,
-        nhsn_data_path=nhsn_data_path,
-    )
-    logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
     generate_epiweekly_data(Path(ensemble_model_output_dir, "data"))

@@ -83,11 +83,7 @@ convert_daily_to_epiweekly <- function(
 main <- function(data_dir) {
   convert_daily_to_epiweekly(
     data_dir,
-    data_name = "combined_training_data.tsv"
-  )
-  convert_daily_to_epiweekly(
-    data_dir,
-    data_name = "combined_eval_data.tsv"
+    data_name = "combined_data.tsv"
   )
 }
 

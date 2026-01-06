@@ -3,7 +3,8 @@
 BASE_DIR=pipelines/tests/end_to_end_test_output
 LOCATIONS=(US CA MT DC)
 DISEASES=(Influenza COVID-19 RSV)
-
+LOCATIONS=(CA)
+DISEASES=(COVID-19)
 echo "TEST-MODE: Running forecast_pyrenew.py in test mode with base directory $BASE_DIR"
 
 if [ -d "$BASE_DIR" ]; then

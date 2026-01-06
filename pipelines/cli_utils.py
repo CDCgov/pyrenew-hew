@@ -39,13 +39,6 @@ def add_common_forecast_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
     parser.add_argument(
-        "--state-level-nssp-data-dir",
-        type=Path,
-        default=Path("private_data", "nssp_state_level_gold"),
-        help="Directory in which to look for state-level NSSP ED visit data.",
-    )
-
-    parser.add_argument(
         "--param-data-dir",
         type=Path,
         default=Path("private_data", "prod_param_estimates"),
@@ -90,12 +83,6 @@ def add_common_forecast_arguments(parser: argparse.ArgumentParser) -> None:
         "--credentials-path",
         type=Path,
         help="Path to a TOML file containing credentials such as API keys.",
-    )
-
-    parser.add_argument(
-        "--eval-data-path",
-        type=Path,
-        help="Path to a parquet file containing comprehensive truth data.",
     )
 
     parser.add_argument(

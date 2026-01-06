@@ -16,7 +16,6 @@ from pipelines.common_utils import (
     get_available_reports,
     load_credentials,
     load_nssp_data,
-    parse_and_validate_report_date,
 )
 
 
@@ -59,24 +58,6 @@ class TestValidationUtils:
             ),
         ],
     )
-    def test_parse_and_validate_report_date(
-        self,
-        input_date,
-        available_facility,
-        available_loc,
-        expected_report,
-        expected_loc,
-    ):
-        """Test parsing report dates with various inputs."""
-        logger = logging.getLogger(__name__)
-
-        report_date, loc_report_date = parse_and_validate_report_date(
-            input_date, available_facility, available_loc, logger
-        )
-
-        assert report_date == expected_report
-        assert loc_report_date == expected_loc
-
     @pytest.mark.parametrize(
         "n_training_days,exclude_last_n_days,expected_first,expected_last",
         [
