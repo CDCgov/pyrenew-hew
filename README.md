@@ -64,8 +64,8 @@ The following instructions will set up Dagster on your VAP. However, based on th
     - `source .venv/bin/activate`
 2. Login to Azure and the Batch Container Registry:
     - `az login --identity && az acr login -n cfaprdbatchcr`
-3. Build and push the `pyrenew-hew:dagster_latest` image:
-    - `docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile . --push`
+3. Build and push the `pyrenew-hew:latest` image:
+    - `docker build -t ghcr.io/cdcgov/pyrenew-hew:latest -f Containerfile . --push`
 3. Start the Dagster UI by running `uv run dagster_defs.py` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
 4. You should now see the dagster UI for Pyrenew-HEW. This is a local server that will only show PyRenew-HEW asssets as defined in your local git repository.
 5. Try materializing an asset by navigating to "Lineage" on the left sidebar. By default, these assets will submit jobs to Azure Batch and write to the `pyrenew-test-output` blob.

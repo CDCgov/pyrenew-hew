@@ -89,7 +89,7 @@ class PyrenewAssetConfig(dg.Config):
     n_warmup: int = 1000
     additional_forecast_letters: str = ""
     forecast_date: str = date.today().isoformat()
-    output_dir: str = "test-output"
+    output_dir: str = "output"
     output_subdir: str = f"{forecast_date}_forecasts"
     full_dir: str = f"{output_dir}/{output_subdir}"
 
@@ -293,7 +293,7 @@ def pyrenew_hew(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
-image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
+image = "ghcr.io/cdcgov/pyrenew-hew:dagster_latest"
 
 # add this to a job or the Definitions class to use it
 docker_executor_configured = docker_executor.configured(

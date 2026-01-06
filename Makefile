@@ -116,14 +116,14 @@ container_build: ghcr_login
 	$(ENGINE) build . -t $(CONTAINER_IMAGE_NAME) -f $(CONTAINERFILE)
 
 dagster_build:
-	docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile .
+	docker build -t ghcr.io/cdcgov/pyrenew-hew:latest -f Containerfile .
 
 dagster_push: dagster_build
 	az login --identity && \
 	az acr login -n cfaprdbatchcr && \
-	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest" && \
+	docker push "ghcr.io/cdcgov/pyrenew-hew:latest" && \
 	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
-	--registry_image "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
+	--registry_image "ghcr.io/cdcgov/pyrenew-hew:latest"
 
 dagster:
 	uv run dagster_defs.py
