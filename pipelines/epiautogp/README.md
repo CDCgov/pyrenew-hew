@@ -10,6 +10,16 @@ The EpiAutoGP pipeline supports forecasting of:
 
 It operates on both **daily** and **epiweekly** temporal frequencies, with optional percentage transformations for ED visit data.
 
+### Key Data Options for Gaussian Process Models
+
+EpiAutoGP uses Gaussian processes (GPs) which have different data requirements than traditional time series models:
+
+1. **Weekly-only data option**: Use `--frequency epiweekly` to work with weekly data when the target is weekly. EpiAutoGP can work with either daily or weekly data; time steps are less critical for GP models than for sequential models like ARIMA.
+
+2. **Extended data horizon**: Use `--n-training-days` with larger values (e.g., 180, 365, or more) to provide longer training data horizons. Unlike traditional renewal models that typically use 90-150 days, GPs can benefit from much longer data to better infer temporal autocovariance kernels.
+
+3. **Period data exclusion**: Use `--exclude-date-ranges` to remove periods with known reporting problems. GPs don't require regular sequential data, so gaps from excluded periods are acceptable. Specify ranges as comma-separated `start:end` pairs (e.g., `2024-01-15:2024-01-20,2024-03-01:2024-03-07`).
+
 ## Pipeline Architecture
 
 The forecasting pipeline consists of five main steps:
@@ -34,6 +44,7 @@ Main entry point for the forecasting pipeline.
 - `--target`: Data type (`nssp` or `nhsn`)
 - `--frequency`: Temporal frequency (`daily` or `epiweekly`)
 - `--use-percentage`: Convert ED visits to percentage of total visits
+- `--exclude-date-ranges`: Comma-separated list of date ranges to exclude from training data (e.g., `2024-01-15:2024-01-20,2024-03-01:2024-03-07`)
 - `--n-particles`: Number of particles for Sequential Monte Carlo (default: 24)
 - `--n-mcmc`: MCMC steps for GP kernel structure (default: 100)
 - `--n-hmc`: HMC steps for GP kernel hyperparameters (default: 50)

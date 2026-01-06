@@ -293,7 +293,6 @@ def _read_tsv_data(
             )
             logger.info(f"Excluded dates from {start_date} to {end_date}")
 
-
     # Extract data based on target
     if target == "nssp":
         dates, reports = _extract_nssp_from_pivot(
