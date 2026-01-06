@@ -15,7 +15,6 @@ from pipelines.common_utils import (
     calculate_training_dates,
     get_available_reports,
     load_credentials,
-    load_nssp_data,
 )
 
 
@@ -39,25 +38,6 @@ class TestValidationUtils:
         with pytest.raises(ValueError, match="must have the extension '.toml'"):
             load_credentials(invalid_file, logger)
 
-    @pytest.mark.parametrize(
-        "input_date,available_facility,available_loc,expected_report,expected_loc",
-        [
-            (
-                "latest",
-                [dt.date(2024, 12, 18), dt.date(2024, 12, 19), dt.date(2024, 12, 20)],
-                [dt.date(2024, 12, 18), dt.date(2024, 12, 19)],
-                dt.date(2024, 12, 20),
-                dt.date(2024, 12, 19),
-            ),
-            (
-                "2024-12-20",
-                [dt.date(2024, 12, 15), dt.date(2024, 12, 20)],
-                [dt.date(2024, 12, 15), dt.date(2024, 12, 20)],
-                dt.date(2024, 12, 20),
-                dt.date(2024, 12, 20),
-            ),
-        ],
-    )
     @pytest.mark.parametrize(
         "n_training_days,exclude_last_n_days,expected_first,expected_last",
         [
@@ -96,40 +76,6 @@ class TestDataWranglingUtils:
         assert dt.date(2024, 12, 1) in result
         assert dt.date(2024, 12, 15) in result
         assert dt.date(2024, 12, 20) in result
-
-    def test_load_nssp_data_both_available(self, tmp_path):
-        """Test loading NSSP data when both facility and location data available."""
-        facility_dir = tmp_path / "facility"
-        loc_dir = tmp_path / "location"
-        facility_dir.mkdir()
-        loc_dir.mkdir()
-
-        # Create minimal valid parquet files
-        facility_file = facility_dir / "2024-12-20.parquet"
-        loc_file = loc_dir / "2024-12-20.parquet"
-
-        df = pl.DataFrame({"col1": [1, 2, 3]})
-        df.write_parquet(facility_file)
-        df.write_parquet(loc_file)
-
-        logger = logging.getLogger(__name__)
-        report_date = dt.date(2024, 12, 20)
-        available = [report_date]
-
-        facility_data, loc_data = load_nssp_data(
-            report_date,
-            report_date,
-            available,
-            available,
-            facility_dir,
-            loc_dir,
-            logger,
-        )
-
-        assert facility_data is not None
-        assert loc_data is not None
-        assert isinstance(facility_data, pl.LazyFrame)
-        assert isinstance(loc_data, pl.LazyFrame)
 
 
 class TestCLIUtils:
