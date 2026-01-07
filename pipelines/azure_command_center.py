@@ -241,12 +241,12 @@ def do_pyrenew_reruns(
             exclude_last_n_days=h_exclude_last_n_days,
             rng_key=rng_key,
         )
-        fit_pyrenew_hw(
-            append_id=append_id,
-            locations_include=locations_include,
-            exclude_last_n_days=h_exclude_last_n_days,
-            rng_key=rng_key,
-        )
+        # fit_pyrenew_hw(
+        #     append_id=append_id,
+        #     locations_include=locations_include,
+        #     exclude_last_n_days=h_exclude_last_n_days,
+        #     rng_key=rng_key,
+        # )
 
     if skips["skip_he"]:
         print("Skipping PyRenew-HE and HEW re-fitting")
@@ -258,12 +258,12 @@ def do_pyrenew_reruns(
             rng_key=rng_key,
         )
 
-        fit_pyrenew_hew(
-            append_id=append_id,
-            locations_include=locations_include,
-            exclude_last_n_days=he_exclude_last_n_days,
-            rng_key=rng_key,
-        )
+        # fit_pyrenew_hew(
+        #     append_id=append_id,
+        #     locations_include=locations_include,
+        #     exclude_last_n_days=he_exclude_last_n_days,
+        #     rng_key=rng_key,
+        # )
 
 
 def get_data_status(
@@ -425,8 +425,8 @@ if __name__ == "__main__":
         elif selected_choice == "Fit initial PyRenew-H** models":
             fit_pyrenew_h(append_id=current_time)
             fit_pyrenew_he(append_id=current_time)
-            fit_pyrenew_hw(append_id=current_time)
-            fit_pyrenew_hew(append_id=current_time)
+            # fit_pyrenew_hw(append_id=current_time)
+            # fit_pyrenew_hew(append_id=current_time)
         elif selected_choice == "Rerun Timeseries Models":
             ask_about_reruns_input = ask_about_reruns()
             do_timeseries_reruns(append_id=current_time, **ask_about_reruns_input)
@@ -434,9 +434,14 @@ if __name__ == "__main__":
             ask_about_reruns_input = ask_about_reruns()
             do_pyrenew_reruns(append_id=current_time, **ask_about_reruns_input)
         elif selected_choice == "Postprocess Forecast Batches":
+            skip_existing = Confirm.ask(
+                "Skip processing for model batch directories that already have figures?",
+                default=True,
+            )
             postprocess(
                 base_forecast_dir=pyrenew_hew_prod_output_path / output_subdir,
                 diseases=ALL_DISEASES,
+                skip_existing=skip_existing,
             )
 
         input("Press enter to continue...")
