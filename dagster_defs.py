@@ -1,6 +1,6 @@
 import os
 import subprocess
-from datetime import datetime, timezone, date
+from datetime import UTC, datetime
 from pathlib import Path
 
 import dagster as dg
@@ -76,7 +76,7 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # ---------------
 
 def get_date() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return datetime.now(UTC).strftime("%Y-%m-%d")
 
 class PyrenewAssetConfig(dg.Config):
     """
