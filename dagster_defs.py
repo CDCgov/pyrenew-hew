@@ -408,57 +408,57 @@ pyrenew_every_wednesday = dg.ScheduleDefinition(
 # We use dagster ops and jobs here to launch asset backfills with custom configuration
 # ------------------------------------------------------------------------------------ #
 
-@dg.op
-def launch_pipeline(context: dg.OpExecutionContext, config: CountyRtConfig):
-    # Get the most recent weekly partition
-    report_date = weekly_partitions.get_last_partition_key()
+# @dg.op
+# def launch_pipeline(context: dg.OpExecutionContext, config: CountyRtConfig):
+#     # Get the most recent weekly partition
+#     report_date = weekly_partitions.get_last_partition_key()
 
-    # Build a new MultiPartitionsDefinition using the same state dimension
-    # but only the last report_date key
-    all_states_recent_date_partitions = dg.MultiPartitionsDefinition({
-        "state": state_partitions,
-        "report_date": dg.StaticPartitionsDefinition([report_date]),
-    })
-    partition_keys = all_states_recent_date_partitions.get_partition_keys()
+#     # Build a new MultiPartitionsDefinition using the same state dimension
+#     # but only the last report_date key
+#     all_states_recent_date_partitions = dg.MultiPartitionsDefinition({
+#         "state": state_partitions,
+#         "report_date": dg.StaticPartitionsDefinition([report_date]),
+#     })
+#     partition_keys = all_states_recent_date_partitions.get_partition_keys()
 
-    asset_selection = (
-            [generate_county_rt_asset_key(disease) for disease in all_diseases]
-            + ["national_hgam"]
-    )
-    backfill_id = launch_asset_backfill(
-        asset_selection,
-        partition_keys,
-        run_config=dg.RunConfig({
-            "ops": {
-                **{asset: config for asset in asset_selection},
-                "national_hgam": NationalHgamConfig(
-                    timestamp=config.timestamp,
-                    container=config.container,
-                    hgam=(
-                        ("staging" if is_production else "draft")
-                        + f"/{get_date()}"
-                    ),
-                    state=",".join(state_partitions.get_partition_keys()),
-                    report_dates=weekly_partitions.get_last_partition_key(),
-                )
-            }
-        }),
-        tags={
-            "run": "cfa-county-rt",
-            "report_date": report_date,
-            "network": config.network
-        }
-    )
-    context.log.info(
-        f"Launched backfill with id: '{backfill_id}'. "
-        "Click the output metadata url to monitor"
-    )
-    return dg.Output(
-        value=backfill_id,
-        metadata={
-            "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
-        }
-    )
+#     asset_selection = (
+#             [generate_county_rt_asset_key(disease) for disease in all_diseases]
+#             + ["national_hgam"]
+#     )
+#     backfill_id = launch_asset_backfill(
+#         asset_selection,
+#         partition_keys,
+#         run_config=dg.RunConfig({
+#             "ops": {
+#                 **{asset: config for asset in asset_selection},
+#                 "national_hgam": NationalHgamConfig(
+#                     timestamp=config.timestamp,
+#                     container=config.container,
+#                     hgam=(
+#                         ("staging" if is_production else "draft")
+#                         + f"/{get_date()}"
+#                     ),
+#                     state=",".join(state_partitions.get_partition_keys()),
+#                     report_dates=weekly_partitions.get_last_partition_key(),
+#                 )
+#             }
+#         }),
+#         tags={
+#             "run": "cfa-county-rt",
+#             "report_date": report_date,
+#             "network": config.network
+#         }
+#     )
+#     context.log.info(
+#         f"Launched backfill with id: '{backfill_id}'. "
+#         "Click the output metadata url to monitor"
+#     )
+#     return dg.Output(
+#         value=backfill_id,
+#         metadata={
+#             "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
+#         }
+#     )
 
 def weekly_run_config() -> dg.RunConfig:
     output_dir = "output" if is_production else "test-output"
