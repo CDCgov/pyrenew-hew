@@ -61,8 +61,10 @@ def main(
     to_process = get_all_forecast_dirs(base_forecast_dir, list(diseases))
     for batch_dir in to_process:
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)
-        figures_exist = Path(model_batch_dir_path, "figures").exists()
-        if figures_exist and skip_existing:
+        hubverse_tbl_exists = bool(
+            list(model_batch_dir_path.glob("*-hubverse-table.parquet"))
+        )
+        if hubverse_tbl_exists and skip_existing:
             logger.info(f"Skipping {batch_dir}, figures already exist.")
         else:
             logger.info(f"Processing {batch_dir}...")
