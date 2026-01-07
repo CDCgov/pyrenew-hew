@@ -182,7 +182,11 @@ def run_pyrenew_model(
 # Assets: these are the core of Dagster - functions that specify data
 # --------------------------------------------------------------------
 
-# Upstream Data #
+# -- Upstream Data -- #
+
+# NOTE: These are placeholder assets representing data ingestion steps.
+# In mature productionimplementation, these would contain logic to ingest and process data,
+# or sensors to trigger on new data availability.
 
 @dg.asset
 def nhsn_data(context: dg.AssetExecutionContext):
@@ -204,7 +208,11 @@ def nwss_data(context: dg.AssetExecutionContext):
     return "nwss_data"
 
 
-# Pyrenew Assets #
+# Dependency Definitions # 
+
+nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
+
+# -- Pyrenew Assets -- #
 
 # TODO: adapt materialize results for asset returns. Currently returning simple strings.
 # i.e.
@@ -219,10 +227,8 @@ def nwss_data(context: dg.AssetExecutionContext):
 #         }
 #     )
 
+
 # Timeseries E
-nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
-
-
 @dg.asset(
     partitions_def=multi_partition_def,
     deps=nssp_deps,
@@ -358,6 +364,7 @@ azure_batch_executor_configured = azure_batch_executor.configured(
 # -------------------------------------------------------------------------- #
 # Asset Jobs and Schedules: how are outputs created together and when?
 # -------------------------------------------------------------------------- #
+
 upstream_asset_job = dg.define_asset_job(
     name="upstream_asset_job",
     executor_def=dg.in_process_executor, # these are lightweight and do not have partitions
@@ -391,6 +398,125 @@ upstream_every_wednesday = dg.ScheduleDefinition(
 pyrenew_every_wednesday = dg.ScheduleDefinition(
     name="weekly_pyrenew_cron", cron_schedule="0 12-21 * * WED", job=pyrenew_test_asset_job
 )
+
+# ------------------------------------------------------------------------------------ #
+# Orchestration - Scheduling full pipeline runs and definiing a flexible configuration
+# We use dagster ops and jobs here to launch asset backfills with custom configuration
+# ------------------------------------------------------------------------------------ #
+
+# @dg.op
+# def launch_pipeline(context: dg.OpExecutionContext, config: CountyRtConfig):
+#     # Get the most recent weekly partition
+#     report_date = weekly_partitions.get_last_partition_key()
+
+#     # Build a new MultiPartitionsDefinition using the same state dimension
+#     # but only the last report_date key
+#     all_states_recent_date_partitions = dg.MultiPartitionsDefinition({
+#         "state": state_partitions,
+#         "report_date": dg.StaticPartitionsDefinition([report_date]),
+#     })
+#     partition_keys = all_states_recent_date_partitions.get_partition_keys()
+
+#     asset_selection = (
+#             [generate_county_rt_asset_key(disease) for disease in all_diseases]
+#             + ["national_hgam"]
+#     )
+#     backfill_id = launch_asset_backfill(
+#         asset_selection,
+#         partition_keys,
+#         run_config=dg.RunConfig({
+#             "ops": {
+#                 **{asset: config for asset in asset_selection},
+#                 "national_hgam": NationalHgamConfig(
+#                     timestamp=config.timestamp,
+#                     container=config.container,
+#                     hgam=(
+#                         ("staging" if is_production else "draft")
+#                         + f"/{get_date()}"
+#                     ),
+#                     state=",".join(state_partitions.get_partition_keys()),
+#                     report_dates=weekly_partitions.get_last_partition_key(),
+#                 )
+#             }
+#         }),
+#         tags={
+#             "run": "cfa-county-rt",
+#             "report_date": report_date,
+#             "network": config.network
+#         }
+#     )
+#     context.log.info(
+#         f"Launched backfill with id: '{backfill_id}'. "
+#         "Click the output metadata url to monitor"
+#     )
+#     return dg.Output(
+#         value=backfill_id,
+#         metadata={
+#             "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
+#         }
+#     )
+
+
+# def weekly_run_config() -> dg.RunConfig:
+#     timestamp = get_timestamp()
+#     container = "county-rt-production" if is_production else "county-rt-testing"
+#     staging_date = timestamp if is_production else None
+#     return dg.RunConfig(
+#         ops={
+#             "network_none": CountyRtConfig(
+#                 timestamp=timestamp,
+#                 staging_date=staging_date,
+#                 network="none",
+#                 container=container
+#             ),
+#             "network_adjacent": CountyRtConfig(
+#                 timestamp=timestamp,
+#                 network="adjacent",
+#                 container=container
+#             ),
+#             "network_commute": CountyRtConfig(
+#                 timestamp=timestamp,
+#                 network="commute",
+#                 container=container
+#             ),
+#         }
+#     )
+
+
+# # This just calls the graphql api to launch the pipeline so it's
+# # small enough to run directly on the code location with the DefaultRunLauncher
+# @dg.job(
+#     executor_def=dg.multiprocess_executor,
+#     tags={
+#         "cfa_dagster/launcher": {
+#             "class": dg.DefaultRunLauncher.__name__
+#         }
+#     },
+#     config=weekly_run_config()
+# )
+# def weekly_rt_pipeline():
+#     launch_pipeline.alias("network_adjacent")()
+#     launch_pipeline.alias("network_commute")()
+#     launch_pipeline.alias("network_none")()
+
+
+# schedule_weekly_rt_pipeline = dg.ScheduleDefinition(
+#     default_status=(
+#         dg.DefaultScheduleStatus.RUNNING
+#         # don't run locally by default
+#         if is_production else dg.DefaultScheduleStatus.STOPPED
+#     ),
+#     job=weekly_rt_pipeline,
+#     cron_schedule="30 6 * * 3",
+#     execution_timezone="America/New_York",
+# )
+
+# -------------- Dagster Definitions Object --------------- #
+# This code allows us to collect all of the above definitions
+# into a single Definitions object for Dagster to read!
+# By doing this, we can keep our Dagster code in a single file
+# instead of splitting it across multiple files.
+# --------------------------------------------------------- #
 
 # env variable set by Dagster CLI
 is_production = not os.getenv("DAGSTER_IS_DEV_CLI")
