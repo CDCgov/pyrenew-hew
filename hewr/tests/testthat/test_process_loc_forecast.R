@@ -49,7 +49,7 @@ example_eval_dat <- tibble::tibble(
   ) |>
   dplyr::mutate(.value = rpois(dplyr::n(), 100))
 
-test_that("to_tidy_draws_timeseries() works as expected", {
+test_that("augment_timeseries_draws_w_obs() works as expected", {
   forecast <- tibble::tibble(
     date = as.Date(c("2024-12-21", "2024-12-22")),
     resolution = "daily",
@@ -67,7 +67,7 @@ test_that("to_tidy_draws_timeseries() works as expected", {
     .variable = rep("other_ed_visits", 4L),
     .value = c(11037, 12898, 15172, 17716),
   )
-  result <- to_tidy_draws_timeseries(
+  result <- augment_timeseries_draws_w_obs(
     forecast,
     obs
   )
