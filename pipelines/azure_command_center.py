@@ -54,7 +54,7 @@ def setup_job_append_id(
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
-    n_training_days: int = 90,
+    n_training_days: int = 150,
     exclude_last_n_days: int = 1,
     rng_key: int = DEFAULT_RNG_KEY,
     locations_include: list[str] | None = None,
@@ -194,14 +194,14 @@ def do_timeseries_reruns(
 ):
     skips = compute_skips(e_exclude_last_n_days, h_exclude_last_n_days, rng_key)
 
-    # if skips["skip_e"]:
-    #     print("Skipping Timeseries-E re-fitting due to E")
-    # else:
-    fit_timeseries_e(
-        append_id=append_id,
-        locations_include=locations_include,
-        exclude_last_n_days=e_exclude_last_n_days,
-    )
+    if skips["skip_e"]:
+        print("Skipping Timeseries-E re-fitting due to E")
+    else:
+        fit_timeseries_e(
+            append_id=append_id,
+            locations_include=locations_include,
+            exclude_last_n_days=e_exclude_last_n_days,
+        )
     if skips["skip_h"]:
         print("Skipping Timeseries-E re-fitting due to H")
     else:
