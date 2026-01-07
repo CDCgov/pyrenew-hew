@@ -114,6 +114,21 @@ class TestValidationUtils:
                     (dt.date(2024, 3, 1), dt.date(2024, 3, 7)),
                 ],
             ),
+            (
+                "2024-01-15",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 15))],
+            ),
+            (
+                "2024-01-15:2024-01-15",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 15))],
+            ),
+            (
+                "2024-01-15,2024-03-01:2024-03-07",
+                [
+                    (dt.date(2024, 1, 15), dt.date(2024, 1, 15)),
+                    (dt.date(2024, 3, 1), dt.date(2024, 3, 7)),
+                ],
+            ),
             (None, None),
             ("", None),
             ("  ", None),
@@ -127,10 +142,13 @@ class TestValidationUtils:
     @pytest.mark.parametrize(
         "input_str,error_match",
         [
-            ("2024-01-15", "Invalid date range format"),
             ("2024-01-15:2024-01-20:extra", "Invalid date range format"),
-            ("2024-01-20:2024-01-15", "start_date.*must be before end_date"),
+            (
+                "2024-01-20:2024-01-15",
+                "start_date.*must be before or equal to end_date",
+            ),
             ("invalid:date", "Invalid date format"),
+            ("not-a-date", "Invalid date format"),
         ],
     )
     def test_parse_exclude_date_ranges_invalid(self, input_str, error_match):
