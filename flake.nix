@@ -1,101 +1,95 @@
 {
-  description = "PyRenew-HEW Nix Flake";
+  description = "Pyrenew-Hew Flake";
 
+  # Nix flakes have inputs and outputs.
+  # Inputs are where you put dependencies, 
+  # and outputs are what you build.
+
+  # --- Flake Inputs ---
+  # Where you get nix packages and other dependencies from
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    # Pin nixpkgs to a specific release for reproducibility
+    # Get the nixos 25.11 release, just a github repository full of nix packages
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-25.11";
   };
 
-  outputs = { self, nixpkgs }: let
-        system = "x86_64-linux";
-        pkgs = import nixpkgs { inherit system; };
-  in {
-    devShells.x86_64-linux.default = pkgs.mkShell {
-        packages = with pkgs.rPackages; [
+  # --- Flake Outputs ---
+  # What you build with the inputs
+  # Notice the nixpkgs input is passed into the outputs function
+  outputs = { self, nixpkgs }: 
+  
+  let
+    
+    # Define the target system architecture
+    system = "x86_64-linux";
 
-            # Python
-            pkgs.uv 
-
-            # R
-            pkgs.R
-
-            # Toolchain for compiling R packages
-            pkgs.stdenv.cc
-            pkgs.pkg-config
-
-            # System libraries needed by R packages
-            pkgs.curl
-            pkgs.curl.dev
-            # pkgs.openssl
-            # pkgs.openssl.dev
-            pkgs.openssl_3
-            pkgs.openssl_3.dev
-            pkgs.libxml2
-            pkgs.libxml2.dev
-            pkgs.zlib
-            pkgs.zlib.dev
-            
-
-            # devtools
-            devtools
-
-            # hewr dependencies, minus forecasttools
-            arrow
-            argparser
-            cowplot
-            dplyr
-            DT
-            fable
-            feasts
-            forcats
-            fs
-            ggdist
-            ggnewscale
-            ggplot2
-            glue
-            here
-            htmltools
-            jsonlite
-            knitr
-            latex2exp
-            lubridate
-            purrr
-            readr
-            reticulate
-            rlang
-            scales
-            scoringutils
-            stringr
-            tibble
-            tidybayes
-            tidyr
-            tidyselect
-            urca
-        ];
-
-        shellHook = ''
-            # Ensure libcurl is available during R package builds
-            # Force OpenSSL 3.x by adding its libraries to LD_LIBRARY_PATH
-            export LD_LIBRARY_PATH="${pkgs.openssl_3.out}/lib:$LD_LIBRARY_PATH"
-            
-            # Ensure dynamic linker uses the R-specific libraries
-            export R_HOME=$(R RHOME)
-            export R_LIBS_USER="$PWD/.R/library"
-            mkdir -p "$R_LIBS_USER"
-
-            # Sync Python environment
-            uv sync --active
-            which python && python --version
-
-            # Set the R repos and install missing packages
-            Rscript -e "options(repos = c(CRAN = 'https://p3m.dev/cran/__linux__/noble/latest'))"
-            
-            # Check if hubUtils is installed, then install dependencies only if necessary
-            Rscript -e "if (!requireNamespace('hubUtils', quietly=TRUE)) install.packages('hubUtils')"
-            Rscript -e "if (!requireNamespace('arrow', quietly=TRUE)) install.packages('arrow', type='source')"
-            Rscript -e "if (!requireNamespace('hubData', quietly=TRUE)) devtools::install_github('hubverse-org/hubData')"
-            Rscript -e "if (!requireNamespace('forecasttools', quietly=TRUE)) devtools::install_github('cdcgov/forecasttools')"
-            Rscript -e "if (!requireNamespace('hewr', quietly=TRUE)) devtools::install_local(path='hewr')"
-        '';
+    # Import nixpkgs and apply overlays
+    pkgs = import nixpkgs {
+      inherit system;
+      # overlays = [
+      #   # Override nodejs to use version 20
+      #   (final: prev: {
+      #     nodejs = prev.nodejs_20;
+      #   })
+      # ];
     };
-  };
+
+    # --- R Package Dependencies ---
+    # List all required R packages in one place for reuse
+    rDeps = with pkgs.rPackages; [
+
+      # CRAN R packages
+      arrow argparser cowplot dplyr DT fable feasts forcats fs
+      ggdist ggnewscale ggplot2 glue here htmltools jsonlite knitr
+      latex2exp lubridate purrr readr reticulate rlang scales
+      scoringutils stringr tibble tidybayes tidyr tidyselect urca
+      
+      # Add github R packages
+      # TODO: hubdata and hubutils
+      # Build the local 'forecasttools' R package from source
+      (pkgs.rPackages.buildRPackage {
+        name = "forecasttools";
+        pname = "forecasttools";
+        version = "0.0.0.9000";
+        src = pkgs.fetchFromGitHub {
+          owner = "cdcgov";
+          repo = "forecasttools";
+          rev = "1wxy43app99lqbs07as8wm2p8qvgd9vv00vdj0y9aiq8qabmx78c"; # commit hash
+          sha256 = "sha256-DJ1el8IIR5U8kG0DsHdqb2N0ReVIqwP0wjSle9UgvvM="; # nix run nixpkgs#nix-prefetch-git https://github.com/cdcgov/forecasttoolsnix
+        };
+        # buildInputs = rDeps ++ [ pkgs.R ];
+      })
+    ];
+
+  in
+
+    {
+      # --- Development Shell ---
+      devShells.${system}.default = pkgs.mkShell {
+
+          buildInputs = with pkgs; [
+            # Provide an interactive R environment with all dependencies
+            (rWrapper.override { packages = rDeps; })
+
+            # Build the local 'hewr' R package from source
+            (pkgs.rPackages.buildRPackage {
+              name = "hewr";
+              pname = "hewr";
+              version = "0.0.0.9000";
+              src = ./hewr;
+              buildInputs = rDeps ++ [ pkgs.R ];
+            })
+          ];
+
+          shellHook = ''
+            echo "R dev environment loaded."
+            echo "Interactive R session and built 'hewr' package are available."
+            # uncomment to print all R library versions
+            # Rscript -e 'ip <- installed.packages(); cat(sprintf("%-30s %s", ip[order(ip[, "Package"]), "Package"], ip[order(ip[, "Package"]), "Version"]), sep="\n")'
+            # setting timezone to match Docker env
+            export TZ=Etc/UTC
+          '';
+          
+      };
+    };
 }
