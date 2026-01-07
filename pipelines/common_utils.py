@@ -106,6 +106,76 @@ def parse_and_validate_report_date(
     return report_date, loc_report_date
 
 
+def parse_exclude_date_ranges(
+    exclude_date_ranges_str: str | None,
+) -> list[tuple[dt.date, dt.date]] | None:
+    """
+    Parse comma-separated date ranges from string to list of tuples.
+
+    This utility function is useful for parsing date exclusion parameters
+    that may be used by various forecasting models to exclude periods with
+    known reporting problems or other data quality issues.
+
+    Parameters
+    ----------
+    exclude_date_ranges_str : str | None
+        Comma-separated list of date ranges in format 'start:end'.
+        Example: '2024-01-15:2024-01-20,2024-03-01:2024-03-07'
+
+    Returns
+    -------
+    list[tuple[dt.date, dt.date]] | None
+        List of (start_date, end_date) tuples where both dates are inclusive,
+        or None if input is None/empty.
+
+    Raises
+    ------
+    ValueError
+        If date range format is invalid, dates can't be parsed as YYYY-MM-DD,
+        or start_date > end_date.
+
+    Examples
+    --------
+    >>> parse_exclude_date_ranges("2024-01-15:2024-01-20")
+    [(datetime.date(2024, 1, 15), datetime.date(2024, 1, 20))]
+
+    >>> parse_exclude_date_ranges("2024-01-15:2024-01-20,2024-03-01:2024-03-07")
+    [(datetime.date(2024, 1, 15), datetime.date(2024, 1, 20)),
+     (datetime.date(2024, 3, 1), datetime.date(2024, 3, 7))]
+
+    >>> parse_exclude_date_ranges(None)
+    None
+    """
+    if exclude_date_ranges_str is None or not exclude_date_ranges_str.strip():
+        return None
+
+    parsed_ranges = []
+    for date_range_str in exclude_date_ranges_str.split(","):
+        date_range_str = date_range_str.strip()
+        if date_range_str.count(":") != 1:
+            raise ValueError(
+                f"Invalid date range format: '{date_range_str}'. "
+                "Expected format: 'start_date:end_date' (e.g., '2024-01-15:2024-01-20')"
+            )
+        start_str, end_str = date_range_str.split(":", 1)
+        try:
+            start_date = dt.datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+            end_date = dt.datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid date format in range '{date_range_str}'. "
+                f"Expected YYYY-MM-DD format. Error: {e}"
+            ) from e
+        if start_date > end_date:
+            raise ValueError(
+                f"Invalid date range '{date_range_str}': "
+                f"start_date ({start_date}) must be before end_date ({end_date})"
+            )
+        parsed_ranges.append((start_date, end_date))
+
+    return parsed_ranges
+
+
 def calculate_training_dates(
     report_date: dt.date,
     n_training_days: int,
