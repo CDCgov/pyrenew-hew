@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Run update script with cfa runner-action
         uses: CDCgov/cfa-actions/runner-action@v1.5.0
-        
+
         with:
           github_app_id: ${{ secrets.REPO_CDCENT_ACTOR_APP_ID }}
           github_app_pem: ${{ secrets.REPO_CDCENT_ACTOR_APP_PEM }}
