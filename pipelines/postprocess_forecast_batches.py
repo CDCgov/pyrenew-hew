@@ -54,16 +54,21 @@ def process_model_batch_dir(model_batch_dir_path: Path, plot_ext: str = "pdf") -
 def main(
     base_forecast_dir: Path | str,
     diseases: list[str] = ["COVID-19", "Influenza", "RSV"],
+    skip_existing: bool = True,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     to_process = get_all_forecast_dirs(base_forecast_dir, list(diseases))
     for batch_dir in to_process:
-        logger.info(f"Processing {batch_dir}...")
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)
-        process_model_batch_dir(model_batch_dir_path)
-        logger.info(f"Finished processing {batch_dir}")
-    logger.info(f"Finished processing {base_forecast_dir}.")
+        figures_exist = Path(model_batch_dir_path, "figures").exists()
+        if figures_exist and skip_existing:
+            logger.info(f"Skipping {batch_dir}, figures already exist.")
+        else:
+            logger.info(f"Processing {batch_dir}...")
+            process_model_batch_dir(model_batch_dir_path)
+            logger.info(f"Finished processing {batch_dir}")
+        logger.info(f"Finished processing {base_forecast_dir}.")
 
 
 if __name__ == "__main__":
@@ -85,6 +90,11 @@ if __name__ == "__main__":
             "values are 'COVID-19' , 'RSV' and 'Influenza'. "
             "Default 'COVID-19 Influenza RSV' (i.e. postprocess all)."
         ),
+    )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip processing for model batch directories that already have figures.",
     )
 
     args = parser.parse_args()
