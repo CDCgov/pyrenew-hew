@@ -212,7 +212,7 @@ def nwss_data(context: dg.AssetExecutionContext):
     return "nwss_data"
 
 
-# Dependency Definitions # 
+# Dependency Definitions #
 
 nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
