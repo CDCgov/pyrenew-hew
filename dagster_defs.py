@@ -1,6 +1,6 @@
 import os
 import subprocess
-from datetime import date
+from datetime import datetime, timezone, date
 from pathlib import Path
 
 import dagster as dg
@@ -75,23 +75,27 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # Asset Configs
 # ---------------
 
-# TODO: Parametrize prod vs test and other variables
-# This can be given to our automated jobs
+def get_date() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 class PyrenewAssetConfig(dg.Config):
     """
     Configuration for the Pyrenew model assets.
     These default values can be modified in the Dagster asset materialization launchpad.
+    We also unpack these for our job run configurations.
     """
     n_training_days: int = 150
     n_samples: int = 500
     exclude_last_n_days: int = 1
     n_warmup: int = 1000
     additional_forecast_letters: str = ""
-    forecast_date: str = date.today().isoformat()
+    forecast_date: str = get_date()
     output_dir: str = "test-output"
     output_subdir: str = f"{forecast_date}_forecasts"
     full_dir: str = f"{output_dir}/{output_subdir}"
+
+# def get_timestamp() -> str:
+#     return datetime.now(timezone.utc).strftime("%Y-%m-%d-%H:%M:%S")
 
 # ---------------
 # Worker Function
@@ -404,83 +408,85 @@ pyrenew_every_wednesday = dg.ScheduleDefinition(
 # We use dagster ops and jobs here to launch asset backfills with custom configuration
 # ------------------------------------------------------------------------------------ #
 
-# @dg.op
-# def launch_pipeline(context: dg.OpExecutionContext, config: CountyRtConfig):
-#     # Get the most recent weekly partition
-#     report_date = weekly_partitions.get_last_partition_key()
+@dg.op
+def launch_pipeline(context: dg.OpExecutionContext, config: CountyRtConfig):
+    # Get the most recent weekly partition
+    report_date = weekly_partitions.get_last_partition_key()
 
-#     # Build a new MultiPartitionsDefinition using the same state dimension
-#     # but only the last report_date key
-#     all_states_recent_date_partitions = dg.MultiPartitionsDefinition({
-#         "state": state_partitions,
-#         "report_date": dg.StaticPartitionsDefinition([report_date]),
-#     })
-#     partition_keys = all_states_recent_date_partitions.get_partition_keys()
+    # Build a new MultiPartitionsDefinition using the same state dimension
+    # but only the last report_date key
+    all_states_recent_date_partitions = dg.MultiPartitionsDefinition({
+        "state": state_partitions,
+        "report_date": dg.StaticPartitionsDefinition([report_date]),
+    })
+    partition_keys = all_states_recent_date_partitions.get_partition_keys()
 
-#     asset_selection = (
-#             [generate_county_rt_asset_key(disease) for disease in all_diseases]
-#             + ["national_hgam"]
-#     )
-#     backfill_id = launch_asset_backfill(
-#         asset_selection,
-#         partition_keys,
-#         run_config=dg.RunConfig({
-#             "ops": {
-#                 **{asset: config for asset in asset_selection},
-#                 "national_hgam": NationalHgamConfig(
-#                     timestamp=config.timestamp,
-#                     container=config.container,
-#                     hgam=(
-#                         ("staging" if is_production else "draft")
-#                         + f"/{get_date()}"
-#                     ),
-#                     state=",".join(state_partitions.get_partition_keys()),
-#                     report_dates=weekly_partitions.get_last_partition_key(),
-#                 )
-#             }
-#         }),
-#         tags={
-#             "run": "cfa-county-rt",
-#             "report_date": report_date,
-#             "network": config.network
-#         }
-#     )
-#     context.log.info(
-#         f"Launched backfill with id: '{backfill_id}'. "
-#         "Click the output metadata url to monitor"
-#     )
-#     return dg.Output(
-#         value=backfill_id,
-#         metadata={
-#             "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
-#         }
-#     )
+    asset_selection = (
+            [generate_county_rt_asset_key(disease) for disease in all_diseases]
+            + ["national_hgam"]
+    )
+    backfill_id = launch_asset_backfill(
+        asset_selection,
+        partition_keys,
+        run_config=dg.RunConfig({
+            "ops": {
+                **{asset: config for asset in asset_selection},
+                "national_hgam": NationalHgamConfig(
+                    timestamp=config.timestamp,
+                    container=config.container,
+                    hgam=(
+                        ("staging" if is_production else "draft")
+                        + f"/{get_date()}"
+                    ),
+                    state=",".join(state_partitions.get_partition_keys()),
+                    report_dates=weekly_partitions.get_last_partition_key(),
+                )
+            }
+        }),
+        tags={
+            "run": "cfa-county-rt",
+            "report_date": report_date,
+            "network": config.network
+        }
+    )
+    context.log.info(
+        f"Launched backfill with id: '{backfill_id}'. "
+        "Click the output metadata url to monitor"
+    )
+    return dg.Output(
+        value=backfill_id,
+        metadata={
+            "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
+        }
+    )
 
-
-# def weekly_run_config() -> dg.RunConfig:
-#     timestamp = get_timestamp()
-#     container = "county-rt-production" if is_production else "county-rt-testing"
-#     staging_date = timestamp if is_production else None
-#     return dg.RunConfig(
-#         ops={
-#             "network_none": CountyRtConfig(
-#                 timestamp=timestamp,
-#                 staging_date=staging_date,
-#                 network="none",
-#                 container=container
-#             ),
-#             "network_adjacent": CountyRtConfig(
-#                 timestamp=timestamp,
-#                 network="adjacent",
-#                 container=container
-#             ),
-#             "network_commute": CountyRtConfig(
-#                 timestamp=timestamp,
-#                 network="commute",
-#                 container=container
-#             ),
-#         }
-#     )
+def weekly_run_config() -> dg.RunConfig:
+    output_dir = "output" if is_production else "test-output"
+    return dg.RunConfig(
+        ops={
+            "timeseries_e": PyrenewAssetConfig(
+                output_dir=output_dir,
+            ),
+            "pyrenew_e": PyrenewAssetConfig(
+                output_dir=output_dir,
+            ),
+            "pyrenew_h": PyrenewAssetConfig(
+                output_dir=output_dir,
+            ),
+            "pyrenew_he": PyrenewAssetConfig(
+                output_dir=output_dir,
+            ),
+            "pyrenew_he": PyrenewAssetConfig(
+                output_dir=output_dir,
+            ),
+            "pyrenew_hw": PyrenewAssetConfig(
+                output_dir=output_dir,
+            ),
+            "pyrenew_hew": PyrenewAssetConfig(
+                output_dir=output_dir,
+            ),
+        }
+    )
 
 
 # # This just calls the graphql api to launch the pipeline so it's
