@@ -65,7 +65,7 @@ def main(
             list(model_batch_dir_path.glob("*-hubverse-table.parquet"))
         )
         if hubverse_tbl_exists and skip_existing:
-            logger.info(f"Skipping {batch_dir}, figures already exist.")
+            logger.info(f"Skipping {batch_dir}, hubverse table already exists.")
         else:
             logger.info(f"Processing {batch_dir}...")
             process_model_batch_dir(model_batch_dir_path)
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--skip-existing",
         action="store_true",
-        help="Skip processing for model batch directories that already have figures.",
+        help="Skip processing for model batch directories that already have been processed.",
     )
 
     args = parser.parse_args()
