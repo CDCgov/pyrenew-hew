@@ -10,6 +10,7 @@ from cfa_dagster import (
     collect_definitions,
     docker_executor,
     start_dev_env,
+    launch_asset_backfill
 )
 from cfa_dagster import (
     azure_container_app_job_executor as azure_caj_executor,
@@ -26,6 +27,10 @@ from dagster_azure.blob import (
 # function to start the dev server
 start_dev_env(__name__)
 
+# env variable set by Dagster CLI
+is_production = not os.getenv("DAGSTER_IS_DEV_CLI")
+
+# get the user running the Dagster instance
 user = os.getenv("DAGSTER_USER")
 
 # --------------------------------------------------------------- #
@@ -60,7 +65,7 @@ state_partitions = dg.StaticPartitionsDefinition(
 )
 
 # Multi Partitions
-multi_partition_def = dg.MultiPartitionsDefinition(
+pyrenew_multi_partition_def = dg.MultiPartitionsDefinition(
     {
         "disease": disease_partitions,
           "state": state_partitions
@@ -75,9 +80,6 @@ multi_partition_def = dg.MultiPartitionsDefinition(
 # Asset Configs
 # ---------------
 
-def get_date() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
 class PyrenewAssetConfig(dg.Config):
     """
     Configuration for the Pyrenew model assets.
@@ -89,13 +91,10 @@ class PyrenewAssetConfig(dg.Config):
     exclude_last_n_days: int = 1
     n_warmup: int = 1000
     additional_forecast_letters: str = ""
-    forecast_date: str = get_date()
-    output_dir: str = "test-output"
+    forecast_date: str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    output_dir: str = "output" if is_production else "test-output"
     output_subdir: str = f"{forecast_date}_forecasts"
     full_dir: str = f"{output_dir}/{output_subdir}"
-
-# def get_timestamp() -> str:
-#     return datetime.now(timezone.utc).strftime("%Y-%m-%d-%H:%M:%S")
 
 # ---------------
 # Worker Function
@@ -234,7 +233,7 @@ nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 
 # Timeseries E
 @dg.asset(
-    partitions_def=multi_partition_def,
+    partitions_def=pyrenew_multi_partition_def,
     deps=nssp_deps,
 )
 def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -244,7 +243,7 @@ def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew E
 @dg.asset(
-    partitions_def=multi_partition_def,
+    partitions_def=pyrenew_multi_partition_def,
     deps=["timeseries_e"] + nssp_deps,
 )
 def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -254,7 +253,7 @@ def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew H
 @dg.asset(
-    partitions_def=multi_partition_def,
+    partitions_def=pyrenew_multi_partition_def,
     deps=["nhsn_data"],
 )
 def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -264,7 +263,7 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew HE
 @dg.asset(
-    partitions_def=multi_partition_def,
+    partitions_def=pyrenew_multi_partition_def,
     deps=["timeseries_e", "nhsn_data"] + nssp_deps,
 )
 def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -274,7 +273,7 @@ def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew HW
 @dg.asset(
-    partitions_def=multi_partition_def,
+    partitions_def=pyrenew_multi_partition_def,
     deps=["nhsn_data", "nwss_data"],
 )
 def pyrenew_hw(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -284,7 +283,7 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew HEW
 @dg.asset(
-    partitions_def=multi_partition_def,
+    partitions_def=pyrenew_multi_partition_def,
     deps=["timeseries_e"] + nssp_deps + ["nhsn_data", "nwss_data"],
 )
 def pyrenew_hew(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
@@ -365,9 +364,12 @@ azure_batch_executor_configured = azure_batch_executor.configured(
     }
 )
 
-# -------------------------------------------------------------------------- #
-# Asset Jobs and Schedules: how are outputs created together and when?
-# -------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------------- #
+# Orchestration of Non-Partitioned Assets - Upstream Data ETL
+# 
+# Note that this basic approach only works for non-partitioned assets, 
+# the models we'll need to schedule more complexly
+# ----------------------------------------------------------------------------------- #
 
 upstream_asset_job = dg.define_asset_job(
     name="upstream_asset_job",
@@ -377,145 +379,93 @@ upstream_asset_job = dg.define_asset_job(
     tags={"user": user},
 )
 
-pyrenew_test_asset_job = dg.define_asset_job(
-    name="pyrenew_asset_job",
-    executor_def=azure_batch_executor_configured, # these will need parallelized compute
-    selection=[
-        timeseries_e,
-        pyrenew_e,
-        pyrenew_h,
-        pyrenew_he,
-        pyrenew_hw,
-        pyrenew_hew,
-    ],
-    # tag the run with your user to allow for easy filtering in the Dagster UI
-    tags={"user": user},
-)
-
 # Every wednesday this will run at hours 11 through 20 UTC (6am-3pm EST)
 upstream_every_wednesday = dg.ScheduleDefinition(
     name="weekly_upstream_cron", cron_schedule="0 11-20 * * WED", job=upstream_asset_job
 )
 
-# Every wednesday this will run at hours 12 through 21 UTC (7am-4pm EST)
-# This is staggered an hour after upstream to allow for data availability (we can tweak later if needed)
-pyrenew_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_pyrenew_cron", cron_schedule="0 12-21 * * WED", job=pyrenew_test_asset_job
-)
-
-# ------------------------------------------------------------------------------------ #
-# Orchestration - Scheduling full pipeline runs and definiing a flexible configuration
+# ------------------------------------------------------------------------------------------------- #
+# Orchestration of Partitioned Assets - Model Runs 
+# 
+# Scheduling full pipeline runs and defining a flexible configuration
 # We use dagster ops and jobs here to launch asset backfills with custom configuration
-# ------------------------------------------------------------------------------------ #
+# ------------------------------------------------------------------------------------------------- #
 
-# @dg.op
-# def launch_pipeline(context: dg.OpExecutionContext, config: CountyRtConfig):
-#     # Get the most recent weekly partition
-#     report_date = weekly_partitions.get_last_partition_key()
+# This is an op (non-materialized asset function) that launches backfills, as used in scheduled jobs
+@dg.op
+def launch_pipeline(
+    context: dg.OpExecutionContext, 
+    config: PyrenewAssetConfig, 
+) -> dg.Output[str]:
 
-#     # Build a new MultiPartitionsDefinition using the same state dimension
-#     # but only the last report_date key
-#     all_states_recent_date_partitions = dg.MultiPartitionsDefinition({
-#         "state": state_partitions,
-#         "report_date": dg.StaticPartitionsDefinition([report_date]),
-#     })
-#     partition_keys = all_states_recent_date_partitions.get_partition_keys()
+    # We are referencing the global pyrenew_multi_partition_def defined earlier
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys()
 
-#     asset_selection = (
-#             [generate_county_rt_asset_key(disease) for disease in all_diseases]
-#             + ["national_hgam"]
-#     )
-#     backfill_id = launch_asset_backfill(
-#         asset_selection,
-#         partition_keys,
-#         run_config=dg.RunConfig({
-#             "ops": {
-#                 **{asset: config for asset in asset_selection},
-#                 "national_hgam": NationalHgamConfig(
-#                     timestamp=config.timestamp,
-#                     container=config.container,
-#                     hgam=(
-#                         ("staging" if is_production else "draft")
-#                         + f"/{get_date()}"
-#                     ),
-#                     state=",".join(state_partitions.get_partition_keys()),
-#                     report_dates=weekly_partitions.get_last_partition_key(),
-#                 )
-#             }
-#         }),
-#         tags={
-#             "run": "cfa-county-rt",
-#             "report_date": report_date,
-#             "network": config.network
-#         }
-#     )
-#     context.log.info(
-#         f"Launched backfill with id: '{backfill_id}'. "
-#         "Click the output metadata url to monitor"
-#     )
-#     return dg.Output(
-#         value=backfill_id,
-#         metadata={
-#             "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
-#         }
-#     )
+    # We select all the assets we want to "backfill"
+    asset_selection = (
+        "timeseries_e",
+        "pyrenew_e",
+        "pyrenew_h",
+        "pyrenew_he",
+        "pyrenew_hw",
+        "pyrenew_hew",
+    )
 
-def weekly_run_config() -> dg.RunConfig:
-    output_dir = "output" if is_production else "test-output"
-    return dg.RunConfig(
-        ops={
-            "timeseries_e": PyrenewAssetConfig(
-                output_dir=output_dir,
-            ),
-            "pyrenew_e": PyrenewAssetConfig(
-                output_dir=output_dir,
-            ),
-            "pyrenew_h": PyrenewAssetConfig(
-                output_dir=output_dir,
-            ),
-            "pyrenew_he": PyrenewAssetConfig(
-                output_dir=output_dir,
-            ),
-            "pyrenew_he": PyrenewAssetConfig(
-                output_dir=output_dir,
-            ),
-            "pyrenew_hw": PyrenewAssetConfig(
-                output_dir=output_dir,
-            ),
-            "pyrenew_hew": PyrenewAssetConfig(
-                output_dir=output_dir,
-            ),
+    # Launch the backfill
+    # Returns: a backfill ID, 
+    # side-effect: launches the backfill run in Dagster via a GraphQL query
+    backfill_id = launch_asset_backfill(
+        asset_selection,
+        partition_keys,
+        run_config=dg.RunConfig({
+                "ops": {
+                    **{asset: config for asset in asset_selection},
+                }
+        }),
+        tags={
+                "run": "pyrenew",
+        }
+    )
+    
+    context.log.info(
+        f"Launched backfill with id: '{backfill_id}'. "
+        "Click the output metadata url to monitor"
+    )
+    return dg.Output(
+        value=backfill_id,
+        metadata={
+            "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
         }
     )
 
+# This wraps our launch_pipeline op in a job that can be scheduled or manually launched via the GUI
+@dg.job(
+    executor_def=dg.multiprocess_executor,
+    tags={
+        "cfa_dagster/launcher": {
+            "class": dg.DefaultRunLauncher.__name__
+        }
+    },
+    config=dg.RunConfig(
+        ops={
+            "launch_pipeline": PyrenewAssetConfig(),
+        }
+    )
+)
+def weekly_pyrenew():
+    launch_pipeline()
 
-# # This just calls the graphql api to launch the pipeline so it's
-# # small enough to run directly on the code location with the DefaultRunLauncher
-# @dg.job(
-#     executor_def=dg.multiprocess_executor,
-#     tags={
-#         "cfa_dagster/launcher": {
-#             "class": dg.DefaultRunLauncher.__name__
-#         }
-#     },
-#     config=weekly_run_config()
-# )
-# def weekly_rt_pipeline():
-#     launch_pipeline.alias("network_adjacent")()
-#     launch_pipeline.alias("network_commute")()
-#     launch_pipeline.alias("network_none")()
 
-
-# schedule_weekly_rt_pipeline = dg.ScheduleDefinition(
-#     default_status=(
-#         dg.DefaultScheduleStatus.RUNNING
-#         # don't run locally by default
-#         if is_production else dg.DefaultScheduleStatus.STOPPED
-#     ),
-#     job=weekly_rt_pipeline,
-#     cron_schedule="30 6 * * 3",
-#     execution_timezone="America/New_York",
-# )
+schedule_weekly_pyrenew = dg.ScheduleDefinition(
+    default_status=(
+        dg.DefaultScheduleStatus.RUNNING
+        # don't run locally by default
+        if is_production else dg.DefaultScheduleStatus.STOPPED
+    ),
+    job=weekly_pyrenew,
+    cron_schedule="0 12-21 * * WED",
+    execution_timezone="America/New_York",
+)
 
 # -------------- Dagster Definitions Object --------------- #
 # This code allows us to collect all of the above definitions
@@ -523,9 +473,6 @@ def weekly_run_config() -> dg.RunConfig:
 # By doing this, we can keep our Dagster code in a single file
 # instead of splitting it across multiple files.
 # --------------------------------------------------------- #
-
-# env variable set by Dagster CLI
-is_production = not os.getenv("DAGSTER_IS_DEV_CLI")
 
 # change storage accounts between dev and prod
 storage_account = "cfadagster" if is_production else "cfadagsterdev"
