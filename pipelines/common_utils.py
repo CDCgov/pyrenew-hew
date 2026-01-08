@@ -41,6 +41,7 @@ def get_available_reports(
         for f in Path(data_dir).glob(glob_pattern)
     ]
 
+
 def _parse_single_date(date_str: str) -> tuple[dt.date, dt.date]:
     """
     Parse a single date string into a date range tuple.
@@ -142,6 +143,7 @@ def parse_exclude_date_ranges(
         parsed_ranges.append(date_range)
 
     return parsed_ranges
+
 
 def calculate_training_dates(
     report_date: dt.date,
