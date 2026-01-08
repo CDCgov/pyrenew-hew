@@ -180,13 +180,23 @@ def ask_about_reruns():
     }
 
 
-def compute_skips(e_exclude_last_n_days: int, h_exclude_last_n_days: int, rng_key: int):
-    skip_e = e_exclude_last_n_days == 1 and rng_key == DEFAULT_RNG_KEY
-    skip_h = h_exclude_last_n_days == 1 and rng_key == DEFAULT_RNG_KEY
-    skip_he = (
-        max(e_exclude_last_n_days, h_exclude_last_n_days) == 1
-        and rng_key == DEFAULT_RNG_KEY
+def compute_skips(
+    e_exclude_last_n_days: int,
+    h_exclude_last_n_days: int,
+    rng_key: int,
+    n_training_days: int,
+):
+    run_due_to_param_change = (
+        n_training_days != DEFAULT_TRAINING_DAYS or rng_key != DEFAULT_RNG_KEY
     )
+    if run_due_to_param_change:
+        skip_e = False
+        skip_h = False
+        skip_he = False
+    else:
+        skip_e = e_exclude_last_n_days == 1
+        skip_h = h_exclude_last_n_days == 1
+        skip_he = skip_e and skip_h
     return {"skip_e": skip_e, "skip_h": skip_h, "skip_he": skip_he}
 
 
@@ -198,7 +208,10 @@ def do_timeseries_reruns(
     append_id: str = "",
     n_training_days: int = DEFAULT_TRAINING_DAYS,
 ):
-    skips = compute_skips(e_exclude_last_n_days, h_exclude_last_n_days, rng_key)
+    skips = compute_skips(
+        e_exclude_last_n_days, h_exclude_last_n_days, rng_key, n_training_days
+    )
+    h_and_e_exclude_are_same = e_exclude_last_n_days == h_exclude_last_n_days
 
     if skips["skip_e"]:
         print("Skipping Timeseries-E re-fitting due to E")
@@ -209,7 +222,7 @@ def do_timeseries_reruns(
             exclude_last_n_days=e_exclude_last_n_days,
             n_training_days=n_training_days,
         )
-    if skips["skip_h"]:
+    if skips["skip_h"] or h_and_e_exclude_are_same:
         print("Skipping Timeseries-E re-fitting due to H")
     else:
         fit_timeseries_e(
@@ -229,7 +242,9 @@ def do_pyrenew_reruns(
     n_training_days: int = DEFAULT_TRAINING_DAYS,
 ):
     he_exclude_last_n_days = max(e_exclude_last_n_days, h_exclude_last_n_days)
-    skips = compute_skips(e_exclude_last_n_days, h_exclude_last_n_days, rng_key)
+    skips = compute_skips(
+        e_exclude_last_n_days, h_exclude_last_n_days, rng_key, n_training_days
+    )
 
     if skips["skip_e"]:
         print("Skipping PyRenew-E re-fitting")
@@ -422,11 +437,6 @@ if __name__ == "__main__":
     # Get and print data status
     datasets = get_data_status(nssp_etl_path, nwss_vintages_path, nhsn_target_url)
     print_data_status(datasets)
-
-    n_training_days = IntPrompt.ask(
-        "How many training days should be used when fitting models?",
-        default=DEFAULT_TRAINING_DAYS,
-    )
 
     while True:
         selected_choice = ask_integer_choice(choices)
