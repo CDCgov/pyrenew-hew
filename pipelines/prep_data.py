@@ -539,12 +539,17 @@ def process_and_save_loc_data(
     nhsn_step_size = 7
 
     if loc_level_nwss_data is not None:
-        nwss_training_data = loc_level_nwss_data.filter(
-            pl.col("date") <= last_training_date
+        nwss_full_data = loc_level_nwss_data.with_columns(
+            data_type=pl.when(pl.col("date") <= last_training_date)
+            .then(pl.lit("train"))
+            .otherwise(pl.lit("eval")),
         )
-        nwss_training_data_dict = nwss_training_data.to_dict(as_series=False)
+        nwss_training_data_dict = nwss_full_data.filter(
+            pl.col("date") <= last_training_date
+        ).to_dict(as_series=False)
+
     else:
-        nwss_training_data = None
+        nwss_full_data = None
         nwss_training_data_dict = None
 
     data_for_model_fit = {
@@ -564,7 +569,7 @@ def process_and_save_loc_data(
     combined_data = combine_surveillance_data(
         nssp_data=nssp_full_data,
         nhsn_data=nhsn_full_data,
-        nwss_data=loc_level_nwss_data,
+        nwss_data=nwss_full_data,
         disease=disease,
     )
 
