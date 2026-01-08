@@ -17,6 +17,7 @@ from pipelines.batch.setup_job import main as setup_job
 from pipelines.postprocess_forecast_batches import main as postprocess
 
 DEFAULT_RNG_KEY = 12345
+DEFAULT_TRAINING_DAYS = 150
 load_dotenv()
 console = Console()
 
@@ -54,7 +55,7 @@ def setup_job_append_id(
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
-    n_training_days: int = 150,
+    n_training_days: int = DEFAULT_TRAINING_DAYS,
     exclude_last_n_days: int = 1,
     rng_key: int = DEFAULT_RNG_KEY,
     locations_include: list[str] | None = None,
@@ -191,6 +192,7 @@ def do_timeseries_reruns(
     h_exclude_last_n_days: int = 1,
     rng_key: int = DEFAULT_RNG_KEY,  # not used, but kept for interface consistency
     append_id: str = "",
+    n_training_days: int = DEFAULT_TRAINING_DAYS,
 ):
     skips = compute_skips(e_exclude_last_n_days, h_exclude_last_n_days, rng_key)
 
@@ -201,6 +203,7 @@ def do_timeseries_reruns(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=e_exclude_last_n_days,
+            n_training_days=n_training_days,
         )
     if skips["skip_h"]:
         print("Skipping Timeseries-E re-fitting due to H")
@@ -209,6 +212,7 @@ def do_timeseries_reruns(
             append_id=append_id,
             locations_include=locations_include,
             exclude_last_n_days=h_exclude_last_n_days,
+            n_training_days=n_training_days,
         )
 
 
@@ -218,6 +222,7 @@ def do_pyrenew_reruns(
     h_exclude_last_n_days: int = 1,
     rng_key: int = DEFAULT_RNG_KEY,
     append_id: str = "",
+    n_training_days: int = DEFAULT_TRAINING_DAYS,
 ):
     he_exclude_last_n_days = max(e_exclude_last_n_days, h_exclude_last_n_days)
     skips = compute_skips(e_exclude_last_n_days, h_exclude_last_n_days, rng_key)
@@ -230,6 +235,7 @@ def do_pyrenew_reruns(
             locations_include=locations_include,
             exclude_last_n_days=e_exclude_last_n_days,
             rng_key=rng_key,
+            n_training_days=n_training_days,
         )
 
     if skips["skip_h"]:
@@ -240,6 +246,7 @@ def do_pyrenew_reruns(
             locations_include=locations_include,
             exclude_last_n_days=h_exclude_last_n_days,
             rng_key=rng_key,
+            n_training_days=n_training_days,
         )
         # fit_pyrenew_hw(
         #     append_id=append_id,
@@ -256,6 +263,7 @@ def do_pyrenew_reruns(
             locations_include=locations_include,
             exclude_last_n_days=he_exclude_last_n_days,
             rng_key=rng_key,
+            n_training_days=n_training_days,
         )
 
         # fit_pyrenew_hew(
@@ -411,6 +419,11 @@ if __name__ == "__main__":
     datasets = get_data_status(nssp_etl_path, nwss_vintages_path, nhsn_target_url)
     print_data_status(datasets)
 
+    n_training_days = IntPrompt.ask(
+        "How many training days should be used when fitting models?",
+        default=DEFAULT_TRAINING_DAYS,
+    )
+
     while True:
         selected_choice = ask_integer_choice(choices)
         current_time = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -419,20 +432,28 @@ if __name__ == "__main__":
             print("Exiting...")
             break
         elif selected_choice == "Fit initial Timeseries Models":
-            fit_timeseries_e(append_id=current_time)
+            fit_timeseries_e(append_id=current_time, n_training_days=n_training_days)
         elif selected_choice == "Fit initial PyRenew-E Models":
-            fit_pyrenew_e(append_id=current_time)
+            fit_pyrenew_e(append_id=current_time, n_training_days=n_training_days)
         elif selected_choice == "Fit initial PyRenew-H** models":
-            fit_pyrenew_h(append_id=current_time)
-            fit_pyrenew_he(append_id=current_time)
-            # fit_pyrenew_hw(append_id=current_time)
-            # fit_pyrenew_hew(append_id=current_time)
+            fit_pyrenew_h(append_id=current_time, n_training_days=n_training_days)
+            fit_pyrenew_he(append_id=current_time, n_training_days=n_training_days)
+            # fit_pyrenew_hw(append_id=current_time, n_training_days=n_training_days)
+            # fit_pyrenew_hew(append_id=current_time, n_training_days=n_training_days)
         elif selected_choice == "Rerun Timeseries Models":
             ask_about_reruns_input = ask_about_reruns()
-            do_timeseries_reruns(append_id=current_time, **ask_about_reruns_input)
+            do_timeseries_reruns(
+                append_id=current_time,
+                n_training_days=n_training_days,
+                **ask_about_reruns_input,
+            )
         elif selected_choice == "Rerun PyRenew Models":
             ask_about_reruns_input = ask_about_reruns()
-            do_pyrenew_reruns(append_id=current_time, **ask_about_reruns_input)
+            do_pyrenew_reruns(
+                append_id=current_time,
+                n_training_days=n_training_days,
+                **ask_about_reruns_input,
+            )
         elif selected_choice == "Postprocess Forecast Batches":
             skip_existing = Confirm.ask(
                 "Skip processing for model batch directories that already have figures?",
