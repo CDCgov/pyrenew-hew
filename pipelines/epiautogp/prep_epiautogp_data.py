@@ -159,6 +159,7 @@ def convert_to_epiautogp_json(
         context.frequency,
         context.use_percentage,
         context.ed_visit_type,
+        context.exclude_date_ranges,
         logger,
     )
 
@@ -198,6 +199,7 @@ def _read_tsv_data(
     frequency: str,
     use_percentage: bool,
     ed_visit_type: str,
+    exclude_date_ranges: list[tuple[dt.date, dt.date]] | None,
     logger: logging.Logger,
 ) -> tuple[list[dt.date], list[float]]:
     """
@@ -223,6 +225,9 @@ def _read_tsv_data(
         If True, convert ED visits to percentage (only for NSSP)
     ed_visit_type : str
         Type of ED visits: "observed" or "other" (only for NSSP)
+    exclude_date_ranges : list[tuple[dt.date, dt.date]] | None
+        List of date ranges to exclude from the data (inclusive).
+        Each tuple contains (start_date, end_date). If None, no dates are excluded.
     logger : logging.Logger
         Logger for progress messages
 
@@ -275,6 +280,31 @@ def _read_tsv_data(
         )
     else:  # target == "nhsn"
         dates, reports = _extract_nhsn_from_pivot(df_pivot, tsv_path, logger)
+
+    # Apply date exclusions if provided
+    if exclude_date_ranges is not None and len(exclude_date_ranges) > 0:
+        original_count = len(dates)
+        filtered_indices = []
+        excluded_count = 0
+        
+        for i, date in enumerate(dates):
+            should_exclude = False
+            for start_date, end_date in exclude_date_ranges:
+                if start_date <= date <= end_date:
+                    should_exclude = True
+                    excluded_count += 1
+                    break
+            if not should_exclude:
+                filtered_indices.append(i)
+        
+        # Filter both dates and reports using the same indices
+        dates = [dates[i] for i in filtered_indices]
+        reports = [reports[i] for i in filtered_indices]
+        
+        logger.info(
+            f"Excluded {excluded_count} observations from {len(exclude_date_ranges)} date range(s). "
+            f"Remaining: {len(dates)} observations"
+        )
 
     logger.info(
         f"Extracted {len(dates)} {frequency} {target} observations "

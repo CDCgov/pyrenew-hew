@@ -4,6 +4,7 @@ from pathlib import Path
 
 from pipelines.cli_utils import add_common_forecast_arguments
 from pipelines.common_utils import (
+    parse_exclude_date_ranges,
     run_julia_code,
     run_julia_script,
 )
@@ -107,6 +108,7 @@ def main(
     eval_data_path: Path = None,
     credentials_path: Path = None,
     nhsn_data_path: Path = None,
+    exclude_date_ranges: str = None,
     n_particles: int = 24,
     n_mcmc: int = 100,
     n_hmc: int = 50,
@@ -164,6 +166,10 @@ def main(
         Path to credentials file for data access
     nhsn_data_path : Path | None, default=None
         Path to NHSN hospital admission data
+    exclude_date_ranges : str | None, default=None
+        Comma-separated list of date ranges to exclude from training data.
+        Format: 'YYYY-MM-DD:YYYY-MM-DD,YYYY-MM-DD' for ranges and single dates.
+        Example: '2024-01-15:2024-01-20,2024-03-01'
     n_particles : int, default=24
         Number of particles for Sequential Monte Carlo (SMC)
     n_mcmc : int, default=100
@@ -203,6 +209,14 @@ def main(
     # Step 0: Set up logging, model name and params to pass to epiautogp
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+
+    # Parse exclude_date_ranges
+    parsed_exclude_date_ranges = parse_exclude_date_ranges(exclude_date_ranges)
+    if parsed_exclude_date_ranges:
+        logger.info(
+            f"Excluding {len(parsed_exclude_date_ranges)} date range(s): "
+            f"{parsed_exclude_date_ranges}"
+        )
 
     # Generate model name
     model_name = f"epiautogp_{target}_{frequency}"
@@ -264,6 +278,7 @@ def main(
         n_training_days=n_training_days,
         n_forecast_days=n_forecast_days,
         exclude_last_n_days=exclude_last_n_days,
+        exclude_date_ranges=parsed_exclude_date_ranges,
         credentials_path=credentials_path,
         logger=logger,
     )
@@ -388,6 +403,18 @@ if __name__ == "__main__":
         type=int,
         default=1,
         help="Number of threads to use for EpiAutoGP computations (default: 1).",
+    )
+
+    parser.add_argument(
+        "--exclude-date-ranges",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated list of date ranges to exclude from training data "
+            "due to known reporting problems. "
+            "Format: 'YYYY-MM-DD:YYYY-MM-DD' for ranges or 'YYYY-MM-DD' for single dates. "
+            "Example: '2024-01-15:2024-01-20,2024-03-01' excludes Jan 15-20 and Mar 1."
+        ),
     )
 
     args = parser.parse_args()

@@ -69,6 +69,7 @@ class ForecastPipelineContext:
     last_training_date: date
     n_forecast_days: int
     exclude_last_n_days: int
+    exclude_date_ranges: list[tuple[date, date]] | None
     model_batch_dir: Path
     model_run_dir: Path
     credentials_dict: dict[str, Any]
@@ -206,6 +207,7 @@ def setup_forecast_pipeline(
     n_training_days: int,
     n_forecast_days: int,
     exclude_last_n_days: int = 0,
+    exclude_date_ranges: list[tuple[date, date]] | None = None,
     credentials_path: Path = None,
     logger: logging.Logger = None,
 ) -> ForecastPipelineContext:
@@ -257,6 +259,9 @@ def setup_forecast_pipeline(
         Number of days ahead to forecast
     exclude_last_n_days : int, default=0
         Number of recent days to exclude from training
+    exclude_date_ranges : list[tuple[date, date]] | None, default=None
+        List of date ranges to exclude from training data (inclusive).
+        Each tuple contains (start_date, end_date).
     credentials_path : Path | None, default=None
         Path to credentials file
     logger : logging.Logger | None, default=None
@@ -338,6 +343,7 @@ def setup_forecast_pipeline(
         last_training_date=last_training_date,
         n_forecast_days=n_forecast_days,
         exclude_last_n_days=exclude_last_n_days,
+        exclude_date_ranges=exclude_date_ranges,
         model_batch_dir=model_batch_dir,
         model_run_dir=model_run_dir,
         credentials_dict=credentials_dict,
