@@ -167,12 +167,16 @@ def ask_about_reruns():
         "How many days to exclude for H signal?", default=1
     )
     rng_key = IntPrompt.ask("RNG seed for reproducibility?", default=DEFAULT_RNG_KEY)
+    n_training_days = IntPrompt.ask(
+        "Number of training days?", default=DEFAULT_TRAINING_DAYS
+    )
 
     return {
         "locations_include": locations_include,
         "e_exclude_last_n_days": e_exclude_last_n_days,
         "h_exclude_last_n_days": h_exclude_last_n_days,
         "rng_key": rng_key,
+        "n_training_days": n_training_days,
     }
 
 
@@ -432,26 +436,24 @@ if __name__ == "__main__":
             print("Exiting...")
             break
         elif selected_choice == "Fit initial Timeseries Models":
-            fit_timeseries_e(append_id=current_time, n_training_days=n_training_days)
+            fit_timeseries_e(append_id=current_time)
         elif selected_choice == "Fit initial PyRenew-E Models":
-            fit_pyrenew_e(append_id=current_time, n_training_days=n_training_days)
+            fit_pyrenew_e(append_id=current_time)
         elif selected_choice == "Fit initial PyRenew-H** models":
-            fit_pyrenew_h(append_id=current_time, n_training_days=n_training_days)
-            fit_pyrenew_he(append_id=current_time, n_training_days=n_training_days)
-            # fit_pyrenew_hw(append_id=current_time, n_training_days=n_training_days)
-            # fit_pyrenew_hew(append_id=current_time, n_training_days=n_training_days)
+            fit_pyrenew_h(append_id=current_time)
+            fit_pyrenew_he(append_id=current_time)
+            # fit_pyrenew_hw(append_id=current_time)
+            # fit_pyrenew_hew(append_id=current_time)
         elif selected_choice == "Rerun Timeseries Models":
             ask_about_reruns_input = ask_about_reruns()
             do_timeseries_reruns(
                 append_id=current_time,
-                n_training_days=n_training_days,
                 **ask_about_reruns_input,
             )
         elif selected_choice == "Rerun PyRenew Models":
             ask_about_reruns_input = ask_about_reruns()
             do_pyrenew_reruns(
                 append_id=current_time,
-                n_training_days=n_training_days,
                 **ask_about_reruns_input,
             )
         elif selected_choice == "Postprocess Forecast Batches":
