@@ -191,6 +191,42 @@ def convert_to_epiautogp_json(
     return input_json_path
 
 
+def _apply_date_exclusions(
+    df: pl.DataFrame,
+    exclude_date_ranges: list[tuple[dt.date, dt.date]],
+    logger: logging.Logger,
+) -> pl.DataFrame:
+    """
+    Filter out rows with dates that fall within excluded date ranges.
+    """
+    original_count = df.height
+
+    # Build exclusion condition: exclude if date falls within ANY range
+    # Start with a condition that's always False
+    exclude_condition = pl.lit(False)
+    for start_date, end_date in exclude_date_ranges:
+        exclude_condition = exclude_condition | (
+            (pl.col("date") >= start_date) & (pl.col("date") <= end_date)
+        )
+
+    # Keep rows that DON'T match the exclusion condition
+    df_filtered = df.filter(~exclude_condition)
+
+    if df_filtered.height == 0:
+        raise ValueError(
+            "All dates were excluded by the provided date ranges. "
+            f"Original observation count: {original_count}"
+        )
+
+    excluded_count = original_count - df_filtered.height
+    logger.info(
+        f"Excluded {excluded_count} observations from {len(exclude_date_ranges)} date range(s). "
+        f"Remaining: {df_filtered.height} observations"
+    )
+
+    return df_filtered
+
+
 def _read_tsv_data(
     tsv_path: Path,
     disease: str,
@@ -273,6 +309,10 @@ def _read_tsv_data(
     df_pivot = df_pivot.with_columns(pl.col("date").cast(pl.Date))
     df_pivot = df_pivot.sort("date")
 
+    # Apply date exclusions if provided (before extracting to lists)
+    if exclude_date_ranges is not None and len(exclude_date_ranges) > 0:
+        df_pivot = _apply_date_exclusions(df_pivot, exclude_date_ranges, logger)
+
     # Extract data based on target
     if target == "nssp":
         dates, reports = _extract_nssp_from_pivot(
@@ -280,37 +320,6 @@ def _read_tsv_data(
         )
     else:  # target == "nhsn"
         dates, reports = _extract_nhsn_from_pivot(df_pivot, tsv_path, logger)
-
-    # Apply date exclusions if provided
-    if exclude_date_ranges is not None and len(exclude_date_ranges) > 0:
-        original_count = len(dates)
-        filtered_indices = []
-        excluded_count = 0
-        
-        for i, date in enumerate(dates):
-            should_exclude = False
-            for start_date, end_date in exclude_date_ranges:
-                if start_date <= date <= end_date:
-                    should_exclude = True
-                    excluded_count += 1
-                    break
-            if not should_exclude:
-                filtered_indices.append(i)
-        
-        # Filter both dates and reports using the same indices
-        dates = [dates[i] for i in filtered_indices]
-        reports = [reports[i] for i in filtered_indices]
-        
-        logger.info(
-            f"Excluded {excluded_count} observations from {len(exclude_date_ranges)} date range(s). "
-            f"Remaining: {len(dates)} observations"
-        )
-
-    if len(dates) == 0:
-        raise ValueError(
-            f"No data remaining after applying exclusions for {disease} {location}. "
-            "All dates were filtered out."
-        )
 
     logger.info(
         f"Extracted {len(dates)} {frequency} {target} observations "
