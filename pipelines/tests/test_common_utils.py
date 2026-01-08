@@ -4,6 +4,7 @@ import argparse
 import datetime as dt
 import logging
 
+import polars as pl
 import pytest
 
 from pipelines.cli_utils import (
@@ -14,6 +15,7 @@ from pipelines.common_utils import (
     calculate_training_dates,
     get_available_reports,
     load_credentials,
+    parse_exclude_date_ranges,
 )
 
 
@@ -58,6 +60,62 @@ class TestValidationUtils:
         assert first_date == expected_first
         assert last_date == expected_last
         assert (last_date - first_date).days == n_training_days - 1
+
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            (
+                "2024-01-15:2024-01-20",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 20))],
+            ),
+            (
+                "2024-01-15:2024-01-20,2024-03-01:2024-03-07",
+                [
+                    (dt.date(2024, 1, 15), dt.date(2024, 1, 20)),
+                    (dt.date(2024, 3, 1), dt.date(2024, 3, 7)),
+                ],
+            ),
+            (
+                "2024-01-15",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 15))],
+            ),
+            (
+                "2024-01-15:2024-01-15",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 15))],
+            ),
+            (
+                "2024-01-15,2024-03-01:2024-03-07",
+                [
+                    (dt.date(2024, 1, 15), dt.date(2024, 1, 15)),
+                    (dt.date(2024, 3, 1), dt.date(2024, 3, 7)),
+                ],
+            ),
+            (None, None),
+            ("", None),
+            ("  ", None),
+        ],
+    )
+    def test_parse_exclude_date_ranges_valid(self, input_str, expected):
+        """Test parsing valid date range strings."""
+        result = parse_exclude_date_ranges(input_str)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_str,error_match",
+        [
+            ("2024-01-15:2024-01-20:extra", "Invalid date range format"),
+            (
+                "2024-01-20:2024-01-15",
+                "start_date.*must be before or equal to end_date",
+            ),
+            ("invalid:date", "Invalid date format"),
+            ("not-a-date", "Invalid date format"),
+        ],
+    )
+    def test_parse_exclude_date_ranges_invalid(self, input_str, error_match):
+        """Test parsing invalid date range strings raises appropriate errors."""
+        with pytest.raises(ValueError, match=error_match):
+            parse_exclude_date_ranges(input_str)
 
 
 class TestDataWranglingUtils:
