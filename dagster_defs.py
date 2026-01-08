@@ -1,6 +1,6 @@
 import os
 import subprocess
-from datetime import datetime, timezone, date
+from datetime import UTC, datetime
 from pathlib import Path
 
 import dagster as dg
