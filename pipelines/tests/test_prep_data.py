@@ -36,12 +36,11 @@ def test_get_loc_pop_df():
     ],
 )
 @pytest.mark.parametrize("disease", valid_diseases + ["Iffluenza", "COVID_19"])
-@pytest.mark.parametrize("data_type", ["train", "eval", "other"])
 @pytest.mark.parametrize(
     "last_data_date",
     [date(2025, 12, 12), date(2024, 12, 1), date(2025, 1, 2), date(2024, 12, 29)],
 )
-def test_clean_nssp_data(pivoted_raw_data, disease, data_type, last_data_date):
+def test_clean_nssp_data(pivoted_raw_data, disease, last_data_date):
     """
     Confirm that clean_nssp_data works as expected.
     """
@@ -49,17 +48,15 @@ def test_clean_nssp_data(pivoted_raw_data, disease, data_type, last_data_date):
         index="date", variable_name="disease", value_name="ed_visits"
     )
     invalid_disease = disease not in valid_diseases
-    no_data_after_last_requested = (
-        last_data_date is not None and last_data_date < pivoted_raw_data["date"].min()
-    )
-    expect_empty_df = invalid_disease or no_data_after_last_requested
+
+    expect_empty_df = invalid_disease
 
     if expect_empty_df:
         context = pytest.raises(pl.exceptions.ColumnNotFoundError, match=disease)
     else:
         context = nullcontext()
     with context:
-        result = prep_data.clean_nssp_data(raw_data, disease, data_type, last_data_date)
+        result = prep_data.clean_nssp_data(raw_data, disease, last_data_date)
     if not expect_empty_df:
         expected = (
             pivoted_raw_data.select(
@@ -69,11 +66,26 @@ def test_clean_nssp_data(pivoted_raw_data, disease, data_type, last_data_date):
             )
             .with_columns(
                 other_ed_visits=pl.col("Total") - pl.col("observed_ed_visits"),
-                data_type=pl.lit(data_type),
+                data_type=pl.when(pl.col("date") <= last_data_date)
+                .then(pl.lit("train"))
+                .otherwise(pl.lit("eval")),
             )
             .drop("Total")
             .sort("date")
-        ).filter(pl.col("date") <= last_data_date)
+        )
         assert result.select(
             ["date", "observed_ed_visits", "other_ed_visits", "data_type"]
         ).equals(expected)
+
+
+pivoted_raw_data = pl.DataFrame(
+    {
+        "COVID-19": [10, 15, 20],
+        "Influenza": [12, 16, 22],
+        "RSV": [0, 2, 0],
+        "Total": [497, 502, 499],
+        "date": [date(2024, 12, 29), date(2025, 1, 1), date(2025, 1, 3)],
+    }
+)
+last_data_date = date(2024, 12, 1)
+disease = "COVID-19"

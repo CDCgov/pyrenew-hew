@@ -389,7 +389,6 @@ def simulate_data_from_bootstrap(
         loc_abb=bootstrap_loc,
         disease=bootstrap_disease,
         facility_level_nssp_data=bootstrap_facility_level_nssp_data.lazy(),
-        loc_level_nssp_data=bootstrap_loc_level_nssp_data.lazy(),
         loc_level_nwss_data=bootstrap_loc_level_nwss_data,
         report_date=max_train_date,
         first_training_date=first_training_date,
@@ -465,7 +464,7 @@ def simulate_data_from_bootstrap(
             bootstrap_disease=bootstrap_disease,
         )
         # Update the TSV file with realistic prior predictive values
-        tsv_file_path = Path(model_run_dir) / "data" / "combined_training_data.tsv"
+        tsv_file_path = Path(model_run_dir) / "data" / "combined_data.tsv"
         update_tsv_with_prior_predictive(
             tsv_file_path=tsv_file_path,
             idata=idata,
@@ -612,7 +611,7 @@ def update_tsv_with_prior_predictive(
     """Update TSV file with realistic values from prior predictive sampling.
 
     Args:
-        tsv_file_path: Path to the combined_training_data.tsv file to update
+        tsv_file_path: Path to the combined_data.tsv file to update
         idata: ArviZ InferenceData containing prior predictive samples
         state_disease_key: DataFrame mapping draws to state/disease combinations
         bootstrap_loc: State abbreviation used for bootstrap

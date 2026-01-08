@@ -112,7 +112,7 @@ main <- function(
 ) {
   training_data <- hewr::load_training_data(
     model_dir,
-    "combined_training_data",
+    "combined_data",
     epiweekly
   )
   target_and_other_data <- training_data$data

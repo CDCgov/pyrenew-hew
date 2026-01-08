@@ -8,7 +8,7 @@ Load Training Data for Timeseries Forecasting}
 \usage{
 load_training_data(
   model_dir,
-  base_data_name = "combined_training_data",
+  base_data_name = "combined_data",
   epiweekly = FALSE
 )
 }
