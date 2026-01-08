@@ -440,7 +440,7 @@ if __name__ == "__main__":
             )
             postprocess(
                 base_forecast_dir=pyrenew_hew_prod_output_path / output_subdir,
-                diseases=ALL_DISEASES,
+                diseases=list(ALL_DISEASES),
                 skip_existing=skip_existing,
             )
 
