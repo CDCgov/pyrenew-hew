@@ -306,6 +306,12 @@ def _read_tsv_data(
             f"Remaining: {len(dates)} observations"
         )
 
+    if len(dates) == 0:
+        raise ValueError(
+            f"No data remaining after applying exclusions for {disease} {location}. "
+            "All dates were filtered out."
+        )
+
     logger.info(
         f"Extracted {len(dates)} {frequency} {target} observations "
         f"from {dates[0]} to {dates[-1]}"

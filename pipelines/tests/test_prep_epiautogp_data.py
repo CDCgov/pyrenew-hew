@@ -1,4 +1,11 @@
-"""Unit tests for EpiAutoGP data preparation date exclusion functionality."""
+"""Unit tests for EpiAutoGP data preparation date exclusion functionality.
+
+Note: The filter_dates_by_exclusions function below is a standalone copy of the
+filtering logic used in prep_epiautogp_data._read_tsv_data. This duplication is
+intentional to allow testing the filtering logic in isolation without importing
+the full epiautogp module, which has many external dependencies (pygit2, etc.).
+The test logic mirrors the production implementation.
+"""
 
 import datetime as dt
 import logging
@@ -164,20 +171,6 @@ class TestDateExclusionFiltering:
             elif date == dt.date(2024, 1, 6):
                 assert filtered_reports[i] == 60.0
 
-    def test_exclude_all_dates(self, sample_data):
-        """Test excluding all dates."""
-        dates, reports = sample_data
-        
-        # Exclude entire range
-        exclude_ranges = [(dt.date(2024, 1, 1), dt.date(2024, 1, 10))]
-        
-        filtered_dates, filtered_reports = filter_dates_by_exclusions(
-            dates, reports, exclude_ranges
-        )
-        
-        assert len(filtered_dates) == 0
-        assert len(filtered_reports) == 0
-
     def test_exclude_dates_outside_range(self, sample_data):
         """Test excluding dates that don't exist in the data."""
         dates, reports = sample_data
@@ -192,4 +185,19 @@ class TestDateExclusionFiltering:
         # All dates should still be present
         assert len(filtered_dates) == 10
         assert filtered_dates == dates
+
+    def test_exclude_all_dates_returns_empty(self, sample_data):
+        """Test that excluding all dates returns empty lists (handled by calling code)."""
+        dates, reports = sample_data
+        
+        # Exclude entire range
+        exclude_ranges = [(dt.date(2024, 1, 1), dt.date(2024, 1, 10))]
+        
+        filtered_dates, filtered_reports = filter_dates_by_exclusions(
+            dates, reports, exclude_ranges
+        )
+        
+        # Should return empty lists - the calling code will raise an error
+        assert len(filtered_dates) == 0
+        assert len(filtered_reports) == 0
 
