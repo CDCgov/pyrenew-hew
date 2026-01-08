@@ -9,8 +9,8 @@ from cfa_dagster import (
     azure_batch_executor,
     collect_definitions,
     docker_executor,
+    launch_asset_backfill,
     start_dev_env,
-    launch_asset_backfill
 )
 from cfa_dagster import (
     azure_container_app_job_executor as azure_caj_executor,
@@ -91,7 +91,7 @@ class PyrenewAssetConfig(dg.Config):
     exclude_last_n_days: int = 1
     n_warmup: int = 1000
     additional_forecast_letters: str = ""
-    forecast_date: str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
     output_dir: str = "output" if is_production else "test-output"
     output_subdir: str = f"{forecast_date}_forecasts"
     full_dir: str = f"{output_dir}/{output_subdir}"
@@ -366,8 +366,8 @@ azure_batch_executor_configured = azure_batch_executor.configured(
 
 # ----------------------------------------------------------------------------------- #
 # Orchestration of Non-Partitioned Assets - Upstream Data ETL
-# 
-# Note that this basic approach only works for non-partitioned assets, 
+#
+# Note that this basic approach only works for non-partitioned assets,
 # the models we'll need to schedule more complexly
 # ----------------------------------------------------------------------------------- #
 
@@ -385,8 +385,8 @@ upstream_every_wednesday = dg.ScheduleDefinition(
 )
 
 # ------------------------------------------------------------------------------------------------- #
-# Orchestration of Partitioned Assets - Model Runs 
-# 
+# Orchestration of Partitioned Assets - Model Runs
+#
 # Scheduling full pipeline runs and defining a flexible configuration
 # We use dagster ops and jobs here to launch asset backfills with custom configuration
 # ------------------------------------------------------------------------------------------------- #
@@ -394,8 +394,8 @@ upstream_every_wednesday = dg.ScheduleDefinition(
 # This is an op (non-materialized asset function) that launches backfills, as used in scheduled jobs
 @dg.op
 def launch_pipeline(
-    context: dg.OpExecutionContext, 
-    config: PyrenewAssetConfig, 
+    context: dg.OpExecutionContext,
+    config: PyrenewAssetConfig,
 ) -> dg.Output[str]:
 
     # We are referencing the global pyrenew_multi_partition_def defined earlier
@@ -412,7 +412,7 @@ def launch_pipeline(
     )
 
     # Launch the backfill
-    # Returns: a backfill ID, 
+    # Returns: a backfill ID,
     # side-effect: launches the backfill run in Dagster via a GraphQL query
     backfill_id = launch_asset_backfill(
         asset_selection,
@@ -426,7 +426,7 @@ def launch_pipeline(
                 "run": "pyrenew",
         }
     )
-    
+
     context.log.info(
         f"Launched backfill with id: '{backfill_id}'. "
         "Click the output metadata url to monitor"
