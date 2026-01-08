@@ -162,9 +162,9 @@ read_and_combine_data <- function(model_dir) {
   )
 
   dat <-
-    tidyr::expand_grid(
+    tibble::tibble(
       epiweekly = c(FALSE, TRUE),
-      root = c("combined_data")
+      root = "combined_data",
     ) |>
     dplyr::mutate(
       prefix = ifelse(.data$epiweekly, "epiweekly_", ""),
