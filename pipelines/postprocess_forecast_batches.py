@@ -53,7 +53,7 @@ def process_model_batch_dir(model_batch_dir_path: Path, plot_ext: str = "pdf") -
 
 def main(
     base_forecast_dir: Path | str,
-    diseases: list[str] = ["COVID-19", "Influenza", "RSV"],
+    diseases: list[str] | set[str] = ["COVID-19", "Influenza", "RSV"],
     skip_existing: bool = True,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
