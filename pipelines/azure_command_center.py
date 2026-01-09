@@ -211,7 +211,8 @@ def do_timeseries_reruns(
     skips = compute_skips(
         e_exclude_last_n_days, h_exclude_last_n_days, rng_key, n_training_days
     )
-    h_and_e_exclude_are_same = e_exclude_last_n_days == h_exclude_last_n_days
+    he_exclude_last_n_days = max(e_exclude_last_n_days, h_exclude_last_n_days)
+    he_exclude_covered_by_e = he_exclude_last_n_days == e_exclude_last_n_days
 
     if skips["skip_e"]:
         print("Skipping Timeseries-E re-fitting due to E")
@@ -222,13 +223,13 @@ def do_timeseries_reruns(
             exclude_last_n_days=e_exclude_last_n_days,
             n_training_days=n_training_days,
         )
-    if skips["skip_h"] or h_and_e_exclude_are_same:
-        print("Skipping Timeseries-E re-fitting due to H")
+    if skips["skip_he"] or he_exclude_covered_by_e:
+        print("Skipping Timeseries-E re-fitting due to HE*")
     else:
         fit_timeseries_e(
             append_id=append_id,
             locations_include=locations_include,
-            exclude_last_n_days=h_exclude_last_n_days,
+            exclude_last_n_days=he_exclude_last_n_days,
             n_training_days=n_training_days,
         )
 
