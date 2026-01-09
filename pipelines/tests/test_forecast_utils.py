@@ -53,6 +53,7 @@ def base_context(tmp_path):
         last_training_date=dt.date(2024, 12, 20),
         n_forecast_days=28,
         exclude_last_n_days=0,
+        exclude_date_ranges=None,
         model_batch_dir=tmp_path / "batch",
         model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
         credentials_dict={},
@@ -83,6 +84,7 @@ class TestForecastPipelineContext:
             last_training_date=dt.date(2024, 12, 20),
             n_forecast_days=28,
             exclude_last_n_days=0,
+            exclude_date_ranges=None,
             model_batch_dir=Path("/output/batch"),
             model_run_dir=Path("/output/batch/model_runs/CA"),
             credentials_dict={"key": "value"},
@@ -95,6 +97,7 @@ class TestForecastPipelineContext:
         assert context.loc == "CA"
         assert context.n_forecast_days == 28
         assert context.exclude_last_n_days == 0
+        assert context.exclude_date_ranges is None
 
 
 class TestModelPaths:
@@ -281,6 +284,7 @@ class TestPrepareModelData:
             last_training_date=dt.date(2024, 12, 20),
             n_forecast_days=28,
             exclude_last_n_days=0,
+            exclude_date_ranges=None,
             model_batch_dir=tmp_path / "batch",
             model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
             credentials_dict={},
