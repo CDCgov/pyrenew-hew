@@ -159,6 +159,7 @@ def convert_to_epiautogp_json(
         context.frequency,
         context.use_percentage,
         context.ed_visit_type,
+        context.exclude_date_ranges,
         logger,
     )
 
@@ -190,6 +191,42 @@ def convert_to_epiautogp_json(
     return input_json_path
 
 
+def _apply_date_exclusions(
+    df: pl.DataFrame,
+    exclude_date_ranges: list[tuple[dt.date, dt.date]],
+    logger: logging.Logger,
+) -> pl.DataFrame:
+    """
+    Filter out rows with dates that fall within excluded date ranges.
+    """
+    original_count = df.height
+
+    # Build exclusion condition: exclude if date falls within ANY range
+    # Start with a condition that's always False
+    exclude_condition = pl.lit(False)
+    for start_date, end_date in exclude_date_ranges:
+        exclude_condition = exclude_condition | (
+            (pl.col("date") >= start_date) & (pl.col("date") <= end_date)
+        )
+
+    # Keep rows that DON'T match the exclusion condition
+    df_filtered = df.filter(~exclude_condition)
+
+    if df_filtered.height == 0:
+        raise ValueError(
+            "All dates were excluded by the provided date ranges. "
+            f"Original observation count: {original_count}"
+        )
+
+    excluded_count = original_count - df_filtered.height
+    logger.info(
+        f"Excluded {excluded_count} observations from {len(exclude_date_ranges)} date range(s). "
+        f"Remaining: {df_filtered.height} observations"
+    )
+
+    return df_filtered
+
+
 def _read_tsv_data(
     tsv_path: Path,
     disease: str,
@@ -198,6 +235,7 @@ def _read_tsv_data(
     frequency: str,
     use_percentage: bool,
     ed_visit_type: str,
+    exclude_date_ranges: list[tuple[dt.date, dt.date]] | None,
     logger: logging.Logger,
 ) -> tuple[list[dt.date], list[float]]:
     """
@@ -223,6 +261,9 @@ def _read_tsv_data(
         If True, convert ED visits to percentage (only for NSSP)
     ed_visit_type : str
         Type of ED visits: "observed" or "other" (only for NSSP)
+    exclude_date_ranges : list[tuple[dt.date, dt.date]] | None
+        List of date ranges to exclude from the data (inclusive).
+        Each tuple contains (start_date, end_date). If None, no dates are excluded.
     logger : logging.Logger
         Logger for progress messages
 
@@ -267,6 +308,10 @@ def _read_tsv_data(
     # Ensure date column is properly typed
     df_pivot = df_pivot.with_columns(pl.col("date").cast(pl.Date))
     df_pivot = df_pivot.sort("date")
+
+    # Apply date exclusions if provided (before extracting to lists)
+    if exclude_date_ranges:
+        df_pivot = _apply_date_exclusions(df_pivot, exclude_date_ranges, logger)
 
     # Extract data based on target
     if target == "nssp":
