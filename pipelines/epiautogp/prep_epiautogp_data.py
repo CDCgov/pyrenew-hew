@@ -310,7 +310,7 @@ def _read_tsv_data(
     df_pivot = df_pivot.sort("date")
 
     # Apply date exclusions if provided (before extracting to lists)
-    if exclude_date_ranges is not None and len(exclude_date_ranges) > 0:
+    if exclude_date_ranges:
         df_pivot = _apply_date_exclusions(df_pivot, exclude_date_ranges, logger)
 
     # Extract data based on target
