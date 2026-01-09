@@ -18,6 +18,7 @@ from pipelines.postprocess_forecast_batches import main as postprocess
 
 DEFAULT_RNG_KEY = 12345
 DEFAULT_TRAINING_DAYS = 150
+DEFAULT_EXCLUDE_LAST_N_DAYS = 1
 load_dotenv()
 console = Console()
 
@@ -56,7 +57,7 @@ def setup_job_append_id(
     container_image_name: str = "pyrenew-hew",
     container_image_version: str = "latest",
     n_training_days: int = DEFAULT_TRAINING_DAYS,
-    exclude_last_n_days: int = 1,
+    exclude_last_n_days: int = DEFAULT_EXCLUDE_LAST_N_DAYS,
     rng_key: int = DEFAULT_RNG_KEY,
     locations_include: list[str] | None = None,
     locations_exclude: list[str] | None = None,
@@ -194,16 +195,16 @@ def compute_skips(
         skip_h = False
         skip_he = False
     else:
-        skip_e = e_exclude_last_n_days == 1
-        skip_h = h_exclude_last_n_days == 1
+        skip_e = e_exclude_last_n_days == DEFAULT_EXCLUDE_LAST_N_DAYS
+        skip_h = h_exclude_last_n_days == DEFAULT_EXCLUDE_LAST_N_DAYS
         skip_he = skip_e and skip_h
     return {"skip_e": skip_e, "skip_h": skip_h, "skip_he": skip_he}
 
 
 def do_timeseries_reruns(
     locations_include: list[str] | None = None,
-    e_exclude_last_n_days: int = 1,
-    h_exclude_last_n_days: int = 1,
+    e_exclude_last_n_days: int = DEFAULT_EXCLUDE_LAST_N_DAYS,
+    h_exclude_last_n_days: int = DEFAULT_EXCLUDE_LAST_N_DAYS,
     rng_key: int = DEFAULT_RNG_KEY,  # not used, but kept for interface consistency
     append_id: str = "",
     n_training_days: int = DEFAULT_TRAINING_DAYS,
@@ -236,8 +237,8 @@ def do_timeseries_reruns(
 
 def do_pyrenew_reruns(
     locations_include: list[str] | None = None,
-    e_exclude_last_n_days: int = 1,
-    h_exclude_last_n_days: int = 1,
+    e_exclude_last_n_days: int = DEFAULT_EXCLUDE_LAST_N_DAYS,
+    h_exclude_last_n_days: int = DEFAULT_EXCLUDE_LAST_N_DAYS,
     rng_key: int = DEFAULT_RNG_KEY,
     append_id: str = "",
     n_training_days: int = DEFAULT_TRAINING_DAYS,
