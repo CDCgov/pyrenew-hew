@@ -68,6 +68,82 @@ for location in "${LOCATIONS[@]}"; do
 	done
 done
 
+echo "TEST-MODE: Running EpiAutoGP forecasting pipeline for various targets, locations, and diseases"
+for location in "${LOCATIONS[@]}"; do
+	for disease in "${DISEASES[@]}"; do
+		# Test weekly NHSN (hospital admissions)
+		echo "TEST-MODE: Running EpiAutoGP weekly NHSN forecast for $disease, $location"
+		bash pipelines/tests/test_epiautogp_fit.sh \
+			"$BASE_DIR" \
+			"$disease" \
+			"$location" \
+			"nhsn" \
+			"epiweekly" \
+			"false"
+
+		if [ "$?" -ne 0 ]; then
+			echo "TEST-MODE FAIL: EpiAutoGP NHSN forecast failed for $disease, $location"
+			exit 1
+		else
+			echo "TEST-MODE: Finished EpiAutoGP weekly NHSN forecast for $disease, $location."
+		fi
+
+		# Test weekly NSSP percentage (ED visits as percentage)
+		echo "TEST-MODE: Running EpiAutoGP weekly NSSP percentage forecast for $disease, $location"
+		bash pipelines/tests/test_epiautogp_fit.sh \
+			"$BASE_DIR" \
+			"$disease" \
+			"$location" \
+			"nssp" \
+			"epiweekly" \
+			"true"
+
+		if [ "$?" -ne 0 ]; then
+			echo "TEST-MODE FAIL: EpiAutoGP NSSP percentage forecast failed for $disease, $location"
+			exit 1
+		else
+			echo "TEST-MODE: Finished EpiAutoGP weekly NSSP percentage forecast for $disease, $location."
+		fi
+
+		# Test daily NSSP counts (ED visit counts, not percentages)
+		echo "TEST-MODE: Running EpiAutoGP daily NSSP count forecast for $disease, $location"
+		bash pipelines/tests/test_epiautogp_fit.sh \
+			"$BASE_DIR" \
+			"$disease" \
+			"$location" \
+			"nssp" \
+			"daily" \
+			"false"
+
+		if [ "$?" -ne 0 ]; then
+			echo "TEST-MODE FAIL: EpiAutoGP daily NSSP count forecast failed for $disease, $location"
+			exit 1
+		else
+			echo "TEST-MODE: Finished EpiAutoGP daily NSSP count forecast for $disease, $location."
+		fi
+
+		# Test daily NSSP other ED visits (non-target background)
+		echo "TEST-MODE: Running EpiAutoGP daily NSSP other ED visits forecast for $disease, $location"
+		bash pipelines/tests/test_epiautogp_fit.sh \
+			"$BASE_DIR" \
+			"$disease" \
+			"$location" \
+			"nssp" \
+			"daily" \
+			"false" \
+			"other"
+
+		if [ "$?" -ne 0 ]; then
+			echo "TEST-MODE FAIL: EpiAutoGP daily NSSP other ED visits forecast failed for $disease, $location"
+			exit 1
+		else
+			echo "TEST-MODE: Finished EpiAutoGP daily NSSP other ED visits forecast for $disease, $location."
+		fi
+	done
+done
+
+echo "TEST-MODE: All EpiAutoGP forecasts complete."
+
 echo "TEST-MODE: All pipeline runs complete."
 
 echo "TEST-MODE: Running batch postprocess..."
