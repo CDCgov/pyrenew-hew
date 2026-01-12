@@ -17,8 +17,6 @@ import collate_plots as cp
 from pipelines.common_utils import run_r_script
 from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
-local_dir = Path.home() / "stf_forecast_fig_share"
-
 
 def _hubverse_table_filename(report_date: str | dt.date, disease: str) -> None:
     return f"{report_date}-{disease.lower()}-hubverse-table.parquet"
@@ -57,7 +55,7 @@ def process_model_batch_dir(model_batch_dir_path: Path, plot_ext: str = "pdf") -
 def model_batch_dir_to_target_path(
     model_batch_dir: str,
     max_last_training_date: dt.date,
-    pre_path=local_dir,
+    pre_path: Path | str,
 ) -> Path:
     parts = parse_model_batch_dir_name(model_batch_dir)
     lookback = (parts["last_training_date"] - parts["first_training_date"]).days + 1
@@ -74,7 +72,7 @@ def main(
     base_forecast_dir: Path | str,
     diseases: list[str] | set[str] = ["COVID-19", "Influenza", "RSV"],
     skip_existing: bool = True,
-    create_local_copy: bool = True,
+    local_copy_dir: Path | str = "",
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -102,13 +100,13 @@ def main(
         logger.info(f"Processing {batch_dir}...")
         process_model_batch_dir(model_batch_dir_path)
         logger.info(f"Finished processing {batch_dir}")
-        if create_local_copy:
+        if local_copy_dir:
             source_dir = Path(base_forecast_dir, batch_dir, "figures")
             target_dir = model_batch_dir_to_target_path(
-                batch_dir, max_last_training_date, local_dir
+                batch_dir, max_last_training_date, local_copy_dir
             )
             logger.info(
-                f"Copying from {source_dir.relative_to(base_forecast_dir)} to {target_dir.relative_to(local_dir)}..."
+                f"Copying from {source_dir.relative_to(base_forecast_dir)} to {target_dir.relative_to(local_copy_dir)}..."
             )
             shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
     logger.info(f"Finished processing {base_forecast_dir}.")
@@ -140,9 +138,10 @@ if __name__ == "__main__":
         help="Skip processing for model batch directories that already have been processed.",
     )
     parser.add_argument(
-        "--local-copy",
-        action="store_true",
-        help="Create a local copy of the processed files.",
+        "--local-copy-dir",
+        type=str,
+        default="",
+        help="Save a local copy of the processed files to this directory, if supplied.",
     )
 
     args = parser.parse_args()
