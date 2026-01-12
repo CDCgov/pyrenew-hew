@@ -72,7 +72,7 @@ def model_batch_dir_to_target_path(
 
 def main(
     base_forecast_dir: Path | str,
-    diseases: list[str] | set[str] = ["COVID-19", "Influenza", "RSV"],
+    diseases: list[str] = ["COVID-19", "Influenza", "RSV"],
     skip_existing: bool = True,
     create_local_copy: bool = True,
 ) -> None:
