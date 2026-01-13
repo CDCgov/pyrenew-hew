@@ -88,7 +88,9 @@ def main(
         to_process = [
             batch_dir
             for batch_dir in to_process
-            if not any(Path(base_forecast_dir, batch_dir).glob("*-hubverse-table.parquet"))
+            if not any(
+                Path(base_forecast_dir, batch_dir).glob("*-hubverse-table.parquet")
+            )
         ]
 
     for batch_dir in to_process:
