@@ -1,7 +1,6 @@
 import jax.numpy as jnp
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
-from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 i0_first_obs_n_rv = DistributionalVariable(
