@@ -16,6 +16,8 @@ from rich.text import Text
 from pipelines.batch.setup_job import main as setup_job
 from pipelines.postprocess_forecast_batches import main as postprocess
 
+LOCAL_COPY_DIR = Path.home() / "stf_forecast_fig_share"
+
 DEFAULT_RNG_KEY = 12345
 DEFAULT_TRAINING_DAYS = 150
 DEFAULT_EXCLUDE_LAST_N_DAYS = 1
@@ -473,10 +475,16 @@ if __name__ == "__main__":
                 "Skip processing for model batch directories that already have figures?",
                 default=True,
             )
+            save_local_copy = Confirm.ask(
+                f"Save a local copy of figures to {LOCAL_COPY_DIR}?",
+                default=True,
+            )
+            local_copy_dir = LOCAL_COPY_DIR if save_local_copy else ""
             postprocess(
                 base_forecast_dir=pyrenew_hew_prod_output_path / output_subdir,
-                diseases=ALL_DISEASES,
+                diseases=list(ALL_DISEASES),
                 skip_existing=skip_existing,
+                local_copy_dir=local_copy_dir,
             )
 
         input("Press enter to continue...")
