@@ -15,13 +15,11 @@ python pipelines/forecast_timeseries.py \
 	--disease "$disease" \
 	--loc "$location" \
 	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
-	--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
 	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
 	--output-dir "$BASE_DIR/2024-12-21_forecasts" \
 	--n-training-days 90 \
 	--n-samples 500 \
 	--model-letters "$model_letters" \
-	--eval-data-path "$BASE_DIR/private_data/nssp-etl" \
 	--nhsn-data-path "$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"
