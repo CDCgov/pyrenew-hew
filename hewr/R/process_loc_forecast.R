@@ -162,9 +162,9 @@ read_and_combine_data <- function(model_dir) {
   )
 
   dat <-
-    tidyr::expand_grid(
+    tibble::tibble(
       epiweekly = c(FALSE, TRUE),
-      root = c("combined_training_data", "combined_eval_data")
+      root = "combined_data",
     ) |>
     dplyr::mutate(
       prefix = ifelse(.data$epiweekly, "epiweekly_", ""),
@@ -543,22 +543,24 @@ process_loc_forecast <- function(
     fs::path(
       model_dir,
       "data",
-      "combined_training_data",
+      "combined_data",
       ext = "tsv"
     ),
     col_types = data_col_types
-  )
+  ) |>
+    dplyr::filter(.data$data_type == "train")
 
   # Used for augmenting denominator forecasts with training period denominator
   epiweekly_training_dat <- readr::read_tsv(
     fs::path(
       model_dir,
       "data",
-      "epiweekly_combined_training_data",
+      "epiweekly_combined_data",
       ext = "tsv"
     ),
     col_types = data_col_types
-  )
+  ) |>
+    dplyr::filter(.data$data_type == "train")
 
   required_columns_e <- c(
     ".chain",
@@ -678,11 +680,12 @@ process_forecast <- function(
     fs::path(
       model_dir,
       "data",
-      "epiweekly_combined_training_data",
+      "epiweekly_combined_data",
       ext = "tsv"
     ),
     col_types = data_col_types
-  )
+  ) |>
+    dplyr::filter(.data$data_type == "train")
 
   required_columns_e <- c(
     ".chain",

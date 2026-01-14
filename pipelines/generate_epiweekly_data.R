@@ -26,16 +26,13 @@ purrr::walk(script_packages, \(pkg) {
 #'
 #' @param strict A logical value indicating whether to enforce strict inclusion
 #' of only full epiweeks. Default is TRUE.
-#' @param day_of_week An integer specifying the day of the week to use for the
-#' epiweek date. Default is 1 (Monday).
 #'
 #' @return None. The function writes the epiweekly data to a CSV file in the
 #'  specified directory.
 convert_daily_to_epiweekly <- function(
   data_dir,
   data_name,
-  strict = TRUE,
-  day_of_week = 7
+  strict = TRUE
 ) {
   data_path <- path(data_dir, data_name)
 
@@ -57,15 +54,22 @@ convert_daily_to_epiweekly <- function(
   epiweekly_hosp_data <- daily_data |>
     filter(.variable == "observed_hospital_admissions")
 
+  grouping_cols <- c("geo_value", "disease", "data_type", ".variable")
+
   epiweekly_ed_data <- daily_ed_data |>
+    group_by(
+      dplyr::across(dplyr::all_of(grouping_cols)),
+      epiyear = epiyear(date),
+      epiweek = epiweek(date)
+    ) |>
+    mutate(data_type = if_else(all(data_type == "train"), "train", "eval")) |>
     forecasttools::daily_to_epiweekly(
       value_col = ".value",
       weekly_value_name = ".value",
-      id_cols = c("geo_value", "disease", "data_type", ".variable"),
-      strict = strict
-    ) |>
-    mutate(
-      date = epiweek_to_date(epiweek, epiyear, day_of_week = day_of_week)
+      id_cols = c(grouping_cols, "data_type"),
+      strict = strict,
+      with_epiweek_end_date = TRUE,
+      epiweek_end_date_name = "date"
     ) |>
     select(date, geo_value, disease, data_type, .variable, .value)
 
@@ -83,11 +87,7 @@ convert_daily_to_epiweekly <- function(
 main <- function(data_dir) {
   convert_daily_to_epiweekly(
     data_dir,
-    data_name = "combined_training_data.tsv"
-  )
-  convert_daily_to_epiweekly(
-    data_dir,
-    data_name = "combined_eval_data.tsv"
+    data_name = "combined_data.tsv"
   )
 }
 
