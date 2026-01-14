@@ -29,6 +29,7 @@ import datetime as dt
 from pathlib import Path
 
 import forecasttools
+import jax.random as jr
 import numpy as np
 import polars as pl
 import polars.selectors as cs
@@ -45,25 +46,7 @@ from pipelines.generate_test_data_lib import (
 )
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Create fit data for disease modeling."
-    )
-    parser.add_argument(
-        "base_dir",
-        type=Path,
-        help="Base directory for output data.",
-    )
-    parser.add_argument(
-        "--clean",
-        action="store_true",
-        default=False,
-        help="Remove bootstrap_private_data_dir after simulation",
-    )
-    args = parser.parse_args()
-    base_dir = args.base_dir
-    clean = args.clean
-
+def main(base_dir: Path, clean: bool):
     # Configuration
     max_train_date_str = "2024-12-21"
     max_train_date = dt.datetime.strptime(max_train_date_str, "%Y-%m-%d").date()
@@ -115,9 +98,11 @@ def main():
         param_estimates=param_estimates.lazy(),
         n_forecast_days=n_forecast_days,
         n_ww_sites=n_ww_sites,
-        states_to_simulate=["MT", "CA"],
+        states_to_simulate=[s for s in states_to_simulate if s != "DC"],
         diseases_to_simulate=diseases_to_simulate,
         clean=False,
+        rng_key=jr.key(461),
+        priors_source_path=Path("pipelines/priors/test_priors.py"),
     )
 
     # Simulate data for states without reference subpopulation
@@ -135,6 +120,8 @@ def main():
         states_to_simulate=["DC"],
         diseases_to_simulate=diseases_to_simulate,
         clean=clean,
+        rng_key=jr.key(461),
+        priors_source_path=Path("pipelines/priors/test_priors.py"),
     )
 
     # Concatenate dataframes by variable names
@@ -172,7 +159,7 @@ def main():
 
     nssp_etl_gold_total = (
         nssp_etl_gold_no_total.group_by(cs.exclude("disease", "value"))
-        .agg(pl.col("value").sum())
+        .agg(pl.col("value").sum() + 5000)
         .with_columns(pl.lit("Total").alias("disease"))
         .select(nssp_etl_gold_no_total.columns)
         .sort(["reference_date", "geo_value", "facility", "disease"])
@@ -348,4 +335,22 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Create fit data for disease modeling."
+    )
+    parser.add_argument(
+        "base_dir",
+        type=Path,
+        help="Base directory for output data.",
+    )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        default=False,
+        help="Remove bootstrap_private_data_dir after simulation",
+    )
+    np.random.seed(3)
+    args = parser.parse_args()
+    base_dir = args.base_dir
+    clean = args.clean
+    main(base_dir, clean)
