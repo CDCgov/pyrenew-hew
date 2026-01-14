@@ -9,6 +9,7 @@ and .tsv-format hubverse tables.
 import argparse
 import datetime as dt
 import logging
+import shutil
 from pathlib import Path
 
 import collate_plots as cp
@@ -51,26 +52,62 @@ def process_model_batch_dir(model_batch_dir_path: Path, plot_ext: str = "pdf") -
     combine_hubverse_tables(model_batch_dir_path)
 
 
+def model_batch_dir_to_target_path(
+    model_batch_dir: str,
+    max_last_training_date: dt.date,
+    pre_path: Path | str,
+) -> Path:
+    parts = parse_model_batch_dir_name(model_batch_dir)
+    lookback = (parts["last_training_date"] - parts["first_training_date"]).days + 1
+    omit = (max_last_training_date - parts["last_training_date"]).days + 1
+    target_path = Path(
+        pre_path,
+        f"lookback-{lookback}-omit-{omit}",
+        parts["disease"],
+    )
+    return target_path
+
+
 def main(
     base_forecast_dir: Path | str,
-    diseases: list[str] = ["COVID-19", "Influenza", "RSV"],
+    diseases: list[str] | set[str] = ["COVID-19", "Influenza", "RSV"],
     skip_existing: bool = True,
+    local_copy_dir: Path | str = "",
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-    to_process = get_all_forecast_dirs(base_forecast_dir, list(diseases))
+    to_process = get_all_forecast_dirs(base_forecast_dir, diseases)
+    # compute max last training date across all model batch dirs and assume this corresponds to omitting 1 day.
+    max_last_training_date = max(
+        [
+            parse_model_batch_dir_name(model_batch_dir)["last_training_date"]
+            for model_batch_dir in to_process
+        ]
+    )
+    if skip_existing:
+        to_process = [
+            batch_dir
+            for batch_dir in to_process
+            if not any(
+                Path(base_forecast_dir, batch_dir).glob("*-hubverse-table.parquet")
+            )
+        ]
+
     for batch_dir in to_process:
         model_batch_dir_path = Path(base_forecast_dir, batch_dir)
-        hubverse_tbl_exists = bool(
-            list(model_batch_dir_path.glob("*-hubverse-table.parquet"))
-        )
-        if hubverse_tbl_exists and skip_existing:
-            logger.info(f"Skipping {batch_dir}, hubverse table already exists.")
-        else:
-            logger.info(f"Processing {batch_dir}...")
-            process_model_batch_dir(model_batch_dir_path)
-            logger.info(f"Finished processing {batch_dir}")
-        logger.info(f"Finished processing {base_forecast_dir}.")
+        logger.info(f"Processing {batch_dir}...")
+        process_model_batch_dir(model_batch_dir_path)
+        logger.info(f"Finished processing {batch_dir}")
+        if local_copy_dir:
+            source_dir = Path(base_forecast_dir, batch_dir, "figures")
+            target_dir = model_batch_dir_to_target_path(
+                batch_dir, max_last_training_date, local_copy_dir
+            )
+            logger.info(
+                f"Copying from {source_dir.relative_to(base_forecast_dir)} to {target_dir.relative_to(local_copy_dir)}..."
+            )
+            shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+    logger.info(f"Finished processing {base_forecast_dir}.")
 
 
 if __name__ == "__main__":
@@ -97,6 +134,12 @@ if __name__ == "__main__":
         "--skip-existing",
         action="store_true",
         help="Skip processing for model batch directories that already have been processed.",
+    )
+    parser.add_argument(
+        "--local-copy-dir",
+        type=str,
+        default="",
+        help="Save a local copy of the processed files to this directory, if supplied.",
     )
 
     args = parser.parse_args()
