@@ -665,7 +665,6 @@ def update_tsv_with_prior_predictive(
     # Generate other_ed_visits from Poisson with mean = 10 * max(observed_ed_visits)
     max_ed = float(ed_samples.max())
     poisson_mean = 10 * max_ed
-    np.random.seed(42)  # For reproducibility
     other_ed_samples = np.random.poisson(lam=poisson_mean, size=len(dates))
 
     # Update other_ed_visits (daily data)
