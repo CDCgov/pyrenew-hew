@@ -76,16 +76,3 @@ def test_clean_nssp_data(pivoted_raw_data, disease, last_data_date):
         assert result.select(
             ["date", "observed_ed_visits", "other_ed_visits", "data_type"]
         ).equals(expected)
-
-
-pivoted_raw_data = pl.DataFrame(
-    {
-        "COVID-19": [10, 15, 20],
-        "Influenza": [12, 16, 22],
-        "RSV": [0, 2, 0],
-        "Total": [497, 502, 499],
-        "date": [date(2024, 12, 29), date(2025, 1, 1), date(2025, 1, 3)],
-    }
-)
-last_data_date = date(2024, 12, 1)
-disease = "COVID-19"
