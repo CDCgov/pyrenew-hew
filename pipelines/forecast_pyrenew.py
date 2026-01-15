@@ -16,12 +16,15 @@ from pipelines.common_utils import (
     create_hubverse_table,
     get_available_reports,
     load_credentials,
+    load_nssp_data,
+    parse_and_validate_report_date,
     plot_and_save_loc_forecast,
     run_r_script,
 )
 from pipelines.fit_pyrenew_model import fit_and_save_model
 from pipelines.generate_predictive import generate_and_save_predictions
 from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
+from pipelines.prep_eval_data import save_eval_data
 from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pyrenew_hew.utils import (
     flags_from_hew_letters,
@@ -92,20 +95,23 @@ def generate_epiweekly_data(data_dir: Path) -> None:
 
 def main(
     disease: str,
+    report_date: str,
     loc: str,
-    facility_level_nssp_data_dir: Path,
-    nwss_data_dir: Path,
-    param_data_dir: Path,
-    priors_path: Path,
-    output_dir: Path,
+    facility_level_nssp_data_dir: Path | str,
+    state_level_nssp_data_dir: Path | str,
+    nwss_data_dir: Path | str,
+    param_data_dir: Path | str,
+    priors_path: Path | str,
+    output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
     n_chains: int,
     n_warmup: int,
     n_samples: int,
-    nhsn_data_path: Path | None = None,
+    nhsn_data_path: Path | str = None,
     exclude_last_n_days: int = 0,
-    credentials_path: Path | None = None,
+    eval_data_path: Path = None,
+    credentials_path: Path = None,
     fit_ed_visits: bool = False,
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
@@ -126,7 +132,7 @@ def main(
     logger.info(
         "Starting single-location forecasting pipeline for "
         f"model {pyrenew_model_name}, location {loc}, "
-        f"and latest NSSP report date."
+        f"and report date {report_date}"
     )
     signals = ["ed_visits", "hospital_admissions", "wastewater"]
 
@@ -151,8 +157,14 @@ def main(
         facility_level_nssp_data_dir
     )
 
-    report_date = max(available_facility_level_reports)
-    facility_datafile = f"{report_date}.parquet"
+    available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
+
+    report_date, loc_report_date = parse_and_validate_report_date(
+        report_date,
+        available_facility_level_reports,
+        available_loc_level_reports,
+        logger,
+    )
 
     first_training_date, last_training_date = calculate_training_dates(
         report_date,
@@ -161,8 +173,14 @@ def main(
         logger,
     )
 
-    facility_level_nssp_data = pl.scan_parquet(
-        Path(facility_level_nssp_data_dir, facility_datafile)
+    facility_level_nssp_data, loc_level_nssp_data = load_nssp_data(
+        report_date,
+        loc_report_date,
+        available_facility_level_reports,
+        available_loc_level_reports,
+        facility_level_nssp_data_dir,
+        state_level_nssp_data_dir,
+        logger,
     )
 
     nwss_data_disease_map = {
@@ -238,6 +256,7 @@ def main(
         loc_abb=loc,
         disease=disease,
         facility_level_nssp_data=facility_level_nssp_data,
+        loc_level_nssp_data=loc_level_nssp_data,
         loc_level_nwss_data=loc_level_nwss_data,
         report_date=report_date,
         first_training_date=first_training_date,
@@ -256,6 +275,21 @@ def main(
         fit_ed_visits=fit_ed_visits,
         save_dir=data_dir,
     )
+    logger.info("Getting eval data...")
+    if eval_data_path is None:
+        raise ValueError("No path to an evaluation dataset provided.")
+    save_eval_data(
+        loc=loc,
+        disease=disease,
+        first_training_date=first_training_date,
+        last_training_date=last_training_date,
+        latest_comprehensive_path=eval_data_path,
+        output_data_dir=data_dir,
+        last_eval_date=report_date + dt.timedelta(days=n_forecast_days),
+        credentials_dict=credentials_dict,
+        nhsn_data_path=nhsn_data_path,
+    )
+    logger.info("Done getting eval data.")
 
     logger.info("Generating epiweekly datasets from daily datasets...")
     generate_epiweekly_data(data_dir)

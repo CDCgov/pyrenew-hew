@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import tempfile
+from datetime import date, datetime
+from logging import Logger
 from pathlib import Path
 
 import forecasttools
@@ -10,7 +12,7 @@ import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 
-from pipelines.common_utils import py_scalar_to_r_scalar, run_r_code
+from pipelines.common_utils import run_r_code
 from pyrenew_hew.utils import approx_lognorm
 
 _disease_map = {
@@ -23,7 +25,8 @@ _inverse_disease_map = {v: k for k, v in _disease_map.items()}
 def clean_nssp_data(
     data: pl.DataFrame,
     disease: str,
-    last_training_date: dt.date | None = None,
+    data_type: str,
+    last_data_date: date | None = None,
 ) -> pl.DataFrame:
     """
     Filter, reformat, and annotate a raw `pl.DataFrame` of NSSP data,
@@ -38,12 +41,16 @@ def clean_nssp_data(
     disease
        Name of the disease for which to prep data.
 
-    last_training_date
-         Last date to include in the training data.
-    """
+    data_type
+       Value for the data_type annotation column in the
+       output dataframe.
 
-    if last_training_date is None:
-        last_training_date = data.get_column("date").max()
+    last_data_date
+       If provided, filter the dataset to include only dates
+       prior to this date. Default `None` (no filter).
+    """
+    if last_data_date is not None:
+        data = data.filter(pl.col("date") <= last_data_date)
 
     return (
         data.filter(pl.col("disease").is_in([disease, "Total"]))
@@ -54,29 +61,32 @@ def clean_nssp_data(
         .rename({disease: "observed_ed_visits"})
         .with_columns(
             other_ed_visits=pl.col("Total") - pl.col("observed_ed_visits"),
-            data_type=pl.when(pl.col("date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("eval")),
+            data_type=pl.lit(data_type),
         )
-        .drop("Total")
+        .drop(pl.col("Total"))
         .sort("date")
     )
 
 
 def get_nhsn(
-    start_date: dt.date | None,
-    end_date: dt.date | None,
+    start_date: datetime.date,
+    end_date: datetime.date,
     disease: str,
     loc_abb: str,
-    temp_dir: Path | None = None,
-    credentials_dict: dict | None = None,
-    local_data_file: Path | None = None,
+    temp_dir: Path = None,
+    credentials_dict: dict = None,
+    local_data_file: Path = None,
 ) -> pl.DataFrame:
     if local_data_file is None:
         if temp_dir is None:
             temp_dir = tempfile.mkdtemp()
         if credentials_dict is None:
             credentials_dict = dict()
+
+        def py_scalar_to_r_scalar(py_scalar):
+            if py_scalar is None:
+                return "NULL"
+            return f"'{str(py_scalar)}'"
 
         disease_nhsn_key = {
             "COVID-19": "totalconfc19newadm",
@@ -123,41 +133,33 @@ def get_nhsn(
 
 
 def combine_surveillance_data(
+    nssp_data: pl.DataFrame,
+    nhsn_data: pl.DataFrame,
     disease: str,
-    nssp_data: pl.DataFrame | None = None,
-    nhsn_data: pl.DataFrame | None = None,
-    nwss_data: pl.DataFrame | None = None,
+    nwss_data: pl.DataFrame = None,
 ):
-    nssp_data_long = (
-        nssp_data.unpivot(
-            on=["observed_ed_visits", "other_ed_visits"],
-            variable_name=".variable",
-            index=cs.exclude(["observed_ed_visits", "other_ed_visits"]),
-            value_name=".value",
-        ).with_columns(pl.lit(None).alias("lab_site_index"))
-        if nssp_data is not None
-        else pl.DataFrame()
-    )
+    nssp_data_long = nssp_data.unpivot(
+        on=["observed_ed_visits", "other_ed_visits"],
+        variable_name=".variable",
+        index=cs.exclude(["observed_ed_visits", "other_ed_visits"]),
+        value_name=".value",
+    ).with_columns(pl.lit(None).alias("lab_site_index"))
 
     nhsn_data_long = (
-        (
-            nhsn_data.rename(
-                {
-                    "weekendingdate": "date",
-                    "jurisdiction": "geo_value",
-                    "hospital_admissions": "observed_hospital_admissions",
-                }
-            )
-            .unpivot(
-                on="observed_hospital_admissions",
-                index=cs.exclude("observed_hospital_admissions"),
-                variable_name=".variable",
-                value_name=".value",
-            )
-            .with_columns(pl.lit(None).alias("lab_site_index"))
+        nhsn_data.rename(
+            {
+                "weekendingdate": "date",
+                "jurisdiction": "geo_value",
+                "hospital_admissions": "observed_hospital_admissions",
+            }
         )
-        if nhsn_data is not None
-        else pl.DataFrame()
+        .unpivot(
+            on="observed_hospital_admissions",
+            index=cs.exclude("observed_hospital_admissions"),
+            variable_name=".variable",
+            value_name=".value",
+        )
+        .with_columns(pl.lit(None).alias("lab_site_index"))
     )
 
     nwss_data_long = (
@@ -167,6 +169,7 @@ def combine_surveillance_data(
                 "location": "geo_value",
             }
         )
+        .with_columns(pl.lit("train").alias("data_type"))
         .select(
             cs.exclude(
                 [
@@ -202,10 +205,10 @@ def combine_surveillance_data(
                 "date",
                 "geo_value",
                 "disease",
+                "data_type",
                 ".variable",
                 ".value",
                 "lab_site_index",
-                "data_type",
             ]
         )
     )
@@ -213,10 +216,10 @@ def combine_surveillance_data(
     return combined_dat
 
 
-def aggregate_nssp_to_national(
+def aggregate_to_national(
     data: pl.LazyFrame,
-    geo_values_to_include: pl.Series | list[str],
-    first_date_to_include: dt.date,
+    geo_values_to_include: list[str],
+    first_date_to_include: datetime.date,
     national_geo_value="US",
 ):
     assert national_geo_value not in geo_values_to_include
@@ -230,12 +233,11 @@ def aggregate_nssp_to_national(
     )
 
 
-# not currently used, but could be used for processing latest_comprehensive
-def process_loc_level_nssp_data(
+def process_loc_level_data(
     loc_level_nssp_data: pl.LazyFrame,
     loc_abb: str,
     disease: str,
-    first_training_date: dt.date,
+    first_training_date: datetime.date,
     loc_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
     logging.basicConfig(level=logging.INFO)
@@ -261,7 +263,7 @@ def process_loc_level_nssp_data(
             .to_list()
         )
         logger.info("Aggregating state-level data to national")
-        loc_level_nssp_data = aggregate_nssp_to_national(
+        loc_level_nssp_data = aggregate_to_national(
             loc_level_nssp_data,
             locations_to_aggregate,
             first_training_date,
@@ -288,7 +290,7 @@ def process_loc_level_nssp_data(
             disease=pl.col("disease").cast(pl.Utf8).replace(_inverse_disease_map),
         )
         .sort(["date", "disease"])
-        .collect()
+        .collect(engine="streaming")
     )
 
 
@@ -296,7 +298,7 @@ def aggregate_facility_level_nssp_to_loc(
     facility_level_nssp_data: pl.LazyFrame,
     loc_abb: str,
     disease: str,
-    first_training_date: dt.date,
+    first_training_date: str,
     loc_pop_df: pl.DataFrame,
 ) -> pl.DataFrame:
     logging.basicConfig(level=logging.INFO)
@@ -319,7 +321,7 @@ def aggregate_facility_level_nssp_to_loc(
         locations_to_aggregate = (
             loc_pop_df.filter(pl.col("abb") != "US").get_column("abb").unique()
         )
-        facility_level_nssp_data = aggregate_nssp_to_national(
+        facility_level_nssp_data = aggregate_to_national(
             facility_level_nssp_data,
             locations_to_aggregate,
             first_training_date,
@@ -355,10 +357,10 @@ def get_loc_pop_df():
 
 
 def _validate_and_extract(
-    df_lazy: pl.LazyFrame,
+    df: pl.DataFrame,
     parameter_name: str,
 ) -> list:
-    df = df_lazy.filter(pl.col("parameter") == parameter_name).collect()
+    df = df.filter(pl.col("parameter") == parameter_name).collect()
     if df.height != 1:
         error_msg = f"Expected exactly one {parameter_name} parameter row, but found {df.height}"
         logging.error(error_msg)
@@ -372,7 +374,8 @@ def get_pmfs(
     param_estimates: pl.LazyFrame,
     loc_abb: str,
     disease: str,
-    as_of: dt.date | None = None,
+    as_of: dt.date = None,
+    reference_date: dt.date = None,
     right_truncation_required: bool = True,
 ) -> dict[str, list]:
     """
@@ -403,6 +406,11 @@ def get_pmfs(
         (start_date <= as_of <= end_date). Defaults
         to the most recent estimates.
 
+    reference_date : datetime.date, optional
+        The reference date for right truncation estimates.
+        Defaults to as_of value. Selects the most recent estimate
+        with reference_date <= this value.
+
     right_truncation_required : bool, optional
         If False, allows extraction of other pmfs if
         right_truncation estimate is missing
@@ -430,6 +438,7 @@ def get_pmfs(
     min_as_of = dt.date(1000, 1, 1)
     max_as_of = dt.date(3000, 1, 1)
     as_of = as_of or max_as_of
+    reference_date = reference_date or as_of
 
     filtered_estimates = (
         param_estimates.with_columns(
@@ -477,20 +486,26 @@ def get_pmfs(
 def process_and_save_loc_data(
     loc_abb: str,
     disease: str,
-    report_date: dt.date,
-    first_training_date: dt.date,
-    last_training_date: dt.date,
-    facility_level_nssp_data: pl.LazyFrame,
+    report_date: datetime.date,
+    first_training_date: datetime.date,
+    last_training_date: datetime.date,
     save_dir: Path,
-    logger: logging.Logger | None = None,
-    loc_level_nwss_data: pl.DataFrame | None = None,
-    credentials_dict: dict | None = None,
-    nhsn_data_path: Path | str | None = None,
+    logger: Logger = None,
+    facility_level_nssp_data: pl.LazyFrame = None,
+    loc_level_nssp_data: pl.LazyFrame = None,
+    loc_level_nwss_data: pl.LazyFrame = None,
+    credentials_dict: dict = None,
+    nhsn_data_path: Path | str = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
     os.makedirs(save_dir, exist_ok=True)
+
+    if facility_level_nssp_data is None and loc_level_nssp_data is None:
+        raise ValueError(
+            "Must provide at least one of facility-level and state-levelNSSP data"
+        )
 
     loc_pop_df = get_loc_pop_df()
 
@@ -508,54 +523,57 @@ def process_and_save_loc_data(
         loc_pop_df=loc_pop_df,
     )
 
-    nssp_full_data = clean_nssp_data(
-        data=aggregated_facility_data,
+    loc_level_data = process_loc_level_data(
+        loc_level_nssp_data=loc_level_nssp_data,
+        loc_abb=loc_abb,
         disease=disease,
-        last_training_date=last_training_date,
+        first_training_date=first_training_date,
+        loc_pop_df=loc_pop_df,
     )
 
-    nssp_training_data = nssp_full_data.filter(pl.col("data_type") == "train")
+    if aggregated_facility_data.height > 0:
+        first_facility_level_data_date = aggregated_facility_data.get_column(
+            "date"
+        ).min()
+        loc_level_data = loc_level_data.filter(
+            pl.col("date") < first_facility_level_data_date
+        )
 
-    nhsn_full_data = (
+    nssp_training_data = clean_nssp_data(
+        data=pl.concat([loc_level_data, aggregated_facility_data]),
+        disease=disease,
+        data_type="train",
+        last_data_date=last_training_date,
+    )
+
+    nhsn_training_data = (
         get_nhsn(
             start_date=first_training_date,
-            end_date=None,
+            end_date=last_training_date,
             disease=disease,
             loc_abb=loc_abb,
             credentials_dict=credentials_dict,
             local_data_file=nhsn_data_path,
         )
         .filter(
-            pl.col("weekendingdate") >= first_training_date
-        )  # in testing mode, this isn't guaranteed'
-        .with_columns(
-            data_type=pl.when(pl.col("weekendingdate") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("eval")),
-        )
+            (pl.col("weekendingdate") <= last_training_date)
+            & (pl.col("weekendingdate") >= first_training_date)
+        )  # in testing mode, this isn't guaranteed
+        .with_columns(pl.lit("train").alias("data_type"))
     )
-    nhsn_training_data = nhsn_full_data.filter(pl.col("data_type") == "train")
 
     nhsn_step_size = 7
 
-    if loc_level_nwss_data is not None:
-        nwss_full_data = loc_level_nwss_data.with_columns(
-            data_type=pl.when(pl.col("date") <= last_training_date)
-            .then(pl.lit("train"))
-            .otherwise(pl.lit("eval")),
-        )
-        nwss_training_data_dict = nwss_full_data.filter(
-            pl.col("date") <= last_training_date
-        ).to_dict(as_series=False)
-
-    else:
-        nwss_full_data = None
-        nwss_training_data_dict = None
+    nwss_training_data = (
+        loc_level_nwss_data.to_dict(as_series=False)
+        if loc_level_nwss_data is not None
+        else None
+    )
 
     data_for_model_fit = {
         "loc_pop": loc_pop,
         "right_truncation_offset": right_truncation_offset,
-        "nwss_training_data": nwss_training_data_dict,
+        "nwss_training_data": nwss_training_data,
         "nssp_training_data": nssp_training_data.to_dict(as_series=False),
         "nhsn_training_data": nhsn_training_data.to_dict(as_series=False),
         "nhsn_step_size": nhsn_step_size,
@@ -566,17 +584,19 @@ def process_and_save_loc_data(
     with open(Path(save_dir, "data_for_model_fit.json"), "w") as json_file:
         json.dump(data_for_model_fit, json_file, default=str)
 
-    combined_data = combine_surveillance_data(
-        nssp_data=nssp_full_data,
-        nhsn_data=nhsn_full_data,
-        nwss_data=nwss_full_data,
+    combined_training_dat = combine_surveillance_data(
+        nssp_data=nssp_training_data,
+        nhsn_data=nhsn_training_data,
+        nwss_data=loc_level_nwss_data,
         disease=disease,
     )
 
     if logger is not None:
         logger.info(f"Saving {loc_abb} to {save_dir}")
 
-    combined_data.write_csv(Path(save_dir, "combined_data.tsv"), separator="\t")
+    combined_training_dat.write_csv(
+        Path(save_dir, "combined_training_data.tsv"), separator="\t"
+    )
     return None
 
 

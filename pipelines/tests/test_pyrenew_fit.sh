@@ -15,6 +15,7 @@ python pipelines/forecast_pyrenew.py \
 	--disease "$disease" \
 	--loc "$location" \
 	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \
+	--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold" \
 	--priors-path pipelines/priors/prod_priors.py \
 	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates" \
 	--nwss-data-dir "$BASE_DIR/private_data/nwss_vintages" \
@@ -26,6 +27,7 @@ python pipelines/forecast_pyrenew.py \
 	--rng-key 12345 \
 	--model-letters "$model_letters" \
 	--additional-forecast-letters "$model_letters" \
+	--eval-data-path "$BASE_DIR/private_data/nssp-etl" \
 	--nhsn-data-path "$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Forecasting/postprocessing pipeline failed"

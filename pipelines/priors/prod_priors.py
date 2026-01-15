@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
+from numpyro.infer.reparam import LocScaleReparam
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
 i0_first_obs_n_rv = DistributionalVariable(
@@ -8,6 +9,9 @@ i0_first_obs_n_rv = DistributionalVariable(
     dist.Beta(1, 10),
 )
 
+initialization_rate_rv = DistributionalVariable(
+    "rate", dist.Normal(0, 0.01), reparam=LocScaleReparam(0)
+)
 
 r_logmean = jnp.log(1.2)
 r_logsd = jnp.log(jnp.sqrt(2))
@@ -124,12 +128,29 @@ sigma_i_first_obs_rv = DistributionalVariable(
     dist.TruncatedNormal(0, 0.5, low=0),
 )
 
+sigma_initial_exp_growth_rate_rv = DistributionalVariable(
+    "sigma_initial_exp_growth_rate",
+    dist.TruncatedNormal(
+        0,
+        0.05,
+        low=0,
+    ),
+)
 
 offset_ref_logit_i_first_obs_rv = DistributionalVariable(
     "offset_ref_logit_i_first_obs",
     dist.Normal(0, 0.25),
 )
 
+offset_ref_initial_exp_growth_rate_rv = DistributionalVariable(
+    "offset_ref_initial_exp_growth_rate",
+    dist.TruncatedNormal(
+        0,
+        0.025,
+        low=-0.01,
+        high=0.01,
+    ),
+)
 
 offset_ref_log_rt_rv = DistributionalVariable(
     "offset_ref_log_r_t",
