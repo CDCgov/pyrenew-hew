@@ -192,7 +192,7 @@ jobs:
           path: ${{ env.BASE_DIR }}
 
   postprocess-models:
-    needs: fit-pyrenew-models
+    needs: [fit-pyrenew-models, fit-epiautogp-models]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
