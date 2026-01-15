@@ -743,9 +743,10 @@ process_forecast <- function(
 
   # Load training data
   daily_training_dat <- readr::read_tsv(
-    fs::path(model_dir, "data", "combined_training_data", ext = "tsv"),
+    fs::path(model_dir, "data", "combined_data", ext = "tsv"),
     col_types = data_col_types
-  )
+  ) |>
+    dplyr::filter(.data$data_type == "train")
 
   epiweekly_training_dat <- readr::read_tsv(
     fs::path(

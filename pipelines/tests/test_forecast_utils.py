@@ -108,18 +108,16 @@ class TestModelPaths:
         paths = ModelPaths(
             model_output_dir=Path("/output/model"),
             data_dir=Path("/output/model/data"),
-            daily_training_data=Path("/output/model/data/combined_training_data.tsv"),
+            daily_training_data=Path("/output/model/data/combined_data.tsv"),
             epiweekly_training_data=Path(
-                "/output/model/data/epiweekly_combined_training_data.tsv"
+                "/output/model/data/epiweekly_combined_data.tsv"
             ),
         )
 
         assert paths.model_output_dir == Path("/output/model")
         assert paths.data_dir == Path("/output/model/data")
-        assert paths.daily_training_data.name == "combined_training_data.tsv"
-        assert (
-            paths.epiweekly_training_data.name == "epiweekly_combined_training_data.tsv"
-        )
+        assert paths.daily_training_data.name == "combined_data.tsv"
+        assert paths.epiweekly_training_data.name == "epiweekly_combined_data.tsv"
 
 
 class TestSetupForecastPipeline:
@@ -243,10 +241,8 @@ class TestPrepareModelData:
         assert isinstance(paths, ModelPaths)
         assert paths.model_output_dir.name == "test_model"
         assert paths.data_dir.name == "data"
-        assert paths.daily_training_data.name == "combined_training_data.tsv"
-        assert (
-            paths.epiweekly_training_data.name == "epiweekly_combined_training_data.tsv"
-        )
+        assert paths.daily_training_data.name == "combined_data.tsv"
+        assert paths.epiweekly_training_data.name == "epiweekly_combined_data.tsv"
 
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")

@@ -148,10 +148,8 @@ class ForecastPipelineContext:
         return ModelPaths(
             model_output_dir=model_output_dir,
             data_dir=data_dir,
-            daily_training_data=Path(data_dir, "combined_training_data.tsv"),
-            epiweekly_training_data=Path(
-                data_dir, "epiweekly_combined_training_data.tsv"
-            ),
+            daily_training_data=Path(data_dir, "combined_data.tsv"),
+            epiweekly_training_data=Path(data_dir, "epiweekly_combined_data.tsv"),
         )
 
     def post_process_forecast(self) -> None:
