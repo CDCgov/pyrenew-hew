@@ -42,6 +42,54 @@ jobs:
           retention-days: 1
 
 
+  fit-epiautogp-models:
+    needs: generate-data
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        disease: [COVID-19]
+        location: [CA]
+        target: [nssp]
+        frequency: [epiweekly]
+        use_percentage: [false]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Pyrenew-HEW via UV
+        uses: ./.github/actions/setup-pyrenew-hew
+
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+
+      - name: Install Julia dependencies
+        run: |
+          julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Download test data
+        uses: actions/download-artifact@v7
+        with:
+          name: test-data
+          path: ${{ env.DATA_DIR }}
+
+      - name: Fit EpiAutoGP model
+        run: |
+          uv run bash pipelines/tests/test_epiautogp_fit.sh ${{ env.BASE_DIR }} \
+          ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.target }} \
+          ${{ matrix.frequency }} ${{ matrix.use_percentage }}
+
+      - name: Upload model fitting output
+        uses: actions/upload-artifact@v6
+        with:
+          name: |
+            test-fit-epiautogp-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.target }}-${{ matrix.frequency }}
+          path: ${{ env.BASE_DIR }}
+
+
   fit-timeseries-models:
     needs: generate-data
     runs-on: ubuntu-latest

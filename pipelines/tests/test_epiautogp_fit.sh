@@ -34,7 +34,6 @@ cmd_args=(
 	--n-training-days 150
 	--target "$target"
 	--frequency "$frequency"
-	--eval-data-path "$BASE_DIR/private_data/nssp-etl"
 	--nhsn-data-path "$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
 	--n-forecast-days 28
 	--n-particles 2
