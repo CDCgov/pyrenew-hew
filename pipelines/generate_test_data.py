@@ -159,8 +159,13 @@ def main(base_dir: Path, clean: bool):
 
     nssp_etl_gold_total = (
         nssp_etl_gold_no_total.group_by(cs.exclude("disease", "value"))
-        .agg(pl.col("value").sum() + 5000)
-        .with_columns(pl.lit("Total").alias("disease"))
+        .agg(pl.col("value").sum())
+        .with_columns(
+            (
+                pl.col("value") + 5000 + np.sin(pl.row_index() * 2 * np.pi / 50) * 1000
+            ).cast(pl.Int64),
+            pl.lit("Total").alias("disease"),
+        )
         .select(nssp_etl_gold_no_total.columns)
         .sort(["reference_date", "geo_value", "facility", "disease"])
     )
