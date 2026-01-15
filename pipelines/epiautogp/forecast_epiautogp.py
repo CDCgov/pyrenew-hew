@@ -95,7 +95,6 @@ def main(
     report_date: str,
     loc: str,
     facility_level_nssp_data_dir: Path | str,
-    state_level_nssp_data_dir: Path | str,
     param_data_dir: Path | str,
     output_dir: Path | str,
     n_training_days: int,
@@ -136,8 +135,6 @@ def main(
         Two-letter USPS location abbreviation (e.g., "CA", "NY")
     facility_level_nssp_data_dir : Path | str
         Directory containing facility-level NSSP ED visit data
-    state_level_nssp_data_dir : Path | str
-        Directory containing state-level NSSP ED visit data
     param_data_dir : Path | str
         Directory containing parameter data for the model
     output_dir : Path | str
@@ -269,7 +266,6 @@ def main(
         param_data_dir=param_data_dir,
         nhsn_data_path=nhsn_data_path,
         facility_level_nssp_data_dir=facility_level_nssp_data_dir,
-        state_level_nssp_data_dir=state_level_nssp_data_dir,
         output_dir=output_dir,
         n_training_days=n_training_days,
         n_forecast_days=n_forecast_days,
@@ -319,6 +315,16 @@ if __name__ == "__main__":
     add_common_forecast_arguments(parser)
 
     # Add EpiAutoGP-specific arguments
+    parser.add_argument(
+        "--report-date",
+        type=str,
+        default="latest",
+        help=(
+            "Report date in YYYY-MM-DD format or 'latest' to use "
+            "the most recent available data (default: latest)."
+        ),
+    )
+
     parser.add_argument(
         "--target",
         type=str,

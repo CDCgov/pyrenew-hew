@@ -57,7 +57,6 @@ def base_context(tmp_path):
         model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
         credentials_dict={},
         facility_level_nssp_data=pl.LazyFrame(),
-        loc_level_nssp_data=pl.LazyFrame(),
         logger=logging.getLogger(),
     )
 
@@ -87,7 +86,6 @@ class TestForecastPipelineContext:
             model_run_dir=Path("/output/batch/model_runs/CA"),
             credentials_dict={"key": "value"},
             facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
             logger=logging.getLogger(),
         )
 
@@ -151,7 +149,6 @@ class TestSetupForecastPipeline:
             param_data_dir=None,
             nhsn_data_path=None,
             facility_level_nssp_data_dir=tmp_path,
-            state_level_nssp_data_dir=tmp_path,
             output_dir=tmp_path,
             n_training_days=90,
             n_forecast_days=28,
@@ -192,7 +189,6 @@ class TestSetupForecastPipeline:
             param_data_dir=None,
             nhsn_data_path=None,
             facility_level_nssp_data_dir=tmp_path,
-            state_level_nssp_data_dir=tmp_path,
             output_dir=tmp_path,
             n_training_days=90,
             n_forecast_days=28,

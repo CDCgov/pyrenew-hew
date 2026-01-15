@@ -71,7 +71,6 @@ class ForecastPipelineContext:
     model_run_dir: Path
     credentials_dict: dict[str, Any]
     facility_level_nssp_data: pl.LazyFrame
-    loc_level_nssp_data: pl.LazyFrame
     logger: logging.Logger
 
     def prepare_model_data(self) -> ModelPaths:
@@ -101,7 +100,6 @@ class ForecastPipelineContext:
             loc_abb=self.loc,
             disease=self.disease,
             facility_level_nssp_data=self.facility_level_nssp_data,
-            loc_level_nssp_data=self.loc_level_nssp_data,
             report_date=self.report_date,
             first_training_date=self.first_training_date,
             last_training_date=self.last_training_date,
@@ -172,7 +170,6 @@ def setup_forecast_pipeline(
     param_data_dir: Path | None,
     nhsn_data_path: Path | None,
     facility_level_nssp_data_dir: Path | str,
-    state_level_nssp_data_dir: Path | str,
     output_dir: Path | str,
     n_training_days: int,
     n_forecast_days: int,
@@ -217,8 +214,6 @@ def setup_forecast_pipeline(
         Path to NHSN hospital admission data
     facility_level_nssp_data_dir : Path | str
         Directory containing facility-level NSSP ED visit data
-    state_level_nssp_data_dir : Path | str
-        Directory containing state-level NSSP ED visit data
     output_dir : Path | str
         Root directory for output
     n_training_days : int
@@ -276,13 +271,6 @@ def setup_forecast_pipeline(
         Path(facility_level_nssp_data_dir, facility_datafile)
     )
 
-    # Load state-level NSSP data if available
-    state_level_datafile = Path(state_level_nssp_data_dir, facility_datafile)
-    if state_level_datafile.exists():
-        loc_level_nssp_data = pl.scan_parquet(state_level_datafile)
-    else:
-        loc_level_nssp_data = None
-
     # Create model batch directory structure
     model_batch_dir_name = (
         f"{disease.lower()}_r_{report_date_parsed}_f_"
@@ -314,6 +302,5 @@ def setup_forecast_pipeline(
         model_run_dir=model_run_dir,
         credentials_dict=credentials_dict,
         facility_level_nssp_data=facility_level_nssp_data,
-        loc_level_nssp_data=loc_level_nssp_data,
         logger=logger,
     )

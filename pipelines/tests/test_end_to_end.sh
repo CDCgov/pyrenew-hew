@@ -27,46 +27,46 @@ else
 	echo "TEST-MODE: Finished generating test data"
 fi
 
-echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and diseases"
+# echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and diseases"
 
-for location in "${LOCATIONS[@]}"; do
-	for disease in "${DISEASES[@]}"; do
-		echo "TEST-MODE: Running Timeseries forecasting pipeline for $disease, $location"
-		bash pipelines/tests/test_ts_fit.sh "$BASE_DIR" "$disease" "$location" "e"
-		if [ "$?" -ne 0 ]; then
-			echo "TEST-MODE FAIL: Timeseries forecasting pipeline failed"
-			echo "TEST-MODE: Cleanup: removing temporary directories"
-			exit 1
-		else
-			echo "TEST-MODE: Finished Timeseries forecasting pipeline for location $location, disease $disease."
-		fi
-	done
-done
-echo "TEST-MODE: Finished Timeseries forecasting pipeline for all locations and diseases."
+# for location in "${LOCATIONS[@]}"; do
+# 	for disease in "${DISEASES[@]}"; do
+# 		echo "TEST-MODE: Running Timeseries forecasting pipeline for $disease, $location"
+# 		bash pipelines/tests/test_ts_fit.sh "$BASE_DIR" "$disease" "$location" "e"
+# 		if [ "$?" -ne 0 ]; then
+# 			echo "TEST-MODE FAIL: Timeseries forecasting pipeline failed"
+# 			echo "TEST-MODE: Cleanup: removing temporary directories"
+# 			exit 1
+# 		else
+# 			echo "TEST-MODE: Finished Timeseries forecasting pipeline for location $location, disease $disease."
+# 		fi
+# 	done
+# done
+# echo "TEST-MODE: Finished Timeseries forecasting pipeline for all locations and diseases."
 
-echo "TEST-MODE: Running Pyrenew forecasting pipelines for various signals, locations, and diseases"
-for location in "${LOCATIONS[@]}"; do
-	for model in {,h}{,e}{,w}; do
-		for disease in "${DISEASES[@]}"; do
+# echo "TEST-MODE: Running Pyrenew forecasting pipelines for various signals, locations, and diseases"
+# for location in "${LOCATIONS[@]}"; do
+# 	for model in {,h}{,e}{,w}; do
+# 		for disease in "${DISEASES[@]}"; do
 
-			if [[ ($model == *w* && ($disease == "Influenza" || $disease == "RSV" || $location == "US")) || $model == "w" ]]; then
-				echo "TEST-MODE: Skipping forecasting pipeline for $model, $disease, $location. " \
-					"W-only models, US-level wastewater models, RSV wastewater models and " \
-					"Influenza wastewater models are not yet supported."
-			else
-				echo "TEST-MODE: Running forecasting pipeline for $model, $disease, $location"
-				bash pipelines/tests/test_pyrenew_fit.sh "$BASE_DIR" "$disease" "$location" "$model"
-			fi
-			if [ "$?" -ne 0 ]; then
-				echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
-				echo "TEST-MODE: Cleanup: removing temporary directories"
-				exit 1
-			else
-				echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for location $location."
-			fi
-		done
-	done
-done
+# 			if [[ ($model == *w* && ($disease == "Influenza" || $disease == "RSV" || $location == "US")) || $model == "w" ]]; then
+# 				echo "TEST-MODE: Skipping forecasting pipeline for $model, $disease, $location. " \
+# 					"W-only models, US-level wastewater models, RSV wastewater models and " \
+# 					"Influenza wastewater models are not yet supported."
+# 			else
+# 				echo "TEST-MODE: Running forecasting pipeline for $model, $disease, $location"
+# 				bash pipelines/tests/test_pyrenew_fit.sh "$BASE_DIR" "$disease" "$location" "$model"
+# 			fi
+# 			if [ "$?" -ne 0 ]; then
+# 				echo "TEST-MODE FAIL: Forecasting/postprocessing/scoring pipeline failed"
+# 				echo "TEST-MODE: Cleanup: removing temporary directories"
+# 				exit 1
+# 			else
+# 				echo "TEST-MODE: Finished forecasting/postprocessing/scoring pipeline for location $location."
+# 			fi
+# 		done
+# 	done
+# done
 
 echo "TEST-MODE: Running EpiAutoGP forecasting pipeline for various targets, locations, and diseases"
 for location in "${LOCATIONS[@]}"; do

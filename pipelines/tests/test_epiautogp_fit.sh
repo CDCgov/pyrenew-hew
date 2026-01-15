@@ -28,7 +28,6 @@ cmd_args=(
 	--disease "$disease"
 	--loc "$location"
 	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold"
-	--state-level-nssp-data-dir "$BASE_DIR/private_data/nssp_state_level_gold"
 	--param-data-dir "$BASE_DIR/private_data/prod_param_estimates"
 	--output-dir "$BASE_DIR/2024-12-21_forecasts"
 	--n-training-days 150
@@ -41,7 +40,6 @@ cmd_args=(
 	--n-hmc 2
 	--n-forecast-draws 100
 	--smc-data-proportion 0.1
-	--exclude-date-ranges "2024-10-01:2024-10-28,2024-11-01:2024-11-28"
 )
 
 # Add percentage flag if needed
