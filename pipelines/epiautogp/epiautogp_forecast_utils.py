@@ -5,10 +5,11 @@ This module contains common functionality used across different forecast
 pipelines (pyrenew, timeseries, epiautogp, etc.).
 """
 
+import datetime as dt
 import logging
 import os
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -19,13 +20,10 @@ from pipelines.common_utils import (
     create_hubverse_table,
     get_available_reports,
     load_credentials,
-    load_nssp_data,
-    parse_and_validate_report_date,
     plot_and_save_loc_forecast,
 )
 from pipelines.forecast_pyrenew import generate_epiweekly_data
 from pipelines.prep_data import process_and_save_loc_data
-from pipelines.prep_eval_data import save_eval_data
 
 
 @dataclass
@@ -62,7 +60,6 @@ class ForecastPipelineContext:
     ed_visit_type: str
     model_name: str
     param_data_dir: Path | None
-    eval_data_path: Path | None
     nhsn_data_path: Path | None
     report_date: date
     first_training_date: date
@@ -79,24 +76,18 @@ class ForecastPipelineContext:
 
     def prepare_model_data(self) -> ModelPaths:
         """
-        Prepare training and evaluation data for a model.
+        Prepare training data for a model.
 
         This function performs the data preparation steps that are common across
         all forecast pipelines:
         1. Create model output directory
         2. Process and save location data
-        3. Save evaluation data
-        4. Generate epiweekly datasets
+        3. Generate epiweekly datasets
 
         Returns
         -------
         ModelPaths
             Object containing all model output directory and file paths
-
-        Raises
-        ------
-        ValueError
-            If eval_data_path is None
         """
         # Create model output directory
         model_output_dir = Path(self.model_run_dir, self.model_name)
@@ -119,24 +110,6 @@ class ForecastPipelineContext:
             credentials_dict=self.credentials_dict,
             nhsn_data_path=self.nhsn_data_path,
         )
-
-        # Save evaluation data
-        self.logger.info("Getting eval data...")
-        if self.eval_data_path is None:
-            raise ValueError("No path to an evaluation dataset provided.")
-
-        save_eval_data(
-            loc=self.loc,
-            disease=self.disease,
-            first_training_date=self.first_training_date,
-            last_training_date=self.last_training_date,
-            latest_comprehensive_path=self.eval_data_path,
-            output_data_dir=data_dir,
-            last_eval_date=self.report_date + timedelta(days=self.n_forecast_days),
-            credentials_dict=self.credentials_dict,
-            nhsn_data_path=self.nhsn_data_path,
-        )
-        self.logger.info("Done getting eval data.")
 
         # Generate epiweekly datasets
         self.logger.info("Generating epiweekly datasets from daily datasets...")
@@ -197,7 +170,6 @@ def setup_forecast_pipeline(
     ed_visit_type: str,
     model_name: str,
     param_data_dir: Path | None,
-    eval_data_path: Path | None,
     nhsn_data_path: Path | None,
     facility_level_nssp_data_dir: Path | str,
     state_level_nssp_data_dir: Path | str,
@@ -241,8 +213,6 @@ def setup_forecast_pipeline(
         Name of the model configuration
     param_data_dir : Path | None
         Directory containing parameter data
-    eval_data_path : Path | None
-        Path to evaluation data file
     nhsn_data_path : Path | None
         Path to NHSN hospital admission data
     facility_level_nssp_data_dir : Path | str
@@ -285,15 +255,12 @@ def setup_forecast_pipeline(
     available_facility_level_reports = get_available_reports(
         facility_level_nssp_data_dir
     )
-    available_loc_level_reports = get_available_reports(state_level_nssp_data_dir)
 
-    # Parse and validate report date
-    report_date_parsed, loc_report_date = parse_and_validate_report_date(
-        report_date,
-        available_facility_level_reports,
-        available_loc_level_reports,
-        logger,
-    )
+    # Parse report date (use max available if "latest" or not specified)
+    if report_date == "latest" or report_date is None:
+        report_date_parsed = max(available_facility_level_reports)
+    else:
+        report_date_parsed = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
 
     # Calculate training dates
     first_training_date, last_training_date = calculate_training_dates(
@@ -304,15 +271,17 @@ def setup_forecast_pipeline(
     )
 
     # Load NSSP data
-    facility_level_nssp_data, loc_level_nssp_data = load_nssp_data(
-        report_date_parsed,
-        loc_report_date,
-        available_facility_level_reports,
-        available_loc_level_reports,
-        facility_level_nssp_data_dir,
-        state_level_nssp_data_dir,
-        logger,
+    facility_datafile = f"{report_date_parsed}.parquet"
+    facility_level_nssp_data = pl.scan_parquet(
+        Path(facility_level_nssp_data_dir, facility_datafile)
     )
+
+    # Load state-level NSSP data if available
+    state_level_datafile = Path(state_level_nssp_data_dir, facility_datafile)
+    if state_level_datafile.exists():
+        loc_level_nssp_data = pl.scan_parquet(state_level_datafile)
+    else:
+        loc_level_nssp_data = None
 
     # Create model batch directory structure
     model_batch_dir_name = (
@@ -334,7 +303,6 @@ def setup_forecast_pipeline(
         ed_visit_type=ed_visit_type,
         model_name=model_name,
         param_data_dir=param_data_dir,
-        eval_data_path=eval_data_path,
         nhsn_data_path=nhsn_data_path,
         report_date=report_date_parsed,
         first_training_date=first_training_date,

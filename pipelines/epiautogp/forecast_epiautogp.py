@@ -105,7 +105,6 @@ def main(
     use_percentage: bool = False,
     ed_visit_type: str = "observed",
     exclude_last_n_days: int = 0,
-    eval_data_path: Path = None,
     credentials_path: Path = None,
     nhsn_data_path: Path = None,
     exclude_date_ranges: str = None,
@@ -160,8 +159,6 @@ def main(
         "other" (non-disease background). Only applicable for NSSP target
     exclude_last_n_days : int, default=0
         Number of recent days to exclude from training
-    eval_data_path : Path | None, default=None
-        Path to evaluation data file
     credentials_path : Path | None, default=None
         Path to credentials file for data access
     nhsn_data_path : Path | None, default=None
@@ -270,7 +267,6 @@ def main(
         ed_visit_type=ed_visit_type,
         model_name=model_name,
         param_data_dir=param_data_dir,
-        eval_data_path=eval_data_path,
         nhsn_data_path=nhsn_data_path,
         facility_level_nssp_data_dir=facility_level_nssp_data_dir,
         state_level_nssp_data_dir=state_level_nssp_data_dir,
@@ -283,7 +279,7 @@ def main(
         logger=logger,
     )
 
-    # Step 2: Prepare data for modelling (process location data, eval data, epiweekly data)
+    # Step 2: Prepare data for modelling (process location data, epiweekly data)
     # returns paths to prepared data files and directories
     paths = context.prepare_model_data()
 

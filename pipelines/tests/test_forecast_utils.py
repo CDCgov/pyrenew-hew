@@ -46,7 +46,6 @@ def base_context(tmp_path):
         ed_visit_type="observed",
         model_name="test_model",
         param_data_dir=None,
-        eval_data_path=tmp_path / "eval.parquet",
         nhsn_data_path=None,
         report_date=dt.date(2024, 12, 20),
         first_training_date=dt.date(2024, 9, 22),
@@ -77,7 +76,6 @@ class TestForecastPipelineContext:
             ed_visit_type="observed",
             model_name="test_model",
             param_data_dir=None,
-            eval_data_path=Path("/path/to/eval.parquet"),
             nhsn_data_path=None,
             report_date=dt.date(2024, 12, 20),
             first_training_date=dt.date(2024, 9, 22),
@@ -123,28 +121,23 @@ class TestModelPaths:
 class TestSetupForecastPipeline:
     """Tests for the setup_forecast_pipeline function."""
 
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.pl.scan_parquet")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_credentials")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.get_available_reports")
-    @patch(
-        "pipelines.epiautogp.epiautogp_forecast_utils.parse_and_validate_report_date"
-    )
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.calculate_training_dates")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_nssp_data")
     def test_setup_pipeline_returns_context(
         self,
-        mock_load_nssp,
         mock_calc_dates,
-        mock_parse_date,
         mock_get_reports,
         mock_load_creds,
+        mock_scan_parquet,
         tmp_path,
     ):
         """Test that setup_forecast_pipeline returns a properly configured context."""
         # Setup mocks
         mock_get_reports.return_value = [dt.date(2024, 12, 20)]
-        mock_parse_date.return_value = (dt.date(2024, 12, 20), dt.date(2024, 12, 20))
         mock_calc_dates.return_value = (dt.date(2024, 9, 22), dt.date(2024, 12, 20))
-        mock_load_nssp.return_value = (pl.LazyFrame(), pl.LazyFrame())
+        mock_scan_parquet.return_value = pl.LazyFrame()
 
         context = setup_forecast_pipeline(
             disease="COVID-19",
@@ -156,7 +149,6 @@ class TestSetupForecastPipeline:
             ed_visit_type="observed",
             model_name="test_model",
             param_data_dir=None,
-            eval_data_path=tmp_path / "eval.parquet",
             nhsn_data_path=None,
             facility_level_nssp_data_dir=tmp_path,
             state_level_nssp_data_dir=tmp_path,
@@ -170,28 +162,23 @@ class TestSetupForecastPipeline:
 
         assert isinstance(context, ForecastPipelineContext)
 
+    @patch("pipelines.epiautogp.epiautogp_forecast_utils.pl.scan_parquet")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_credentials")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.get_available_reports")
-    @patch(
-        "pipelines.epiautogp.epiautogp_forecast_utils.parse_and_validate_report_date"
-    )
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.calculate_training_dates")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.load_nssp_data")
     def test_setup_pipeline_creates_directory_structure(
         self,
-        mock_load_nssp,
         mock_calc_dates,
-        mock_parse_date,
         mock_get_reports,
         mock_load_creds,
+        mock_scan_parquet,
         tmp_path,
     ):
         """Test that setup creates the expected directory structure."""
         mock_load_creds.return_value = {}
         mock_get_reports.return_value = [dt.date(2024, 12, 20)]
-        mock_parse_date.return_value = (dt.date(2024, 12, 20), dt.date(2024, 12, 20))
         mock_calc_dates.return_value = (dt.date(2024, 9, 22), dt.date(2024, 12, 20))
-        mock_load_nssp.return_value = (pl.LazyFrame(), pl.LazyFrame())
+        mock_scan_parquet.return_value = pl.LazyFrame()
 
         context = setup_forecast_pipeline(
             disease="COVID-19",
@@ -203,7 +190,6 @@ class TestSetupForecastPipeline:
             ed_visit_type="observed",
             model_name="test_model",
             param_data_dir=None,
-            eval_data_path=tmp_path / "eval.parquet",
             nhsn_data_path=None,
             facility_level_nssp_data_dir=tmp_path,
             state_level_nssp_data_dir=tmp_path,
@@ -225,12 +211,10 @@ class TestPrepareModelData:
     """Tests for the prepare_model_data function."""
 
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
     def test_prepare_model_data_returns_paths(
         self,
         mock_process_loc,
-        mock_save_eval,
         mock_gen_epiweekly,
         base_context,  # Fixture is injected here
     ):
@@ -245,12 +229,10 @@ class TestPrepareModelData:
         assert paths.epiweekly_training_data.name == "epiweekly_combined_data.tsv"
 
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
     def test_prepare_model_data_creates_directories(
         self,
         mock_process_loc,
-        mock_save_eval,
         mock_gen_epiweekly,
         base_context,  # Use fixture
     ):
@@ -261,44 +243,11 @@ class TestPrepareModelData:
         assert paths.model_output_dir.exists()
         assert paths.data_dir.exists()
 
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
-    def test_prepare_model_data_raises_without_eval_path(self, mock_process, tmp_path):
-        """Test that prepare_model_data raises ValueError without eval_data_path."""
-        context = ForecastPipelineContext(
-            disease="COVID-19",
-            loc="CA",
-            target="nssp",
-            frequency="epiweekly",
-            use_percentage=False,
-            ed_visit_type="observed",
-            model_name="test_model",
-            param_data_dir=None,
-            eval_data_path=None,
-            nhsn_data_path=None,
-            report_date=dt.date(2024, 12, 20),
-            first_training_date=dt.date(2024, 9, 22),
-            last_training_date=dt.date(2024, 12, 20),
-            n_forecast_days=28,
-            exclude_last_n_days=0,
-            exclude_date_ranges=None,
-            model_batch_dir=tmp_path / "batch",
-            model_run_dir=tmp_path / "batch" / "model_runs" / "CA",
-            credentials_dict={},
-            facility_level_nssp_data=pl.LazyFrame(),
-            loc_level_nssp_data=pl.LazyFrame(),
-            logger=logging.getLogger(),
-        )
-
-        with pytest.raises(ValueError, match="No path to an evaluation dataset"):
-            context.prepare_model_data()
-
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
     def test_prepare_model_data_passes_nhsn_data_path(
         self,
         mock_process_loc,
-        mock_save_eval,
         mock_gen_epiweekly,
         base_context,  # Use fixture
         tmp_path,
@@ -319,31 +268,23 @@ class TestPrepareModelData:
         mock_process_loc.assert_called_once()
         assert mock_process_loc.call_args[1]["nhsn_data_path"] == nhsn_path
 
-        # Verify nhsn_data_path was passed to save_eval_data
-        mock_save_eval.assert_called_once()
-        assert mock_save_eval.call_args[1]["nhsn_data_path"] == nhsn_path
-
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.generate_epiweekly_data")
-    @patch("pipelines.epiautogp.epiautogp_forecast_utils.save_eval_data")
     @patch("pipelines.epiautogp.epiautogp_forecast_utils.process_and_save_loc_data")
     def test_prepare_model_data_with_nhsn_target(
         self,
         mock_process_loc,
-        mock_save_eval,
         mock_gen_epiweekly,
         base_context,  # Use fixture
         tmp_path,
     ):
         """Test prepare_model_data with NHSN target and data."""
         nhsn_path = tmp_path / "nhsn_hospital_admissions.parquet"
-        eval_path = tmp_path / "eval.parquet"
 
         # Override multiple fields for NHSN test
         context = replace(
             base_context,
             target="nhsn",
             model_name="epiautogp_nhsn_epiweekly",
-            eval_data_path=eval_path,
             nhsn_data_path=nhsn_path,
             credentials_dict={"key": "value"},
         )
@@ -368,10 +309,9 @@ class TestPostprocessForecast:
         base_context,  # Use fixture
     ):
         """Test that postprocess_forecast calls plotting and hubverse creation."""
-        # Override eval_data_path and exclude_last_n_days for this test
+        # Override exclude_last_n_days for this test
         context = replace(
             base_context,
-            eval_data_path=None,
             exclude_last_n_days=5,
         )
 
@@ -395,11 +335,7 @@ class TestPostprocessForecast:
         base_context,  # Use fixture
     ):
         """Test that n_forecast_days is passed correctly."""
-        # Override eval_data_path for this test
-        context = replace(
-            base_context,
-            eval_data_path=None,
-        )
+        context = base_context
 
         context.post_process_forecast()
 
