@@ -371,6 +371,7 @@ azure_batch_executor_configured = azure_batch_executor.configured(
 # the models we'll need to schedule more complexly
 # ----------------------------------------------------------------------------------- #
 
+# TODO: This will be replaced by sensors in production
 upstream_asset_job = dg.define_asset_job(
     name="upstream_asset_job",
     executor_def=dg.in_process_executor, # these are lightweight and do not have partitions
@@ -391,9 +392,40 @@ upstream_every_wednesday = dg.ScheduleDefinition(
 # We use dagster ops and jobs here to launch asset backfills with custom configuration
 # ------------------------------------------------------------------------------------------------- #
 
+## Prototype - Simple Asset Job Definition and Schedule ##
+
+# Experimental asset job to materialize all pyrenew assets
+pyrenew_asset_job = dg.define_asset_job(
+    name="pyrenew_asset_job",
+    executor_def=azure_batch_executor_configured, # these are lightweight and do not have partitions
+    selection=[
+        "timeseries_e",
+        "pyrenew_e",
+        "pyrenew_h",
+        "pyrenew_he",
+        "pyrenew_hw",
+        "pyrenew_hew",
+    ],
+    # tag the run with your user to allow for easy filtering in the Dagster UI
+    tags={"user": user},
+)
+
+pyrenew_test_schedule = dg.ScheduleDefinition(
+    default_status=(
+        dg.DefaultScheduleStatus.RUNNING
+        # don't run locally by default
+        if is_production else dg.DefaultScheduleStatus.STOPPED
+    ),
+    job=pyrenew_asset_job,
+    cron_schedule="0 12-21 * * WED",
+    execution_timezone="America/New_York",
+)
+
+## Backfill Launch Method - Flexible Configuration via Op and Job ##
+
 # This is an op (non-materialized asset function) that launches backfills, as used in scheduled jobs
 @dg.op
-def launch_pipeline(
+def launch_pyrenew_pipeline(
     context: dg.OpExecutionContext,
     config: PyrenewAssetConfig,
 ) -> dg.Output[str]:
@@ -448,24 +480,29 @@ def launch_pipeline(
     },
     config=dg.RunConfig(
         ops={
-            "launch_pipeline": PyrenewAssetConfig(),
+            "launch_pyrenew_pipeline": PyrenewAssetConfig()
         }
     )
 )
-def weekly_pyrenew():
-    launch_pipeline()
+
+def weekly_pyrenew_backfill():
+    launch_pyrenew_pipeline()
 
 
-schedule_weekly_pyrenew = dg.ScheduleDefinition(
+schedule_weekly_pyrenew_backfill = dg.ScheduleDefinition(
     default_status=(
         dg.DefaultScheduleStatus.RUNNING
         # don't run locally by default
         if is_production else dg.DefaultScheduleStatus.STOPPED
     ),
-    job=weekly_pyrenew,
+    job=weekly_pyrenew_backfill,
     cron_schedule="0 12-21 * * WED",
     execution_timezone="America/New_York",
 )
+
+## Dagster Tutorial Method - Use @dg.schedule ## 
+
+
 
 # -------------- Dagster Definitions Object --------------- #
 # This code allows us to collect all of the above definitions
