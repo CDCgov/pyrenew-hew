@@ -42,16 +42,9 @@ jobs:
           retention-days: 1
 
 
-  fit-epiautogp-models:
+  fit-epiautogp-nhsn-models:
     needs: generate-data
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        disease: [COVID-19, Influenza, RSV]
-        location: [US, CA, MT, DC]
-        target: [nssp, nhsn]
-        frequency: [epiweekly]
-        use_percentage: [false]
     steps:
       - uses: actions/checkout@v6
 
@@ -76,17 +69,152 @@ jobs:
           name: test-data
           path: ${{ env.DATA_DIR }}
 
-      - name: Fit EpiAutoGP model
+      - name: Fit EpiAutoGP weekly NHSN models
         run: |
-          uv run bash pipelines/tests/test_epiautogp_fit.sh ${{ env.BASE_DIR }} \
-          ${{ matrix.disease }} ${{ matrix.location }} ${{ matrix.target }} \
-          ${{ matrix.frequency }} ${{ matrix.use_percentage }}
+          for disease in COVID-19 Influenza RSV; do
+            for location in US CA MT DC; do
+              echo "Fitting EpiAutoGP weekly NHSN model for $disease, $location"
+              uv run bash pipelines/tests/test_epiautogp_fit.sh ${{ env.BASE_DIR }} \
+                "$disease" "$location" nhsn epiweekly false
+            done
+          done
 
       - name: Upload model fitting output
         uses: actions/upload-artifact@v6
         with:
-          name: |
-            test-fit-epiautogp-${{ matrix.disease }}-${{ matrix.location }}-${{ matrix.target }}-${{ matrix.frequency }}
+          name: test-fit-epiautogp-nhsn-epiweekly
+          path: ${{ env.BASE_DIR }}
+
+
+  fit-epiautogp-nssp-percentage-models:
+    needs: generate-data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Pyrenew-HEW via UV
+        uses: ./.github/actions/setup-pyrenew-hew
+
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+
+      - name: Install Julia dependencies
+        run: |
+          julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Download test data
+        uses: actions/download-artifact@v7
+        with:
+          name: test-data
+          path: ${{ env.DATA_DIR }}
+
+      - name: Fit EpiAutoGP weekly NSSP percentage models
+        run: |
+          for disease in COVID-19 Influenza RSV; do
+            for location in US CA MT DC; do
+              echo "Fitting EpiAutoGP weekly NSSP percentage model for $disease, $location"
+              uv run bash pipelines/tests/test_epiautogp_fit.sh ${{ env.BASE_DIR }} \
+                "$disease" "$location" nssp epiweekly true
+            done
+          done
+
+      - name: Upload model fitting output
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-fit-epiautogp-nssp-epiweekly-pct
+          path: ${{ env.BASE_DIR }}
+
+
+  fit-epiautogp-nssp-daily-models:
+    needs: generate-data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Pyrenew-HEW via UV
+        uses: ./.github/actions/setup-pyrenew-hew
+
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+
+      - name: Install Julia dependencies
+        run: |
+          julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Download test data
+        uses: actions/download-artifact@v7
+        with:
+          name: test-data
+          path: ${{ env.DATA_DIR }}
+
+      - name: Fit EpiAutoGP daily NSSP count models
+        run: |
+          for disease in COVID-19 Influenza RSV; do
+            for location in US CA MT DC; do
+              echo "Fitting EpiAutoGP daily NSSP count model for $disease, $location"
+              uv run bash pipelines/tests/test_epiautogp_fit.sh ${{ env.BASE_DIR }} \
+                "$disease" "$location" nssp daily false
+            done
+          done
+
+      - name: Upload model fitting output
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-fit-epiautogp-nssp-daily
+          path: ${{ env.BASE_DIR }}
+
+
+  fit-epiautogp-nssp-other-models:
+    needs: generate-data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Pyrenew-HEW via UV
+        uses: ./.github/actions/setup-pyrenew-hew
+
+      - name: Set up R with hewr package
+        uses: ./.github/actions/setup-hewr
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+
+      - name: Install Julia dependencies
+        run: |
+          julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Download test data
+        uses: actions/download-artifact@v7
+        with:
+          name: test-data
+          path: ${{ env.DATA_DIR }}
+
+      - name: Fit EpiAutoGP daily NSSP other ED visits models
+        run: |
+          for disease in COVID-19 Influenza RSV; do
+            for location in US CA MT DC; do
+              echo "Fitting EpiAutoGP daily NSSP other ED visits model for $disease, $location"
+              uv run bash pipelines/tests/test_epiautogp_fit.sh ${{ env.BASE_DIR }} \
+                "$disease" "$location" nssp daily false other
+            done
+          done
+
+      - name: Upload model fitting output
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-fit-epiautogp-nssp-daily-other
           path: ${{ env.BASE_DIR }}
 
 
@@ -192,7 +320,7 @@ jobs:
           path: ${{ env.BASE_DIR }}
 
   postprocess-models:
-    needs: [fit-pyrenew-models, fit-epiautogp-models]
+    needs: [fit-pyrenew-models, fit-epiautogp-nhsn-models, fit-epiautogp-nssp-percentage-models, fit-epiautogp-nssp-daily-models, fit-epiautogp-nssp-other-models]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
