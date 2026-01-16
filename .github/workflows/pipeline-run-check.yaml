@@ -50,7 +50,7 @@ jobs:
         disease: [COVID-19, Influenza, RSV]
         location: [US, CA, MT, DC]
         target: [nssp, nhsn]
-        frequency: [daily, epiweekly]
+        frequency: [epiweekly]
         use_percentage: [false]
     steps:
       - uses: actions/checkout@v6
