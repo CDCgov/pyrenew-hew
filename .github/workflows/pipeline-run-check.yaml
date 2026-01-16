@@ -47,10 +47,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        disease: [COVID-19]
-        location: [CA]
-        target: [nssp]
-        frequency: [epiweekly]
+        disease: [COVID-19, Influenza, RSV]
+        location: [US, CA, MT, DC]
+        target: [nssp, nhsn]
+        frequency: [daily, epiweekly]
         use_percentage: [false]
     steps:
       - uses: actions/checkout@v6
