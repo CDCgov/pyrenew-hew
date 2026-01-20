@@ -250,16 +250,11 @@ def main(
         "--loc {loc} "
         f"--n-training-days {n_training_days} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--state-level-nssp-data-dir "
-        "nssp-archival-vintages/gold "
         "--param-data-dir params "
         "--output-dir {output_dir} "
         "--credentials-path config/creds.toml "
-        "--report-date {report_date} "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
-        "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet "
         f"{additional_args}"
         "'"
     )
@@ -347,7 +342,6 @@ def main(
             base_call=base_call.format(
                 loc=loc,
                 disease=disease,
-                report_date="latest",
                 output_dir=str(Path("output", output_subdir)),
             ),
             container_settings=container_settings,

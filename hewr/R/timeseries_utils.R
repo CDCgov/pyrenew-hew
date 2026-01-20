@@ -22,7 +22,7 @@
 #' @export
 load_training_data <- function(
   model_dir,
-  base_data_name = "combined_training_data",
+  base_data_name = "combined_data",
   epiweekly = FALSE
 ) {
   resolution <- dplyr::if_else(epiweekly, "epiweekly", "daily")
@@ -45,6 +45,7 @@ load_training_data <- function(
       .value = readr::col_double()
     )
   ) |>
+    dplyr::filter(.data$data_type == "train") |>
     dplyr::select(-"lab_site_index") |>
     dplyr::filter(stringr::str_ends(.data$.variable, "ed_visits")) |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value")

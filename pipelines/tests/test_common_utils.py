@@ -4,7 +4,6 @@ import argparse
 import datetime as dt
 import logging
 
-import polars as pl
 import pytest
 
 from pipelines.cli_utils import (
@@ -15,8 +14,7 @@ from pipelines.common_utils import (
     calculate_training_dates,
     get_available_reports,
     load_credentials,
-    load_nssp_data,
-    parse_and_validate_report_date,
+    parse_exclude_date_ranges,
 )
 
 
@@ -41,43 +39,6 @@ class TestValidationUtils:
             load_credentials(invalid_file, logger)
 
     @pytest.mark.parametrize(
-        "input_date,available_facility,available_loc,expected_report,expected_loc",
-        [
-            (
-                "latest",
-                [dt.date(2024, 12, 18), dt.date(2024, 12, 19), dt.date(2024, 12, 20)],
-                [dt.date(2024, 12, 18), dt.date(2024, 12, 19)],
-                dt.date(2024, 12, 20),
-                dt.date(2024, 12, 19),
-            ),
-            (
-                "2024-12-20",
-                [dt.date(2024, 12, 15), dt.date(2024, 12, 20)],
-                [dt.date(2024, 12, 15), dt.date(2024, 12, 20)],
-                dt.date(2024, 12, 20),
-                dt.date(2024, 12, 20),
-            ),
-        ],
-    )
-    def test_parse_and_validate_report_date(
-        self,
-        input_date,
-        available_facility,
-        available_loc,
-        expected_report,
-        expected_loc,
-    ):
-        """Test parsing report dates with various inputs."""
-        logger = logging.getLogger(__name__)
-
-        report_date, loc_report_date = parse_and_validate_report_date(
-            input_date, available_facility, available_loc, logger
-        )
-
-        assert report_date == expected_report
-        assert loc_report_date == expected_loc
-
-    @pytest.mark.parametrize(
         "n_training_days,exclude_last_n_days,expected_first,expected_last",
         [
             (90, 0, dt.date(2024, 9, 22), dt.date(2024, 12, 20)),
@@ -99,6 +60,62 @@ class TestValidationUtils:
         assert last_date == expected_last
         assert (last_date - first_date).days == n_training_days - 1
 
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            (
+                "2024-01-15:2024-01-20",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 20))],
+            ),
+            (
+                "2024-01-15:2024-01-20,2024-03-01:2024-03-07",
+                [
+                    (dt.date(2024, 1, 15), dt.date(2024, 1, 20)),
+                    (dt.date(2024, 3, 1), dt.date(2024, 3, 7)),
+                ],
+            ),
+            (
+                "2024-01-15",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 15))],
+            ),
+            (
+                "2024-01-15:2024-01-15",
+                [(dt.date(2024, 1, 15), dt.date(2024, 1, 15))],
+            ),
+            (
+                "2024-01-15,2024-03-01:2024-03-07",
+                [
+                    (dt.date(2024, 1, 15), dt.date(2024, 1, 15)),
+                    (dt.date(2024, 3, 1), dt.date(2024, 3, 7)),
+                ],
+            ),
+            (None, None),
+            ("", None),
+            ("  ", None),
+        ],
+    )
+    def test_parse_exclude_date_ranges_valid(self, input_str, expected):
+        """Test parsing valid date range strings."""
+        result = parse_exclude_date_ranges(input_str)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "input_str,error_match",
+        [
+            ("2024-01-15:2024-01-20:extra", "Invalid date range format"),
+            (
+                "2024-01-20:2024-01-15",
+                "start_date.*must be before or equal to end_date",
+            ),
+            ("invalid:date", "Invalid date format"),
+            ("not-a-date", "Invalid date format"),
+        ],
+    )
+    def test_parse_exclude_date_ranges_invalid(self, input_str, error_match):
+        """Test parsing invalid date range strings raises appropriate errors."""
+        with pytest.raises(ValueError, match=error_match):
+            parse_exclude_date_ranges(input_str)
+
 
 class TestDataWranglingUtils:
     """Tests for data loading and processing utilities."""
@@ -115,40 +132,6 @@ class TestDataWranglingUtils:
         assert dt.date(2024, 12, 1) in result
         assert dt.date(2024, 12, 15) in result
         assert dt.date(2024, 12, 20) in result
-
-    def test_load_nssp_data_both_available(self, tmp_path):
-        """Test loading NSSP data when both facility and location data available."""
-        facility_dir = tmp_path / "facility"
-        loc_dir = tmp_path / "location"
-        facility_dir.mkdir()
-        loc_dir.mkdir()
-
-        # Create minimal valid parquet files
-        facility_file = facility_dir / "2024-12-20.parquet"
-        loc_file = loc_dir / "2024-12-20.parquet"
-
-        df = pl.DataFrame({"col1": [1, 2, 3]})
-        df.write_parquet(facility_file)
-        df.write_parquet(loc_file)
-
-        logger = logging.getLogger(__name__)
-        report_date = dt.date(2024, 12, 20)
-        available = [report_date]
-
-        facility_data, loc_data = load_nssp_data(
-            report_date,
-            report_date,
-            available,
-            available,
-            facility_dir,
-            loc_dir,
-            logger,
-        )
-
-        assert facility_data is not None
-        assert loc_data is not None
-        assert isinstance(facility_data, pl.LazyFrame)
-        assert isinstance(loc_data, pl.LazyFrame)
 
 
 class TestCLIUtils:
@@ -172,7 +155,6 @@ class TestCLIUtils:
 
         assert args.disease == "COVID-19"
         assert args.loc == "CA"
-        assert args.report_date == "latest"  # default value
         assert args.n_training_days == 180  # default value
         assert args.n_forecast_days == 28  # default value
         assert args.exclude_last_n_days == 0  # default value

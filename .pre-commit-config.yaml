@@ -13,7 +13,7 @@ repos:
   #####
   # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
+    rev: v0.14.13
     hooks:
       # Sort imports
       - id: ruff-check
@@ -21,7 +21,7 @@ repos:
       - id: ruff-format
   #####extra
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.21
+    rev: 0.9.26
     hooks:
       - id: uv-lock
   #####

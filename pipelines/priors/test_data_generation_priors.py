@@ -1,20 +1,17 @@
 import jax.numpy as jnp
 import numpyro.distributions as dist
 import pyrenew.transformation as transformation
+from pyrenew.deterministic import DeterministicVariable
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-i0_first_obs_n_rv = DistributionalVariable(
-    "i0_first_obs_n_rv",
-    dist.Beta(1, 10),
-)
+i0_first_obs_n_rv = DeterministicVariable("i0_first_obs_n_rv", 4 / 10000)
 
 
 r_logmean = jnp.log(1.2)
 r_logsd = jnp.log(jnp.sqrt(2))
 
-log_r_mu_intercept_rv = DistributionalVariable(
-    "log_r_mu_intercept_rv", dist.Normal(r_logmean, r_logsd)
-)
+
+log_r_mu_intercept_rv = DeterministicVariable("log_r_mu_intercept_rv", jnp.log(1.2))
 
 eta_sd_rv = DistributionalVariable("eta_sd", dist.TruncatedNormal(0.15, 0.05, low=0))
 

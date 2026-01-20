@@ -7,8 +7,6 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-import polars as pl
-
 from pipelines.cli_utils import run_command
 
 
@@ -44,66 +42,107 @@ def get_available_reports(
     ]
 
 
-def parse_and_validate_report_date(
-    report_date: str,
-    available_facility_level_reports: list[dt.date],
-    available_loc_level_reports: list[dt.date],
-    logger: logging.Logger,
-) -> tuple[dt.date, dt.date | None]:
+def _parse_single_date(date_str: str) -> tuple[dt.date, dt.date]:
     """
-    Parse and validate report date, determine location-level report date to use.
+    Parse a single date string into a date range tuple.
+    """
+    try:
+        single_date = dt.datetime.strptime(date_str, "%Y-%m-%d").date()
+        return (single_date, single_date)
+    except ValueError as e:
+        raise ValueError(
+            f"Invalid date format: '{date_str}'. Expected YYYY-MM-DD format. Error: {e}"
+        ) from e
+
+
+def _parse_date_range(range_str: str) -> tuple[dt.date, dt.date]:
+    """
+    Parse a date range string into a tuple of start and end dates.
+    """
+    if range_str.count(":") != 1:
+        raise ValueError(
+            f"Invalid date range format: '{range_str}'. "
+            "Expected format: 'start_date:end_date' (e.g., '2024-01-15:2024-01-20')"
+        )
+
+    start_str, end_str = range_str.split(":", 1)
+    try:
+        start_date = dt.datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+        end_date = dt.datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+    except ValueError as e:
+        raise ValueError(
+            f"Invalid date format in range '{range_str}'. "
+            f"Expected YYYY-MM-DD format. Error: {e}"
+        ) from e
+
+    if start_date > end_date:
+        raise ValueError(
+            f"Invalid date range '{range_str}': "
+            f"start_date ({start_date}) must be before or equal to end_date ({end_date})"
+        )
+
+    return (start_date, end_date)
+
+
+def parse_exclude_date_ranges(
+    exclude_date_ranges_str: str | None,
+) -> list[tuple[dt.date, dt.date]] | None:
+    """
+    Parse comma-separated date ranges from string to list of tuples.
+
+    This utility function is useful for parsing date exclusion parameters
+    that may be used by various forecasting models to exclude periods with
+    known reporting problems or other data quality issues.
 
     Parameters
     ----------
-    report_date : str
-        Report date as string ("latest" or "YYYY-MM-DD" format).
-    available_facility_level_reports : list[dt.date]
-        List of available facility-level report dates.
-    available_loc_level_reports : list[dt.date]
-        List of available location-level report dates.
-    logger : logging.Logger
-        Process logger.
+    exclude_date_ranges_str : str | None
+        Comma-separated list of single dates or date ranges.
+        Single dates: 'YYYY-MM-DD'
+        Date ranges: 'start:end' where both dates are in YYYY-MM-DD format.
+        Example: '2024-01-15,2024-03-01:2024-03-07'
 
     Returns
     -------
-    tuple[dt.date, dt.date | None]
-        Tuple of (report_date, loc_report_date).
+    list[tuple[dt.date, dt.date]] | None
+        List of (start_date, end_date) tuples where both dates are inclusive.
+        For single dates, start_date and end_date will be the same.
+        Returns None if input is None/empty.
 
     Raises
     ------
     ValueError
-        If report date is invalid or data is missing.
+        If date format is invalid, dates can't be parsed as YYYY-MM-DD,
+        or start_date > end_date (for ranges).
+
+    Examples
+    --------
+    >>> parse_exclude_date_ranges("2024-01-15")
+    [(datetime.date(2024, 1, 15), datetime.date(2024, 1, 15))]
+
+    >>> parse_exclude_date_ranges("2024-01-15:2024-01-20")
+    [(datetime.date(2024, 1, 15), datetime.date(2024, 1, 20))]
+
+    >>> parse_exclude_date_ranges("2024-01-15,2024-03-01:2024-03-07")
+    [(datetime.date(2024, 1, 15), datetime.date(2024, 1, 15)),
+     (datetime.date(2024, 3, 1), datetime.date(2024, 3, 7))]
+
+    >>> parse_exclude_date_ranges(None)
+    None
     """
-    first_available_loc_report = min(available_loc_level_reports)
-    last_available_loc_report = max(available_loc_level_reports)
+    if exclude_date_ranges_str is None or not exclude_date_ranges_str.strip():
+        return None
 
-    if report_date == "latest":
-        report_date = max(available_facility_level_reports)
-    else:
-        report_date = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
+    parsed_ranges = []
+    for date_range_str in exclude_date_ranges_str.split(","):
+        date_range_str = date_range_str.strip()
+        if ":" in date_range_str:
+            date_range = _parse_date_range(date_range_str)
+        else:
+            date_range = _parse_single_date(date_range_str)
+        parsed_ranges.append(date_range)
 
-    if report_date in available_loc_level_reports:
-        loc_report_date = report_date
-    elif report_date > last_available_loc_report:
-        loc_report_date = last_available_loc_report
-    elif report_date > first_available_loc_report:
-        raise ValueError(
-            "Dataset appear to be missing some state-level "
-            f"reports. First entry is {first_available_loc_report}, "
-            f"last is {last_available_loc_report}, but no entry "
-            f"for {report_date}"
-        )
-    else:
-        raise ValueError(
-            "Requested report date is earlier than the first "
-            "state-level vintage. This is not currently supported"
-        )
-
-    logger.info(f"Report date: {report_date}")
-    if loc_report_date is not None:
-        logger.info(f"Using location-level data as of: {loc_report_date}")
-
-    return report_date, loc_report_date
+    return parsed_ranges
 
 
 def calculate_training_dates(
@@ -153,67 +192,6 @@ def calculate_training_dates(
     logger.info(f"First training date {first_training_date}")
 
     return first_training_date, last_training_date
-
-
-def load_nssp_data(
-    report_date: dt.date,
-    loc_report_date: dt.date | None,
-    available_facility_level_reports: list[dt.date],
-    available_loc_level_reports: list[dt.date],
-    facility_level_nssp_data_dir: Path,
-    state_level_nssp_data_dir: Path,
-    logger: logging.Logger,
-) -> tuple[pl.LazyFrame | None, pl.LazyFrame | None]:
-    """
-    Load facility-level and location-level NSSP data.
-
-    Parameters
-    ----------
-    report_date : dt.date
-        The report date.
-    loc_report_date : dt.date | None
-        The location-level report date to use.
-    available_facility_level_reports : list[dt.date]
-        List of available facility-level report dates.
-    available_loc_level_reports : list[dt.date]
-        List of available location-level report dates.
-    facility_level_nssp_data_dir : Path
-        Directory containing facility-level NSSP data.
-    state_level_nssp_data_dir : Path
-        Directory containing state-level NSSP data.
-    logger : logging.Logger
-        Logger for informational messages.
-
-    Returns
-    -------
-    tuple[pl.LazyFrame | None, pl.LazyFrame | None]
-        Tuple of (facility_level_nssp_data, loc_level_nssp_data).
-
-    Raises
-    ------
-    ValueError
-        If no data is available for the requested report date.
-    """
-    facility_level_nssp_data, loc_level_nssp_data = None, None
-
-    if report_date in available_facility_level_reports:
-        logger.info("Facility level data available for the given report date")
-        facility_datafile = f"{report_date}.parquet"
-        facility_level_nssp_data = pl.scan_parquet(
-            Path(facility_level_nssp_data_dir, facility_datafile)
-        )
-    if loc_report_date in available_loc_level_reports:
-        logger.info("location-level data available for the given report date.")
-        loc_datafile = f"{loc_report_date}.parquet"
-        loc_level_nssp_data = pl.scan_parquet(
-            Path(state_level_nssp_data_dir, loc_datafile)
-        )
-    if facility_level_nssp_data is None and loc_level_nssp_data is None:
-        raise ValueError(
-            f"No data available for the requested report date {report_date}"
-        )
-
-    return facility_level_nssp_data, loc_level_nssp_data
 
 
 def run_r_script(
@@ -384,6 +362,12 @@ def plot_and_save_loc_forecast(
         function_name="plot_and_save_loc_forecast",
     )
     return None
+
+
+def py_scalar_to_r_scalar(py_scalar):
+    if py_scalar is None:
+        return "NULL"
+    return f"'{str(py_scalar)}'"
 
 
 def create_hubverse_table(model_fit_path: Path) -> None:

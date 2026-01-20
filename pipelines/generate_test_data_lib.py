@@ -18,6 +18,7 @@ import jax.random as jr
 import numpy as np
 import polars as pl
 import polars.selectors as cs
+from jax._src.typing import Array
 from scipy.stats import expon, norm
 
 from pipelines.prep_data import (
@@ -225,6 +226,8 @@ def simulate_data_from_bootstrap(
     states_to_simulate: list[str],
     diseases_to_simulate: list[str],
     clean: bool = True,
+    rng_key: Array = jr.key(123),
+    priors_source_path: Path = Path("pipelines/priors/prod_priors.py"),
 ) -> dict[str, pl.DataFrame]:
     """
     Simulate data from bootstrap model.
@@ -389,7 +392,6 @@ def simulate_data_from_bootstrap(
         loc_abb=bootstrap_loc,
         disease=bootstrap_disease,
         facility_level_nssp_data=bootstrap_facility_level_nssp_data.lazy(),
-        loc_level_nssp_data=bootstrap_loc_level_nssp_data.lazy(),
         loc_level_nwss_data=bootstrap_loc_level_nwss_data,
         report_date=max_train_date,
         first_training_date=first_training_date,
@@ -399,7 +401,7 @@ def simulate_data_from_bootstrap(
     )
 
     shutil.copy(
-        Path("pipelines/priors/prod_priors.py"),
+        Path(priors_source_path),
         Path(model_run_dir, "priors.py"),
     )
 
@@ -434,7 +436,7 @@ def simulate_data_from_bootstrap(
     max_draw = state_disease_key.height
 
     prior_predictive_samples = my_model.prior_predictive(
-        rng_key=jr.key(20),
+        rng_key=rng_key,
         numpyro_predictive_args={"num_samples": max_draw},
         data=my_data.to_forecast_data(n_forecast_points=n_forecast_days),
         sample_ed_visits=True,
@@ -465,7 +467,7 @@ def simulate_data_from_bootstrap(
             bootstrap_disease=bootstrap_disease,
         )
         # Update the TSV file with realistic prior predictive values
-        tsv_file_path = Path(model_run_dir) / "data" / "combined_training_data.tsv"
+        tsv_file_path = Path(model_run_dir) / "data" / "combined_data.tsv"
         update_tsv_with_prior_predictive(
             tsv_file_path=tsv_file_path,
             idata=idata,
@@ -612,7 +614,7 @@ def update_tsv_with_prior_predictive(
     """Update TSV file with realistic values from prior predictive sampling.
 
     Args:
-        tsv_file_path: Path to the combined_training_data.tsv file to update
+        tsv_file_path: Path to the combined_data.tsv file to update
         idata: ArviZ InferenceData containing prior predictive samples
         state_disease_key: DataFrame mapping draws to state/disease combinations
         bootstrap_loc: State abbreviation used for bootstrap
@@ -662,7 +664,6 @@ def update_tsv_with_prior_predictive(
     # Generate other_ed_visits from Poisson with mean = 10 * max(observed_ed_visits)
     max_ed = float(ed_samples.max())
     poisson_mean = 10 * max_ed
-    np.random.seed(42)  # For reproducibility
     other_ed_samples = np.random.poisson(lam=poisson_mean, size=len(dates))
 
     # Update other_ed_visits (daily data)
