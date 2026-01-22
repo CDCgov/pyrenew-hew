@@ -389,7 +389,7 @@ azure_caj_executor_configured = azure_caj_executor.configured(
 # add this to a job or the Definitions class to use it
 azure_batch_executor_configured = azure_batch_executor.configured(
     {
-        "pool_name": "pyrenew-pool",
+        "pool_name": "pyrenew-dagster-pool",
         "image": image,
         "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
         "container_kwargs": {
@@ -441,7 +441,7 @@ upstream_asset_job = dg.define_asset_job(
 run_pyrenew_hew_gui = dg.define_asset_job(
     name="RunPyrenewHew_GUI",
     # executor_def=azure_batch_executor_configured, # these are lightweight and do not have partitions
-    executor_def=docker_executor_configured,
+    executor_def=azure_batch_executor_configured,
     selection=[
         "timeseries_e",
         "pyrenew_e",
@@ -496,7 +496,7 @@ def launch_pyrenew_pipeline(
         run_config=dg.RunConfig({
                 "ops": {
                     **{asset: config for asset in asset_selection},
-                }
+                },
         }),
         tags={
                 "run": "pyrenew",
@@ -614,10 +614,10 @@ defs = dg.Definitions(
     },
     # setting Docker as the default executor. comment this out to use
     # the default executor that runs directly on your computer
-    executor=docker_executor_configured,
+    # executor=docker_executor_configured,
     # executor=dg.in_process_executor,
     # executor=azure_caj_executor_configured,
-    # executor=azure_batch_executor_configured,
+    executor=azure_batch_executor_configured,
     # uncomment the below to launch runs on Azure CAJ
     # metadata={
     #     "cfa_dagster/launcher": {
