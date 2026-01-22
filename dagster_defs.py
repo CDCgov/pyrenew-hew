@@ -301,7 +301,8 @@ workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
 image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
 
-docker_executor_configuration_dictionary = {
+# add this to a job or the Definitions class to use it
+docker_executor_configured = docker_executor.configured({
         "image": image,
         "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
         "retries": {"enabled": {}},
@@ -322,12 +323,7 @@ docker_executor_configuration_dictionary = {
                 f"/{local_workdir}/test-output:/pyrenew-hew/test-output",
             ]
         },
-}
-
-# add this to a job or the Definitions class to use it
-docker_executor_configured = docker_executor.configured(
-    config_or_config_fn=docker_executor_configuration_dictionary
-)
+})
 
 # configuring an executor to run workflow steps on Azure Container App Jobs
 # add this to a job or the Definitions class to use it
