@@ -302,7 +302,6 @@ local_workdir = Path(__file__).parent.resolve()
 image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
 
 docker_executor_configuration_dictionary = { 
-    "_config_field": {
         "image": image,
         "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
         "retries": {"enabled": {}},
@@ -323,8 +322,6 @@ docker_executor_configuration_dictionary = {
                 f"/{local_workdir}/test-output:/pyrenew-hew/test-output",
             ]
         },
-    },
-    "retries": {"enabled": {}},
 }
 
 # add this to a job or the Definitions class to use it
