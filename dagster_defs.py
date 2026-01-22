@@ -86,15 +86,19 @@ class PyrenewAssetConfig(dg.Config):
     These default values can be modified in the Dagster asset materialization launchpad.
     We also unpack these for our job run configurations.
     """
+    test: bool = True if not is_production else False
     n_training_days: int = 150
-    n_samples: int = 500
     exclude_last_n_days: int = 1
-    n_warmup: int = 1000
+    n_warmup: int = 200 if test else 1000
+    n_samples: int = 200 if test else 500
+    n_chains: int = 2 if test else 4
+    n_total_samples: int = n_samples * n_chains
+    rng_key: int = 12345
     additional_forecast_letters: str = ""
     forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
-    output_dir: str = "output" if is_production else "test-output"
+    output_basedir: str = "output" if is_production else "test-output"
     output_subdir: str = f"{forecast_date}_forecasts"
-    full_dir: str = f"{output_dir}/{output_subdir}"
+    output_dir: str = f"{output_basedir}/{output_subdir}"
 
 # ---------------
 # Worker Function
@@ -136,48 +140,94 @@ def run_pyrenew_model(
     context.log.debug(f"config: '{config}'")
     n_training_days = config.n_training_days
     n_samples = config.n_samples
+    n_chains = config.n_chains
+    n_total_samples = config.n_total_samples
     exclude_last_n_days = config.exclude_last_n_days
     n_warmup = config.n_warmup
     additional_forecast_letters = config.additional_forecast_letters
-    full_dir = config.full_dir
+    output_dir = config.output_dir
+    rng_key = config.rng_key
 
+    # =====================================
+    # Model Family and Run Script Selection
+    # =====================================
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
+            f"--n-samples {n_samples} "
+            f"--n-chains {n_chains} "
             f"--n-warmup {n_warmup} "
             "--nwss-data-dir nwss-vintages "
             "--priors-path pipelines/priors/prod_priors.py "
-            f"--additional-forecast-letters {additional_forecast_letters} "
+            f"--rng-key {rng_key} "
         )
+        if additional_forecast_letters:
+            additional_args += f"--additional-forecast-letters {additional_forecast_letters} "
     elif model_family == "timeseries":
         run_script = "forecast_timeseries.py"
-        additional_args = ""
+        additional_args = f"--n-samples {n_total_samples} "
     else:
         raise ValueError(
             f"Unsupported model family: {model_family}. "
             "Supported values are 'pyrenew' and 'timeseries'."
         )
+
+    # =======================================
+    # Azure Batch Script Command Construction
+    # =======================================
     base_call = (
         "/bin/bash -c '"
-        f"VIRTUAL_ENV=.venv && "
         f"uv run python pipelines/{run_script} "
         f"--disease {disease} "
         f"--loc {state} "
         f"--n-training-days {n_training_days} "
-        f"--n-samples {n_samples} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--state-level-nssp-data-dir nssp-archival-vintages/gold "
         "--param-data-dir params "
-        f"--output-dir {full_dir} "
+        f"--output-dir {output_dir} "
         "--credentials-path config/creds.toml "
-        f"--report-date latest "
         f"--exclude-last-n-days {exclude_last_n_days} "
         f"--model-letters {model_letters} "
-        "--eval-data-path "
-        "nssp-etl/latest_comprehensive.parquet "
         f"{additional_args}"
         "'"
     )
+    # if model_family == "pyrenew":
+    #     run_script = "forecast_pyrenew.py"
+    #     additional_args = (
+    #         f"--n-warmup {n_warmup} "
+    #         "--nwss-data-dir nwss-vintages "
+    #         "--priors-path pipelines/priors/prod_priors.py "
+    #     )
+    #     if additional_forecast_letters:
+    #         additional_args += f"--additional-forecast-letters {additional_forecast_letters} "
+    # elif model_family == "timeseries":
+    #     run_script = "forecast_timeseries.py"
+    #     additional_args = ""
+    # else:
+    #     raise ValueError(
+    #         f"Unsupported model family: {model_family}. "
+    #         "Supported values are 'pyrenew' and 'timeseries'."
+    #     )
+    # base_call = (
+    #     "/bin/bash -c '"
+    #     f"VIRTUAL_ENV=.venv && "
+    #     f"uv run python pipelines/{run_script} "
+    #     f"--disease {disease} "
+    #     f"--loc {state} "
+    #     f"--n-training-days {n_training_days} "
+    #     f"--n-samples {n_samples} "
+    #     "--facility-level-nssp-data-dir nssp-etl/gold "
+    #     "--state-level-nssp-data-dir nssp-archival-vintages/gold "
+    #     "--param-data-dir params "
+    #     f"--output-dir {full_dir} "
+    #     "--credentials-path config/creds.toml "
+    #     f"--report-date latest "
+    #     f"--exclude-last-n-days {exclude_last_n_days} "
+    #     f"--model-letters {model_letters} "
+    #     "--eval-data-path "
+    #     "nssp-etl/latest_comprehensive.parquet "
+    #     f"{additional_args}"
+    #     "'"
+    # )
     subprocess.run(base_call, shell=True, check=True)
 
 
@@ -378,11 +428,6 @@ upstream_asset_job = dg.define_asset_job(
     tags={"user": user},
 )
 
-# Every wednesday this will run at hours 11 through 20 UTC (6am-3pm EST)
-# upstream_every_wednesday = dg.ScheduleDefinition(
-#     name="weekly_upstream_cron", cron_schedule="0 11-20 * * WED", job=upstream_asset_job
-# )
-
 # ------------------------------------------------------------------------------------------------- #
 # Orchestration of Partitioned Assets - Model Runs
 #
@@ -393,8 +438,8 @@ upstream_asset_job = dg.define_asset_job(
 ## Prototype - Simple Asset Job Definition and Schedule ##
 
 # Experimental asset job to materialize all pyrenew assets
-naive_pyrenew_asset_job = dg.define_asset_job(
-    name="naive_pyrenew_asset_job",
+run_pyrenew_hew_gui = dg.define_asset_job(
+    name="RunPyrenewHew_GUI",
     # executor_def=azure_batch_executor_configured, # these are lightweight and do not have partitions
     executor_def=docker_executor_configured,
     selection=[
@@ -402,8 +447,8 @@ naive_pyrenew_asset_job = dg.define_asset_job(
         "pyrenew_e",
         "pyrenew_h",
         "pyrenew_he",
-        "pyrenew_hw",
-        "pyrenew_hew",
+        # "pyrenew_hw",
+        # "pyrenew_hew",
     ],
     # tag the run with your user to allow for easy filtering in the Dagster UI
     tags={"user": user},
