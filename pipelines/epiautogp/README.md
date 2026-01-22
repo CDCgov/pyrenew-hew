@@ -62,8 +62,8 @@ Data conversion utilities for EpiAutoGP JSON format.
 **Input Data Sources:**
 1. **Legacy JSON Format**: `data_for_model_fit.json` with `nssp_training_data` and `nhsn_training_data`
 2. **TSV Files (Recommended)**:
-   - Daily: `combined_training_data.tsv`
-   - Epiweekly: `epiweekly_combined_training_data.tsv`
+   - Daily: `combined_data.tsv`
+   - Epiweekly: `epiweekly_combined_data.tsv`
    - Contains: `observed_ed_visits`, `other_ed_visits`, `observed_hospital_admissions`
 
 **Output Format:**
@@ -105,8 +105,8 @@ output_dir/
         └── {loc}/
             └── epiautogp_{target}_{frequency}[_pct]/
                 ├── data/
-                │   ├── combined_training_data.tsv
-                │   ├── epiweekly_combined_training_data.tsv
+                │   ├── combined_data.tsv
+                │   ├── epiweekly_combined_data.tsv
                 │   └── eval_data.tsv
                 ├── input.json
                 ├── samples.parquet
