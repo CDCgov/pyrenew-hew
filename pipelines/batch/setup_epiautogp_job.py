@@ -7,7 +7,6 @@ import argparse
 import itertools
 from pathlib import Path
 
-from rich import print
 from rich.console import Console
 
 from pipelines.batch.common_batch_utils import (

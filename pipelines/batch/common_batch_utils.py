@@ -2,7 +2,6 @@
 Common utilities for Azure Batch job submission across different model types.
 """
 
-from pathlib import Path
 from typing import Any
 
 from azure.batch import models
