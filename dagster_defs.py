@@ -381,9 +381,9 @@ upstream_asset_job = dg.define_asset_job(
 )
 
 # Every wednesday this will run at hours 11 through 20 UTC (6am-3pm EST)
-upstream_every_wednesday = dg.ScheduleDefinition(
-    name="weekly_upstream_cron", cron_schedule="0 11-20 * * WED", job=upstream_asset_job
-)
+# upstream_every_wednesday = dg.ScheduleDefinition(
+#     name="weekly_upstream_cron", cron_schedule="0 11-20 * * WED", job=upstream_asset_job
+# )
 
 # ------------------------------------------------------------------------------------------------- #
 # Orchestration of Partitioned Assets - Model Runs
@@ -395,8 +395,8 @@ upstream_every_wednesday = dg.ScheduleDefinition(
 ## Prototype - Simple Asset Job Definition and Schedule ##
 
 # Experimental asset job to materialize all pyrenew assets
-pyrenew_asset_job = dg.define_asset_job(
-    name="pyrenew_asset_job",
+naive_pyrenew_asset_job = dg.define_asset_job(
+    name="naive_pyrenew_asset_job",
     executor_def=azure_batch_executor_configured, # these are lightweight and do not have partitions
     selection=[
         "timeseries_e",
@@ -410,16 +410,16 @@ pyrenew_asset_job = dg.define_asset_job(
     tags={"user": user},
 )
 
-pyrenew_test_schedule = dg.ScheduleDefinition(
-    default_status=(
-        dg.DefaultScheduleStatus.RUNNING
-        # don't run locally by default
-        if is_production else dg.DefaultScheduleStatus.STOPPED
-    ),
-    job=pyrenew_asset_job,
-    cron_schedule="0 12-21 * * WED",
-    execution_timezone="America/New_York",
-)
+# naive_pyrenew_test_schedule = dg.ScheduleDefinition(
+#     default_status=(
+#         dg.DefaultScheduleStatus.RUNNING
+#         # don't run locally by default
+#         if is_production else dg.DefaultScheduleStatus.STOPPED
+#     ),
+#     job=naive_pyrenew_asset_job,
+#     cron_schedule="0 12-21 * * WED",
+#     execution_timezone="America/New_York",
+# )
 
 ## Backfill Launch Method - Flexible Configuration via Op and Job ##
 
@@ -431,7 +431,7 @@ def launch_pyrenew_pipeline(
 ) -> dg.Output[str]:
 
     # We are referencing the global pyrenew_multi_partition_def defined earlier
-    partition_keys = pyrenew_multi_partition_def.get_partition_keys()
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[3:23]
 
     # We select all the assets we want to "backfill"
     asset_selection = (
@@ -439,8 +439,8 @@ def launch_pyrenew_pipeline(
         "pyrenew_e",
         "pyrenew_h",
         "pyrenew_he",
-        "pyrenew_hw",
-        "pyrenew_hew",
+        # "pyrenew_hw",
+        # "pyrenew_hew",
     )
 
     # Launch the backfill
@@ -458,7 +458,6 @@ def launch_pyrenew_pipeline(
                 "run": "pyrenew",
         }
     )
-
     context.log.info(
         f"Launched backfill with id: '{backfill_id}'. "
         "Click the output metadata url to monitor"
@@ -477,31 +476,61 @@ def launch_pyrenew_pipeline(
         "cfa_dagster/launcher": {
             "class": dg.DefaultRunLauncher.__name__
         }
-    },
-    config=dg.RunConfig(
-        ops={
-            "launch_pyrenew_pipeline": PyrenewAssetConfig()
-        }
-    )
+    }
 )
-
-def weekly_pyrenew_backfill():
+def weekly_pyrenew_via_backfill():
     launch_pyrenew_pipeline()
 
 
-schedule_weekly_pyrenew_backfill = dg.ScheduleDefinition(
+schedule_weekly_pyrenew_via_backfill = dg.ScheduleDefinition(
     default_status=(
         dg.DefaultScheduleStatus.RUNNING
         # don't run locally by default
         if is_production else dg.DefaultScheduleStatus.STOPPED
     ),
-    job=weekly_pyrenew_backfill,
+    job=weekly_pyrenew_via_backfill,
+    run_config=dg.RunConfig(
+        ops={
+            "launch_pyrenew_pipeline": PyrenewAssetConfig()
+        }
+    ),
     cron_schedule="0 12-21 * * WED",
     execution_timezone="America/New_York",
 )
 
 ## Dagster Tutorial Method - Use @dg.schedule ## 
 
+# CONTINENTS = [
+#     "Africa",
+#     "Antarctica",
+#     "Asia",
+#     "Europe",
+#     "North America",
+#     "Oceania",
+#     "South America",
+# ]
+
+
+# @dg.static_partitioned_config(partition_keys=CONTINENTS)
+# def continent_config(partition_key: str):
+#     return {"ops": {"continents": {"config": {"continent_name": partition_key}}}}
+
+# class ContinentOpConfig(dg.Config):
+#     continent_name: str = "Oceania"
+
+# @dg.asset
+# def continents(context: dg.AssetExecutionContext, config: ContinentOpConfig):
+#     context.log.info(config.continent_name)
+
+
+# continent_job = dg.define_asset_job(
+#     name="continent_job", selection=[continents], config=continent_config
+# )
+
+# @dg.schedule(cron_schedule="0 0 * * *", job=continent_job)
+# def continent_schedule():
+#     for c in CONTINENTS:
+#         yield dg.RunRequest(run_key=c, partition_key=c)
 
 
 # -------------- Dagster Definitions Object --------------- #
