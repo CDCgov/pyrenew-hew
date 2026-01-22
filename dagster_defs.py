@@ -301,7 +301,7 @@ workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
 image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
 
-docker_executor_configuration_dictionary = { 
+docker_executor_configuration_dictionary = {
     "_config_field": {
         "image": image,
         "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
