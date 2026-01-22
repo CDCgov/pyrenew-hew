@@ -302,6 +302,115 @@ def run_r_code(
     )
 
 
+def run_julia_script(
+    script_name: str,
+    args: list[str],
+    executor_flags: list[str] | None = None,
+    function_name: str | None = None,
+    capture_output: bool = True,
+    text: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Run a Julia script and handle errors.
+
+    This is a convenience wrapper around `run_command` for Julia scripts.
+    Supports the pattern:
+
+    > julia {FLAGS} {SCRIPT} {ARGS}
+
+    Parameters
+    ----------
+    script_name : str
+        Name of the Julia script to run.
+    args : list[str]
+        Arguments to pass to the Julia script.
+    executor_flags : list[str] | None
+        Flags to pass to the julia executable before the script name.
+        Common flags include:
+        - ["--project=PATH"] or ["--project=@."] to specify the project environment
+        - ["--threads=N"] or ["--threads=auto"] to set number of threads
+        - ["--optimize=2"] to set optimization level
+        - ["-O3", "--check-bounds=no"] for maximum performance
+    function_name : str | None
+        Name of the calling function for error messages. If None, uses script_name.
+    capture_output : bool, optional
+        Whether to capture stdout and stderr, by default True.
+    text : bool, optional
+        Whether to decode output as text, by default False.
+
+    Returns
+    -------
+    subprocess.CompletedProcess
+        The completed process result.
+
+    Raises
+    ------
+    RuntimeError
+        If the Julia script execution fails.
+    """
+    command_args = (
+        (executor_flags or []) + [script_name] + args
+    )  # use "truthy" to handle None
+    return run_command(
+        "julia",
+        command_args,
+        function_name=function_name,
+        capture_output=capture_output,
+        text=text,
+    )
+
+
+def run_julia_code(
+    julia_code: str,
+    executor_flags: list[str] | None = None,
+    function_name: str | None = None,
+    capture_output: bool = True,
+    text: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Run inline Julia code and handle errors.
+
+    This is a convenience wrapper around `run_julia_script` for inline Julia code.
+    Supports the pattern: julia {FLAGS} -e {CODE}
+
+    Parameters
+    ----------
+    julia_code : str
+        The Julia code to execute.
+    executor_flags : list[str] | None
+        Flags to pass to the julia executable.
+        Common flags include:
+        - ["--project=@."] to specify the project environment
+        - ["--threads=N"] or ["--threads=auto"] to set number of threads
+        - ["--optimize=2"] to set optimization level
+    function_name : str | None
+        Name of the calling function for error messages.
+    capture_output : bool, optional
+        Whether to capture stdout and stderr, by default True.
+    text : bool, optional
+        Whether to decode output as text, by default False.
+
+    Returns
+    -------
+    subprocess.CompletedProcess
+        The completed process result.
+
+    Raises
+    ------
+    RuntimeError
+        If the Julia code execution fails.
+    """
+    flags_with_inline = (executor_flags or []) + ["-e"]
+    return run_julia_script(
+        julia_code,
+        [],
+        executor_flags=flags_with_inline,
+        function_name=function_name,
+        capture_output=capture_output,
+        text=text,
+    )
+
+
 def plot_and_save_loc_forecast(
     model_run_dir: Path,
     n_forecast_days: int,
