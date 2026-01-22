@@ -301,12 +301,11 @@ workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
 image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
 
-# add this to a job or the Definitions class to use it
-docker_executor_configured = docker_executor.configured(
-    {
-        # specify a default image
+docker_executor_configuration_dictionary = { 
+    "_config_field": {
         "image": image,
         "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "retries": {"enabled": {}},
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
@@ -324,7 +323,13 @@ docker_executor_configured = docker_executor.configured(
                 f"/{local_workdir}/test-output:/pyrenew-hew/test-output",
             ]
         },
-    }
+    },
+    "retries": {"enabled": {}},
+}
+
+# add this to a job or the Definitions class to use it
+docker_executor_configured = docker_executor.configured(
+    config_or_config_fn=docker_executor_configuration_dictionary
 )
 
 # configuring an executor to run workflow steps on Azure Container App Jobs
@@ -397,7 +402,8 @@ upstream_asset_job = dg.define_asset_job(
 # Experimental asset job to materialize all pyrenew assets
 naive_pyrenew_asset_job = dg.define_asset_job(
     name="naive_pyrenew_asset_job",
-    executor_def=azure_batch_executor_configured, # these are lightweight and do not have partitions
+    # executor_def=azure_batch_executor_configured, # these are lightweight and do not have partitions
+    executor_def=docker_executor_configured,
     selection=[
         "timeseries_e",
         "pyrenew_e",
@@ -431,7 +437,7 @@ def launch_pyrenew_pipeline(
 ) -> dg.Output[str]:
 
     # We are referencing the global pyrenew_multi_partition_def defined earlier
-    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[3:23]
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[15:17]
 
     # We select all the assets we want to "backfill"
     asset_selection = (
@@ -476,13 +482,18 @@ def launch_pyrenew_pipeline(
         "cfa_dagster/launcher": {
             "class": dg.DefaultRunLauncher.__name__
         }
-    }
+    },
+    config=dg.RunConfig(
+        ops={
+            "launch_pyrenew_pipeline": PyrenewAssetConfig()
+        }
+    )
 )
 def weekly_pyrenew_via_backfill():
     launch_pyrenew_pipeline()
 
 
-schedule_weekly_pyrenew_via_backfill = dg.ScheduleDefinition(
+weekly_pyrenew_via_backfill = dg.ScheduleDefinition(
     default_status=(
         dg.DefaultScheduleStatus.RUNNING
         # don't run locally by default
@@ -565,10 +576,10 @@ defs = dg.Definitions(
     },
     # setting Docker as the default executor. comment this out to use
     # the default executor that runs directly on your computer
-    # executor=docker_executor_configured,
+    executor=docker_executor_configured,
     # executor=dg.in_process_executor,
     # executor=azure_caj_executor_configured,
-    executor=azure_batch_executor_configured,
+    # executor=azure_batch_executor_configured,
     # uncomment the below to launch runs on Azure CAJ
     # metadata={
     #     "cfa_dagster/launcher": {
