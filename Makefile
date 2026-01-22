@@ -124,7 +124,7 @@ dagster:
 dagster_push: dagster_build
 	az login --identity && \
 	az acr login -n cfaprdbatchcr && \
-	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest" 
+	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
 
 container_tag:
 	$(ENGINE) tag $(CONTAINER_IMAGE_NAME) $(CONTAINER_REMOTE_NAME)
