@@ -509,7 +509,7 @@ weekly_pyrenew_via_backfill = dg.ScheduleDefinition(
     execution_timezone="America/New_York",
 )
 
-## Dagster Tutorial Method - Use @dg.schedule ## 
+## Dagster Tutorial Method - Use @dg.schedule ##
 
 # CONTINENTS = [
 #     "Africa",
