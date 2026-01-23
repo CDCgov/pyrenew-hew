@@ -458,19 +458,7 @@ run_pyrenew_hew_gui = dg.define_asset_job(
     tags={"user": user},
 )
 
-# naive_pyrenew_test_schedule = dg.ScheduleDefinition(
-#     default_status=(
-#         dg.DefaultScheduleStatus.RUNNING
-#         # don't run locally by default
-#         if is_production else dg.DefaultScheduleStatus.STOPPED
-#     ),
-#     job=naive_pyrenew_asset_job,
-#     cron_schedule="0 12-21 * * WED",
-#     execution_timezone="America/New_York",
-# )
-
 ## Data Availability Check Functions ##
-
 
 def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container_name="nssp-etl"):
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
@@ -592,6 +580,13 @@ def launch_pyrenew_pipeline(
         }),
         tags={
                 "run": "pyrenew",
+                "available_data": str([
+                    "nssp_gold" if nssp_available else None,
+                    "nhsn" if nhsn_available else None,
+                    "nwss_gold" if nwss_available else None,
+                ]),
+                "user": user,
+                "models_attempted": ", ".join(asset_selection),
         }
     )
     context.log.info(
