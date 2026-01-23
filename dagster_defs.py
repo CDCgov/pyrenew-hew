@@ -469,6 +469,66 @@ run_pyrenew_hew_gui = dg.define_asset_job(
 #     execution_timezone="America/New_York",
 # )
 
+## Data Availability Check Functions ##
+
+
+def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container_name="nssp-etl"):
+    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    blob_name = f"gold/{current_date}.parquet"
+    credential = DefaultAzureCredential()
+    blob_service_client = BlobServiceClient(
+        f"https://{account_name}.blob.core.windows.net", credential=credential
+    )
+    container_client = blob_service_client.get_container_client(container_name)
+    blobs = list(container_client.list_blobs(name_starts_with=blob_name))
+    nssp_gold_check = bool(blobs)
+    latest_blob = None
+    blobs_gold = list(container_client.list_blobs(name_starts_with="gold/"))
+    if blobs_gold:
+        latest_blob = max(blobs_gold, key=lambda b: b.last_modified).name
+    return {
+        "exists": nssp_gold_check,
+        "blob_name": blob_name,
+        "latest_blob": latest_blob,
+        "current_date": current_date,
+    }
+
+def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container_name="nwss-vintages"):
+    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    folder_prefix = f"NWSS-ETL-covid-{current_date}/"
+    credential = DefaultAzureCredential()
+    blob_service_client = BlobServiceClient(
+        f"https://{account_name}.blob.core.windows.net", credential=credential
+    )
+    container_client = blob_service_client.get_container_client(container_name)
+    blobs = list(container_client.list_blobs(name_starts_with=folder_prefix))
+    nwss_gold_check = bool(blobs)
+    return {
+        "exists": nwss_gold_check,
+        "folder_prefix": folder_prefix,
+        "current_date": current_date,
+    }
+
+def check_nhsn_data_availability():
+    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
+    try:
+        resp = requests.get(nhsn_target_url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        nhsn_update_date_raw = data.get("rowsUpdatedAt")
+        if nhsn_update_date_raw is None:
+            return {"exists": False, "reason": "Key 'rowsUpdatedAt' not found"}
+        nhsn_update_date = datetime.utcfromtimestamp(nhsn_update_date_raw).strftime("%Y-%m-%d")
+        nhsn_check = nhsn_update_date == current_date
+        return {
+            "exists": nhsn_check,
+            "update_date": nhsn_update_date,
+            "current_date": current_date,
+        }
+    except Exception as e:
+        return {"exists": False, "reason": str(e)}
+
 ## Backfill Launch Method - Flexible Configuration via Op and Job ##
 
 # This is an op (non-materialized asset function) that launches backfills, as used in scheduled jobs
@@ -481,15 +541,43 @@ def launch_pyrenew_pipeline(
     # We are referencing the global pyrenew_multi_partition_def defined earlier
     partition_keys = pyrenew_multi_partition_def.get_partition_keys()[15:17]
 
-    # We select all the assets we want to "backfill"
-    asset_selection = (
-        "timeseries_e",
-        "pyrenew_e",
-        "pyrenew_h",
-        "pyrenew_he",
-        # "pyrenew_hw",
-        # "pyrenew_hew",
-    )
+    asset_selection = ()
+
+    # Determine which assets to backfill based on data availability
+    nssp_available = check_nssp_gold_data_availability()["exists"]
+    nhsn_available = check_nhsn_data_availability()["exists"]
+    nwss_available = check_nwss_gold_data_availability()["exists"]
+
+    # Determine which assets to backfill based on data availability
+    if nssp_available and nhsn_available and nwss_available:
+        context.log.info("All NSSP gold, NHSN, and NWSS gold data are available.")
+        context.log.info("Launching full pyrenew_hew backfill.")
+        asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
+    
+    elif nssp_available and nhsn_available:
+        context.log.info("Both NSSP gold and NHSN data are available.")
+        context.log.info("Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill.")
+        asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he")
+    
+    elif nssp_available:
+        context.log.info("Only NSSP gold data are available.")
+        context.log.info("Launching a timeseries_e and pyrenew_e backfill.")
+        asset_selection = ("timeseries_e", "pyrenew_e")
+    
+    elif nhsn_available:
+        context.log.info("Only NHSN data are available.")
+        context.log.info("Launching a pyrenew_h backfill.")
+        asset_selection = ("pyrenew_h",)
+    
+    elif nwss_available and nhsn_available:
+        context.log.info("NWSS gold and NHSN data are available.")
+        context.log.info("Launching pyrenew_h and pyrenew_hw backfill.")
+        asset_selection = ("pyrenew_h", "pyrenew_hw")
+
+    else:
+        context.log.info("No required data is available.")
+        asset_selection = ()
+   
 
     # Launch the backfill
     # Returns: a backfill ID,
@@ -551,103 +639,6 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     execution_timezone="America/New_York",
 )
 
-# Sensor for upstream Data availability # 
-
-# Sensors #
-
-def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container_name="nssp-etl"):
-    current_date = datetime.utcnow().strftime("%Y-%m-%d")
-    blob_name = f"gold/{current_date}.parquet"
-    credential = DefaultAzureCredential()
-    blob_service_client = BlobServiceClient(
-        f"https://{account_name}.blob.core.windows.net", credential=credential
-    )
-    container_client = blob_service_client.get_container_client(container_name)
-    blobs = list(container_client.list_blobs(name_starts_with=blob_name))
-    nssp_gold_check = bool(blobs)
-    latest_blob = None
-    blobs_gold = list(container_client.list_blobs(name_starts_with="gold/"))
-    if blobs_gold:
-        latest_blob = max(blobs_gold, key=lambda b: b.last_modified).name
-    return {
-        "exists": nssp_gold_check,
-        "blob_name": blob_name,
-        "latest_blob": latest_blob,
-        "current_date": current_date,
-    }
-
-def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container_name="nwss-vintages"):
-    current_date = datetime.utcnow().strftime("%Y-%m-%d")
-    folder_prefix = f"NWSS-ETL-covid-{current_date}/"
-    credential = DefaultAzureCredential()
-    blob_service_client = BlobServiceClient(
-        f"https://{account_name}.blob.core.windows.net", credential=credential
-    )
-    container_client = blob_service_client.get_container_client(container_name)
-    blobs = list(container_client.list_blobs(name_starts_with=folder_prefix))
-    nwss_gold_check = bool(blobs)
-    return {
-        "exists": nwss_gold_check,
-        "folder_prefix": folder_prefix,
-        "current_date": current_date,
-    }
-
-def check_nhsn_data_availability():
-    current_date = datetime.utcnow().strftime("%Y-%m-%d")
-    nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
-    try:
-        resp = requests.get(nhsn_target_url, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        nhsn_update_date_raw = data.get("rowsUpdatedAt")
-        if nhsn_update_date_raw is None:
-            return {"exists": False, "reason": "Key 'rowsUpdatedAt' not found"}
-        nhsn_update_date = datetime.utcfromtimestamp(nhsn_update_date_raw).strftime("%Y-%m-%d")
-        nhsn_check = nhsn_update_date == current_date
-        return {
-            "exists": nhsn_check,
-            "update_date": nhsn_update_date,
-            "current_date": current_date,
-        }
-    except Exception as e:
-        return {"exists": False, "reason": str(e)}
-
-@dg.sensor(
-    job=weekly_pyrenew_via_backfill,
-    minimum_interval_seconds=3600,
-    default_status=dg.DefaultSensorStatus.RUNNING,
-)
-def nssp_gold_sensor():
-    result = check_nssp_gold_data_availability()
-    if result["exists"]:
-        yield dg.RunRequest(run_key=f"nssp_gold_{result['current_date']}")
-    else:
-        yield dg.SkipReason(f"NSSP gold data not found for {result['current_date']}")
-
-@dg.sensor(
-    job=weekly_pyrenew_via_backfill,
-    minimum_interval_seconds=3600,
-    default_status=dg.DefaultSensorStatus.RUNNING,
-)
-def nwss_gold_sensor():
-    result = check_nwss_gold_data_availability()
-    if result["exists"]:
-        yield dg.RunRequest(run_key=f"nwss_gold_{result['current_date']}")
-    else:
-        yield dg.SkipReason(f"NWSS gold data not found for {result['current_date']}")
-
-@dg.sensor(
-    job=weekly_pyrenew_via_backfill,
-    minimum_interval_seconds=3600,
-    default_status=dg.DefaultSensorStatus.RUNNING,
-)
-def nhsn_data_sensor():
-    result = check_nhsn_data_availability()
-    if result.get("exists"):
-        yield dg.RunRequest(run_key=f"nhsn_data_{result['current_date']}")
-    else:
-        reason = result.get("reason", "NHSN data not updated")
-        yield dg.SkipReason(f"NHSN data not available: {reason}")
 
 ## Dagster Tutorial Method - Use @dg.schedule ##
 
