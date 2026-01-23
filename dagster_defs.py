@@ -587,6 +587,8 @@ def launch_pyrenew_pipeline(
                 ]),
                 "user": user,
                 "models_attempted": ", ".join(asset_selection),
+                "forecast_date": config.forecast_date,
+                "output_dir": config.output_dir,
         }
     )
     context.log.info(
