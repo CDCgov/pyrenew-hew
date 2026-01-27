@@ -5,22 +5,18 @@ from pathlib import Path
 
 import dagster as dg
 import requests
-
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
-
 from cfa_dagster import (
     ADLS2PickleIOManager,
+    AzureContainerAppJobRunLauncher,
     azure_batch_executor,
     collect_definitions,
     docker_executor,
     launch_asset_backfill,
     start_dev_env,
 )
-from cfa_dagster import (
-    azure_container_app_job_executor as azure_caj_executor,
-    AzureContainerAppJobRunLauncher
-)
+from cfa_dagster import azure_container_app_job_executor as azure_caj_executor
 from dagster_azure.blob import (
     AzureBlobStorageDefaultCredential,
     AzureBlobStorageResource,
@@ -44,9 +40,7 @@ user = os.getenv("DAGSTER_USER")
 # --------------------------------------------------------------- #
 
 # Disease Partitions
-disease_partitions = dg.StaticPartitionsDefinition([
-    "COVID-19", "Influenza", "RSV"
-])
+disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "Influenza", "RSV"])
 
 # State Partitions
 # fmt: off
@@ -491,22 +485,22 @@ def launch_pyrenew_pipeline(
         context.log.info("NHSN, NSSP gold, and NWSS gold data are all available - launching full pipeline.")
         context.log.info("Launching full pyrenew_hew backfill.")
         asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
-    
+
     elif nhsn_available and nssp_available:
         context.log.info("Both NHSN data and NSSP gold data are available, but NWSS gold data is not.")
         context.log.info("Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill.")
         asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he")
-    
+
     elif nssp_available:
         context.log.info("Only NSSP gold data are available.")
         context.log.info("Launching a timeseries_e and pyrenew_e backfill.")
         asset_selection = ("timeseries_e", "pyrenew_e")
-    
+
     elif nhsn_available:
         context.log.info("Only NHSN data are available.")
         context.log.info("Launching a pyrenew_h backfill.")
         asset_selection = ("pyrenew_h")
-    
+
     elif nhsn_available and nwss_available:
         context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
         context.log.info("Launching pyrenew_h and pyrenew_hw backfill.")
@@ -515,7 +509,7 @@ def launch_pyrenew_pipeline(
     else:
         context.log.info("No required data is available.")
         asset_selection = ()
-   
+
 
     # Launch the backfill
     # Returns: a backfill ID,
