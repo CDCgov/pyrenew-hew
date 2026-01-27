@@ -13,7 +13,8 @@ from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
 
-from pipelines.batch.setup_job import main as setup_job
+from pipelines.batch.setup_timeseries_job import main as setup_timeseries_job
+from pipelines.batch.pyrenew_job import main as setup_pyrenew_job
 from pipelines.postprocess_forecast_batches import main as postprocess
 
 LOCAL_COPY_DIR = Path.home() / "stf_forecast_fig_share"
@@ -89,7 +90,6 @@ def setup_job_append_id(
 
 fit_timeseries_e = partial(
     setup_job_append_id,
-    model_letters="e",
     job_id="timeseries-e-prod-",
     pool_id="pyrenew-pool",
     model_family="timeseries",
