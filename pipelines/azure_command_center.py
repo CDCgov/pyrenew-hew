@@ -36,6 +36,8 @@ W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
 # WY: no E data available
 E_EXCLUDE_DEFAULT = ["WY"]
 
+container_image_version = "latest"
+
 today = dt.date.today()
 today_str = today.strftime("%Y-%m-%d")
 output_subdir = f"{today_str}_forecasts"
@@ -95,6 +97,7 @@ fit_timeseries_e = partial(
     setup_timeseries_job,
     job_id="timeseries-e-prod-",
     pool_id="pyrenew-pool",
+    container_image_version=container_image_version,
     diseases=E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
@@ -105,6 +108,7 @@ fit_pyrenew_e = partial(
     model_letters="e",
     job_id="pyrenew-e-prod-",
     pool_id="pyrenew-pool",
+    container_image_version=container_image_version,
     diseases=E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
@@ -115,6 +119,7 @@ fit_pyrenew_h = partial(
     model_letters="h",
     job_id="pyrenew-h-prod-",
     pool_id="pyrenew-pool",
+    container_image_version=container_image_version,
     diseases=H_DISEASES,
     output_subdir=output_subdir,
 )
@@ -124,6 +129,7 @@ fit_pyrenew_he = partial(
     model_letters="he",
     job_id="pyrenew-he-prod-",
     pool_id="pyrenew-pool",
+    container_image_version=container_image_version,
     diseases=H_DISEASES & E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
