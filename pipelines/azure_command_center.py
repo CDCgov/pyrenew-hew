@@ -1,7 +1,8 @@
 import datetime as dt
 import os
 import re
-from functools import partial
+from functools import partial, wraps
+from inspect import Parameter, signature
 from pathlib import Path
 
 import polars as pl
@@ -13,7 +14,8 @@ from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
 
-from pipelines.batch.setup_job import main as setup_job
+from pipelines.batch.setup_pyrenew_job import main as setup_pyrenew_job_raw
+from pipelines.batch.setup_timeseries_job import main as setup_timeseries_job_raw
 from pipelines.postprocess_forecast_batches import main as postprocess
 
 LOCAL_COPY_DIR = Path.home() / "stf_forecast_fig_share"
@@ -34,6 +36,8 @@ W_EXCLUDE_DEFAULT = ["US", "TN", "ND"]
 # WY: no E data available
 E_EXCLUDE_DEFAULT = ["WY"]
 
+container_image_version = "latest"
+
 today = dt.date.today()
 today_str = today.strftime("%Y-%m-%d")
 output_subdir = f"{today_str}_forecasts"
@@ -48,105 +52,104 @@ def get_env_or_prompt(var_name: str, default: str = "") -> str:
     return value
 
 
-def setup_job_append_id(
-    model_letters: str,
-    job_id: str,
-    pool_id: str,
-    model_family: str,
-    diseases: str | list[str],
-    output_subdir: str | Path = "./",
-    additional_forecast_letters: str = "",
-    container_image_name: str = "pyrenew-hew",
-    container_image_version: str = "latest",
-    n_training_days: int = DEFAULT_TRAINING_DAYS,
-    exclude_last_n_days: int = DEFAULT_EXCLUDE_LAST_N_DAYS,
-    rng_key: int = DEFAULT_RNG_KEY,
-    locations_include: list[str] | None = None,
-    locations_exclude: list[str] | None = None,
-    test: bool = False,
-    append_id: str = "",
-):
-    updated_job_id = job_id + append_id
-    if Confirm.ask(f"Submit job {updated_job_id}?"):
-        setup_job(
-            model_letters=model_letters,
-            job_id=updated_job_id,
-            pool_id=pool_id,
-            model_family=model_family,
-            diseases=diseases,
-            output_subdir=output_subdir,
-            additional_forecast_letters=additional_forecast_letters,
-            container_image_name=container_image_name,
-            container_image_version=container_image_version,
-            n_training_days=n_training_days,
-            exclude_last_n_days=exclude_last_n_days,
-            rng_key=rng_key,
-            locations_include=locations_include,
-            locations_exclude=locations_exclude,
-            test=test,
+def confirm_append_job_id(func):
+    func_sig = signature(func)
+    if "job_id" not in func_sig.parameters:
+        raise ValueError(f"{func.__name__} must accept a job_id parameter")
+
+    append_param = Parameter(
+        "append_id",
+        kind=Parameter.KEYWORD_ONLY,
+        default="",
+    )
+    params = list(func_sig.parameters.values())
+    if any(param.kind == Parameter.VAR_KEYWORD for param in params):
+        insert_at = next(
+            idx
+            for idx, param in enumerate(params)
+            if param.kind == Parameter.VAR_KEYWORD
         )
+        params.insert(insert_at, append_param)
+    else:
+        params.append(append_param)
+    new_sig = func_sig.replace(parameters=params)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        append_id = kwargs.pop("append_id", "") or ""
+        bound = func_sig.bind(*args, **kwargs)
+        job_id = bound.arguments["job_id"]
+        updated_job_id = f"{job_id}{append_id}"
+        if Confirm.ask(f"Submit job {updated_job_id}?"):
+            bound.arguments["job_id"] = updated_job_id
+            return func(*bound.args, **bound.kwargs)
+        return None
+
+    setattr(wrapper, "__signature__", new_sig)
+    return wrapper
+
+
+setup_pyrenew_job = confirm_append_job_id(setup_pyrenew_job_raw)
+setup_timeseries_job = confirm_append_job_id(setup_timeseries_job_raw)
 
 
 fit_timeseries_e = partial(
-    setup_job_append_id,
-    model_letters="e",
+    setup_timeseries_job,
     job_id="timeseries-e-prod-",
     pool_id="pyrenew-pool",
-    model_family="timeseries",
+    container_image_version=container_image_version,
     diseases=E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_e = partial(
-    setup_job_append_id,
+    setup_pyrenew_job,
     model_letters="e",
     job_id="pyrenew-e-prod-",
     pool_id="pyrenew-pool",
-    model_family="pyrenew",
+    container_image_version=container_image_version,
     diseases=E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_h = partial(
-    setup_job_append_id,
+    setup_pyrenew_job,
     model_letters="h",
     job_id="pyrenew-h-prod-",
     pool_id="pyrenew-pool",
-    model_family="pyrenew",
+    container_image_version=container_image_version,
     diseases=H_DISEASES,
     output_subdir=output_subdir,
 )
 
 fit_pyrenew_he = partial(
-    setup_job_append_id,
+    setup_pyrenew_job,
     model_letters="he",
     job_id="pyrenew-he-prod-",
     pool_id="pyrenew-pool",
-    model_family="pyrenew",
+    container_image_version=container_image_version,
     diseases=H_DISEASES & E_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_hw = partial(
-    setup_job_append_id,
+    setup_pyrenew_job,
     model_letters="hw",
     job_id="pyrenew-hw-prod-",
     pool_id="pyrenew-pool-32gb",
-    model_family="pyrenew",
     diseases=H_DISEASES & W_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=W_EXCLUDE_DEFAULT,
 )
 
 fit_pyrenew_hew = partial(
-    setup_job_append_id,
+    setup_pyrenew_job,
     model_letters="hew",
     job_id="pyrenew-hew-prod-",
     pool_id="pyrenew-pool-32gb",
-    model_family="pyrenew",
     diseases=H_DISEASES & E_DISEASES & W_DISEASES,
     output_subdir=output_subdir,
     locations_exclude=E_EXCLUDE_DEFAULT + W_EXCLUDE_DEFAULT,

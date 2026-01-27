@@ -50,7 +50,6 @@ def main(
     n_training_days: int,
     n_forecast_days: int,
     n_samples: int,
-    model_letters: str,
     exclude_last_n_days: int = 0,
     credentials_path: Path | None = None,
     nhsn_data_path: Path | None = None,
@@ -58,12 +57,7 @@ def main(
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    if model_letters != "e":
-        raise ValueError(
-            "Only model_letters 'e' is supported for 'timeseries' model_family."
-        )
-
-    ensemble_model_name = f"ts_ensemble_{model_letters}"
+    ensemble_model_name = "ts_ensemble_e"
 
     logger.info(
         "Starting single-location timeseries forecasting pipeline for "
@@ -158,17 +152,6 @@ if __name__ == "__main__":
     add_common_forecast_arguments(parser)
 
     # Add timeseries-specific arguments
-    parser.add_argument(
-        "--model-letters",
-        type=str,
-        default="e",
-        help=(
-            "Fit the model corresponding to the provided model letters "
-            "(e.g. 'he', 'e', 'hew')."
-        ),
-        required=True,
-    )
-
     parser.add_argument(
         "--n-samples",
         type=int,

@@ -5,7 +5,6 @@ This module contains common functionality used across different forecast
 pipelines (pyrenew, timeseries, epiautogp, etc.).
 """
 
-import datetime as dt
 import logging
 import os
 from dataclasses import dataclass
@@ -160,7 +159,6 @@ class ForecastPipelineContext:
 
 def setup_forecast_pipeline(
     disease: str,
-    report_date: str,
     loc: str,
     target: str,
     frequency: str,
@@ -175,8 +173,8 @@ def setup_forecast_pipeline(
     n_forecast_days: int,
     exclude_last_n_days: int = 0,
     exclude_date_ranges: list[tuple[date, date]] | None = None,
-    credentials_path: Path = None,
-    logger: logging.Logger = None,
+    credentials_path: Path | None = None,
+    logger: logging.Logger | None = None,
 ) -> ForecastPipelineContext:
     """
     Set up common forecast pipeline infrastructure.
@@ -194,8 +192,6 @@ def setup_forecast_pipeline(
     ----------
     disease : str
         Disease to model (e.g., "COVID-19", "Influenza", "RSV")
-    report_date : str
-        Report date in YYYY-MM-DD format or "latest"
     loc : str
         Two-letter USPS location abbreviation (e.g., "CA", "NY")
     target : str
@@ -240,7 +236,7 @@ def setup_forecast_pipeline(
 
     logger.info(
         f"Setting up forecast pipeline for {disease}, "
-        f"location {loc}, report date {report_date}"
+        f"location {loc}, latest report date."
     )
 
     # Load credentials
@@ -251,11 +247,7 @@ def setup_forecast_pipeline(
         facility_level_nssp_data_dir
     )
 
-    # Parse report date (use max available if "latest" or not specified)
-    if report_date == "latest" or report_date is None:
-        report_date_parsed = max(available_facility_level_reports)
-    else:
-        report_date_parsed = dt.datetime.strptime(report_date, "%Y-%m-%d").date()
+    report_date_parsed = max(available_facility_level_reports)
 
     # Calculate training dates
     first_training_date, last_training_date = calculate_training_dates(
