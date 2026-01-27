@@ -19,7 +19,6 @@ from pipelines.batch.common_batch_utils import (
     submit_batch_job,
     validate_diseases,
 )
-from pyrenew_hew.utils import validate_hew_letters
 
 
 def main(
@@ -82,10 +81,6 @@ def main(
     disease_list = diseases if isinstance(diseases, list) else [diseases]
     validate_diseases(disease_list)
 
-    # Note: Timeseries model always uses 'e' model letters
-    model_letters = "e"
-    validate_hew_letters(model_letters)
-
     # Sampling parameters
     n_samples = 200 if test else 500
     n_chains = 2 if test else 4
@@ -114,7 +109,6 @@ def main(
         "--output-dir {output_dir} "
         "--credentials-path config/creds.toml "
         f"--exclude-last-n-days {exclude_last_n_days} "
-        f"--model-letters {model_letters} "
         f"{additional_args}"
         "'"
     )
@@ -127,7 +121,6 @@ def main(
         "job_id": job_id,
         "pool_id": pool_id,
         "model_family": "timeseries",
-        "model_letters": model_letters,
         "diseases": ", ".join(disease_list),
         "output_subdir": str(output_subdir),
         "container_image": container_image,
