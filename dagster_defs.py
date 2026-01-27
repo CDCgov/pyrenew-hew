@@ -83,7 +83,8 @@ class PyrenewAssetConfig(dg.Config):
     # manual_state_exclusions: list[str] = [] # experimental - not ready to incorporate in config yet
 
     # Parameters that can be toggled in the launchpad or in custom jobs
-    test: bool = True if not is_production else False
+    # test: bool = True if not is_production else False
+    test: bool = True
     n_training_days: int = 150
     exclude_last_n_days: int = 1
     n_warmup: int = 200 if test else 1000
@@ -93,7 +94,8 @@ class PyrenewAssetConfig(dg.Config):
     rng_key: int = 12345
     additional_forecast_letters: str = ""
     forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
-    output_basedir: str = "output" if is_production else "test-output"
+    # output_basedir: str = "output" if is_production else "test-output"
+    output_basedir: str = "test-output"
     output_subdir: str = f"{forecast_date}_forecasts"
     output_dir: str = f"{output_basedir}/{output_subdir}"
 
