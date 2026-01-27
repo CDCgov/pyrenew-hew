@@ -45,7 +45,6 @@ def main(
     n_forecast_draws: int = 2000,
     smc_data_proportion: float = 0.1,
     n_threads: int = 1,
-    report_date: str = "latest",
     n_forecast_days: int = 28,
 ) -> None:
     """
@@ -106,8 +105,6 @@ def main(
         Proportion of data used in each SMC step in EpiAutoGP. Default 0.1.
     n_threads
         Number of threads for EpiAutoGP Julia execution. Default 1.
-    report_date
-        Report date for EpiAutoGP in YYYY-MM-DD format or 'latest'. Default 'latest'.
     n_forecast_days
         Number of days ahead to forecast. Default 28.
 
@@ -151,7 +148,6 @@ def main(
         f"--n-forecast-draws {n_forecast_draws} "
         f"--smc-data-proportion {smc_data_proportion} "
         f"--n-threads {n_threads} "
-        f"--report-date {report_date} "
         f"--n-forecast-days {n_forecast_days} "
     )
     if use_percentage:
@@ -195,7 +191,6 @@ def main(
         "n_forecast_draws": n_forecast_draws,
         "smc_data_proportion": smc_data_proportion,
         "n_threads": n_threads,
-        "report_date": report_date,
         "n_forecast_days": n_forecast_days,
         "locations_included": all_locations,
         "excluded_locations": ", ".join(all_exclusions),
