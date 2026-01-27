@@ -473,7 +473,7 @@ def launch_pyrenew_pipeline(
 ) -> dg.Output[str]:
 
     # We are referencing the global pyrenew_multi_partition_def defined earlier
-    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[34] # TODO: remove slice and/or config-parametrize  once ready for prod
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys() # TODO: remove slice and/or config-parametrize  once ready for prod
 
     asset_selection = ()
 
