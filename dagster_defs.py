@@ -19,6 +19,7 @@ from cfa_dagster import (
 )
 from cfa_dagster import (
     azure_container_app_job_executor as azure_caj_executor,
+    AzureContainerAppJobRunLauncher
 )
 from dagster_azure.blob import (
     AzureBlobStorageDefaultCredential,
@@ -41,8 +42,15 @@ user = os.getenv("DAGSTER_USER")
 # --------------------------------------------------------------- #
 # Partitions: how are the data split and processed in Azure Batch?
 # --------------------------------------------------------------- #
+
+# Disease Partitions
+disease_partitions = dg.StaticPartitionsDefinition([
+    "COVID-19", "Influenza", "RSV"
+])
+
+# State Partitions
 # fmt: off
-full_state_list = [
+state_partitions = dg.StaticPartitionsDefinition([
     'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO',
     'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID',
     'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
@@ -52,30 +60,14 @@ full_state_list = [
     'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA',
     'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR',
     'UM', 'VI'
-]
+])
 # fmt: off
 
-disease_list = [
-    "COVID-19", "Influenza", "RSV"
-]
-
-# Disease Partitions
-disease_partitions = dg.StaticPartitionsDefinition(
-    disease_list
-)
-
-# State Partitions
-state_partitions = dg.StaticPartitionsDefinition(
-    full_state_list
-)
-
 # Multi Partitions
-pyrenew_multi_partition_def = dg.MultiPartitionsDefinition(
-    {
+pyrenew_multi_partition_def = dg.MultiPartitionsDefinition({
         "disease": disease_partitions,
           "state": state_partitions
-    }
-)
+})
 
 # ----------------------------------------------------------- #
 # Asset Definitions - What are we outputting in our pipeline?
@@ -91,6 +83,12 @@ class PyrenewAssetConfig(dg.Config):
     These default values can be modified in the Dagster asset materialization launchpad.
     We also unpack these for our job run configurations.
     """
+    # Parameters that are currently defined in asset functions - this may be tweakable later
+    # model_letters: str = "hew"  # experimental - not ready to incorporate in config yet
+    # model_family: str = "pyrenew"  # experimental - not ready to incorporate in config yet
+    # manual_state_exclusions: list[str] = [] # experimental - not ready to incorporate in config yet
+
+    # Parameters that can be toggled in the launchpad or in custom jobs
     test: bool = True if not is_production else False
     n_training_days: int = 150
     exclude_last_n_days: int = 1
@@ -113,8 +111,8 @@ class PyrenewAssetConfig(dg.Config):
 def run_pyrenew_model(
     context: dg.AssetExecutionContext,
     config: PyrenewAssetConfig,
-    model_letters: str = "h",
-    model_family: str = "pyrenew",
+    model_letters: str,
+    model_family: str,
 ):
     # Parsing partitions into call parameters for the job
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
@@ -143,15 +141,6 @@ def run_pyrenew_model(
 
     # Configuration inherited from PyrenewAssetConfig
     context.log.debug(f"config: '{config}'")
-    n_training_days = config.n_training_days
-    n_samples = config.n_samples
-    n_chains = config.n_chains
-    n_total_samples = config.n_total_samples
-    exclude_last_n_days = config.exclude_last_n_days
-    n_warmup = config.n_warmup
-    additional_forecast_letters = config.additional_forecast_letters
-    output_dir = config.output_dir
-    rng_key = config.rng_key
 
     # =====================================
     # Model Family and Run Script Selection
@@ -159,18 +148,18 @@ def run_pyrenew_model(
     if model_family == "pyrenew":
         run_script = "forecast_pyrenew.py"
         additional_args = (
-            f"--n-samples {n_samples} "
-            f"--n-chains {n_chains} "
-            f"--n-warmup {n_warmup} "
+            f"--n-samples {config.n_samples} "
+            f"--n-chains {config.n_chains} "
+            f"--n-warmup {config.n_warmup} "
             "--nwss-data-dir nwss-vintages "
             "--priors-path pipelines/priors/prod_priors.py "
-            f"--rng-key {rng_key} "
+            f"--rng-key {config.rng_key} "
         )
-        if additional_forecast_letters:
-            additional_args += f"--additional-forecast-letters {additional_forecast_letters} "
+        if config.additional_forecast_letters:
+            additional_args += f"--additional-forecast-letters {config.additional_forecast_letters} "
     elif model_family == "timeseries":
         run_script = "forecast_timeseries.py"
-        additional_args = f"--n-samples {n_total_samples} "
+        additional_args = f"--n-samples {config.n_total_samples} "
     else:
         raise ValueError(
             f"Unsupported model family: {model_family}. "
@@ -180,59 +169,23 @@ def run_pyrenew_model(
     # =======================================
     # Azure Batch Script Command Construction
     # =======================================
+
+    # TODO: investigate calling the run_script function directly instead of via shell-nested python subprocess
     base_call = (
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script} "
         f"--disease {disease} "
         f"--loc {state} "
-        f"--n-training-days {n_training_days} "
+        f"--n-training-days {config.n_training_days} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--param-data-dir params "
-        f"--output-dir {output_dir} "
+        f"--output-dir {config.output_dir} "
         "--credentials-path config/creds.toml "
-        f"--exclude-last-n-days {exclude_last_n_days} "
+        f"--exclude-last-n-days {config.exclude_last_n_days} "
         f"--model-letters {model_letters} "
         f"{additional_args}"
         "'"
     )
-    # if model_family == "pyrenew":
-    #     run_script = "forecast_pyrenew.py"
-    #     additional_args = (
-    #         f"--n-warmup {n_warmup} "
-    #         "--nwss-data-dir nwss-vintages "
-    #         "--priors-path pipelines/priors/prod_priors.py "
-    #     )
-    #     if additional_forecast_letters:
-    #         additional_args += f"--additional-forecast-letters {additional_forecast_letters} "
-    # elif model_family == "timeseries":
-    #     run_script = "forecast_timeseries.py"
-    #     additional_args = ""
-    # else:
-    #     raise ValueError(
-    #         f"Unsupported model family: {model_family}. "
-    #         "Supported values are 'pyrenew' and 'timeseries'."
-    #     )
-    # base_call = (
-    #     "/bin/bash -c '"
-    #     f"VIRTUAL_ENV=.venv && "
-    #     f"uv run python pipelines/{run_script} "
-    #     f"--disease {disease} "
-    #     f"--loc {state} "
-    #     f"--n-training-days {n_training_days} "
-    #     f"--n-samples {n_samples} "
-    #     "--facility-level-nssp-data-dir nssp-etl/gold "
-    #     "--state-level-nssp-data-dir nssp-archival-vintages/gold "
-    #     "--param-data-dir params "
-    #     f"--output-dir {full_dir} "
-    #     "--credentials-path config/creds.toml "
-    #     f"--report-date latest "
-    #     f"--exclude-last-n-days {exclude_last_n_days} "
-    #     f"--model-letters {model_letters} "
-    #     "--eval-data-path "
-    #     "nssp-etl/latest_comprehensive.parquet "
-    #     f"{additional_args}"
-    #     "'"
-    # )
     subprocess.run(base_call, shell=True, check=True)
 
 
@@ -240,38 +193,9 @@ def run_pyrenew_model(
 # Assets: these are the core of Dagster - functions that specify data
 # --------------------------------------------------------------------
 
-# -- Upstream Data -- #
-
-# NOTE: These are placeholder assets representing data ingestion steps.
-# In mature productionimplementation, these would contain logic to ingest and process data,
-# or sensors to trigger on new data availability.
-
-@dg.asset
-def nhsn_data(context: dg.AssetExecutionContext):
-    return "nhsn_data"
-
-
-@dg.asset
-def nssp_gold(context: dg.AssetExecutionContext):
-    return "nssp_gold"
-
-
-@dg.asset
-def nssp_latest_comprehensive(context: dg.AssetExecutionContext):
-    return "nssp_latest_comprehensive"
-
-
-@dg.asset
-def nwss_data(context: dg.AssetExecutionContext):
-    return "nwss_data"
-
-# Dependency Definitions #
-
-nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
-
 # -- Pyrenew Assets -- #
 
-# TODO: adapt materialize results for asset returns. Currently returning simple strings.
+# TODO: adapt dg.MaterializeResults for asset returns. Currently returning simple strings.
 # i.e.
 # return dg.MaterializeResult(
 #         value=output_path,
@@ -288,7 +212,6 @@ nssp_deps = ["nssp_gold", "nssp_latest_comprehensive"]
 # Timeseries E
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
-    deps=nssp_deps,
 )
 def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
     run_pyrenew_model(context, config, model_letters="e", model_family="timeseries")
@@ -298,9 +221,9 @@ def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 # Pyrenew E
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
-    deps=["timeseries_e"] + nssp_deps,
+    deps="timeseries_e"
 )
-def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, timeseries_e):
     run_pyrenew_model(context, config, model_letters="e", model_family="pyrenew")
     return "pyrenew_e"
 
@@ -308,7 +231,6 @@ def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 # Pyrenew H
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
-    deps=["nhsn_data"],
 )
 def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
     run_pyrenew_model(context, config, model_letters="h", model_family="pyrenew")
@@ -317,10 +239,9 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew HE
 @dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-    deps=["timeseries_e", "nhsn_data"] + nssp_deps,
+    partitions_def=pyrenew_multi_partition_def
 )
-def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, timeseries_e):
     run_pyrenew_model(context, config, model_letters="he", model_family="pyrenew")
     return "pyrenew_he"
 
@@ -328,7 +249,6 @@ def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 # Pyrenew HW
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
-    deps=["nhsn_data", "nwss_data"],
 )
 def pyrenew_hw(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
     run_pyrenew_model(context, config, model_letters="hw", model_family="pyrenew")
@@ -337,12 +257,22 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 
 # Pyrenew HEW
 @dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-    deps=["timeseries_e"] + nssp_deps + ["nhsn_data", "nwss_data"],
+    partitions_def=pyrenew_multi_partition_def
 )
-def pyrenew_hew(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+def pyrenew_hew(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, timeseries_e):
     run_pyrenew_model(context, config, model_letters="hew", model_family="pyrenew")
     return "pyrenew_hew"
+
+
+# Use this template for new models. If needed, add dependencies as an argument and overrides in the config
+
+# @dg.asset(
+#     partitions_def=pyrenew_multi_partition_def
+# )
+# def pyrenew_generic(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+#     run_pyrenew_model(context, config, model_letters="<?>", model_family="pyrenew")
+#     return "pyrenew_generic"
+
 
 
 # --------------------------------------------------------- #
@@ -416,21 +346,30 @@ azure_batch_executor_configured = azure_batch_executor.configured(
     }
 )
 
-# ----------------------------------------------------------------------------------- #
-# Orchestration of Non-Partitioned Assets - Upstream Data ETL
-#
-# Note that this basic approach only works for non-partitioned assets,
-# the models we'll need to schedule more complexly
-# ----------------------------------------------------------------------------------- #
+# Azure Container App Job Launcher
+azure_caj_launcher = {
+    "cfa_dagster/launcher": {
+        "class": AzureContainerAppJobRunLauncher.__name__,
+        "config": {
+            "image": image,
+        },
+    }
+}
 
-# TODO: This will be replaced by sensors in production
-upstream_asset_job = dg.define_asset_job(
-    name="upstream_asset_job",
-    executor_def=dg.in_process_executor, # these are lightweight and do not have partitions
-    selection=["nhsn_data", "nssp_gold", "nssp_latest_comprehensive", "nwss_data"],
-    # tag the run with your user to allow for easy filtering in the Dagster UI
-    tags={"user": user},
-)
+# Standard Docker - uses the default run launcher
+docker_metadata = {"executor": docker_executor_configured}
+
+# For use with Container App Jobs
+azure_caj_metadata = {
+    "executor": azure_caj_executor_configured,
+    "metadata": azure_caj_launcher,
+}
+
+# For user with Azure Batch Jobs
+azure_batch_metadata = {
+    "executor": azure_batch_executor_configured,
+    "metadata": azure_caj_launcher,
+}
 
 # ------------------------------------------------------------------------------------------------- #
 # Orchestration of Partitioned Assets - Model Runs
@@ -460,6 +399,30 @@ run_pyrenew_hew_gui = dg.define_asset_job(
 
 ## Data Availability Check Functions ##
 
+@dg.op
+def check_nhsn_data_availability():
+    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
+    try:
+        resp = requests.get(nhsn_target_url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        nhsn_update_date_raw = data.get("rowsUpdatedAt")
+        if nhsn_update_date_raw is None:
+            return {"exists": False, "reason": "Key 'rowsUpdatedAt' not found"}
+        nhsn_update_date = datetime.utcfromtimestamp(nhsn_update_date_raw).strftime("%Y-%m-%d")
+        nhsn_check = nhsn_update_date == current_date
+        print(f"NHSN data available for date {current_date}: {nhsn_check}")
+        return {
+            "exists": nhsn_check,
+            "update_date": nhsn_update_date,
+            "current_date": current_date,
+        }
+    except Exception as e:
+        print(f"Error checking NHSN data availability: {e}")
+        return {"exists": False, "reason": str(e)}
+
+@dg.op
 def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container_name="nssp-etl"):
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
     blob_name = f"gold/{current_date}.parquet"
@@ -474,6 +437,7 @@ def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container
     blobs_gold = list(container_client.list_blobs(name_starts_with="gold/"))
     if blobs_gold:
         latest_blob = max(blobs_gold, key=lambda b: b.last_modified).name
+    print(f"NSSP gold data avaialble for date {current_date}: {nssp_gold_check}")
     return {
         "exists": nssp_gold_check,
         "blob_name": blob_name,
@@ -481,6 +445,7 @@ def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container
         "current_date": current_date,
     }
 
+@dg.op
 def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container_name="nwss-vintages"):
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
     folder_prefix = f"NWSS-ETL-covid-{current_date}/"
@@ -491,31 +456,12 @@ def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container
     container_client = blob_service_client.get_container_client(container_name)
     blobs = list(container_client.list_blobs(name_starts_with=folder_prefix))
     nwss_gold_check = bool(blobs)
+    print(f"NWSS gold data avaialble for date {current_date}: {nwss_gold_check}")
     return {
         "exists": nwss_gold_check,
         "folder_prefix": folder_prefix,
         "current_date": current_date,
     }
-
-def check_nhsn_data_availability():
-    current_date = datetime.utcnow().strftime("%Y-%m-%d")
-    nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
-    try:
-        resp = requests.get(nhsn_target_url, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        nhsn_update_date_raw = data.get("rowsUpdatedAt")
-        if nhsn_update_date_raw is None:
-            return {"exists": False, "reason": "Key 'rowsUpdatedAt' not found"}
-        nhsn_update_date = datetime.utcfromtimestamp(nhsn_update_date_raw).strftime("%Y-%m-%d")
-        nhsn_check = nhsn_update_date == current_date
-        return {
-            "exists": nhsn_check,
-            "update_date": nhsn_update_date,
-            "current_date": current_date,
-        }
-    except Exception as e:
-        return {"exists": False, "reason": str(e)}
 
 ## Backfill Launch Method - Flexible Configuration via Op and Job ##
 
@@ -523,27 +469,31 @@ def check_nhsn_data_availability():
 @dg.op
 def launch_pyrenew_pipeline(
     context: dg.OpExecutionContext,
-    config: PyrenewAssetConfig,
+    config: PyrenewAssetConfig
 ) -> dg.Output[str]:
 
     # We are referencing the global pyrenew_multi_partition_def defined earlier
-    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[15:17]
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[34] # TODO: remove slice and/or config-parametrize  once ready for prod
 
     asset_selection = ()
 
     # Determine which assets to backfill based on data availability
-    nssp_available = check_nssp_gold_data_availability()["exists"]
-    nhsn_available = check_nhsn_data_availability()["exists"]
-    nwss_available = check_nwss_gold_data_availability()["exists"]
+    nhsn_available = check_nhsn_data_availability()["exists"] # H Data
+    nssp_available = check_nssp_gold_data_availability()["exists"] # E Data
+    nwss_available = check_nwss_gold_data_availability()["exists"] # W Data
+
+    context.log.debug(f"NHSN available: {nhsn_available}")
+    context.log.debug(f"NSSP available: {nssp_available}")
+    context.log.debug(f"NWSS available: {nwss_available}")
 
     # Determine which assets to backfill based on data availability
-    if nssp_available and nhsn_available and nwss_available:
-        context.log.info("All NSSP gold, NHSN, and NWSS gold data are available.")
+    if nhsn_available and nssp_available and nwss_available:
+        context.log.info("NHSN, NSSP gold, and NWSS gold data are all available - launching full pipeline.")
         context.log.info("Launching full pyrenew_hew backfill.")
         asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
     
-    elif nssp_available and nhsn_available:
-        context.log.info("Both NSSP gold and NHSN data are available.")
+    elif nhsn_available and nssp_available:
+        context.log.info("Both NHSN data and NSSP gold data are available, but NWSS gold data is not.")
         context.log.info("Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill.")
         asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he")
     
@@ -555,10 +505,10 @@ def launch_pyrenew_pipeline(
     elif nhsn_available:
         context.log.info("Only NHSN data are available.")
         context.log.info("Launching a pyrenew_h backfill.")
-        asset_selection = ("pyrenew_h",)
+        asset_selection = ("pyrenew_h")
     
-    elif nwss_available and nhsn_available:
-        context.log.info("NWSS gold and NHSN data are available.")
+    elif nhsn_available and nwss_available:
+        context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
         context.log.info("Launching pyrenew_h and pyrenew_hw backfill.")
         asset_selection = ("pyrenew_h", "pyrenew_hw")
 
@@ -580,11 +530,11 @@ def launch_pyrenew_pipeline(
         }),
         tags={
                 "run": "pyrenew",
-                "available_data": str([
-                    "nssp_gold" if nssp_available else None,
-                    "nhsn" if nhsn_available else None,
-                    "nwss_gold" if nwss_available else None,
-                ]),
+                "available_data": str({
+                    "nhsn": nhsn_available,
+                    "nssp_gold" : nssp_available,
+                    "nwss_gold" : nwss_available,
+                }),
                 "user": user,
                 "models_attempted": ", ".join(asset_selection),
                 "forecast_date": config.forecast_date,
@@ -636,42 +586,6 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     execution_timezone="America/New_York",
 )
 
-
-## Dagster Tutorial Method - Use @dg.schedule ##
-
-# CONTINENTS = [
-#     "Africa",
-#     "Antarctica",
-#     "Asia",
-#     "Europe",
-#     "North America",
-#     "Oceania",
-#     "South America",
-# ]
-
-
-# @dg.static_partitioned_config(partition_keys=CONTINENTS)
-# def continent_config(partition_key: str):
-#     return {"ops": {"continents": {"config": {"continent_name": partition_key}}}}
-
-# class ContinentOpConfig(dg.Config):
-#     continent_name: str = "Oceania"
-
-# @dg.asset
-# def continents(context: dg.AssetExecutionContext, config: ContinentOpConfig):
-#     context.log.info(config.continent_name)
-
-
-# continent_job = dg.define_asset_job(
-#     name="continent_job", selection=[continents], config=continent_config
-# )
-
-# @dg.schedule(cron_schedule="0 0 * * *", job=continent_job)
-# def continent_schedule():
-#     for c in CONTINENTS:
-#         yield dg.RunRequest(run_key=c, partition_key=c)
-
-
 # -------------- Dagster Definitions Object --------------- #
 # This code allows us to collect all of the above definitions
 # into a single Definitions object for Dagster to read!
@@ -702,19 +616,9 @@ defs = dg.Definitions(
             credential=AzureBlobStorageDefaultCredential(),
         ),
     },
-    # setting Docker as the default executor. comment this out to use
-    # the default executor that runs directly on your computer
-    # executor=docker_executor_configured,
-    # executor=dg.in_process_executor,
-    # executor=azure_caj_executor_configured,
-    executor=azure_batch_executor_configured,
-    # uncomment the below to launch runs on Azure CAJ
-    # metadata={
-    #     "cfa_dagster/launcher": {
-    #         "class": AzureContainerAppJobRunLauncher.__name__,
-    #         "config": {
-    #             "image": image,
-    #         },
-    #     }
-    # },
+    # New ** syntax combines executor and launcher metadata
+    **(
+        azure_batch_metadata # comment when testing locally, take care not to submit too many jobs
+        # docker_metadata # use this when running locally - be careful not to use the backfill job locally
+    ),
 )
