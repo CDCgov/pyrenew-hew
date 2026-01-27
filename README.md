@@ -80,14 +80,17 @@ The following instructions will set up Dagster on your VAP. However, based on th
 
 Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
 
-To manually update the code location while we evaluate dagster, you can run `make dagster_push`. This manual approach will be deprecated and discouraged once we move to using dagster in production.
+To manually update the code location while we evaluate dagster, you can run `make dagster_push_prod`. This manual approach will be deprecated and discouraged once we move to using dagster in production.
+
+To login to the production server, head to https://dagster.apps.edav.ext.cdc.gov/.
 
 #### Makefile Targets for Dagster
 After you've familiarized yourself with the above instructions, feel free to use these convenient `make` targets:
 - `make dagster_build`: builds your dagster image.
-- `make dagster_push`: builds your dagster image, then pushes it, then uploads the central dagster server's code for pyrenew-hew.
+- `make dagster_push`: builds your dagster image, then pushes it.
+- `make dagster_push_prod`: runs dagster_push, then uploads the central dagster scheduling server's code for pyrenew-hew.
 - `make dagster`: runs the dagster UI locally.
-- `make mount`: mounts the pyrenew-relevant blobs using blobfuse.
+- `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
 - `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
 
 ### 3. Azure Command Center

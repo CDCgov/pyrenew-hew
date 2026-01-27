@@ -576,7 +576,7 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
             "launch_pyrenew_pipeline": PyrenewAssetConfig()
         }
     ),
-    cron_schedule="0 12-21 * * WED",
+    cron_schedule="0 15 * * WED",
     execution_timezone="America/New_York",
 )
 
