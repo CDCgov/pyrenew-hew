@@ -22,21 +22,21 @@ DEFAULT_EXCLUDED_LOCATIONS = ["AS", "GU", "MP", "PR", "UM", "VI"]
 SUPPORTED_DISEASES = ["COVID-19", "Influenza", "RSV"]
 
 
-def validate_diseases(disease_list: list[str]) -> None:
+def validate_diseases(diseases: list[str] | set[str]) -> None:
     """
     Validate that all diseases in the list are supported.
 
     Parameters
     ----------
-    disease_list
-        List of disease names to validate.
+    diseases
+        List or set of disease names to validate.
 
     Raises
     ------
     ValueError
         If any disease is not in the supported list.
     """
-    invalid_diseases = set(disease_list) - set(SUPPORTED_DISEASES)
+    invalid_diseases = set(diseases) - set(SUPPORTED_DISEASES)
     if invalid_diseases:
         raise ValueError(
             f"Unsupported diseases: {', '.join(invalid_diseases)}; "

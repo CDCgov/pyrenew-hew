@@ -26,7 +26,7 @@ def main(
     model_letters: str,
     job_id: str,
     pool_id: str,
-    diseases: str | list[str],
+    diseases: list[str],
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
     container_image_name: str = "pyrenew-hew",
@@ -52,7 +52,7 @@ def main(
         Azure Batch pool on which to run the job.
     diseases
         Name(s) of disease(s) to run as part of the job,
-        as a single string (one disease) or a list of strings.
+        as a list of strings.
         Supported values are 'COVID-19', 'Influenza', and 'RSV'.
     output_subdir
         Subdirectory of the output blob storage container
@@ -90,8 +90,7 @@ def main(
     None
     """
     # Validate inputs
-    disease_list = diseases if isinstance(diseases, list) else [diseases]
-    validate_diseases(disease_list)
+    validate_diseases(diseases)
     validate_hew_letters(model_letters)
     additional_forecast_letters = additional_forecast_letters or model_letters
     validate_hew_letters(additional_forecast_letters)
@@ -147,7 +146,7 @@ def main(
         "model_family": "pyrenew",
         "model_letters": model_letters,
         "additional_forecast_letters": additional_forecast_letters,
-        "diseases": ", ".join(disease_list),
+        "diseases": ", ".join(diseases),
         "output_subdir": str(output_subdir),
         "container_image": container_image,
         "training_days": n_training_days,
@@ -164,7 +163,7 @@ def main(
 
     # Create tasks
     tasks = []
-    for disease, loc in itertools.product(disease_list, all_locations):
+    for disease, loc in itertools.product(diseases, all_locations):
         task_id = f"{job_id}-{loc}-{disease}-prod"
         command = base_call.format(
             loc=loc,

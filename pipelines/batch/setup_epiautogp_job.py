@@ -58,7 +58,7 @@ def main(
         Azure Batch pool on which to run the job.
     diseases
         Name(s) of disease(s) to run as part of the job,
-        as a single string (one disease) or a list of strings.
+        as a list of strings.
         Supported values are 'COVID-19', 'Influenza', and 'RSV'.
     output_subdir
         Subdirectory of the output blob storage container
@@ -113,8 +113,7 @@ def main(
     None
     """
     # Validate inputs
-    disease_list = diseases if isinstance(diseases, list) else [diseases]
-    validate_diseases(disease_list)
+    validate_diseases(diseases)
 
     # Validate EpiAutoGP-specific parameters
     if target not in ["nssp", "nhsn"]:
@@ -176,7 +175,7 @@ def main(
         "job_id": job_id,
         "pool_id": pool_id,
         "model_family": "epiautogp",
-        "diseases": ", ".join(disease_list),
+        "diseases": ", ".join(diseases),
         "output_subdir": str(output_subdir),
         "container_image": container_image,
         "training_days": n_training_days,
@@ -203,7 +202,7 @@ def main(
 
     # Create tasks
     tasks = []
-    for disease, loc in itertools.product(disease_list, all_locations):
+    for disease, loc in itertools.product(diseases, all_locations):
         task_id = f"{job_id}-{loc}-{disease}-prod"
         command = base_call.format(
             loc=loc,
