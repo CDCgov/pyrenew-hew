@@ -364,7 +364,7 @@ azure_caj_metadata = {
 # For user with Azure Batch Jobs
 azure_batch_metadata = {
     "executor": azure_batch_executor_configured,
-    "metadata": azure_caj_launcher if is_production else {},
+    "metadata": azure_caj_launcher if not is_production else {},
 }
 
 # ------------------------------------------------------------------------------------------------- #
