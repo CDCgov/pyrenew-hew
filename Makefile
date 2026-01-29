@@ -1,4 +1,4 @@
-.PHONY: help container_build container_tag ghcr_login container_push acc mount unmount config dagster dagster_build
+.PHONY: help container_build container_tag ghcr_login container_push run_timeseries run_e_model run_h_models post_process run_he_model run_hw_model acc mount unmount config dagster dagster_build
 
 # Build parameters
 
@@ -72,6 +72,58 @@ help:
 	@echo ""
 	@echo "Model Fit Targets: "
 	@echo "  acc                 : Run the Azure Command Center for routine production jobs"
+	@echo "Passing a flag through ARGS will also override the flags set previously."
+
+#------------------------ #
+# Blobfuse Mount Targets
+# ----------------------- #
+
+mount:
+	sudo bash -c "source ./blobfuse/mount.sh"
+
+unmount:
+	sudo bash -c "source ./blobfuse/cleanup.sh"
+
+# ----------------------- #
+# Container Build Targets
+# ----------------------- #
+
+container_build: ghcr_login
+	$(ENGINE) build . -t $(CONTAINER_IMAGE_NAME) -f $(CONTAINERFILE)
+
+dagster_build:
+	docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile .
+
+dagster:
+	uv run dagster_defs.py
+
+dagster_push: dagster_build
+	az login --identity && \
+	az acr login -n cfaprdbatchcr && \
+	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
+
+dagster_push_prod: dagster_push
+	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
+    	--registry_image cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest
+
+container_tag:
+	$(ENGINE) tag $(CONTAINER_IMAGE_NAME) $(CONTAINER_REMOTE_NAME)
+
+ghcr_login:
+	echo $(GH_PAT) | $(ENGINE) login ghcr.io -u $(GH_USERNAME) --password-stdin
+
+container_push: CONTAINER_IMAGE_VERSION ghcr_login
+	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
+
+config:
+	bash -c "source ./azureconfig.sh"
+
+# ---------------- #
+# Model Fit Targets
+# ---------------- #
+
+acc: mount config
+	uv run pipelines/azure_command_center.py
 
 post_process: config
 	uv run python pipelines/postprocess_forecast_batches.py \
