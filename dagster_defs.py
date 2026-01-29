@@ -25,10 +25,10 @@ from dagster_azure.blob import (
 )
 
 # Model Code
-# Model Code
 # from pipelines.forecast_pyrenew import main as forecast_pyrenew
 # from pipelines.forecast_timeseries import main as forecast_timeseries
-# from pipelines.postprocess_forecast_batches import main as postprocess
+from pipelines.postprocess_forecast_batches import main as postprocess
+
 # ---------------------- #
 # Dagster Initialization
 # ---------------------- #
@@ -41,6 +41,104 @@ is_production = not os.getenv("DAGSTER_IS_DEV_CLI")
 
 # get the user running the Dagster instance
 user = os.getenv("DAGSTER_USER")
+
+# --------------------------------------------------------- #
+# Runtime Configuration: Working Directory, Executors
+# - Executors define the runtime-location of an asset job
+# - See later on for Asset job definitions
+# --------------------------------------------------------- #"
+
+workdir = "pyrenew-hew"
+local_workdir = Path(__file__).parent.resolve()
+image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
+
+# add this to a job or the Definitions class to use it
+docker_executor_configured = docker_executor.configured(
+    {
+        "image": image,
+        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "retries": {"enabled": {}},
+        "container_kwargs": {
+            "volumes": [
+                # bind the ~/.azure folder for optional cli login
+                f"/home/{user}/.azure:/root/.azure",
+                # bind current file so we don't have to rebuild
+                # the container image for workflow changes
+                f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
+                # blob container mounts for pyrenew-hew
+                f"/{local_workdir}/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                f"/{local_workdir}/nssp-etl:/pyrenew-hew/nssp-etl",
+                f"/{local_workdir}/nwss-vintages:/pyrenew-hew/nwss-vintages",
+                f"/{local_workdir}/params:/pyrenew-hew/params",
+                f"/{local_workdir}/config:/pyrenew-hew/config",
+                f"/{local_workdir}/output:/pyrenew-hew/output",
+                f"/{local_workdir}/test-output:/pyrenew-hew/test-output",
+            ]
+        },
+    }
+)
+
+# configuring an executor to run workflow steps on Azure Container App Jobs
+# add this to a job or the Definitions class to use it
+# Container app jobs cant have mounted volumes, so we would need to refactor pyrenew-hew to use this
+azure_caj_executor_configured = azure_caj_executor.configured(
+    {
+        "image": image,
+        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
+    }
+)
+
+# configuring an executor to run workflow steps on Azure Batch 4CPU 16GB RAM pool
+# add this to a job or the Definitions class to use it
+azure_batch_executor_configured = azure_batch_executor.configured(
+    {
+        "pool_name": "pyrenew-dagster-pool",
+        "image": image,
+        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "container_kwargs": {
+            "volumes": [
+                # bind the ~/.azure folder for optional cli login
+                # f"/home/{user}/.azure:/root/.azure",
+                # bind current file so we don't have to rebuild
+                # the container image for workflow changes
+                # blob container mounts for pyrenew-hew
+                "nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                "nssp-etl:/pyrenew-hew/nssp-etl",
+                "nwss-vintages:/pyrenew-hew/nwss-vintages",
+                "prod-param-estimates:/pyrenew-hew/params",
+                "pyrenew-hew-config:/pyrenew-hew/config",
+                "pyrenew-hew-prod-output:/pyrenew-hew/output",
+                "pyrenew-test-output:/pyrenew-hew/test-output",
+            ],
+            "working_dir": "/pyrenew-hew",
+        },
+    }
+)
+
+# Azure Container App Job Launcher
+azure_caj_launcher = {
+    "cfa_dagster/launcher": {
+        "class": AzureContainerAppJobRunLauncher.__name__,
+        "config": {
+            "image": image,
+        },
+    }
+}
+
+# Standard Docker - uses the default run launcher
+docker_metadata = {"executor": docker_executor_configured}
+
+# For use with Container App Jobs
+azure_caj_metadata = {
+    "executor": azure_caj_executor_configured,
+    "metadata": azure_caj_launcher,
+}
+
+# For user with Azure Batch Jobs
+azure_batch_metadata = {
+    "executor": azure_batch_executor_configured,
+    "metadata": azure_caj_launcher if not is_production else {},
+}
 
 # --------------------------------------------------------------- #
 # Partitions: how are the data split and processed in Azure Batch?
@@ -71,7 +169,7 @@ pyrenew_multi_partition_def = dg.MultiPartitionsDefinition({
 })
 
 # ----------------------------------------------------------- #
-# Asset Definitions - What are we outputting in our pipeline?
+# Asset Definitions - What are we outputting in our pipeline? #
 # ----------------------------------------------------------- #
 
 # ---------------
@@ -297,6 +395,17 @@ def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseri
 #     run_pyrenew_model(context, config, model_letters="<?>", model_family="pyrenew")
 #     return "pyrenew_generic"
 
+# -- Epi AutoGP Asset -- #
+
+@dg.asset
+def epiautogp(context: dg.AssetExecutionContext):
+    """
+    Placeholder asset for Epi AutoGP forecasts.
+    """
+    # Placeholder logic for Epi AutoGP forecasts
+    context.log.info("Epi AutoGP forecast asset executed.")
+    return "epiautogp"
+
 
 # -- Postprocessing Forecast Batches -- #
 
@@ -312,109 +421,13 @@ def postprocess_forecasts(
     """
     disease = context.partition_key
     print(disease)
-    # postprocess(
-    #     base_forecast_dir=config.output_dir,
-    #     diseases=list(disease),
-    #     skip_existing=config.skip_existing,
-    #     local_copy_dir=config.output_dir,
-    # )
+    postprocess(
+        base_forecast_dir=config.output_dir,
+        diseases=list(disease),
+        skip_existing=config.skip_existing,
+        local_copy_dir=config.output_dir,
+    )
     return "postprocess_forecasts"
-
-# --------------------------------------------------------- #
-# Runtime Configuration: Working Directory, Executors
-# - Executors define the runtime-location of an asset job
-# - See later on for Asset job definitions
-# --------------------------------------------------------- #"
-
-workdir = "pyrenew-hew"
-local_workdir = Path(__file__).parent.resolve()
-image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
-
-# add this to a job or the Definitions class to use it
-docker_executor_configured = docker_executor.configured({
-        "image": image,
-        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
-        "retries": {"enabled": {}},
-        "container_kwargs": {
-            "volumes": [
-                # bind the ~/.azure folder for optional cli login
-                f"/home/{user}/.azure:/root/.azure",
-                # bind current file so we don't have to rebuild
-                # the container image for workflow changes
-                f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
-                # blob container mounts for pyrenew-hew
-                f"/{local_workdir}/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
-                f"/{local_workdir}/nssp-etl:/pyrenew-hew/nssp-etl",
-                f"/{local_workdir}/nwss-vintages:/pyrenew-hew/nwss-vintages",
-                f"/{local_workdir}/params:/pyrenew-hew/params",
-                f"/{local_workdir}/config:/pyrenew-hew/config",
-                f"/{local_workdir}/output:/pyrenew-hew/output",
-                f"/{local_workdir}/test-output:/pyrenew-hew/test-output",
-            ]
-        },
-})
-
-# configuring an executor to run workflow steps on Azure Container App Jobs
-# add this to a job or the Definitions class to use it
-# Container app jobs cant have mounted volumes, so we would need to refactor pyrenew-hew to use this
-azure_caj_executor_configured = azure_caj_executor.configured(
-    {
-        "image": image,
-        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
-    }
-)
-
-# configuring an executor to run workflow steps on Azure Batch 4CPU 16GB RAM pool
-# add this to a job or the Definitions class to use it
-azure_batch_executor_configured = azure_batch_executor.configured(
-    {
-        "pool_name": "pyrenew-dagster-pool",
-        "image": image,
-        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
-        "container_kwargs": {
-            "volumes": [
-                # bind the ~/.azure folder for optional cli login
-                # f"/home/{user}/.azure:/root/.azure",
-                # bind current file so we don't have to rebuild
-                # the container image for workflow changes
-                # blob container mounts for pyrenew-hew
-                "nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
-                "nssp-etl:/pyrenew-hew/nssp-etl",
-                "nwss-vintages:/pyrenew-hew/nwss-vintages",
-                "prod-param-estimates:/pyrenew-hew/params",
-                "pyrenew-hew-config:/pyrenew-hew/config",
-                "pyrenew-hew-prod-output:/pyrenew-hew/output",
-                "pyrenew-test-output:/pyrenew-hew/test-output",
-            ],
-            "working_dir": "/pyrenew-hew",
-        },
-    }
-)
-
-# Azure Container App Job Launcher
-azure_caj_launcher = {
-    "cfa_dagster/launcher": {
-        "class": AzureContainerAppJobRunLauncher.__name__,
-        "config": {
-            "image": image,
-        },
-    }
-}
-
-# Standard Docker - uses the default run launcher
-docker_metadata = {"executor": docker_executor_configured}
-
-# For use with Container App Jobs
-azure_caj_metadata = {
-    "executor": azure_caj_executor_configured,
-    "metadata": azure_caj_launcher,
-}
-
-# For user with Azure Batch Jobs
-azure_batch_metadata = {
-    "executor": azure_batch_executor_configured,
-    "metadata": azure_caj_launcher if not is_production else {},
-}
 
 # ------------------------------------------------------------------------------------------------- #
 # Orchestration of Partitioned Assets - Model Runs
