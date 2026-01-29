@@ -1,12 +1,12 @@
+# Basic Imports
 import os
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-
-import dagster as dg
 import requests
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
+
+# Dagster and cloud Imports
+import dagster as dg
 from cfa_dagster import (
     ADLS2PickleIOManager,
     AzureContainerAppJobRunLauncher,
@@ -21,6 +21,13 @@ from dagster_azure.blob import (
     AzureBlobStorageDefaultCredential,
     AzureBlobStorageResource,
 )
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+
+# Model Code
+from pipelines.forecast_pyrenew import main as forecast_pyrenew
+from pipelines.forecast_timeseries import main as forecast_timeseries
+from pipelines.postprocess_forecast_batches import main as postprocess
 
 # ---------------------- #
 # Dagster Initialization
@@ -70,13 +77,25 @@ pyrenew_multi_partition_def = dg.MultiPartitionsDefinition({
 # ---------------
 # Asset Configs
 # ---------------
+class CommonConfig(dg.Config):
+    """
+    Common configuration for both Model and Post-Processing assets.
+    Both ModelConfig and PostProcessConfig inherit from this, then add their own parameters.
+    """
 
-class PyrenewAssetConfig(dg.Config):
+    forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
+    # _output_basedir: str = "output" if is_production else "test-output"
+    _output_basedir: str = "test-output"
+    _output_subdir: str = f"{forecast_date}_forecasts"
+    output_dir: str = f"{_output_basedir}/{_output_subdir}"
+
+class ModelConfig(CommonConfig):
     """
     Configuration for the Pyrenew model assets.
     These default values can be modified in the Dagster asset materialization launchpad.
     We also unpack these for our job run configurations.
     """
+
     # Parameters that are currently defined in asset functions - this may be tweakable later
     # model_letters: str = "hew"  # experimental - not ready to incorporate in config yet
     # model_family: str = "pyrenew"  # experimental - not ready to incorporate in config yet
@@ -93,20 +112,24 @@ class PyrenewAssetConfig(dg.Config):
     n_total_samples: int = n_samples * n_chains
     rng_key: int = 12345
     additional_forecast_letters: str = ""
-    forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
-    # output_basedir: str = "output" if is_production else "test-output"
-    output_basedir: str = "test-output"
-    output_subdir: str = f"{forecast_date}_forecasts"
-    output_dir: str = f"{output_basedir}/{output_subdir}"
 
-# ---------------
-# Worker Function
-# ---------------
+    
+class PostProcessConfig(CommonConfig):
+    """
+    Configuration for the Post-Processing asset.
+    """
+    skip_existing: bool = True
+    save_local_copy: bool = False
+    local_copy_dir: str = "" # "stf_forecast_fig_share"
 
-# This function is NOT an asset itself, but is called by assets to run the pyrenew model
+# ----------------------
+# Model Worker Function
+# ----------------------
+
+# This function is NOT an asset itself, but iscalled by assets to run the pyrenew model
 def run_pyrenew_model(
     context: dg.AssetExecutionContext,
-    config: PyrenewAssetConfig,
+    config: ModelConfig,
     model_letters: str,
     model_family: str,
 ):
@@ -135,13 +158,14 @@ def run_pyrenew_model(
         )
         return
 
-    # Configuration inherited from PyrenewAssetConfig
+    # Configuration inherited from ModelConfig
     context.log.debug(f"config: '{config}'")
 
     # =====================================
     # Model Family and Run Script Selection
     # =====================================
     if model_family == "pyrenew":
+        # from forecast_pyrenew import forecast_pyrenew  # noqa: F401
         run_script = "forecast_pyrenew.py"
         additional_args = (
             f"--n-samples {config.n_samples} "
@@ -182,6 +206,7 @@ def run_pyrenew_model(
         f"{additional_args}"
         "'"
     )
+
     subprocess.run(base_call, shell=True, check=True)
 
 
@@ -191,25 +216,11 @@ def run_pyrenew_model(
 
 # -- Pyrenew Assets -- #
 
-# TODO: adapt dg.MaterializeResults for asset returns. Currently returning simple strings.
-# i.e.
-# return dg.MaterializeResult(
-#         value=output_path,
-#         metadata={
-#             "config": config,
-#             "output_path": output_path,
-#             "storage_account": STORAGE_ACCOUNT,
-#             "storage_container": OUTPUT_CONTAINER,
-#             "blob_path": job_id,
-#         }
-#     )
-
-
 # Timeseries E
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
 )
-def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+def timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
     run_pyrenew_model(context, config, model_letters="e", model_family="timeseries")
     return "timeseries_e"
 
@@ -219,7 +230,7 @@ def timeseries_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
     partitions_def=pyrenew_multi_partition_def,
     deps="timeseries_e"
 )
-def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, timeseries_e):
+def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
     run_pyrenew_model(context, config, model_letters="e", model_family="pyrenew")
     return "pyrenew_e"
 
@@ -228,7 +239,7 @@ def pyrenew_e(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, tim
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
 )
-def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
     run_pyrenew_model(context, config, model_letters="h", model_family="pyrenew")
     return "pyrenew_h"
 
@@ -237,7 +248,7 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def
 )
-def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, timeseries_e):
+def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
     run_pyrenew_model(context, config, model_letters="he", model_family="pyrenew")
     return "pyrenew_he"
 
@@ -246,7 +257,7 @@ def pyrenew_he(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, ti
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
 )
-def pyrenew_hw(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
     run_pyrenew_model(context, config, model_letters="hw", model_family="pyrenew")
     return "pyrenew_hw"
 
@@ -255,22 +266,34 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def
 )
-def pyrenew_hew(context: dg.AssetExecutionContext, config: PyrenewAssetConfig, timeseries_e):
+def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
     run_pyrenew_model(context, config, model_letters="hew", model_family="pyrenew")
     return "pyrenew_hew"
-
 
 # Use this template for new models. If needed, add dependencies as an argument and overrides in the config
 
 # @dg.asset(
 #     partitions_def=pyrenew_multi_partition_def
 # )
-# def pyrenew_generic(context: dg.AssetExecutionContext, config: PyrenewAssetConfig):
+# def pyrenew_generic(context: dg.AssetExecutionContext, config: ModelConfig):
 #     run_pyrenew_model(context, config, model_letters="<?>", model_family="pyrenew")
 #     return "pyrenew_generic"
 
 
+# -- Postprocessing Forecast Batches -- #
 
+@dg.asset(
+    partitions_def=disease_partitions
+)
+def postprocess_forecasts(context: dg.AssetExecutionContext, config: PostProcessConfig, timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew):
+    disease = context.partition_key
+    # postprocess(
+    #     base_forecast_dir=config.output_dir,
+    #     diseases=list(disease),
+    #     skip_existing=config.skip_existing,
+    #     local_copy_dir=config.output_dir,
+    # )
+    return "postprocess_forecasts"
 # --------------------------------------------------------- #
 # Runtime Configuration: Working Directory, Executors
 # - Executors define the runtime-location of an asset job
@@ -294,8 +317,8 @@ docker_executor_configured = docker_executor.configured({
                 # the container image for workflow changes
                 f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
                 # blob container mounts for pyrenew-hew
-                f"/{local_workdir}/nssp-etl:/pyrenew-hew/nssp-etl",
                 f"/{local_workdir}/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                f"/{local_workdir}/nssp-etl:/pyrenew-hew/nssp-etl",
                 f"/{local_workdir}/nwss-vintages:/pyrenew-hew/nwss-vintages",
                 f"/{local_workdir}/params:/pyrenew-hew/params",
                 f"/{local_workdir}/config:/pyrenew-hew/config",
@@ -379,17 +402,23 @@ azure_batch_metadata = {
 # Experimental asset job to materialize all pyrenew assets
 run_pyrenew_hew_gui = dg.define_asset_job(
     name="RunPyrenewHew_GUI",
-    # executor_def=azure_batch_executor_configured, # these are lightweight and do not have partitions
     executor_def=azure_batch_executor_configured,
     selection=[
         "timeseries_e",
         "pyrenew_e",
         "pyrenew_h",
         "pyrenew_he",
-        # "pyrenew_hw",
-        # "pyrenew_hew",
+        "pyrenew_hw",
+        "pyrenew_hew",
     ],
     # tag the run with your user to allow for easy filtering in the Dagster UI
+    tags={"user": user},
+)
+
+run_postprocess_forecasts_gui = dg.define_asset_job(
+    name="RunPostprocessForecasts_GUI",
+    executor_def=dg.multiprocess_executor if not is_production else azure_batch_executor_configured,
+    selection=[postprocess_forecasts],
     tags={"user": user},
 )
 
@@ -465,7 +494,7 @@ def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container
 @dg.op
 def launch_pyrenew_pipeline(
     context: dg.OpExecutionContext,
-    config: PyrenewAssetConfig
+    config: ModelConfig
 ) -> dg.Output[str]:
 
     # We are referencing the global pyrenew_multi_partition_def defined earlier
@@ -493,6 +522,11 @@ def launch_pyrenew_pipeline(
         context.log.info("Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill.")
         asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he")
 
+    elif nhsn_available and nwss_available:
+        context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
+        context.log.info("Launching pyrenew_h and pyrenew_hw backfill.")
+        asset_selection = ("pyrenew_h", "pyrenew_hw")
+
     elif nssp_available:
         context.log.info("Only NSSP gold data are available.")
         context.log.info("Launching a timeseries_e and pyrenew_e backfill.")
@@ -502,11 +536,6 @@ def launch_pyrenew_pipeline(
         context.log.info("Only NHSN data are available.")
         context.log.info("Launching a pyrenew_h backfill.")
         asset_selection = ("pyrenew_h")
-
-    elif nhsn_available and nwss_available:
-        context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
-        context.log.info("Launching pyrenew_h and pyrenew_hw backfill.")
-        asset_selection = ("pyrenew_h", "pyrenew_hw")
 
     else:
         context.log.info("No required data is available.")
@@ -558,7 +587,7 @@ def launch_pyrenew_pipeline(
     },
     config=dg.RunConfig(
         ops={
-            "launch_pyrenew_pipeline": PyrenewAssetConfig()
+            "launch_pyrenew_pipeline": ModelConfig()
         }
     )
 )
@@ -575,12 +604,28 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     job=weekly_pyrenew_via_backfill,
     run_config=dg.RunConfig(
         ops={
-            "launch_pyrenew_pipeline": PyrenewAssetConfig()
+            "launch_pyrenew_pipeline": ModelConfig()
         }
     ),
     cron_schedule="0 15 * * WED",
     execution_timezone="America/New_York",
 )
+
+@dg.job(
+    executor_def=dg.multiprocess_executor,
+    tags={
+        "cfa_dagster/launcher": {
+            "class": dg.DefaultRunLauncher.__name__
+        }
+    }
+)
+def check_all_data():
+    nhsn=check_nhsn_data_availability() # H Data
+    print("NHSN data availability", nhsn)
+    nssp=check_nssp_gold_data_availability() # E Data
+    print("NSSP gold data availability", nssp)
+    nwss=check_nwss_gold_data_availability() # W Data
+    print("NWSS gold data availability", nwss)
 
 # -------------- Dagster Definitions Object --------------- #
 # This code allows us to collect all of the above definitions
