@@ -3,10 +3,12 @@ import os
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-import requests
 
 # Dagster and cloud Imports
 import dagster as dg
+import requests
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
 from cfa_dagster import (
     ADLS2PickleIOManager,
     AzureContainerAppJobRunLauncher,
@@ -21,14 +23,12 @@ from dagster_azure.blob import (
     AzureBlobStorageDefaultCredential,
     AzureBlobStorageResource,
 )
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
 
 # Model Code
-from pipelines.forecast_pyrenew import main as forecast_pyrenew
-from pipelines.forecast_timeseries import main as forecast_timeseries
-from pipelines.postprocess_forecast_batches import main as postprocess
-
+# Model Code
+# from pipelines.forecast_pyrenew import main as forecast_pyrenew
+# from pipelines.forecast_timeseries import main as forecast_timeseries
+# from pipelines.postprocess_forecast_batches import main as postprocess
 # ---------------------- #
 # Dagster Initialization
 # ---------------------- #
@@ -113,7 +113,7 @@ class ModelConfig(CommonConfig):
     rng_key: int = 12345
     additional_forecast_letters: str = ""
 
-    
+
 class PostProcessConfig(CommonConfig):
     """
     Configuration for the Post-Processing asset.
@@ -221,6 +221,9 @@ def run_pyrenew_model(
     partitions_def=pyrenew_multi_partition_def,
 )
 def timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
+    """
+    Run Timeseries-e model and produce outputs.
+    """
     run_pyrenew_model(context, config, model_letters="e", model_family="timeseries")
     return "timeseries_e"
 
@@ -231,6 +234,9 @@ def timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
     deps="timeseries_e"
 )
 def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+    """
+    Run Pyrenew-e model and produce outputs.
+    """
     run_pyrenew_model(context, config, model_letters="e", model_family="pyrenew")
     return "pyrenew_e"
 
@@ -240,6 +246,9 @@ def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries
     partitions_def=pyrenew_multi_partition_def,
 )
 def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
+    """
+    Run Pyrenew-h model and produce outputs.
+    """
     run_pyrenew_model(context, config, model_letters="h", model_family="pyrenew")
     return "pyrenew_h"
 
@@ -249,6 +258,9 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
     partitions_def=pyrenew_multi_partition_def
 )
 def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+    """
+    Run Pyrenew-he model and produce outputs.
+    """
     run_pyrenew_model(context, config, model_letters="he", model_family="pyrenew")
     return "pyrenew_he"
 
@@ -258,6 +270,9 @@ def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeserie
     partitions_def=pyrenew_multi_partition_def,
 )
 def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
+    """
+    Run Pyrenew-hw model and produce outputs.
+    """
     run_pyrenew_model(context, config, model_letters="hw", model_family="pyrenew")
     return "pyrenew_hw"
 
@@ -267,6 +282,9 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
     partitions_def=pyrenew_multi_partition_def
 )
 def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+    """
+    Run Pyrenew-hew model and produce outputs.
+    """
     run_pyrenew_model(context, config, model_letters="hew", model_family="pyrenew")
     return "pyrenew_hew"
 
@@ -286,10 +304,14 @@ def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseri
     partitions_def=disease_partitions
 )
 def postprocess_forecasts(
-    context: dg.AssetExecutionContext, config: PostProcessConfig, 
+    context: dg.AssetExecutionContext, config: PostProcessConfig,
     timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew
 ):
+    """
+    Postprocess forecast batches for a given disease partition.
+    """
     disease = context.partition_key
+    print(disease)
     # postprocess(
     #     base_forecast_dir=config.output_dir,
     #     diseases=list(disease),
@@ -563,7 +585,7 @@ def launch_pyrenew_pipeline(
                 "available_data": str({
                     "nhsn": nhsn_available,
                     "nssp_gold" : nssp_available,
-                    "nwss_gold" : nwss_available,
+                    "nwss_gold" : False, # nwss_available,
                 }),
                 "user": user,
                 "models_attempted": ", ".join(asset_selection),

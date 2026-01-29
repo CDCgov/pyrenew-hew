@@ -13,7 +13,6 @@ import shutil
 from pathlib import Path
 
 import pipelines.collate_plots as cp
-
 from pipelines.common_utils import run_r_script
 from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
 
