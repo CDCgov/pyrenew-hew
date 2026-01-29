@@ -285,7 +285,10 @@ def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseri
 @dg.asset(
     partitions_def=disease_partitions
 )
-def postprocess_forecasts(context: dg.AssetExecutionContext, config: PostProcessConfig, timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew):
+def postprocess_forecasts(
+    context: dg.AssetExecutionContext, config: PostProcessConfig, 
+    timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew
+):
     disease = context.partition_key
     # postprocess(
     #     base_forecast_dir=config.output_dir,
@@ -294,6 +297,7 @@ def postprocess_forecasts(context: dg.AssetExecutionContext, config: PostProcess
     #     local_copy_dir=config.output_dir,
     # )
     return "postprocess_forecasts"
+
 # --------------------------------------------------------- #
 # Runtime Configuration: Working Directory, Executors
 # - Executors define the runtime-location of an asset job
@@ -505,27 +509,28 @@ def launch_pyrenew_pipeline(
     # Determine which assets to backfill based on data availability
     nhsn_available = check_nhsn_data_availability()["exists"] # H Data
     nssp_available = check_nssp_gold_data_availability()["exists"] # E Data
-    nwss_available = check_nwss_gold_data_availability()["exists"] # W Data
+    # nwss_available = check_nwss_gold_data_availability()["exists"] # W Data
 
     context.log.debug(f"NHSN available: {nhsn_available}")
     context.log.debug(f"NSSP available: {nssp_available}")
-    context.log.debug(f"NWSS available: {nwss_available}")
+    # context.log.debug(f"NWSS available: {nwss_available}")
 
     # Determine which assets to backfill based on data availability
-    if nhsn_available and nssp_available and nwss_available:
-        context.log.info("NHSN, NSSP gold, and NWSS gold data are all available - launching full pipeline.")
-        context.log.info("Launching full pyrenew_hew backfill.")
-        asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
+    # if nhsn_available and nssp_available and nwss_available:
+    #     context.log.info("NHSN, NSSP gold, and NWSS gold data are all available - launching full pipeline.")
+    #     context.log.info("Launching full pyrenew_hew backfill.")
+    #     asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
 
-    elif nhsn_available and nssp_available:
+    if nhsn_available and nssp_available:
+    # elif nhsn_available and nssp_available:
         context.log.info("Both NHSN data and NSSP gold data are available, but NWSS gold data is not.")
         context.log.info("Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill.")
         asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he")
 
-    elif nhsn_available and nwss_available:
-        context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
-        context.log.info("Launching pyrenew_h and pyrenew_hw backfill.")
-        asset_selection = ("pyrenew_h", "pyrenew_hw")
+    # elif nhsn_available and nwss_available:
+    #     context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
+    #     context.log.info("Launching pyrenew_h and pyrenew_hw backfill.")
+    #     asset_selection = ("pyrenew_h", "pyrenew_hw")
 
     elif nssp_available:
         context.log.info("Only NSSP gold data are available.")
