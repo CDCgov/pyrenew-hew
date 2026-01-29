@@ -14,6 +14,9 @@ ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 # This makes the /pyrenew-hew/ directory and then copies in the hewr package
 COPY ./hewr /pyrenew-hew/hewr
 
+# Copy in the EpiAutoGP Julia package
+COPY ./EpiAutoGP /pyrenew-hew/EpiAutoGP
+
 # Set the working directory to our pyrenew-hew directory, which represents the repository as a whole
 WORKDIR /pyrenew-hew
 
@@ -23,6 +26,14 @@ RUN Rscript -e "pak::local_install('hewr', upgrade = FALSE)"
 
 # Copy in the binaries for UV Python - see https://docs.astral.sh/uv/guides/integration/docker/
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Julia 1.11 from official image
+COPY --from=julia:1.11 /usr/local/julia /usr/local/julia
+ENV PATH="/usr/local/julia/bin:${PATH}"
+
+# Cache Julia packages and artifacts
+RUN --mount=type=cache,target=/root/.julia \
+    julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
 
 # Some handy uv environment variables
 ENV UV_COMPILE_BYTECODE=1
@@ -58,3 +69,5 @@ COPY ./dagster_defs.py ./
 
 # Update PATH to use the selected venv
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync
