@@ -219,6 +219,7 @@ class PostProcessConfig(CommonConfig):
     skip_existing: bool = True
     save_local_copy: bool = False
     local_copy_dir: str = "" # "stf_forecast_fig_share"
+    postprocess_diseases: list[str] = ["COVID-19", "Influenza", "RSV"]
 
 # ----------------------
 # Model Worker Function
@@ -408,60 +409,32 @@ def epiautogp(context: dg.AssetExecutionContext):
 
 
 # -- Postprocessing Forecast Batches -- #
+# TODO: integrate this asset into the DAG fully, and trigger it via sensors
 
-@dg.asset(
-    partitions_def=disease_partitions
-)
+@dg.asset
 def postprocess_forecasts(
     context: dg.AssetExecutionContext, config: PostProcessConfig,
-    timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew
+    # timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew # TODO: dependencies
 ):
     """
-    Postprocess forecast batches for a given disease partition.
+    Postprocess forecast batches.
     """
-    disease = context.partition_key
-    print(disease)
     postprocess(
         base_forecast_dir=config.output_dir,
-        diseases=list(disease),
+        diseases=config.postprocess_diseases,
         skip_existing=config.skip_existing,
         local_copy_dir=config.output_dir,
     )
     return "postprocess_forecasts"
 
 # ------------------------------------------------------------------------------------------------- #
-# Orchestration of Partitioned Assets - Model Runs
-#
-# Scheduling full pipeline runs and defining a flexible configuration
-# We use dagster ops and jobs here to launch asset backfills with custom configuration
+# Orchestration of Partitioned Assets - Model Runs                                                  #
+#    and Post-Processing via Jobs and Schedules                                                     #
+# Scheduling full pipeline runs and defining a flexible configuration                               #
+# We use dagster ops and jobs here to launch asset backfills with custom configuration              #
 # ------------------------------------------------------------------------------------------------- #
 
-## Prototype - Simple Asset Job Definition and Schedule ##
-
-# Experimental asset job to materialize all pyrenew assets
-run_pyrenew_hew_gui = dg.define_asset_job(
-    name="RunPyrenewHew_GUI",
-    executor_def=azure_batch_executor_configured,
-    selection=[
-        "timeseries_e",
-        "pyrenew_e",
-        "pyrenew_h",
-        "pyrenew_he",
-        "pyrenew_hw",
-        "pyrenew_hew",
-    ],
-    # tag the run with your user to allow for easy filtering in the Dagster UI
-    tags={"user": user},
-)
-
-run_postprocess_forecasts_gui = dg.define_asset_job(
-    name="RunPostprocessForecasts_GUI",
-    executor_def=dg.multiprocess_executor if not is_production else azure_batch_executor_configured,
-    selection=[postprocess_forecasts],
-    tags={"user": user},
-)
-
-## Data Availability Check Functions ##
+## --- Ops for Data Availability Checks --- ##
 
 @dg.op
 def check_nhsn_data_availability():
@@ -527,6 +500,7 @@ def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container
         "current_date": current_date,
     }
 
+## -- Op for Launching Full Backfill Pipeline -- ##
 ## Backfill Launch Method - Flexible Configuration via Op and Job ##
 
 # This is an op (non-materialized asset function) that launches backfills, as used in scheduled jobs
@@ -537,9 +511,7 @@ def launch_pyrenew_pipeline(
 ) -> dg.Output[str]:
 
     # We are referencing the global pyrenew_multi_partition_def defined earlier
-    partition_keys = pyrenew_multi_partition_def.get_partition_keys() # TODO: remove slice and/or config-parametrize  once ready for prod
-
-    asset_selection = ()
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys()
 
     # Determine which assets to backfill based on data availability
     nhsn_available = check_nhsn_data_availability()["exists"] # H Data
@@ -617,6 +589,31 @@ def launch_pyrenew_pipeline(
         }
     )
 
+## -- Jobs -- ##
+
+# Experimental asset job to materialize all pyrenew assets
+run_pyrenew_hew_gui = dg.define_asset_job(
+    name="RunPyrenewHew_GUI",
+    executor_def=azure_batch_executor_configured,
+    selection=[
+        "timeseries_e",
+        "pyrenew_e",
+        "pyrenew_h",
+        "pyrenew_he",
+        "pyrenew_hw",
+        "pyrenew_hew",
+    ],
+    # tag the run with your user to allow for easy filtering in the Dagster UI
+    tags={"user": user},
+)
+
+run_postprocess_forecasts_gui = dg.define_asset_job(
+    name="RunPostprocessForecasts_GUI",
+    executor_def=docker_executor_configured if not is_production else azure_batch_executor_configured,
+    selection=[postprocess_forecasts],
+    tags={"user": user},
+)
+
 # This wraps our launch_pipeline op in a job that can be scheduled or manually launched via the GUI
 @dg.job(
     executor_def=dg.multiprocess_executor,
@@ -634,7 +631,20 @@ def launch_pyrenew_pipeline(
 def weekly_pyrenew_via_backfill():
     launch_pyrenew_pipeline()
 
+@dg.job(
+    executor_def=dg.multiprocess_executor,
+    tags={
+        "cfa_dagster/launcher": {
+            "class": dg.DefaultRunLauncher.__name__
+        }
+    }
+)
+def check_all_data():
+    check_nhsn_data_availability() # H Data
+    check_nssp_gold_data_availability() # E Data
+    check_nwss_gold_data_availability() # W Data
 
+## -- Schedules -- ##
 weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     default_status=(
         dg.DefaultScheduleStatus.RUNNING
@@ -651,28 +661,12 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     execution_timezone="America/New_York",
 )
 
-@dg.job(
-    executor_def=dg.multiprocess_executor,
-    tags={
-        "cfa_dagster/launcher": {
-            "class": dg.DefaultRunLauncher.__name__
-        }
-    }
-)
-def check_all_data():
-    nhsn=check_nhsn_data_availability() # H Data
-    print("NHSN data availability", nhsn)
-    nssp=check_nssp_gold_data_availability() # E Data
-    print("NSSP gold data availability", nssp)
-    nwss=check_nwss_gold_data_availability() # W Data
-    print("NWSS gold data availability", nwss)
-
-# -------------- Dagster Definitions Object --------------- #
-# This code allows us to collect all of the above definitions
-# into a single Definitions object for Dagster to read!
-# By doing this, we can keep our Dagster code in a single file
-# instead of splitting it across multiple files.
-# --------------------------------------------------------- #
+# -------------- Dagster Definitions Object ------------------ #
+# This code allows us to collect all of the above definitions  #
+# into a single Definitions object for Dagster to read!        #
+# By doing this, we can keep our Dagster code in a single file #
+# instead of splitting it across multiple files.               #
+# ------------------------------------------------------------ #
 
 # change storage accounts between dev and prod
 storage_account = "cfadagster" if is_production else "cfadagsterdev"
@@ -699,7 +693,8 @@ defs = dg.Definitions(
     },
     # New ** syntax combines executor and launcher metadata
     **(
-        azure_batch_metadata # comment when testing locally, take care not to submit too many jobs
+        # azure_batch_metadata # comment when testing locally, take care not to submit too many jobs
         # docker_metadata # use this when running locally - be careful not to use the backfill job locally
+        azure_batch_metadata if is_production else docker_metadata
     ),
 )
