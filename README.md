@@ -76,7 +76,6 @@ The following instructions will set up Dagster on your VAP. However, based on th
 6. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
 
 #### Production Scheduling
-> This section is under construction.
 
 Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
 
