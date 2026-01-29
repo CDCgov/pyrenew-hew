@@ -352,12 +352,6 @@ if __name__ == "__main__":
         help="Number of threads for Julia execution (default: 1).",
     )
     parser.add_argument(
-        "--report-date",
-        type=str,
-        default="latest",
-        help="Report date in YYYY-MM-DD format or 'latest' (default: latest).",
-    )
-    parser.add_argument(
         "--n-forecast-days",
         type=int,
         default=28,

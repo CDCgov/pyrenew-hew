@@ -279,4 +279,4 @@ def string_to_boolean(value: str | bool) -> bool:
     elif value.lower() in ("no", "false", "f", "n", "0"):
         return False
     else:
-        raise ValueError("Boolean value expected.")
+        raise ValueError(f"Boolean value expected, got: {value!r}")

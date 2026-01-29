@@ -48,7 +48,6 @@ def main(
         Name(s) of disease(s) to run as part of the job,
         as a list of strings.
         Supported values are 'COVID-19', 'Influenza', and 'RSV'.
-        Supported values are 'COVID-19', 'Influenza', and 'RSV'.
     output_subdir
         Subdirectory of the output blob storage container
         in which to save results.
