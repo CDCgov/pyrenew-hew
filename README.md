@@ -11,10 +11,11 @@ The PyRenew-HEW project aims to create short-term forecasts of respiratory disea
 
 This is a work in progress, and not all data sources are currently integrated into the model.
 
-This repository contains code for the [PyRenew-HEW model](https://github.com/CDCgov/pyrenew-hew/blob/main/pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](https://github.com/CDCgov/pyrenew-hew/tree/main/pyrenew_hew) for running the model in production, and [utilities](https://github.com/CDCgov/pyrenew-hew/tree/main/hewr) for working with model outputs.
+This repository contains code for the [PyRenew-HEW model](https://github.com/CDCgov/pyrenew-hew/blob/main/pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](https://github.com/CDCgov/pyrenew-hew/tree/main/pipelines/) for running the model in production, and [utilities](https://github.com/CDCgov/pyrenew-hew/tree/main/hewr) for working with model outputs.
 
 ## Containers
 
+### Standard Container
 The project uses GitHub Actions for automatically building container images based on the project's [Containerfile](Containerfile). The images are currently hosted on Github Container Registry and are built and pushed via the [containers.yaml](.github/workflows/containers.yaml) GitHub Actions workflow.
 
 Images can also be built locally. The [Makefile](Makefile) contains several targets for building and pushing images. Although the Makefile uses Docker as the default engine, the `ENGINE` environment variable can be set to `podman` to use Podman instead, for example:
@@ -29,18 +30,82 @@ Container images pushed to the Azure Container Registry are automatically tagged
 
 ## Running Model Pipelines
 > [!NOTE]
->
-> Please contact a project maintainer if you believe you need access to pipelines.
-> CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
+PyRenew-HEW Azure Batch Modeling Pipelines can only be run by CDC internal users on the CFA Virtual Analyst Platform.
 
+There are four ways to run PyRenew-HEW Azure Batch Modeling Code:
+1. [PyRenew-Cron](#1-pyrenew-cron) - a separate repository on cdcent github (see below) - automated in Github Actions.
+2. [Dagster Workflow Orchestration](#2-dagster-workflow-orchestration) - automated, feature rich GUI.
+3. [The Azure Command Center](#3-azure-command-center) - interactive/manual.
+4. [Makefile targets](#4-makefile-targets) - interactive/manual.
+
+### 1. PyRenew-Cron
+
+> [!IMPORTANT]
+> - CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
+> - Note that these jobs rely upon this repository, so changes to the CLIs here have the potential to break things over there.
+
+PyRenew-Cron is our first approach to scheduling and automating pipelines in production.
+- Pyrenew-Cron checks for data availability, launches jobs based on that availability, and re-polls to check for job completions.
+- As of December 2025, this pipeline is production ready and reliably produces production outputs as intended.
+- See the `Pyrenew-Cron` [repository](https://github.com/cdcent/pyrenew-cron) for more information.
+
+### 2. Dagster Workflow Orchestration
+
+When mature, our dagster implementation is intended to replace the `Azure Command Center` and `PyRenew-Cron`.
+Development is ongoing - you can test an early version by following the steps below.
+
+#### Local Development and Testing
+> Prerequisites: `uv`. `docker`, a VAP VM with a registered managed identity in Azure, and rights to the cfaprdbatchcr container registry. Contact cfatoolsteam@cdc.gov for assistance with the latter two.
+
+The following instructions will set up Dagster on your VAP. However, based on the current configuration, actual execution will still run in the cloud via Azure Batch. You can change the `executor` option in `dagster_defs.py` to test using the local Docker Executor - this will require you to have setup Blobfuse.
+
+1. Setup your `uv virtual environment`:
+    - `uv sync`
+    - `source .venv/bin/activate`
+2. Login to Azure and the Batch Container Registry:
+    - `az login --identity && az acr login -n cfaprdbatchcr`
+3. Build and push the `pyrenew-hew:dagster_latest` image:
+    - `docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile . --push`
+3. Start the Dagster UI by running `uv run dagster_defs.py` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
+4. You should now see the dagster UI for Pyrenew-HEW. This is a local server that will only show PyRenew-HEW asssets as defined in your local git repository.
+5. Try materializing an asset by navigating to "Lineage" on the left sidebar. By default, these assets will submit jobs to Azure Batch and write to the `pyrenew-test-output` blob.
+    - We recommend materializing a few partitions at a time for testing purposes.
+    ![alt text](img/dagster_lineage.png)
+    - You will get a pop-up directing you to your asset runs, which provide progress logs.
+    ![alt text](img/dagster_runs.png)
+6. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
+
+#### Production Scheduling
+
+Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
+
+To manually update the code location while we evaluate dagster, you can run `make dagster_push_prod`. This manual approach will be deprecated and discouraged once we move to using dagster in production.
+
+To login to the production server, head to https://dagster.apps.edav.ext.cdc.gov/.
+
+#### Makefile Targets for Dagster
+After you've familiarized yourself with the above instructions, feel free to use these convenient `make` targets:
+- `make dagster_build`: builds your dagster image.
+- `make dagster_push`: builds your dagster image, then pushes it.
+- `make dagster_push_prod`: runs dagster_push, then uploads the central dagster scheduling server's code for pyrenew-hew.
+- `make dagster`: runs the dagster UI locally.
+- `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
+- `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
+
+### 3. Azure Command Center
 > Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
 
-> Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
+You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch the Azure Command Center.
+- The Azure Command Center will check for necessary data before offering to run pipelines.
+- You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.
+- The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
-Pipelines can be run interactively or non-interactively:
-- `pipelines/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
-- The `Makefile` also provides targets that will run pipelines non-interactively. Run `make help` for more information.
-- Pipelines are run through the command line python interface when scheduled using [Pyrenew-Cron](https://github.com/cdcent/pyrenew-cron).
+### 4. Makefile Targets
+Run `make help` to see the Makefile targets you can use to run Azure Batch pipelines.
+- This method is useful for supplying custom parameters to the batch pipelines, and also lets you perform 'Dry Runs' which will tell you what _would_ happen if you ran the code.
+- You will need to check data availability manually or with the Azure Command Center.
+
+----
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
