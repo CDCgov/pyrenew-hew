@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if the base directory is provided as an argument
-if [[ $# -ne 4 ]]; then
-	echo "Usage: $0 <base_dir> <disease> <location> <model_letters>"
+if [[ $# -ne 3 ]]; then
+	echo "Usage: $0 <base_dir> <disease> <location>"
 	exit 1
 fi
 
