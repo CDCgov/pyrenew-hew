@@ -1,5 +1,5 @@
 [project]
-name = "pyrenew-hew"
+name = "cfa-stf-routine-forecasting"
 version = "0.1.0"
 description = "Models and infrastructure for forecasting COVID-19 and Flu hospitalizations using wastewater data with PyRenew"
 readme = "README.md"

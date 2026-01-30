@@ -86,7 +86,7 @@ def get_pyrenew_container_settings(
     test: bool = False,
 ) -> models.TaskContainerSettings:
     """
-    Get container settings for pyrenew-hew jobs.
+    Get container settings for cfa-stf-routine-forecasting jobs.
 
     Parameters
     ----------
@@ -110,27 +110,27 @@ def get_pyrenew_container_settings(
         mount_pairs=[
             {
                 "source": "nssp-etl",
-                "target": "/pyrenew-hew/nssp-etl",
+                "target": "/cfa-stf-routine-forecasting/nssp-etl",
             },
             {
                 "source": "nssp-archival-vintages",
-                "target": "/pyrenew-hew/nssp-archival-vintages",
+                "target": "/cfa-stf-routine-forecasting/nssp-archival-vintages",
             },
             {
                 "source": "prod-param-estimates",
-                "target": "/pyrenew-hew/params",
+                "target": "/cfa-stf-routine-forecasting/params",
             },
             {
-                "source": pyrenew_hew_output_container,
-                "target": "/pyrenew-hew/output",
+                "source": cfa_stf_output_container,
+                "target": "/cfa-stf-routine-forecasting/output",
             },
             {
-                "source": "pyrenew-hew-config",
-                "target": "/pyrenew-hew/config",
+                "source": "cfa-stf-routine-forecasting-config",
+                "target": "/cfa-stf-routine-forecasting/config",
             },
             {
                 "source": "nwss-vintages",
-                "target": "/pyrenew-hew/nwss-vintages",
+                "target": "/cfa-stf-routine-forecasting/nwss-vintages",
             },
         ],
     )
@@ -148,7 +148,7 @@ def print_job_header(model_family: str) -> None:
     console = Console()
     console.print(
         Panel.fit(
-            f"[bold magenta]🚀 pyrenew-hew: Azure Batch Job Submission ({model_family}) 🚀",
+            f"[bold magenta]🚀 cfa-stf-routine-forecasting: Azure Batch Job Submission ({model_family}) 🚀",
             border_style="magenta",
         )
     )

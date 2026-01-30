@@ -9,7 +9,7 @@ on:
         type: string
 
 env:
-  IMAGE_NAME: pyrenew-hew
+  IMAGE_NAME: cfa-stf-routine-forecasting
 
 jobs:
   delete-container:

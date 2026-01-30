@@ -2234,7 +2234,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyrenew-hew"
+name = "cfa-stf-routine-forecasting"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
