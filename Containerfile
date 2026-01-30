@@ -10,10 +10,10 @@ ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
 
 ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 
-COPY ./hewr /pyrenew-hew/hewr
-COPY ./EpiAutoGP /pyrenew-hew/EpiAutoGP
+COPY ./hewr /cfa-stf-routine-forecasting/hewr
+COPY ./EpiAutoGP /cfa-stf-routine-forecasting/EpiAutoGP
 
-WORKDIR /pyrenew-hew
+WORKDIR /cfa-stf-routine-forecasting
 
 RUN Rscript -e "install.packages('pak')"
 RUN Rscript -e "pak::local_install('hewr', upgrade = FALSE)"

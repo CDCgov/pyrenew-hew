@@ -16,7 +16,7 @@ abstract type AbstractHubverseOutput <: AbstractForecastOutput end
     PipelineOutput <: AbstractForecastOutput
 
 Abstract type for directly outputting forecasts as typical pipeline outputs for
-    `pyrenew-hew`.
+    `cfa-stf-routine-forecasting`.
 """
 struct PipelineOutput <: AbstractForecastOutput end
 

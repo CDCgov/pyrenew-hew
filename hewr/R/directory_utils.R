@@ -1,5 +1,5 @@
 #' Utilities for handling and parsing directory names
-#' based on pyrenew-hew pipeline conventions.
+#' based on cfa-stf-routine-forecasting pipeline conventions.
 
 disease_map_lower <- c(
   "covid-19" = "COVID-19",

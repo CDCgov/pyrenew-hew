@@ -7,7 +7,7 @@ ENGINE = docker
 endif
 
 ifndef CONTAINER_NAME
-CONTAINER_NAME = pyrenew-hew
+CONTAINER_NAME = cfa-stf-routine-forecasting
 endif
 
 ifndef CONTAINERFILE

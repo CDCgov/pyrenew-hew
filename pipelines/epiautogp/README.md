@@ -116,9 +116,9 @@ output_dir/
                 └── plots/
 ```
 
-## Integration with pyrenew-hew
+## Integration with cfa-stf-routine-forecasting
 
-This module follows the same design patterns as other forecasting models in the pyrenew-hew pipeline:
+This module follows the same design patterns as other forecasting models in the cfa-stf-routine-forecasting pipeline:
 - Shared pipeline utilities (`setup_forecast_pipeline`, `prepare_model_data`)
 - Common data formats (TSV training data, hubverse tables)
 - Consistent directory structure

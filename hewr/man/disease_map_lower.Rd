@@ -4,7 +4,7 @@
 \name{disease_map_lower}
 \alias{disease_map_lower}
 \title{Utilities for handling and parsing directory names
-based on pyrenew-hew pipeline conventions.}
+based on cfa-stf-routine-forecasting pipeline conventions.}
 \format{
 An object of class \code{character} of length 3.
 }
@@ -13,6 +13,6 @@ disease_map_lower
 }
 \description{
 Utilities for handling and parsing directory names
-based on pyrenew-hew pipeline conventions.
+based on cfa-stf-routine-forecasting pipeline conventions.
 }
 \keyword{datasets}
