@@ -256,7 +256,6 @@ def main(
     # This is the context of the forecast pipeline
     context = setup_forecast_pipeline(
         disease=disease,
-        report_date=report_date,
         loc=loc,
         target=target,
         frequency=frequency,
