@@ -126,7 +126,6 @@ jobs:
 
       - name: Set up Julia
         uses: julia-actions/setup-julia@v2
-        with:
 
       - name: Run tests
         uses: julia-actions/julia-runtest@v1
