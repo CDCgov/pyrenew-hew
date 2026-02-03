@@ -77,7 +77,7 @@ container_build: ghcr_login
 	$(ENGINE) build . -t $(CONTAINER_IMAGE_NAME) -f $(CONTAINERFILE)
 
 dagster_build:
-	docker build -t cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest -f Containerfile .
+	docker build -t ghcr.io/cdcgov/pyrenew-hew:latest -f Containerfile .
 
 dagster:
 	uv run dagster_defs.py

@@ -50,7 +50,7 @@ user = os.getenv("DAGSTER_USER")
 
 workdir = "pyrenew-hew"
 local_workdir = Path(__file__).parent.resolve()
-image = "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
+image = "ghcr.io/cdcgov/pyrenew-hew:dagster_latest"
 
 # add this to a job or the Definitions class to use it
 docker_executor_configured = docker_executor.configured(
