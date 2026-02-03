@@ -32,6 +32,7 @@ dependencies = [
     "dagster==1.12.2",
     "dagster-graphql==1.12.2",
     "cfa-dagster @ git+https://github.com/cdcgov/cfa-dagster.git",
+    "jax<0.8.2",
 ]
 
 [build-system]

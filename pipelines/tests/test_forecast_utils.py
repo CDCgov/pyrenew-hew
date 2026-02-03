@@ -139,7 +139,6 @@ class TestSetupForecastPipeline:
 
         context = setup_forecast_pipeline(
             disease="COVID-19",
-            report_date="latest",
             loc="CA",
             target="nssp",
             frequency="epiweekly",
@@ -179,7 +178,6 @@ class TestSetupForecastPipeline:
 
         context = setup_forecast_pipeline(
             disease="COVID-19",
-            report_date="latest",
             loc="CA",
             target="nssp",
             frequency="epiweekly",
