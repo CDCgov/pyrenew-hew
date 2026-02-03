@@ -73,35 +73,37 @@ unmount:
 # Container Build Targets
 # ----------------------- #
 
+ghcr_login:
+	@if [ -z "$(GH_PAT)" ] || [ -z "$(GH_USERNAME)" ]; then \
+		echo "Error: GH_PAT and GH_USERNAME environment variables must be set to log in to GitHub Container Registry"; \
+		exit 1; \
+	fi; \
+	echo "$$GH_PAT" | $(ENGINE) login ghcr.io -u "$(GH_USERNAME)" --password-stdin
+
 container_build: ghcr_login
 	$(ENGINE) build . -t $(CONTAINER_IMAGE_NAME) -f $(CONTAINERFILE)
 
-dagster_build:
-	docker build -t ghcr.io/cdcgov/pyrenew-hew:latest -f Containerfile .
-
-dagster:
-	uv run dagster_defs.py
-
-dagster_push: dagster_build
-	az login --identity && \
-	az acr login -n cfaprdbatchcr && \
-	docker push "cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest"
-
-dagster_push_prod: dagster_push
-	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
-    	--registry_image cfaprdbatchcr.azurecr.io/pyrenew-hew:dagster_latest
-
 container_tag:
 	$(ENGINE) tag $(CONTAINER_IMAGE_NAME) $(CONTAINER_REMOTE_NAME)
-
-ghcr_login:
-	echo $(GH_PAT) | $(ENGINE) login ghcr.io -u $(GH_USERNAME) --password-stdin
 
 container_push: CONTAINER_IMAGE_VERSION ghcr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
 
 config:
 	bash -c "source ./azureconfig.sh"
+
+dagster_build:
+	docker build -t ghcr.io/cdcgov/pyrenew-hew:dagster_latest -f Containerfile .
+
+dagster:
+	uv run dagster_defs.py
+
+dagster_push: ghcr_login dagster_build
+	docker push "ghcr.io/cdcgov/pyrenew-hew:dagster_latest"
+
+dagster_push_prod: dagster_push
+	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
+    	--registry_image ghcr.io/cdcgov/pyrenew-hew:dagster_latest
 
 # ---------------- #
 # Model Fit Targets
