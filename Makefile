@@ -26,26 +26,10 @@ ifndef CONTAINERFILE
 CONTAINERFILE = Containerfile
 endif
 
-# Model Fit Parameters
+# Post-processing Parameters
 
 ifndef FORECAST_DATE
 FORECAST_DATE = $(shell date +%Y-%m-%d)
-endif
-
-ifndef TEST
-TEST = False
-endif
-
-ifndef DRY_RUN
-DRY_RUN = False
-endif
-
-ifndef ENVIRONMENT
-ENVIRONMENT = prod
-endif
-
-ifndef RNG_KEY
-RNG_KEY = 12345
 endif
 
 # ----------- #
@@ -72,6 +56,7 @@ help:
 	@echo ""
 	@echo "Model Fit Targets: "
 	@echo "  acc                 : Run the Azure Command Center for routine production jobs"
+	@echo "  post_process        : Post-process model outputs."
 	@echo "Passing a flag through ARGS will also override the flags set previously."
 
 #------------------------ #
