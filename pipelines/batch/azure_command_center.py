@@ -16,7 +16,7 @@ from rich.text import Text
 
 from pipelines.batch.setup_pyrenew_job import main as setup_pyrenew_job_raw
 from pipelines.batch.setup_timeseries_job import main as setup_timeseries_job_raw
-from pipelines.postprocess_forecast_batches import main as postprocess
+from pipelines.utils.postprocess_forecast_batches import main as postprocess
 
 LOCAL_COPY_DIR = Path.home() / "stf_forecast_fig_share"
 

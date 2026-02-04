@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from pipelines.cli_utils import run_command
+from pipelines.utils.cli_utils import run_command
 
 
 def load_credentials(
@@ -466,7 +466,7 @@ def plot_and_save_loc_forecast(
         )
 
     run_r_script(
-        "pipelines/plot_and_save_loc_forecast.R",
+        "pipelines/utils/plot_and_save_loc_forecast.R",
         args,
         function_name="plot_and_save_loc_forecast",
     )

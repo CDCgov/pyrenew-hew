@@ -6,11 +6,11 @@ import logging
 
 import pytest
 
-from pipelines.cli_utils import (
+from pipelines.utils.cli_utils import (
     add_common_forecast_arguments,
     run_command,
 )
-from pipelines.common_utils import (
+from pipelines.utils.common_utils import (
     calculate_training_dates,
     get_available_reports,
     load_credentials,

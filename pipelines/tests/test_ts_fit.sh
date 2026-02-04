@@ -10,7 +10,7 @@ BASE_DIR="$1"
 disease="$2"
 location="$3"
 
-python pipelines/forecast_timeseries.py \
+python pipelines/fable/forecast_timeseries.py \
 	--disease "$disease" \
 	--loc "$location" \
 	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold" \

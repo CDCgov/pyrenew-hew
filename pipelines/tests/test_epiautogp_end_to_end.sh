@@ -42,7 +42,7 @@ fi
 echo "========================================="
 echo "Step 1: Generating test data"
 echo "========================================="
-uv run python pipelines/generate_test_data.py "$BASE_DIR"
+uv run python pipelines/data/generate_test_data.py "$BASE_DIR"
 
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Generating test data failed"

@@ -5,12 +5,12 @@ on:
     branches: [main]
     paths-ignore:
       - "pipelines/batch/**"
-      - "pipelines/azure_command_center.py"
+      - "pipelines/batch/azure_command_center.py"
   push:
     branches: [main]
     paths-ignore:
       - "pipelines/batch/**"
-      - "pipelines/azure_command_center.py"
+      - "pipelines/batch/azure_command_center.py"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -31,7 +31,7 @@ jobs:
         uses: ./.github/actions/setup-pyrenew-hew
 
       - name: Generate test data
-        run: uv run python pipelines/generate_test_data.py ${{ env.BASE_DIR }}
+        run: uv run python pipelines/data/generate_test_data.py ${{ env.BASE_DIR }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
@@ -341,5 +341,5 @@ jobs:
 
       - name: Run postprocessing
         run: |
-          uv run python pipelines/postprocess_forecast_batches.py \
+          uv run python pipelines/utils/postprocess_forecast_batches.py \
           ${{ env.FORECAST_DIR }}

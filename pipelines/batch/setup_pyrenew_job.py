@@ -109,7 +109,7 @@ def main(
     container_settings = get_pyrenew_container_settings(container_image, test)
 
     # Build command
-    run_script = "forecast_pyrenew.py"
+    run_script = "pyrenew_hew/forecast_pyrenew.py"
     additional_args = (
         f"--n-samples {n_samples} "
         f"--n-chains {n_chains} "

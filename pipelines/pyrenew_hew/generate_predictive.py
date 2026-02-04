@@ -10,7 +10,7 @@ import numpy as np
 import polarbayes as pb
 import polars as pl
 
-from pipelines.utils import build_pyrenew_hew_model_from_dir
+from pipelines.utils.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 from pyrenew_hew.utils import (
     flags_from_pyrenew_model_name,

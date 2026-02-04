@@ -21,12 +21,12 @@ import polars.selectors as cs
 from jax._src.typing import Array
 from scipy.stats import expon, norm
 
-from pipelines.prep_data import (
+from pipelines.data.prep_data import (
     process_and_save_loc_data,
     process_and_save_loc_param,
 )
-from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
-from pipelines.utils import build_pyrenew_hew_model_from_dir
+from pipelines.data.prep_ww_data import clean_nwss_data, preprocess_ww_data
+from pipelines.utils.utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 FACILITY_LEVEL_NSSP_DATA_COLS = [
