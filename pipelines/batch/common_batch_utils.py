@@ -125,7 +125,7 @@ def get_pyrenew_container_settings(
                 "target": "/cfa-stf-routine-forecasting/output",
             },
             {
-                "source": "cfa-stf-routine-forecasting-config",
+                "source": "pyrenew-hew-config",
                 "target": "/cfa-stf-routine-forecasting/config",
             },
             {
