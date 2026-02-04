@@ -593,9 +593,9 @@ def launch_pyrenew_pipeline(
 ## -- Jobs -- ##
 
 # Experimental asset job to materialize all pyrenew assets
-run_pyrenew_hew_gui = dg.define_asset_job(
-    name="RunPyrenewHew_GUI",
-    executor_def=azure_batch_executor_configured,
+run_pyrenew_hew_on_local_docker = dg.define_asset_job(
+    name="RunPyrenewHewLocalDocker",
+    executor_def=docker_executor_configured,
     selection=[
         "timeseries_e",
         "pyrenew_e",
@@ -608,8 +608,8 @@ run_pyrenew_hew_gui = dg.define_asset_job(
     tags={"user": user},
 )
 
-run_postprocess_forecasts_gui = dg.define_asset_job(
-    name="RunPostprocessForecasts_GUI",
+run_postprocess_forecasts = dg.define_asset_job(
+    name="RunPostprocessForecasts",
     executor_def=docker_executor_configured if not is_production else azure_batch_executor_configured,
     selection=[postprocess_forecasts],
     tags={"user": user},
@@ -685,8 +685,8 @@ defs = dg.Definitions(
     },
     # New ** syntax combines executor and launcher metadata
     **(
-        # azure_batch_metadata # comment when testing locally, take care not to submit too many jobs
+        azure_batch_metadata # comment when testing locally, take care not to submit too many jobs
         # docker_metadata # use this when running locally - be careful not to use the backfill job locally
-        azure_batch_metadata if is_production else docker_metadata
+        # azure_batch_metadata if is_production else docker_metadata
     ),
 )
