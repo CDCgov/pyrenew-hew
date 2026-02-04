@@ -1,7 +1,7 @@
 #syntax=docker/dockerfile:1-labs
 
 # We pin to a specific version for reproducibility; increment manually as needed
-FROM rocker/tidyverse:4.5.1
+FROM rocker/tidyverse:4.5.2
 
 ARG GIT_COMMIT_SHA
 ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
