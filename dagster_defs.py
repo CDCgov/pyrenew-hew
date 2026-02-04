@@ -66,13 +66,13 @@ docker_executor_configured = docker_executor.configured(
                 # the container image for workflow changes
                 f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
                 # blob container mounts for pyrenew-hew
-                f"/{local_workdir}/mounts/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
-                f"/{local_workdir}/mounts/nssp-etl:/pyrenew-hew/nssp-etl",
-                f"/{local_workdir}/mounts/nwss-vintages:/pyrenew-hew/nwss-vintages",
-                f"/{local_workdir}/mounts/params:/pyrenew-hew/params",
-                f"/{local_workdir}/mounts/config:/pyrenew-hew/config",
-                f"/{local_workdir}/mounts/output:/pyrenew-hew/output",
-                f"/{local_workdir}/mounts/test-output:/pyrenew-hew/test-output",
+                f"/{local_workdir}/blobfuse/mounts/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                f"/{local_workdir}/blobfuse/mounts/nssp-etl:/pyrenew-hew/nssp-etl",
+                f"/{local_workdir}/blobfuse/mounts/nwss-vintages:/pyrenew-hew/nwss-vintages",
+                f"/{local_workdir}/blobfuse/mounts/params:/pyrenew-hew/params",
+                f"/{local_workdir}/blobfuse/mounts/config:/pyrenew-hew/config",
+                f"/{local_workdir}/blobfuse/mounts/output:/pyrenew-hew/output",
+                f"/{local_workdir}/blobfuse/mounts/test-output:/pyrenew-hew/test-output",
             ]
         },
     }

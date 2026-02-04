@@ -405,4 +405,4 @@ azureconfig.sh
 
 # blobfuse
 config.yaml
-mounts/
+blobfuse/mounts/
