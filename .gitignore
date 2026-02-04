@@ -400,18 +400,7 @@ pipelines/tests/end_to_end_test_output/*
 pipelines/tests/epiautogp_end_to_end_test_output/*
 
 # subdirs reserved for mounting blob storage containers
-config
-nssp-archival-vintages
-nssp-etl
-output
-params
-nwss-vintages
-mounts
-prod-param-estimates
-pyrenew-hew-config
-pyrenew-hew-prod-output
-pyrenew-test-output
-test-output
+mounts/
 
 # Azure configuration files
 azureconfig.env

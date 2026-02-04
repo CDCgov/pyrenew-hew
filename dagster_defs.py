@@ -30,7 +30,7 @@ from dagster_azure.blob import (
 from pipelines.postprocess_forecast_batches import main as postprocess
 
 # ---------------------- #
-# Dagster Initialization
+# Dagster Initialization #
 # ---------------------- #
 
 # function to start the dev server
@@ -66,13 +66,13 @@ docker_executor_configured = docker_executor.configured(
                 # the container image for workflow changes
                 f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
                 # blob container mounts for pyrenew-hew
-                f"/{local_workdir}/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
-                f"/{local_workdir}/nssp-etl:/pyrenew-hew/nssp-etl",
-                f"/{local_workdir}/nwss-vintages:/pyrenew-hew/nwss-vintages",
-                f"/{local_workdir}/params:/pyrenew-hew/params",
-                f"/{local_workdir}/config:/pyrenew-hew/config",
-                f"/{local_workdir}/output:/pyrenew-hew/output",
-                f"/{local_workdir}/test-output:/pyrenew-hew/test-output",
+                f"/{local_workdir}/mounts/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
+                f"/{local_workdir}/mounts/nssp-etl:/pyrenew-hew/nssp-etl",
+                f"/{local_workdir}/mounts/nwss-vintages:/pyrenew-hew/nwss-vintages",
+                f"/{local_workdir}/mounts/params:/pyrenew-hew/params",
+                f"/{local_workdir}/mounts/config:/pyrenew-hew/config",
+                f"/{local_workdir}/mounts/output:/pyrenew-hew/output",
+                f"/{local_workdir}/mounts/test-output:/pyrenew-hew/test-output",
             ]
         },
     }
@@ -225,8 +225,9 @@ class PostProcessConfig(CommonConfig):
 # Model Worker Function
 # ----------------------
 
-# This function is NOT an asset itself, but iscalled by assets to run the pyrenew model
-def run_pyrenew_model(
+# This function is NOT an asset itself, but is called by assets to run the pyrenew model
+
+def run_stf_model(
     context: dg.AssetExecutionContext,
     config: ModelConfig,
     model_letters: str,
@@ -309,9 +310,9 @@ def run_pyrenew_model(
     subprocess.run(base_call, shell=True, check=True)
 
 
-# --------------------------------------------------------------------
-# Assets: these are the core of Dagster - functions that specify data
-# --------------------------------------------------------------------
+# -------------------------------------------------------------------- #
+# Assets: these are the core of Dagster - functions that specify data  #
+# -------------------------------------------------------------------- #
 
 # -- Pyrenew Assets -- #
 
@@ -323,7 +324,7 @@ def timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Timeseries-e model and produce outputs.
     """
-    run_pyrenew_model(context, config, model_letters="e", model_family="timeseries")
+    run_stf_model(context, config, model_letters="e", model_family="timeseries")
     return "timeseries_e"
 
 
@@ -336,7 +337,7 @@ def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries
     """
     Run Pyrenew-e model and produce outputs.
     """
-    run_pyrenew_model(context, config, model_letters="e", model_family="pyrenew")
+    run_stf_model(context, config, model_letters="e", model_family="pyrenew")
     return "pyrenew_e"
 
 
@@ -348,7 +349,7 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Pyrenew-h model and produce outputs.
     """
-    run_pyrenew_model(context, config, model_letters="h", model_family="pyrenew")
+    run_stf_model(context, config, model_letters="h", model_family="pyrenew")
     return "pyrenew_h"
 
 
@@ -360,7 +361,7 @@ def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeserie
     """
     Run Pyrenew-he model and produce outputs.
     """
-    run_pyrenew_model(context, config, model_letters="he", model_family="pyrenew")
+    run_stf_model(context, config, model_letters="he", model_family="pyrenew")
     return "pyrenew_he"
 
 
@@ -372,7 +373,7 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Pyrenew-hw model and produce outputs.
     """
-    run_pyrenew_model(context, config, model_letters="hw", model_family="pyrenew")
+    run_stf_model(context, config, model_letters="hw", model_family="pyrenew")
     return "pyrenew_hw"
 
 
@@ -384,17 +385,8 @@ def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseri
     """
     Run Pyrenew-hew model and produce outputs.
     """
-    run_pyrenew_model(context, config, model_letters="hew", model_family="pyrenew")
+    run_stf_model(context, config, model_letters="hew", model_family="pyrenew")
     return "pyrenew_hew"
-
-# Use this template for new models. If needed, add dependencies as an argument and overrides in the config
-
-# @dg.asset(
-#     partitions_def=pyrenew_multi_partition_def
-# )
-# def pyrenew_generic(context: dg.AssetExecutionContext, config: ModelConfig):
-#     run_pyrenew_model(context, config, model_letters="<?>", model_family="pyrenew")
-#     return "pyrenew_generic"
 
 # -- Epi AutoGP Asset -- #
 
@@ -405,8 +397,17 @@ def epiautogp(context: dg.AssetExecutionContext):
     """
     # Placeholder logic for Epi AutoGP forecasts
     context.log.info("Epi AutoGP forecast asset executed.")
+    # run_stf_model(context, config, model_family="epiautogp") # TODO: implement Epi AutoGP model and uncomment this line
     return "epiautogp"
 
+# Use this template for new models. If needed, add dependencies as an argument and overrides in the config
+
+# @dg.asset(
+#     partitions_def=pyrenew_multi_partition_def
+# )
+# def pyrenew_generic(context: dg.AssetExecutionContext, config: ModelConfig):
+#     run_stf_model(context, config, model_letters="<?>", model_family="pyrenew")
+#     return "pyrenew_generic"
 
 # -- Postprocessing Forecast Batches -- #
 # TODO: integrate this asset into the DAG fully, and trigger it via sensors
@@ -617,11 +618,6 @@ run_postprocess_forecasts_gui = dg.define_asset_job(
 # This wraps our launch_pipeline op in a job that can be scheduled or manually launched via the GUI
 @dg.job(
     executor_def=dg.multiprocess_executor,
-    tags={
-        "cfa_dagster/launcher": {
-            "class": dg.DefaultRunLauncher.__name__
-        }
-    },
     config=dg.RunConfig(
         ops={
             "launch_pyrenew_pipeline": ModelConfig()
@@ -633,11 +629,6 @@ def weekly_pyrenew_via_backfill():
 
 @dg.job(
     executor_def=dg.multiprocess_executor,
-    tags={
-        "cfa_dagster/launcher": {
-            "class": dg.DefaultRunLauncher.__name__
-        }
-    }
 )
 def check_all_data():
     check_nhsn_data_availability() # H Data
@@ -645,6 +636,7 @@ def check_all_data():
     check_nwss_gold_data_availability() # W Data
 
 ## -- Schedules -- ##
+
 weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     default_status=(
         dg.DefaultScheduleStatus.RUNNING
