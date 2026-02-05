@@ -1,7 +1,7 @@
-# PyRenew-HEW
-| hewr | pyrenew-hew | pipelines |
-| ---- | ----------- | --------- |
-| [![hewr](https://codecov.io/gh/CDCgov/pyrenew-hew/branch/main/graph/badge.svg?flag=hewr)](https://codecov.io/gh/CDCgov/pyrenew-hew) | [![pyrenew_hew](https://codecov.io/gh/CDCgov/pyrenew-hew/graph/badge.svg?flag=pyrenew_hew)](https://codecov.io/gh/CDCgov/pyrenew-hew) | [![pipelines](https://codecov.io/gh/CDCgov/pyrenew-hew/graph/badge.svg?flag=pipelines)](https://codecov.io/gh/CDCgov/pyrenew-hew) |
+# CFA STF Routine Forecasting
+| hewr                                                                                                                                                                | cfa-stf-routine-forecasting                                                                                                                                           | pipelines                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![hewr](https://codecov.io/gh/CDCgov/cfa-stf-routine-forecasting/branch/main/graph/badge.svg?flag=hewr)](https://codecov.io/gh/CDCgov/cfa-stf-routine-forecasting) | [![pyrenew_hew](https://codecov.io/gh/CDCgov/cfa-stf-routine-forecasting/graph/badge.svg?flag=pyrenew_hew)](https://codecov.io/gh/CDCgov/cfa-stf-routine-forecasting) | [![pipelines](https://codecov.io/gh/CDCgov/cfa-stf-routine-forecasting/graph/badge.svg?flag=pipelines)](https://codecov.io/gh/CDCgov/cfa-stf-routine-forecasting) |
 
 The PyRenew-HEW project aims to create short-term forecasts of respiratory disease burden using the [PyRenew library](https://github.com/CDCgov/PyRenew) and several data sources:
 
@@ -11,7 +11,7 @@ The PyRenew-HEW project aims to create short-term forecasts of respiratory disea
 
 This is a work in progress, and not all data sources are currently integrated into the model.
 
-This repository contains code for the [PyRenew-HEW model](https://github.com/CDCgov/pyrenew-hew/blob/main/pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](https://github.com/CDCgov/pyrenew-hew/tree/main/pyrenew_hew) for running the model in production, and [utilities](https://github.com/CDCgov/pyrenew-hew/tree/main/hewr) for working with model outputs.
+This repository contains code for the [PyRenew-HEW model](pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](pipelines) for running the model in production, and [utilities](hewr) for working with model outputs.
 
 ## Containers
 
@@ -22,7 +22,7 @@ Images can also be built locally. The [Makefile](Makefile) contains several targ
 ```bash
 ENGINE=podman make container_build
 # Equivalent to:
-# podman build . -t pyrenew-hew -f Containerfile
+# podman build . -t cfa-stf-routine-forecasting -f Containerfile
 ```
 
 Container images pushed to the Azure Container Registry are automatically tagged as either `latest` (if the commit is on the `main` branch) or with the branch name (if the commit is on a different branch). After a branch is deleted, the image tag is remove from the registry via the [delete-container-tag.yaml](.github/workflows/delete-container-tag.yaml) GitHub Actions workflow.
