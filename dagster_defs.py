@@ -266,7 +266,7 @@ def run_stf_model(
     # =====================================
     if model_family == "pyrenew":
         # from forecast_pyrenew import forecast_pyrenew  # noqa: F401
-        run_script = "forecast_pyrenew.py"
+        run_script = "pyrenew_hew/forecast_pyrenew.py"
         additional_args = (
             f"--n-samples {config.n_samples} "
             f"--n-chains {config.n_chains} "
@@ -278,7 +278,7 @@ def run_stf_model(
         if config.additional_forecast_letters:
             additional_args += f"--additional-forecast-letters {config.additional_forecast_letters} "
     elif model_family == "timeseries":
-        run_script = "forecast_timeseries.py"
+        run_script = "fable/forecast_timeseries.py"
         additional_args = f"--n-samples {config.n_total_samples} "
     else:
         raise ValueError(
