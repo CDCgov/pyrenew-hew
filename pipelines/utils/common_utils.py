@@ -544,14 +544,14 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
         raise ValueError(
             f"Invalid model batch directory name format: {model_batch_dir_name}"
         )
-    
+
     if disease not in disease_map_lower_:
         valid_diseases = ", ".join(disease_map_lower_.keys())
         raise ValueError(
             f"Unknown disease '{disease}' in model batch directory name. "
             f"Valid diseases are: {valid_diseases}"
         )
-    
+
     return dict(
         disease=disease_map_lower_[disease],
         report_date=dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
