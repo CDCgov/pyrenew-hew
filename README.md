@@ -11,7 +11,7 @@ The PyRenew-HEW project aims to create short-term forecasts of respiratory disea
 
 This is a work in progress, and not all data sources are currently integrated into the model.
 
-This repository contains code for the [PyRenew-HEW model](https://github.com/CDCgov/cfa-stf-routine-forecasting/blob/main/pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](https://github.com/CDCgov/cfa-stf-routine-forecasting/tree/main/pyrenew_hew) for running the model in production, and [utilities](https://github.com/CDCgov/cfa-stf-routine-forecasting/tree/main/hewr) for working with model outputs.
+This repository contains code for the [PyRenew-HEW model](pyrenew_hew/pyrenew_hew_model.py) itself, as well as [pipelines](pipelines) for running the model in production, and [utilities](hewr) for working with model outputs.
 
 ## Containers
 
