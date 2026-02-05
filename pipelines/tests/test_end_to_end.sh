@@ -18,7 +18,7 @@ if [ -d "$BASE_DIR" ]; then
 	fi
 fi
 
-uv run python pipelines/generate_test_data.py "$BASE_DIR"
+uv run python pipelines/data/generate_test_data.py "$BASE_DIR"
 
 if [ "$?" -ne 0 ]; then
 	echo "TEST-MODE FAIL: Generating test data failed"
@@ -148,7 +148,7 @@ echo "TEST-MODE: All pipeline runs complete."
 
 echo "TEST-MODE: Running batch postprocess..."
 
-python pipelines/postprocess_forecast_batches.py \
+python pipelines/utils/postprocess_forecast_batches.py \
 	"$BASE_DIR/2024-12-21_forecasts"
 
 if [ "$?" -ne 0 ]; then

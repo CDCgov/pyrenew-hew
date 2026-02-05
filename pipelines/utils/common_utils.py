@@ -2,12 +2,27 @@
 
 import datetime as dt
 import logging
+import os
+import re
+import runpy
 import subprocess
 import tomllib
 from pathlib import Path
 from typing import Any
 
-from pipelines.cli_utils import run_command
+from forecasttools import ensure_listlike, location_table
+
+from pipelines.utils.cli_utils import run_command
+from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
+from pyrenew_hew.utils import build_pyrenew_hew_model
+
+# Disease mapping and location abbreviations
+disease_map_lower_ = {
+    "influenza": "Influenza",
+    "covid-19": "COVID-19",
+    "rsv": "RSV",
+}
+loc_abbrs_ = location_table["short_name"].to_list()
 
 
 def load_credentials(
@@ -466,7 +481,7 @@ def plot_and_save_loc_forecast(
         )
 
     run_r_script(
-        "pipelines/plot_and_save_loc_forecast.R",
+        "pipelines/utils/plot_and_save_loc_forecast.R",
         args,
         function_name="plot_and_save_loc_forecast",
     )
@@ -502,3 +517,189 @@ def create_hubverse_table(model_fit_path: Path) -> None:
         text=True,
     )
     return None
+
+
+def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
+    """
+    Parse the name of a model batch directory,
+    returning a dictionary of parsed values.
+
+    Parameters
+    ----------
+    model_batch_dir_name
+       Model batch directory name to parse.
+
+    Returns
+    -------
+    dict
+       A dictionary with keys 'disease', 'report_date',
+       'first_training_date', and 'last_training_date'.
+    """
+    regex_match = re.match(r"(.+)_r_(.+)_f_(.+)_t_(.+)", model_batch_dir_name)
+    if regex_match:
+        disease, report_date, first_training_date, last_training_date = (
+            regex_match.groups()
+        )
+    else:
+        raise ValueError(
+            f"Invalid model batch directory name format: {model_batch_dir_name}"
+        )
+
+    if disease not in disease_map_lower_:
+        valid_diseases = ", ".join(disease_map_lower_.keys())
+        raise ValueError(
+            f"Unknown disease '{disease}' in model batch directory name. "
+            f"Valid diseases are: {valid_diseases}"
+        )
+
+    return dict(
+        disease=disease_map_lower_[disease],
+        report_date=dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
+        first_training_date=dt.datetime.strptime(
+            first_training_date, "%Y-%m-%d"
+        ).date(),
+        last_training_date=dt.datetime.strptime(last_training_date, "%Y-%m-%d").date(),
+    )
+
+
+def get_all_forecast_dirs(
+    parent_dir: Path | str,
+    diseases: str | list[str],
+    report_date: str | dt.date = None,
+) -> list[str]:
+    """
+    Get all the subdirectories within a parent directory
+    that match the pattern for a forecast run for a
+    given disease and optionally a given report date.
+
+    Parameters
+    ----------
+    parent_dir
+       Directory in which to look for forecast subdirectories.
+
+    diseases
+       Name of the diseases to match, as a list of strings,
+       or a single disease as a string.
+
+    Returns
+    -------
+    list[str]
+        Names of matching directories, if any, otherwise an empty
+        list.
+
+    Raises
+    ------
+    ValueError
+        Given an invalid ``report_date``.
+    """
+    diseases = ensure_listlike(diseases)
+
+    if report_date is None:
+        report_date_str = ""
+    elif isinstance(report_date, str):
+        report_date_str = report_date
+    elif isinstance(report_date, dt.date):
+        report_date_str = f"{report_date:%Y-%m-%d}"
+    else:
+        raise ValueError(
+            "report_date must be one of None, "
+            "a string in the format YYYY-MM-DD "
+            "or a datetime.date instance. "
+            f"Got {type(report_date)}."
+        )
+    valid_starts = tuple(
+        [f"{disease.lower()}_r_{report_date_str}" for disease in diseases]
+    )
+    # by convention, disease names are
+    # lowercase in directory patterns
+
+    return [
+        f.name
+        for f in os.scandir(parent_dir)
+        if f.is_dir() and f.name.startswith(valid_starts)
+    ]
+
+
+def get_all_model_run_dirs(parent_dir: Path) -> list[str]:
+    """
+    Get all the subdirectories within a parent directory
+    that are valid model run directories (by convention,
+    named with the two-letter code of a forecast location).
+
+    Parameters
+    ----------
+    parent_dir
+       Directory in which to look for model run subdirectories.
+
+    Returns
+    -------
+    list[str]
+        Names of matching directories, if any, otherwise an empty
+        list.
+    """
+
+    return [
+        f.name for f in os.scandir(parent_dir) if f.is_dir() and f.name in loc_abbrs_
+    ]
+
+
+def build_pyrenew_hew_model_from_dir(
+    model_dir: Path | str = None,
+    prior_path: Path | str = None,
+    model_params_path: Path | str = None,
+    fit_ed_visits: bool = False,
+    fit_hospital_admissions: bool = False,
+    fit_wastewater: bool = False,
+):
+    """
+    Build a PyRenew HEW model from a directory or specified paths.
+
+    Parameters
+    ----------
+    model_dir : Path | str, optional
+        Directory containing priors.py and data/model_params.json.
+        If provided, prior_path and model_params_path are ignored.
+    prior_path : Path | str, optional
+        Path to the priors.py file. Required if model_dir is not provided.
+    model_params_path : Path | str, optional
+        Path to the model_params.json file. Required if model_dir is not provided.
+    fit_ed_visits : bool, optional
+        Whether to fit ED visits data, by default False.
+    fit_hospital_admissions : bool, optional
+        Whether to fit hospital admissions data, by default False.
+    fit_wastewater : bool, optional
+        Whether to fit wastewater data, by default False.
+
+    Returns
+    -------
+    model
+        The built PyRenew HEW model.
+
+    Raises
+    ------
+    ValueError
+        If neither model_dir nor both prior_path and model_params_path are provided.
+    """
+    if model_dir is not None:
+        prior_path = Path(model_dir) / "priors.py"
+        model_params_path = Path(model_dir) / "data" / "model_params.json"
+    else:
+        if prior_path is None or model_params_path is None:
+            raise ValueError(
+                "Either model_dir must be provided, "
+                "or both prior_path and model_params_path "
+                "must be provided."
+            )
+        prior_path = Path(prior_path)
+        model_params_path = Path(model_params_path)
+
+    priors = runpy.run_path(str(prior_path))
+    model_params = PyrenewHEWParam.from_json(model_params_path)
+    my_model = build_pyrenew_hew_model(
+        priors,
+        model_params,
+        fit_ed_visits=fit_ed_visits,
+        fit_hospital_admissions=fit_hospital_admissions,
+        fit_wastewater=fit_wastewater,
+    )
+    return my_model

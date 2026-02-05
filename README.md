@@ -38,7 +38,7 @@ Container images pushed to the Azure Container Registry are automatically tagged
 > Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
 
 Pipelines can be run interactively or non-interactively:
-- `pipelines/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
+- `pipelines/batch/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
 - The `Makefile` also provides targets that will run pipelines non-interactively. Run `make help` for more information.
 - Pipelines are run through the command line python interface when scheduled using [Pyrenew-Cron](https://github.com/cdcent/pyrenew-cron).
 

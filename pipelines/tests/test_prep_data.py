@@ -4,7 +4,7 @@ from datetime import date
 import polars as pl
 import pytest
 
-from pipelines import prep_data
+from pipelines.data import prep_data
 
 valid_diseases = ["COVID-19", "Influenza", "RSV"]
 

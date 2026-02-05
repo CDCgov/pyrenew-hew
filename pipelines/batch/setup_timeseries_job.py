@@ -94,7 +94,7 @@ def main(
     container_settings = get_pyrenew_container_settings(container_image, test)
 
     # Build command
-    run_script = "forecast_timeseries.py"
+    run_script = "fable/forecast_timeseries.py"
     additional_args = f"--n-samples {n_total_samples} "
 
     base_call = (
