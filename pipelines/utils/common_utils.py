@@ -544,6 +544,14 @@ def parse_model_batch_dir_name(model_batch_dir_name: str) -> dict:
         raise ValueError(
             f"Invalid model batch directory name format: {model_batch_dir_name}"
         )
+    
+    if disease not in disease_map_lower_:
+        valid_diseases = ", ".join(disease_map_lower_.keys())
+        raise ValueError(
+            f"Unknown disease '{disease}' in model batch directory name. "
+            f"Valid diseases are: {valid_diseases}"
+        )
+    
     return dict(
         disease=disease_map_lower_[disease],
         report_date=dt.datetime.strptime(report_date, "%Y-%m-%d").date(),
@@ -643,6 +651,35 @@ def build_pyrenew_hew_model_from_dir(
     fit_hospital_admissions: bool = False,
     fit_wastewater: bool = False,
 ):
+    """
+    Build a PyRenew HEW model from a directory or specified paths.
+
+    Parameters
+    ----------
+    model_dir : Path | str, optional
+        Directory containing priors.py and data/model_params.json.
+        If provided, prior_path and model_params_path are ignored.
+    prior_path : Path | str, optional
+        Path to the priors.py file. Required if model_dir is not provided.
+    model_params_path : Path | str, optional
+        Path to the model_params.json file. Required if model_dir is not provided.
+    fit_ed_visits : bool, optional
+        Whether to fit ED visits data, by default False.
+    fit_hospital_admissions : bool, optional
+        Whether to fit hospital admissions data, by default False.
+    fit_wastewater : bool, optional
+        Whether to fit wastewater data, by default False.
+
+    Returns
+    -------
+    model
+        The built PyRenew HEW model.
+
+    Raises
+    ------
+    ValueError
+        If neither model_dir nor both prior_path and model_params_path are provided.
+    """
     if model_dir is not None:
         prior_path = Path(model_dir) / "priors.py"
         model_params_path = Path(model_dir) / "data" / "model_params.json"
