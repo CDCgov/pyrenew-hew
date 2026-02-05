@@ -4,7 +4,7 @@ from pathlib import Path
 import jax
 import numpy as np
 
-from pipelines.utils.utils import build_pyrenew_hew_model_from_dir
+from pipelines.utils.common_utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
