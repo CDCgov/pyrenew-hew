@@ -12,9 +12,12 @@ import logging
 import shutil
 from pathlib import Path
 
-import pipelines.collate_plots as cp
-from pipelines.common_utils import run_r_script
-from pipelines.utils import get_all_forecast_dirs, parse_model_batch_dir_name
+from pipelines.utils import collate_plots as cp
+from pipelines.utils.common_utils import (
+    get_all_forecast_dirs,
+    parse_model_batch_dir_name,
+    run_r_script,
+)
 
 
 def _hubverse_table_filename(report_date: str | dt.date, disease: str) -> None:
@@ -33,7 +36,7 @@ def combine_hubverse_tables(model_batch_dir_path: str | Path) -> None:
     output_path = Path(model_batch_dir_path, output_file_name)
 
     run_r_script(
-        "pipelines/combine_hubverse_tables.R",
+        "pipelines/utils/combine_hubverse_tables.R",
         [
             f"{model_batch_dir_path}",
             f"{output_path}",

@@ -100,13 +100,6 @@ You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch
 - You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.
 - The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
-### 4. Makefile Targets
-Run `make help` to see the Makefile targets you can use to run Azure Batch pipelines.
-- This method is useful for supplying custom parameters to the batch pipelines, and also lets you perform 'Dry Runs' which will tell you what _would_ happen if you ran the code.
-- You will need to check data availability manually or with the Azure Command Center.
-
-----
-
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
 

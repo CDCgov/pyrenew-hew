@@ -10,8 +10,15 @@ import polars as pl
 import tomli_w
 from pygit2.repository import Repository
 
-from pipelines.cli_utils import add_common_forecast_arguments
-from pipelines.common_utils import (
+from pipelines.data.prep_data import (
+    process_and_save_loc_data,
+    process_and_save_loc_param,
+)
+from pipelines.data.prep_ww_data import clean_nwss_data, preprocess_ww_data
+from pipelines.pyrenew_hew.fit_pyrenew_model import fit_and_save_model
+from pipelines.pyrenew_hew.generate_predictive import generate_and_save_predictions
+from pipelines.utils.cli_utils import add_common_forecast_arguments
+from pipelines.utils.common_utils import (
     calculate_training_dates,
     create_hubverse_table,
     get_available_reports,
@@ -19,10 +26,6 @@ from pipelines.common_utils import (
     plot_and_save_loc_forecast,
     run_r_script,
 )
-from pipelines.fit_pyrenew_model import fit_and_save_model
-from pipelines.generate_predictive import generate_and_save_predictions
-from pipelines.prep_data import process_and_save_loc_data, process_and_save_loc_param
-from pipelines.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pyrenew_hew.utils import (
     flags_from_hew_letters,
     pyrenew_model_name_from_flags,
@@ -83,7 +86,7 @@ def generate_epiweekly_data(data_dir: Path) -> None:
     args = [str(data_dir)]
 
     run_r_script(
-        "pipelines/generate_epiweekly_data.R",
+        "pipelines/data/generate_epiweekly_data.R",
         args,
         function_name="generate_epiweekly_data",
     )

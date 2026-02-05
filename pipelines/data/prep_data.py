@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import polars as pl
 import polars.selectors as cs
 
-from pipelines.common_utils import py_scalar_to_r_scalar, run_r_code
+from pipelines.utils.common_utils import py_scalar_to_r_scalar, run_r_code
 from pyrenew_hew.utils import approx_lognorm
 
 _disease_map = {

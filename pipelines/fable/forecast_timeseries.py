@@ -5,8 +5,12 @@ from pathlib import Path
 
 import polars as pl
 
-from pipelines.cli_utils import add_common_forecast_arguments
-from pipelines.common_utils import (
+from pipelines.data.prep_data import process_and_save_loc_data
+from pipelines.pyrenew_hew.forecast_pyrenew import (
+    generate_epiweekly_data,
+)
+from pipelines.utils.cli_utils import add_common_forecast_arguments
+from pipelines.utils.common_utils import (
     calculate_training_dates,
     create_hubverse_table,
     get_available_reports,
@@ -14,10 +18,6 @@ from pipelines.common_utils import (
     plot_and_save_loc_forecast,
     run_r_script,
 )
-from pipelines.forecast_pyrenew import (
-    generate_epiweekly_data,
-)
-from pipelines.prep_data import process_and_save_loc_data
 
 
 def timeseries_ensemble_forecasts(
@@ -34,7 +34,7 @@ def timeseries_ensemble_forecasts(
     if epiweekly:
         script_args.append("--epiweekly")
     run_r_script(
-        "pipelines/forecast_timeseries_ensemble.R",
+        "pipelines/fable/fit_timeseries.R",
         script_args,
         function_name="timeseries_ensemble_forecasts",
     )
