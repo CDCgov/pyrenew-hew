@@ -13,8 +13,11 @@ import shutil
 from pathlib import Path
 
 from pipelines.utils import collate_plots as cp
-from pipelines.utils.common_utils import run_r_script
-from pipelines.utils.utils import get_all_forecast_dirs, parse_model_batch_dir_name
+from pipelines.utils.common_utils import (
+    get_all_forecast_dirs,
+    parse_model_batch_dir_name,
+    run_r_script,
+)
 
 
 def _hubverse_table_filename(report_date: str | dt.date, disease: str) -> None:

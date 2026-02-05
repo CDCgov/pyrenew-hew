@@ -26,7 +26,7 @@ from pipelines.data.prep_data import (
     process_and_save_loc_param,
 )
 from pipelines.data.prep_ww_data import clean_nwss_data, preprocess_ww_data
-from pipelines.utils.utils import build_pyrenew_hew_model_from_dir
+from pipelines.utils.common_utils import build_pyrenew_hew_model_from_dir
 from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 FACILITY_LEVEL_NSSP_DATA_COLS = [
