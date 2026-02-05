@@ -172,6 +172,4 @@ run_hew_model:
 
 post_process:
 	uv run python pipelines/utils/postprocess_forecast_batches.py \
-    	--input "./blobfuse/mounts/pyrenew-hew-prod-output/${FORECAST_DATE}_forecasts" \
-    	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}_forecasts.parquet" \
 		${ARGS}
