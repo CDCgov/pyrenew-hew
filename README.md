@@ -30,28 +30,22 @@ Container images pushed to the Azure Container Registry are automatically tagged
 
 ## Running Model Pipelines
 > [!NOTE]
-PyRenew-HEW Azure Batch Modeling Pipelines can only be run by CDC internal users on the CFA Virtual Analyst Platform.
+> Azure Batch Forecasting Pipelines can only be run by CDC internal users on the CFA Virtual Analyst Platform.
 
-There are four ways to run PyRenew-HEW Azure Batch Modeling Code:
-1. [PyRenew-Cron](#1-pyrenew-cron) - a separate repository on cdcent github (see below) - automated in Github Actions.
-2. [Dagster Workflow Orchestration](#2-dagster-workflow-orchestration) - automated, feature rich GUI.
-3. [The Azure Command Center](#3-azure-command-center) - interactive/manual.
-4. [Makefile targets](#4-makefile-targets) - interactive/manual.
+There are two ways to run Azure Batch Modeling Code:
+1. [Dagster Workflow Orchestration](#2-dagster-workflow-orchestration) - automated, feature rich GUI.
+2. [The Azure Command Center](#3-azure-command-center) - interactive/manual.
 
-### 1. PyRenew-Cron
+### 1. Azure Command Center
+> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
 
-> [!IMPORTANT]
-> - CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
-> - Note that these jobs rely upon this repository, so changes to the CLIs here have the potential to break things over there.
-
-PyRenew-Cron is our first approach to scheduling and automating pipelines in production.
-- Pyrenew-Cron checks for data availability, launches jobs based on that availability, and re-polls to check for job completions.
-- As of December 2025, this pipeline is production ready and reliably produces production outputs as intended.
-- See the `Pyrenew-Cron` [repository](https://github.com/cdcent/pyrenew-cron) for more information.
+You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch the Azure Command Center.
+- The Azure Command Center will check for necessary data before offering to run pipelines.
+- You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.
+- The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
 ### 2. Dagster Workflow Orchestration
 
-When mature, our dagster implementation is intended to replace the `Azure Command Center` and `PyRenew-Cron`.
 Development is ongoing - you can test an early version by following the steps below.
 
 #### Local Development and Testing
@@ -91,14 +85,6 @@ After you've familiarized yourself with the above instructions, feel free to use
 - `make dagster`: runs the dagster UI locally.
 - `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
 - `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
-
-### 3. Azure Command Center
-> Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
-
-You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch the Azure Command Center.
-- The Azure Command Center will check for necessary data before offering to run pipelines.
-- You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.
-- The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
