@@ -2,7 +2,7 @@
 Data preparation and conversion functions for EpiAutoGP.
 
 This module provides functions to convert surveillance data from the
-pyrenew-hew pipeline format to the JSON format expected by EpiAutoGP.
+cfa-stf-routine-forecasting pipeline format to the JSON format expected by EpiAutoGP.
 """
 
 import datetime as dt
@@ -73,7 +73,7 @@ def convert_to_epiautogp_json(
     """
     Convert surveillance data to EpiAutoGP JSON format.
 
-    This function reads surveillance data from the pyrenew-hew pipeline
+    This function reads surveillance data from the cfa-stf-routine-forecasting pipeline
     and converts it to the JSON format required by EpiAutoGP. It supports
     both daily and epiweekly data, and can output either counts or percentages.
 

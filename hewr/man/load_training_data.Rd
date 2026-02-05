@@ -2,7 +2,7 @@
 % Please edit documentation in R/timeseries_utils.R
 \name{load_training_data}
 \alias{load_training_data}
-\title{Utilities for timeseries forecasting scripts in the pyrenew-hew
+\title{Utilities for timeseries forecasting scripts in the cfa-stf-routine-forecasting
 pipeline.
 Load Training Data for Timeseries Forecasting}
 \usage{
