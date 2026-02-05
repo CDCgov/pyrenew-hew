@@ -95,7 +95,7 @@ setup_timeseries_job = confirm_append_job_id(setup_timeseries_job_raw)
 
 fit_timeseries_e = partial(
     setup_timeseries_job,
-    job_id="timeseries-e-prod-",
+    job_id="pyrenew-ts-e-prod-",
     pool_id="pyrenew-pool",
     container_image_version=container_image_version,
     diseases=E_DISEASES,
