@@ -15,7 +15,6 @@ This repository contains code for the [PyRenew-HEW model](pyrenew_hew/pyrenew_he
 
 ## Containers
 
-### Standard Container
 The project uses GitHub Actions for automatically building container images based on the project's [Containerfile](Containerfile). The images are currently hosted on Github Container Registry and are built and pushed via the [containers.yaml](.github/workflows/containers.yaml) GitHub Actions workflow.
 
 Images can also be built locally. The [Makefile](Makefile) contains several targets for building and pushing images. Although the Makefile uses Docker as the default engine, the `ENGINE` environment variable can be set to `podman` to use Podman instead, for example:
