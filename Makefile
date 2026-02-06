@@ -96,7 +96,7 @@ dagster:
 
 dagster_push_prod: container_push
 	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
-    	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest
+    	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest
 
 # ---------------- #
 # Model Fit Targets
