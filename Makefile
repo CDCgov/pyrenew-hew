@@ -94,7 +94,9 @@ config:
 dagster:
 	uv run dagster_defs.py
 
-dagster_push_prod: container_build container_push
+dagster_push_prod:
+	docker build . -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest -f Containerfile && \
+	docker push ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest && \
 	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
     	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest
 
