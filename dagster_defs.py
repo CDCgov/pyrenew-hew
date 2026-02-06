@@ -27,15 +27,15 @@ from dagster_azure.blob import (
 # CFA Helper Libraries
 from forecasttools import location_table
 
-# Model Code
-# from pipelines.forecast_pyrenew import main as forecast_pyrenew
-# from pipelines.forecast_timeseries import main as forecast_timeseries
-from pipelines.postprocess_forecast_batches import main as postprocess
-
 from pipelines.batch.common_batch_utils import (
     DEFAULT_EXCLUDED_LOCATIONS,
     SUPPORTED_DISEASES,
 )
+
+# Model Code
+# from pipelines.forecast_pyrenew import main as forecast_pyrenew
+# from pipelines.forecast_timeseries import main as forecast_timeseries
+from pipelines.utils.postprocess_forecast_batches import main as postprocess
 
 # ---------------------- #
 # Dagster Initialization #
@@ -56,7 +56,7 @@ user = os.getenv("DAGSTER_USER")
 # - See later on for Asset job definitions
 # --------------------------------------------------------- #"
 
-workdir = "pyrenew-hew"
+workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 image = "ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest"
 
@@ -64,7 +64,10 @@ image = "ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest"
 docker_executor_configured = docker_executor.configured(
     {
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "env_vars": [
+            f"DAGSTER_USER={user}",
+            "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
+        ],
         "retries": {"enabled": {}},
         "container_kwargs": {
             "volumes": [
@@ -73,14 +76,14 @@ docker_executor_configured = docker_executor.configured(
                 # bind current file so we don't have to rebuild
                 # the container image for workflow changes
                 f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
-                # blob container mounts for pyrenew-hew
-                f"/{local_workdir}/blobfuse/mounts/nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
-                f"/{local_workdir}/blobfuse/mounts/nssp-etl:/pyrenew-hew/nssp-etl",
-                f"/{local_workdir}/blobfuse/mounts/nwss-vintages:/pyrenew-hew/nwss-vintages",
-                f"/{local_workdir}/blobfuse/mounts/params:/pyrenew-hew/params",
-                f"/{local_workdir}/blobfuse/mounts/config:/pyrenew-hew/config",
-                f"/{local_workdir}/blobfuse/mounts/output:/pyrenew-hew/output",
-                f"/{local_workdir}/blobfuse/mounts/test-output:/pyrenew-hew/test-output",
+                # blob container mounts for cfa-stf-routine-forecasting
+                f"/{local_workdir}/blobfuse/mounts/nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
+                f"/{local_workdir}/blobfuse/mounts/nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
+                f"/{local_workdir}/blobfuse/mounts/nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
+                f"/{local_workdir}/blobfuse/mounts/params:/cfa-stf-routine-forecasting/params",
+                f"/{local_workdir}/blobfuse/mounts/config:/cfa-stf-routine-forecasting/config",
+                f"/{local_workdir}/blobfuse/mounts/output:/cfa-stf-routine-forecasting/output",
+                f"/{local_workdir}/blobfuse/mounts/test-output:/cfa-stf-routine-forecasting/test-output",
             ]
         },
     }
@@ -88,11 +91,14 @@ docker_executor_configured = docker_executor.configured(
 
 # configuring an executor to run workflow steps on Azure Container App Jobs
 # add this to a job or the Definitions class to use it
-# Container app jobs cant have mounted volumes, so we would need to refactor pyrenew-hew to use this
+# Container app jobs cant have mounted volumes, so we would need to refactor cfa-stf-routine-forecasting to use this
 azure_caj_executor_configured = azure_caj_executor.configured(
     {
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "env_vars": [
+            f"DAGSTER_USER={user}",
+            "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
+        ],
     }
 )
 
@@ -102,23 +108,26 @@ azure_batch_executor_configured = azure_batch_executor.configured(
     {
         "pool_name": "pyrenew-dagster-pool",
         "image": image,
-        "env_vars": [f"DAGSTER_USER={user}", "VIRTUAL_ENV=/pyrenew-hew/.venv"],
+        "env_vars": [
+            f"DAGSTER_USER={user}",
+            "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
+        ],
         "container_kwargs": {
             "volumes": [
                 # bind the ~/.azure folder for optional cli login
                 # f"/home/{user}/.azure:/root/.azure",
                 # bind current file so we don't have to rebuild
                 # the container image for workflow changes
-                # blob container mounts for pyrenew-hew
-                "nssp-archival-vintages:/pyrenew-hew/nssp-archival-vintages",
-                "nssp-etl:/pyrenew-hew/nssp-etl",
-                "nwss-vintages:/pyrenew-hew/nwss-vintages",
-                "prod-param-estimates:/pyrenew-hew/params",
-                "pyrenew-hew-config:/pyrenew-hew/config",
-                "pyrenew-hew-prod-output:/pyrenew-hew/output",
-                "pyrenew-test-output:/pyrenew-hew/test-output",
+                # blob container mounts for cfa-stf-routine-forecasting
+                "nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
+                "nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
+                "nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
+                "prod-param-estimates:/cfa-stf-routine-forecasting/params",
+                "pyrenew-hew-config:/cfa-stf-routine-forecasting/config",
+                "pyrenew-hew-prod-output:/cfa-stf-routine-forecasting/output",
+                "pyrenew-test-output:/cfa-stf-routine-forecasting/test-output",
             ],
-            "working_dir": "/pyrenew-hew",
+            "working_dir": "/cfa-stf-routine-forecasting",
         },
     }
 )
@@ -695,8 +704,8 @@ defs = dg.Definitions(
     },
     # New ** syntax combines executor and launcher metadata
     **(
-        azure_batch_metadata  # comment when testing locally, take care not to submit too many jobs
+        # azure_batch_metadata  # comment when testing locally, take care not to submit too many jobs
         # docker_metadata # use this when running locally - be careful not to use the backfill job locally
-        # azure_batch_metadata if is_production else docker_metadata
+        azure_batch_metadata if is_production else docker_metadata
     ),
 )

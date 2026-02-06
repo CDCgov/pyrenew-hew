@@ -79,13 +79,13 @@ ghcr_login:
 	fi; \
 	echo "$$GH_PAT" | $(ENGINE) login ghcr.io -u "$(GH_USERNAME)" --password-stdin
 
-container_build: ghcr_login
-	$(ENGINE) build . -t $(CONTAINER_IMAGE_NAME) -f $(CONTAINERFILE)
+container_build:
+	$(ENGINE) build . -t $(CONTAINER_REMOTE_NAME) -f $(CONTAINERFILE)
 
 container_tag:
-	$(ENGINE) tag $(CONTAINER_IMAGE_NAME) $(CONTAINER_REMOTE_NAME)
+	$(ENGINE) tag $(CONTAINER_REMOTE_NAME) $(CONTAINER_REMOTE_NAME)
 
-container_push: CONTAINER_IMAGE_VERSION ghcr_login
+container_push: ghcr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
 
 config:
