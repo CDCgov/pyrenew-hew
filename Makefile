@@ -1,5 +1,3 @@
-.PHONY: help container_build container_tag ghcr_login container_push post_process acc mount unmount config dagster dagster_build
-
 # Build parameters
 
 ifndef ENGINE
@@ -45,16 +43,17 @@ help:
 	@echo "  unmount            : Unmount blob storage containers and clean up"
 	@echo ""
 	@echo "Container Build Targets: "
-	@echo "  container_build     : Build the container image"
-	@echo "  dagster             : Run dagster definitions locally"
-	@echo "  dagster_build       : Build the dagster container image"
-	@echo "  dagster_push        : Push the dagster container image to the Azure Container Registry"
-	@echo "  dagster_push_prod   : Push the dagster container image to the Azure Container Registry and code location for production"
-	@echo "  container_tag       : Tag the container image"
 	@echo "  ghcr_login          : Log in to the Github Container Registry. Requires GH_USERNAME and GH_PAT env vars"
-	@echo "  container_push      : Push the container image to the Azure Container Registry"
+	@echo "  container_build     : Build the container image"
+	@echo "  container_tag	     : Tag the container image for pushing to the registry"
+	@echo "  container_push	     : Push the container image"
+	@echo ""
+	@echo "Dagster Targets: "
+	@echo "  dagster             : Run dagster definitions locally"
+	@echo "  dagster_push_prod   : Push the dagster container image to the Azure Container Registry and code location for production"
 	@echo ""
 	@echo "Model Fit Targets: "
+	@echo "  config              : Source the azureconfig.sh file to set environment variables for Azure access"
 	@echo "  acc                 : Run the Azure Command Center for routine production jobs"
 	@echo "  post_process        : Post-process model outputs."
 	@echo "Passing a flag through ARGS will also override the flags set previously."
@@ -92,16 +91,10 @@ container_push: CONTAINER_IMAGE_VERSION ghcr_login
 config:
 	bash -c "source ./azureconfig.sh"
 
-dagster_build:
-	docker build -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest -f Containerfile .
-
 dagster:
 	uv run dagster_defs.py
 
-dagster_push: ghcr_login dagster_build
-	docker push "ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest"
-
-dagster_push_prod: dagster_push
+dagster_push_prod: container_push
 	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
     	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest
 
