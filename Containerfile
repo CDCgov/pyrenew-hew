@@ -54,7 +54,7 @@ RUN uv venv .venv
 RUN --mount=type=cache,target=/root/.cache/uv
 
 # Set VIRTUAL_ENV variable at runtime
-ENV VIRTUAL_ENV=/pyrenew-hew/.venv
+ENV VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv
 RUN uv sync
 
 # Copy in the dagster definitions python file.
