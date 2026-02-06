@@ -278,6 +278,7 @@ def run_stf_model(
             "--nwss-data-dir nwss-vintages "
             "--priors-path pipelines/priors/prod_priors.py "
             f"--rng-key {config.rng_key} "
+            f"--model-letters {model_letters} "
         )
         if config.additional_forecast_letters:
             additional_args += (
@@ -308,7 +309,6 @@ def run_stf_model(
         f"--output-dir {config.output_dir} "
         "--credentials-path config/creds.toml "
         f"--exclude-last-n-days {config.exclude_last_n_days} "
-        f"--model-letters {model_letters} "
         f"{additional_args}"
         "'"
     )
