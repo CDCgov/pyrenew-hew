@@ -420,7 +420,12 @@ def epiautogp(context: dg.AssetExecutionContext):
 def postprocess_forecasts(
     context: dg.AssetExecutionContext,
     config: PostProcessConfig,
-    # timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew # TODO: dependencies
+    timeseries_e,
+    pyrenew_e,
+    pyrenew_h,
+    pyrenew_he,
+    pyrenew_hw,
+    pyrenew_hew,
 ):
     """
     Postprocess forecast batches.
