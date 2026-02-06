@@ -92,17 +92,17 @@ config:
 	bash -c "source ./azureconfig.sh"
 
 dagster_build:
-	docker build -t ghcr.io/cdcgov/pyrenew-hew:dagster_latest -f Containerfile .
+	docker build -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest -f Containerfile .
 
 dagster:
 	uv run dagster_defs.py
 
 dagster_push: ghcr_login dagster_build
-	docker push "ghcr.io/cdcgov/pyrenew-hew:dagster_latest"
+	docker push "ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest"
 
 dagster_push_prod: dagster_push
 	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
-    	--registry_image ghcr.io/cdcgov/pyrenew-hew:dagster_latest
+    	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest
 
 # ---------------- #
 # Model Fit Targets
