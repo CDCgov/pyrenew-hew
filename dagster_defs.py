@@ -24,10 +24,18 @@ from dagster_azure.blob import (
     AzureBlobStorageResource,
 )
 
+# CFA Helper Libraries
+from forecasttools import location_table
+
 # Model Code
 # from pipelines.forecast_pyrenew import main as forecast_pyrenew
 # from pipelines.forecast_timeseries import main as forecast_timeseries
 from pipelines.postprocess_forecast_batches import main as postprocess
+
+from pipelines.batch.common_batch_utils import (
+    DEFAULT_EXCLUDED_LOCATIONS,
+    SUPPORTED_DISEASES,
+)
 
 # ---------------------- #
 # Dagster Initialization #
@@ -145,32 +153,23 @@ azure_batch_metadata = {
 # --------------------------------------------------------------- #
 
 # Disease Partitions
-disease_partitions = dg.StaticPartitionsDefinition(["COVID-19", "Influenza", "RSV"])
+disease_partitions = dg.StaticPartitionsDefinition(SUPPORTED_DISEASES)
 
-# State Partitions
-# fmt: off
-state_partitions = dg.StaticPartitionsDefinition([
-    'US', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO',
-    'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID',
-    'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
-    'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT',
-    'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
-    'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA',
-    'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR',
-    'UM', 'VI'
-])
-# fmt: off
+# location Partitions
+LOCATIONS = location_table.get_column("short_name").to_list()
+location_partitions = dg.StaticPartitionsDefinition(
+    [location for location in LOCATIONS if location not in DEFAULT_EXCLUDED_LOCATIONS]
+)
 
 # Multi Partitions
-pyrenew_multi_partition_def = dg.MultiPartitionsDefinition({
-        "disease": disease_partitions,
-          "state": state_partitions
-})
+pyrenew_multi_partition_def = dg.MultiPartitionsDefinition(
+    {"disease": disease_partitions, "location": location_partitions}
+)
 
 # ----------------------------------------------------------- #
 # Asset Definitions - What are we outputting in our pipeline? #
 # ----------------------------------------------------------- #
+
 
 # ---------------
 # Asset Configs
@@ -187,6 +186,7 @@ class CommonConfig(dg.Config):
     _output_subdir: str = f"{forecast_date}_forecasts"
     output_dir: str = f"{_output_basedir}/{_output_subdir}"
 
+
 class ModelConfig(CommonConfig):
     """
     Configuration for the Pyrenew model assets.
@@ -197,7 +197,7 @@ class ModelConfig(CommonConfig):
     # Parameters that are currently defined in asset functions - this may be tweakable later
     # model_letters: str = "hew"  # experimental - not ready to incorporate in config yet
     # model_family: str = "pyrenew"  # experimental - not ready to incorporate in config yet
-    # manual_state_exclusions: list[str] = [] # experimental - not ready to incorporate in config yet
+    # manual_location_exclusions: list[str] = [] # experimental - not ready to incorporate in config yet
 
     # Parameters that can be toggled in the launchpad or in custom jobs
     # test: bool = True if not is_production else False
@@ -216,16 +216,19 @@ class PostProcessConfig(CommonConfig):
     """
     Configuration for the Post-Processing asset.
     """
+
     skip_existing: bool = True
     save_local_copy: bool = False
-    local_copy_dir: str = "" # "stf_forecast_fig_share"
+    local_copy_dir: str = ""  # "stf_forecast_fig_share"
     postprocess_diseases: list[str] = ["COVID-19", "Influenza", "RSV"]
+
 
 # ----------------------
 # Model Worker Function
 # ----------------------
 
 # This function is NOT an asset itself, but is called by assets to run the pyrenew model
+
 
 def run_stf_model(
     context: dg.AssetExecutionContext,
@@ -235,24 +238,16 @@ def run_stf_model(
 ):
     # Parsing partitions into call parameters for the job
     keys_by_dimension: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    DEFAULT_EXCLUDED_LOCATIONS: list[str] = ["AS", "GU", "MP", "PR", "UM", "VI"]
     disease = keys_by_dimension["disease"]
-    state = keys_by_dimension["state"]
+    location = keys_by_dimension["location"]
 
     # Exclusions
-    if state in DEFAULT_EXCLUDED_LOCATIONS:
-        context.log.info(
-            f"Location {state} is in the default excluded locations. Skipping model run."
-            f"Excluded locations: {DEFAULT_EXCLUDED_LOCATIONS}"
-            "Future logic may be customizable."
-        )
-        return
     if "w" in model_letters and disease != "COVID-19":
         context.log.info(
             f"Model letter 'w' is only applicable for COVID-19. Skipping model run for disease {disease}."
         )
         return
-    if "e" in model_letters and state == "WY":
+    if "e" in model_letters and location == "WY":
         context.log.info(
             "Model letter 'e' is not applicable for location WY. Skipping model run."
         )
@@ -276,7 +271,9 @@ def run_stf_model(
             f"--rng-key {config.rng_key} "
         )
         if config.additional_forecast_letters:
-            additional_args += f"--additional-forecast-letters {config.additional_forecast_letters} "
+            additional_args += (
+                f"--additional-forecast-letters {config.additional_forecast_letters} "
+            )
     elif model_family == "timeseries":
         run_script = "fable/forecast_timeseries.py"
         additional_args = f"--n-samples {config.n_total_samples} "
@@ -295,7 +292,7 @@ def run_stf_model(
         "/bin/bash -c '"
         f"uv run python pipelines/{run_script} "
         f"--disease {disease} "
-        f"--loc {state} "
+        f"--loc {location} "
         f"--n-training-days {config.n_training_days} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
         "--param-data-dir params "
@@ -316,6 +313,7 @@ def run_stf_model(
 
 # -- Pyrenew Assets -- #
 
+
 # Timeseries E
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
@@ -329,10 +327,7 @@ def timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew E
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-    deps="timeseries_e"
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, deps="timeseries_e")
 def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
     """
     Run Pyrenew-e model and produce outputs.
@@ -354,9 +349,7 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew HE
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def)
 def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
     """
     Run Pyrenew-he model and produce outputs.
@@ -378,9 +371,7 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew HEW
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def)
 def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
     """
     Run Pyrenew-hew model and produce outputs.
@@ -388,7 +379,9 @@ def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseri
     run_stf_model(context, config, model_letters="hew", model_family="pyrenew")
     return "pyrenew_hew"
 
+
 # -- Epi AutoGP Asset -- #
+
 
 @dg.asset
 def epiautogp(context: dg.AssetExecutionContext):
@@ -399,6 +392,7 @@ def epiautogp(context: dg.AssetExecutionContext):
     context.log.info("Epi AutoGP forecast asset executed.")
     # run_stf_model(context, config, model_family="epiautogp") # TODO: implement Epi AutoGP model and uncomment this line
     return "epiautogp"
+
 
 # Use this template for new models. If needed, add dependencies as an argument and overrides in the config
 
@@ -412,9 +406,11 @@ def epiautogp(context: dg.AssetExecutionContext):
 # -- Postprocessing Forecast Batches -- #
 # TODO: integrate this asset into the DAG fully, and trigger it via sensors
 
+
 @dg.asset
 def postprocess_forecasts(
-    context: dg.AssetExecutionContext, config: PostProcessConfig,
+    context: dg.AssetExecutionContext,
+    config: PostProcessConfig,
     # timeseries_e, pyrenew_e, pyrenew_h, pyrenew_he, pyrenew_hw, pyrenew_hew # TODO: dependencies
 ):
     """
@@ -428,6 +424,7 @@ def postprocess_forecasts(
     )
     return "postprocess_forecasts"
 
+
 # ------------------------------------------------------------------------------------------------- #
 # Orchestration of Partitioned Assets - Model Runs                                                  #
 #    and Post-Processing via Jobs and Schedules                                                     #
@@ -436,6 +433,7 @@ def postprocess_forecasts(
 # ------------------------------------------------------------------------------------------------- #
 
 ## --- Ops for Data Availability Checks --- ##
+
 
 @dg.op
 def check_nhsn_data_availability():
@@ -448,7 +446,9 @@ def check_nhsn_data_availability():
         nhsn_update_date_raw = data.get("rowsUpdatedAt")
         if nhsn_update_date_raw is None:
             return {"exists": False, "reason": "Key 'rowsUpdatedAt' not found"}
-        nhsn_update_date = datetime.utcfromtimestamp(nhsn_update_date_raw).strftime("%Y-%m-%d")
+        nhsn_update_date = datetime.utcfromtimestamp(nhsn_update_date_raw).strftime(
+            "%Y-%m-%d"
+        )
         nhsn_check = nhsn_update_date == current_date
         print(f"NHSN data available for date {current_date}: {nhsn_check}")
         return {
@@ -460,8 +460,11 @@ def check_nhsn_data_availability():
         print(f"Error checking NHSN data availability: {e}")
         return {"exists": False, "reason": str(e)}
 
+
 @dg.op
-def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container_name="nssp-etl"):
+def check_nssp_gold_data_availability(
+    account_name="cfaazurebatchprd", container_name="nssp-etl"
+):
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
     blob_name = f"gold/{current_date}.parquet"
     credential = DefaultAzureCredential()
@@ -483,8 +486,11 @@ def check_nssp_gold_data_availability(account_name="cfaazurebatchprd", container
         "current_date": current_date,
     }
 
+
 @dg.op
-def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container_name="nwss-vintages"):
+def check_nwss_gold_data_availability(
+    account_name="cfaazurebatchprd", container_name="nwss-vintages"
+):
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
     folder_prefix = f"NWSS-ETL-covid-{current_date}/"
     credential = DefaultAzureCredential()
@@ -501,22 +507,22 @@ def check_nwss_gold_data_availability(account_name="cfaazurebatchprd", container
         "current_date": current_date,
     }
 
+
 ## -- Op for Launching Full Backfill Pipeline -- ##
 ## Backfill Launch Method - Flexible Configuration via Op and Job ##
+
 
 # This is an op (non-materialized asset function) that launches backfills, as used in scheduled jobs
 @dg.op
 def launch_pyrenew_pipeline(
-    context: dg.OpExecutionContext,
-    config: ModelConfig
+    context: dg.OpExecutionContext, config: ModelConfig
 ) -> dg.Output[str]:
-
     # We are referencing the global pyrenew_multi_partition_def defined earlier
     partition_keys = pyrenew_multi_partition_def.get_partition_keys()
 
     # Determine which assets to backfill based on data availability
-    nhsn_available = check_nhsn_data_availability()["exists"] # H Data
-    nssp_available = check_nssp_gold_data_availability()["exists"] # E Data
+    nhsn_available = check_nhsn_data_availability()["exists"]  # H Data
+    nssp_available = check_nssp_gold_data_availability()["exists"]  # E Data
     # nwss_available = check_nwss_gold_data_availability()["exists"] # W Data
 
     context.log.debug(f"NHSN available: {nhsn_available}")
@@ -530,9 +536,13 @@ def launch_pyrenew_pipeline(
     #     asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
 
     if nhsn_available and nssp_available:
-    # elif nhsn_available and nssp_available:
-        context.log.info("Both NHSN data and NSSP gold data are available, but NWSS gold data is not.")
-        context.log.info("Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill.")
+        # elif nhsn_available and nssp_available:
+        context.log.info(
+            "Both NHSN data and NSSP gold data are available, but NWSS gold data is not."
+        )
+        context.log.info(
+            "Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill."
+        )
         asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he")
 
     # elif nhsn_available and nwss_available:
@@ -548,12 +558,11 @@ def launch_pyrenew_pipeline(
     elif nhsn_available:
         context.log.info("Only NHSN data are available.")
         context.log.info("Launching a pyrenew_h backfill.")
-        asset_selection = ("pyrenew_h")
+        asset_selection = "pyrenew_h"
 
     else:
         context.log.info("No required data is available.")
         asset_selection = ()
-
 
     # Launch the backfill
     # Returns: a backfill ID,
@@ -561,23 +570,27 @@ def launch_pyrenew_pipeline(
     backfill_id = launch_asset_backfill(
         asset_selection,
         partition_keys,
-        run_config=dg.RunConfig({
+        run_config=dg.RunConfig(
+            {
                 "ops": {
                     **{asset: config for asset in asset_selection},
                 },
-        }),
+            }
+        ),
         tags={
-                "run": "pyrenew",
-                "available_data": str({
+            "run": "pyrenew",
+            "available_data": str(
+                {
                     "nhsn": nhsn_available,
-                    "nssp_gold" : nssp_available,
-                    "nwss_gold" : False, # nwss_available,
-                }),
-                "user": user,
-                "models_attempted": ", ".join(asset_selection),
-                "forecast_date": config.forecast_date,
-                "output_dir": config.output_dir,
-        }
+                    "nssp_gold": nssp_available,
+                    "nwss_gold": False,  # nwss_available,
+                }
+            ),
+            "user": user,
+            "models_attempted": ", ".join(asset_selection),
+            "forecast_date": config.forecast_date,
+            "output_dir": config.output_dir,
+        },
     )
     context.log.info(
         f"Launched backfill with id: '{backfill_id}'. "
@@ -585,10 +598,9 @@ def launch_pyrenew_pipeline(
     )
     return dg.Output(
         value=backfill_id,
-        metadata={
-            "url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")
-        }
+        metadata={"url": dg.MetadataValue.url(f"/runs/b/{backfill_id}")},
     )
+
 
 ## -- Jobs -- ##
 
@@ -610,30 +622,31 @@ run_pyrenew_hew_on_local_docker = dg.define_asset_job(
 
 run_postprocess_forecasts = dg.define_asset_job(
     name="RunPostprocessForecasts",
-    executor_def=docker_executor_configured if not is_production else azure_batch_executor_configured,
+    executor_def=docker_executor_configured
+    if not is_production
+    else azure_batch_executor_configured,
     selection=[postprocess_forecasts],
     tags={"user": user},
 )
 
+
 # This wraps our launch_pipeline op in a job that can be scheduled or manually launched via the GUI
 @dg.job(
     executor_def=dg.multiprocess_executor,
-    config=dg.RunConfig(
-        ops={
-            "launch_pyrenew_pipeline": ModelConfig()
-        }
-    )
+    config=dg.RunConfig(ops={"launch_pyrenew_pipeline": ModelConfig()}),
 )
 def weekly_pyrenew_via_backfill():
     launch_pyrenew_pipeline()
+
 
 @dg.job(
     executor_def=dg.multiprocess_executor,
 )
 def check_all_data():
-    check_nhsn_data_availability() # H Data
-    check_nssp_gold_data_availability() # E Data
-    check_nwss_gold_data_availability() # W Data
+    check_nhsn_data_availability()  # H Data
+    check_nssp_gold_data_availability()  # E Data
+    check_nwss_gold_data_availability()  # W Data
+
 
 ## -- Schedules -- ##
 
@@ -641,14 +654,11 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     default_status=(
         dg.DefaultScheduleStatus.RUNNING
         # don't run locally by default
-        if is_production else dg.DefaultScheduleStatus.STOPPED
+        if is_production
+        else dg.DefaultScheduleStatus.STOPPED
     ),
     job=weekly_pyrenew_via_backfill,
-    run_config=dg.RunConfig(
-        ops={
-            "launch_pyrenew_pipeline": ModelConfig()
-        }
-    ),
+    run_config=dg.RunConfig(ops={"launch_pyrenew_pipeline": ModelConfig()}),
     cron_schedule="0 15 * * WED",
     execution_timezone="America/New_York",
 )
@@ -685,7 +695,7 @@ defs = dg.Definitions(
     },
     # New ** syntax combines executor and launcher metadata
     **(
-        azure_batch_metadata # comment when testing locally, take care not to submit too many jobs
+        azure_batch_metadata  # comment when testing locally, take care not to submit too many jobs
         # docker_metadata # use this when running locally - be careful not to use the backfill job locally
         # azure_batch_metadata if is_production else docker_metadata
     ),
