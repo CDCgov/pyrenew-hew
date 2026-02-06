@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: pyrenew-hew
+  IMAGE_NAME: cfa-stf-routine-forecasting
 
 jobs:
     # This can be used as a template, later: https://github.com/CDCgov/cfa-epinow2-pipeline/blob/main/.github/workflows/containers-and-az-pool.yaml

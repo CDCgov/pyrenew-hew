@@ -1,5 +1,5 @@
 """
-Set up a multi-location, multi-disease run of pyrenew-hew
+Set up a multi-location, multi-disease run of cfa-stf-routine-forecasting
 with the PyRenew model family on Azure Batch.
 """
 
@@ -29,7 +29,7 @@ def main(
     diseases: list[str],
     output_subdir: str | Path = "./",
     additional_forecast_letters: str = "",
-    container_image_name: str = "pyrenew-hew",
+    container_image_name: str = "cfa-stf-routine-forecasting",
     container_image_version: str = "latest",
     n_training_days: int = 150,
     exclude_last_n_days: int = 1,
@@ -62,7 +62,7 @@ def main(
         Fit signals are always forecast. If empty, uses model_letters.
     container_image_name
         Name of the container to use for the job.
-        Default 'pyrenew-hew'.
+        Default 'cfa-stf-routine-forecasting'.
     container_image_version
         Version of the container to use. Default 'latest'.
     n_training_days
@@ -214,7 +214,7 @@ if __name__ == "__main__":
         "--container-image-name",
         type=str,
         help="Name of the container to use for the job.",
-        default="pyrenew-hew",
+        default="cfa-stf-routine-forecasting",
     )
     parser.add_argument(
         "--container-image-version",

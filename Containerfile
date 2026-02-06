@@ -11,14 +11,10 @@ ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
 
 ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 
-# This makes the /pyrenew-hew/ directory and then copies in the hewr package
-COPY ./hewr /pyrenew-hew/hewr
+COPY ./hewr /cfa-stf-routine-forecasting/hewr
+COPY ./EpiAutoGP /cfa-stf-routine-forecasting/EpiAutoGP
 
-# Copy in the EpiAutoGP Julia package
-COPY ./EpiAutoGP /pyrenew-hew/EpiAutoGP
-
-# Set the working directory to our pyrenew-hew directory, which represents the repository as a whole
-WORKDIR /pyrenew-hew
+WORKDIR /cfa-stf-routine-forecasting
 
 # Install pak and then the hewr package and its dependencies
 RUN Rscript -e "install.packages('pak')"

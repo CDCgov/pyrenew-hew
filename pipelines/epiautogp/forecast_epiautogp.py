@@ -41,7 +41,7 @@ def run_epiautogp_forecast(
     execution_settings : dict
         Execution settings for the Julia environment. Expected keys:
         - project: Julia project name
-        - threads: Number of threads to use
+        - threads: Number of threads to use or "auto"
 
     Returns
     -------
@@ -112,7 +112,7 @@ def main(
     n_hmc: int = 50,
     n_forecast_draws: int = 2000,
     smc_data_proportion: float = 0.1,
-    n_threads: int = 1,
+    n_threads: int | str = "auto",
 ) -> None:
     """
     Run the complete EpiAutoGP forecasting pipeline for a single location.
@@ -174,8 +174,8 @@ def main(
         Number of forecast draws to generate
     smc_data_proportion : float, default=0.1
         Proportion of data used in each SMC step
-    n_threads : int, default=1
-        Number of threads for Julia execution
+    n_threads : int | str, default="auto"
+        Number of threads for Julia execution (integer or "auto")
 
     Returns
     -------
@@ -401,9 +401,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--n-threads",
-        type=int,
-        default=1,
-        help="Number of threads to use for EpiAutoGP computations (default: 1).",
+        type=lambda v: int(v) if v.isdigit() else v,
+        default="auto",
+        help="Number of threads to use for EpiAutoGP computations (integer or 'auto'; default: auto).",
     )
 
     parser.add_argument(

@@ -5,12 +5,10 @@ on:
     branches: [main]
     paths-ignore:
       - "pipelines/batch/**"
-      - "pipelines/batch/azure_command_center.py"
   push:
     branches: [main]
     paths-ignore:
       - "pipelines/batch/**"
-      - "pipelines/batch/azure_command_center.py"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}

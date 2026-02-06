@@ -1,5 +1,5 @@
 """
-Set up a multi-location, multi-disease run of pyrenew-hew
+Set up a multi-location, multi-disease run of cfa-stf-routine-forecasting
 with the EpiAutoGP model family on Azure Batch.
 """
 
@@ -26,7 +26,7 @@ def main(
     pool_id: str,
     diseases: str | list[str],
     output_subdir: str | Path = "./",
-    container_image_name: str = "pyrenew-hew",
+    container_image_name: str = "cfa-stf-routine-forecasting",
     container_image_version: str = "latest",
     n_training_days: int = 150,
     exclude_last_n_days: int = 1,
@@ -44,7 +44,7 @@ def main(
     n_hmc: int = 50,
     n_forecast_draws: int = 2000,
     smc_data_proportion: float = 0.1,
-    n_threads: int = 1,
+    n_threads: int | str = "auto",
     n_forecast_days: int = 28,
 ) -> None:
     """
@@ -65,7 +65,7 @@ def main(
         in which to save results.
     container_image_name
         Name of the container to use for the job.
-        Default 'pyrenew-hew'.
+        Default 'cfa-stf-routine-forecasting'.
     container_image_version
         Version of the container to use. Default 'latest'.
     n_training_days
@@ -104,7 +104,7 @@ def main(
     smc_data_proportion
         Proportion of data used in each SMC step in EpiAutoGP. Default 0.1.
     n_threads
-        Number of threads for EpiAutoGP Julia execution. Default 1.
+        Number of threads for EpiAutoGP Julia execution. Default "auto".
     n_forecast_days
         Number of days ahead to forecast. Default 28.
 
@@ -247,7 +247,7 @@ if __name__ == "__main__":
         "--container-image-name",
         type=str,
         help="Name of the container to use for the job.",
-        default="pyrenew-hew",
+        default="cfa-stf-routine-forecasting",
     )
     parser.add_argument(
         "--container-image-version",
@@ -347,9 +347,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--n-threads",
-        type=int,
-        default=1,
-        help="Number of threads for Julia execution (default: 1).",
+        type=lambda v: int(v) if v.isdigit() else v,
+        default="auto",
+        help="Number of threads for Julia execution (integer or 'auto'; default: auto).",
     )
     parser.add_argument(
         "--n-forecast-days",
@@ -373,7 +373,6 @@ if __name__ == "__main__":
         default=False,
         help="If set to True, do not submit tasks to Azure Batch. Only print what would be done.",
     )
-
     args = parser.parse_args()
     args.diseases = args.diseases.split()
     args.locations_include = (
