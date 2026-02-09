@@ -43,7 +43,6 @@ def timeseries_ensemble_forecasts(
 
 def main(
     disease: str,
-    param_data_dir: Path,
     loc: str,
     facility_level_nssp_data_dir: Path | str,
     output_dir: Path | str,
@@ -51,13 +50,14 @@ def main(
     n_forecast_days: int,
     n_samples: int,
     exclude_last_n_days: int = 0,
+    epiweekly: bool = False,
     credentials_path: Path | None = None,
     nhsn_data_path: Path | None = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-
-    ensemble_model_name = "ts_ensemble_e"
+    prefix = "epiweekly" if epiweekly else "daily"
+    ensemble_model_name = f"{prefix}_ts_ensemble_e"
 
     logger.info(
         "Starting single-location timeseries forecasting pipeline for "
@@ -110,9 +110,11 @@ def main(
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
-
-    logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(Path(ensemble_model_output_dir, "data"))
+    if epiweekly:
+        logger.info("Generating epiweekly datasets from daily datasets...")
+        generate_epiweekly_data(
+            Path(ensemble_model_output_dir, "data"), overwrite_daily=True
+        )
 
     logger.info("Data preparation complete.")
 
@@ -120,10 +122,10 @@ def main(
 
     logger.info("Performing timeseries ensemble forecasting")
     timeseries_ensemble_forecasts(
-        ensemble_model_output_dir, n_days_past_last_training, n_samples, epiweekly=False
-    )
-    timeseries_ensemble_forecasts(
-        ensemble_model_output_dir, n_days_past_last_training, n_samples, epiweekly=True
+        ensemble_model_output_dir,
+        n_days_past_last_training,
+        n_samples,
+        epiweekly=epiweekly,
     )
 
     plot_and_save_loc_forecast(
@@ -158,6 +160,14 @@ if __name__ == "__main__":
         default=1000,
         help=("Number of samples to draw (default: 1000)."),
     )
-
+    parser.add_argument(
+        "--epiweekly",
+        action="store_true",
+        help=(
+            "Whether to generate epiweekly forecasts in addition to daily. "
+            "If set, will generate epiweekly datasets and forecasts, and "
+            "append 'epiweekly' to the model name."
+        ),
+    )
     args = parser.parse_args()
     main(**vars(args))

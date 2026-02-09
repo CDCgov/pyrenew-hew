@@ -81,9 +81,11 @@ def copy_and_record_priors(priors_path: Path, model_dir: Path):
         tomli_w.dump(metadata, file)
 
 
-def generate_epiweekly_data(data_dir: Path) -> None:
+def generate_epiweekly_data(data_dir: Path, overwrite_daily: bool = False) -> None:
     """Generate epiweekly datasets from daily datasets using an R script."""
     args = [str(data_dir)]
+    if overwrite_daily:
+        args.append("--overwrite-daily")
 
     run_r_script(
         "pipelines/data/generate_epiweekly_data.R",
@@ -219,7 +221,7 @@ def main(
     os.makedirs(data_dir, exist_ok=True)
 
     timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
-
+    # NEED TO UPDATE THIS
     if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
         raise ValueError(
             f"{timeseries_model_name} model run not found. "
@@ -294,7 +296,7 @@ def main(
     logger.info("All forecasting complete.")
 
     logger.info("Postprocessing forecast...")
-
+    # Do this for both daily and epiweekly
     plot_and_save_loc_forecast(
         model_run_dir,
         n_days_past_last_training,
@@ -392,6 +394,12 @@ if __name__ == "__main__":
             "If not provided, a random integer will be chosen."
         ),
         default=None,
+    )
+    parser.add_argument(
+        "--param-data-dir",
+        type=Path,
+        default=Path("private_data", "prod_param_estimates"),
+        help="Directory in which to look for parameter estimates such as delay PMFs.",
     )
 
     args = parser.parse_args()

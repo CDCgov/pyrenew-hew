@@ -32,7 +32,7 @@ echo "TEST-MODE: Running Timeseries forecasting pipeline for all locations, and 
 for location in "${LOCATIONS[@]}"; do
 	for disease in "${DISEASES[@]}"; do
 		echo "TEST-MODE: Running Timeseries forecasting pipeline for $disease, $location"
-		bash pipelines/tests/test_ts_fit.sh "$BASE_DIR" "$disease" "$location" "e"
+		bash pipelines/tests/test_ts_fit.sh "$BASE_DIR" "$disease" "$location"
 		if [ "$?" -ne 0 ]; then
 			echo "TEST-MODE FAIL: Timeseries forecasting pipeline failed"
 			echo "TEST-MODE: Cleanup: removing temporary directories"

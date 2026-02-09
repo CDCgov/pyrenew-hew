@@ -405,6 +405,12 @@ if __name__ == "__main__":
         default="auto",
         help="Number of threads to use for EpiAutoGP computations (integer or 'auto'; default: auto).",
     )
+    parser.add_argument(
+        "--param-data-dir",
+        type=Path,
+        default=Path("private_data", "prod_param_estimates"),
+        help="Directory in which to look for parameter estimates such as delay PMFs.",
+    )
 
     parser.add_argument(
         "--exclude-date-ranges",

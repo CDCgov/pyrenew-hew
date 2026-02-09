@@ -626,7 +626,7 @@ process_loc_forecast <- function(
     fs::path(
       model_dir,
       "data",
-      "epiweekly_combined_data",
+      "combined_data",
       ext = "tsv"
     ),
     col_types = data_col_types
@@ -796,6 +796,8 @@ process_forecast <- function(
   }
 
   # Dispatch to appropriate S3 method
+  # update this to process both forms of timeseries
+  # then update the pyrenew one to pull from the separate directories
   model_samples_tidy <- process_model_samples(
     model_type = model_type,
     model_run_dir = model_run_dir,
