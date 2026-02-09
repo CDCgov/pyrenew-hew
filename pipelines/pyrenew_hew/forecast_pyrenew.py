@@ -9,6 +9,10 @@ from pathlib import Path
 import polars as pl
 import tomli_w
 from pygit2.repository import Repository
+from pyrenew_multisignal.hew.utils import (
+    flags_from_hew_letters,
+    pyrenew_model_name_from_flags,
+)
 
 from pipelines.data.prep_data import (
     process_and_save_loc_data,
@@ -25,10 +29,6 @@ from pipelines.utils.common_utils import (
     load_credentials,
     plot_and_save_loc_forecast,
     run_r_script,
-)
-from pyrenew_hew.utils import (
-    flags_from_hew_letters,
-    pyrenew_model_name_from_flags,
 )
 
 

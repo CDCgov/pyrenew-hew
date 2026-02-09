@@ -3,9 +3,9 @@ from pathlib import Path
 
 import jax
 import numpy as np
+from pyrenew_multisignal.hew import PyrenewHEWData
 
 from pipelines.utils.common_utils import build_pyrenew_hew_model_from_dir
-from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 
 def fit_and_save_model(
