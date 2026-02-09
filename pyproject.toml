@@ -1,5 +1,5 @@
 [project]
-name = "pyrenew-hew"
+name = "cfa-stf-routine-forecasting"
 version = "0.1.0"
 description = "Models and infrastructure for forecasting COVID-19 and Flu hospitalizations using wastewater data with PyRenew"
 readme = "README.md"
@@ -13,6 +13,7 @@ authors = [
 
 dependencies = [
     "pyrenew",
+    "pyrenew-multisignal",
     "forecasttools",
     "ipywidgets>=8.1.5",
     "pyyaml>=6.0.2",
@@ -29,13 +30,6 @@ dependencies = [
     "polarbayes",
     "jax<0.8.2",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [dependency-groups]
 dev = [
@@ -62,3 +56,4 @@ polarbayes = { git = "https://github.com/CDCgov/polarbayes" }
 pyrenew = { git = "https://github.com/CDCgov/PyRenew", rev = "v0.1.6" }
 forecasttools = { git = "https://github.com/cdcgov/forecasttools-py" }
 azuretools = { git = "https://github.com/cdcgov/cfa-azuretools" }
+pyrenew-multisignal = {git = "https://github.com/CDCgov/pyrenew-multisignal"}
