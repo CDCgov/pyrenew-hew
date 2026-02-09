@@ -1,7 +1,7 @@
 [project]
-name = "pyrenew-hew"
+name = "pipelines"
 version = "0.1.0"
-description = "Models and infrastructure for forecasting COVID-19 and Flu hospitalizations using wastewater data with PyRenew"
+description = "Pipelines for forecasting respiratory diseases"
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [
@@ -10,9 +10,9 @@ authors = [
   {name = "Subekshya Bidari"},
 ]
 
-
 dependencies = [
     "pyrenew",
+    "pyrenew-multisignal",
     "forecasttools",
     "ipywidgets>=8.1.5",
     "pyyaml>=6.0.2",
@@ -55,10 +55,11 @@ fix = true
 select = ["I", "E4", "E7", "E9", "F", "UP"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "pipelines/tests"]
+testpaths = ["pipelines/tests"]
 
 [tool.uv.sources]
 polarbayes = { git = "https://github.com/CDCgov/polarbayes" }
 pyrenew = { git = "https://github.com/CDCgov/PyRenew", rev = "v0.1.6" }
 forecasttools = { git = "https://github.com/cdcgov/forecasttools-py" }
 azuretools = { git = "https://github.com/cdcgov/cfa-azuretools" }
+pyrenew-multisignal = {git = "https://github.com/CDCgov/pyrenew-multisignal", rev = "v0.1.0"}

@@ -9,12 +9,12 @@ import jax
 import numpy as np
 import polarbayes as pb
 import polars as pl
-
-from pipelines.utils.common_utils import build_pyrenew_hew_model_from_dir
-from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
-from pyrenew_hew.utils import (
+from pyrenew_multisignal.hew import (
+    PyrenewHEWData,
     flags_from_pyrenew_model_name,
 )
+
+from pipelines.utils.common_utils import build_pyrenew_hew_model_from_dir
 
 
 def generate_and_save_predictions(
