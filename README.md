@@ -63,9 +63,9 @@ The following instructions will set up Dagster on your VAP. However, based on th
 4. You should now see the dagster UI for Pyrenew-HEW. This is a local server that will only show PyRenew-HEW asssets as defined in your local git repository.
 5. Try materializing an asset by navigating to "Lineage" on the left sidebar. By default, these assets will submit jobs to Azure Batch and write to the `pyrenew-test-output` blob.
     - We recommend materializing a few partitions at a time for testing purposes.
-    ![alt text](img/dagster_lineage.png)
+    ![alt text](.github/img/dagster_lineage.png)
     - You will get a pop-up directing you to your asset runs, which provide progress logs.
-    ![alt text](img/dagster_runs.png)
+    ![alt text](.github/img/dagster_runs.png)
 6. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
 
 #### Production Scheduling

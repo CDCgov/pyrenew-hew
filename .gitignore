@@ -29,8 +29,8 @@
 *.gif
 *.pdf
 *.png
-# except when in img/ folder
-!img/*.png
+# except when in .github/img/ folder
+!.github/img/*.png
 
 # Compressed archives
 *.gz
