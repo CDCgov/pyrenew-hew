@@ -11,9 +11,12 @@ ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
 
 ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 
+# Project dependencies and code
 COPY ./hewr /cfa-stf-routine-forecasting/hewr
 COPY ./EpiAutoGP /cfa-stf-routine-forecasting/EpiAutoGP
+COPY ./pipelines /cfa-stf-routine-forecasting/pipelines
 
+# Set working directory
 WORKDIR /cfa-stf-routine-forecasting
 
 # Install pak and then the hewr package and its dependencies
@@ -36,10 +39,6 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 
-# Copy in the pyrenew-hew modeling, pipelining, and testing code
-COPY ./pipelines ./pipelines
-COPY README.md ./
-
 # -- VENV MANAGEMENT AND DEPENDENCY SYNCING -- #
 
 # Copy in the UV/python dependency management configs
@@ -53,13 +52,15 @@ RUN --mount=type=cache,target=/root/.cache/uv
 
 # Set VIRTUAL_ENV variable at runtime
 ENV VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv
-RUN uv sync
 
 # Copy in the dagster definitions python file.
 # All dagster definitions are defined here.
 # Dagster Definitions are updated more frequently than other code,
 # so it is much quicker for the build cache to worry about it last
 COPY ./dagster_defs.py ./
+
+# README - one check looks for this, lets bring it in last
+COPY ./README.md ./
 
 # Update PATH to use the selected venv
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
