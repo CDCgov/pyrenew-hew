@@ -488,6 +488,40 @@ def plot_and_save_loc_forecast(
     return None
 
 
+def make_figures_from_model_fit_dir(
+    model_fit_dir: Path,
+    save_ci: bool = False,
+    save_figs: bool = True,
+) -> None:
+    """Generate forecast figures from a model fit directory using R script.
+
+    Parameters
+    ----------
+    model_fit_dir : Path
+        Directory containing model fit data and output.
+    save_ci : bool, optional
+        Whether to save credible intervals to disk.
+    save_figs : bool, optional
+        Whether to save figures to disk.
+
+    Returns
+    -------
+    None
+    """
+    args = [f"{model_fit_dir}"]
+    if save_ci:
+        args.append("--save-ci")
+    if save_figs:
+        args.append("--save-figs")
+
+    run_r_script(
+        "pipelines/make_figures_from_model_fit_dir.R",
+        args,
+        function_name="make_figures_from_model_fit_dir",
+    )
+    return None
+
+
 def py_scalar_to_r_scalar(py_scalar):
     if py_scalar is None:
         return "NULL"

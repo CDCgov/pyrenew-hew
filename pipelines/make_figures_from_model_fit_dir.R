@@ -6,7 +6,7 @@ library(fs)
 library(cowplot)
 library(hewr)
 library(argparser)
-
+# might have to adopt this for quantiles
 get_ci <- function(model_fit_dir, save = FALSE) {
   ci_path <- path(model_fit_dir, "ci", ext = "parquet")
 

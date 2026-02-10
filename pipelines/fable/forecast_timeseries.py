@@ -15,7 +15,7 @@ from pipelines.utils.common_utils import (
     create_hubverse_table,
     get_available_reports,
     load_credentials,
-    plot_and_save_loc_forecast,
+    make_figures_from_model_fit_dir,
     run_r_script,
 )
 
@@ -128,14 +128,15 @@ def main(
         epiweekly=epiweekly,
     )
 
-    # plot_and_save_loc_forecast(
-    #     model_run_dir,
-    #     n_days_past_last_training,
-    #     timeseries_model_name=ensemble_model_name,
-    # )
-    # Create CI
-    # Create and save figures
-    create_hubverse_table(Path(model_run_dir, ensemble_model_name))
+    make_figures_from_model_fit_dir(
+        Path(
+            ensemble_model_output_dir,
+        ),
+        save_figs=True,
+        save_ci=True,
+    )
+
+    create_hubverse_table(ensemble_model_output_dir)
 
     logger.info("Postprocessing complete.")
 
