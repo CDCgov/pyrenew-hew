@@ -7,6 +7,7 @@ import argparse
 import itertools
 from pathlib import Path
 
+from pyrenew_multisignal.hew import validate_hew_letters
 from rich.console import Console
 
 from pipelines.batch.common_batch_utils import (
@@ -19,7 +20,6 @@ from pipelines.batch.common_batch_utils import (
     submit_batch_job,
     validate_diseases,
 )
-from pyrenew_hew.utils import validate_hew_letters
 
 
 def main(
