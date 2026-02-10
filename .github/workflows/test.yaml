@@ -14,36 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pyrenew-hew-test:
-    name: Run pyrenew_hew tests and collect coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Pyrenew-HEW via UV
-        uses: ./.github/actions/setup-pyrenew-hew
-
-      - name: run tests
-        env:
-          NHSN_API_KEY_ID: ${{ secrets.NHSN_API_KEY_ID }}
-          NHSN_API_KEY_SECRET: ${{ secrets.NHSN_API_KEY_SECRET }}
-          XLA_FLAGS: --xla_force_host_platform_device_count=2
-        run: |
-          uv run pytest tests \
-            --mpl --mpl-default-tolerance=10 \
-            --cov=pyrenew_hew --cov-report=term --cov-report=xml:pyrenew_hew-coverage.xml .
-
-      - name: Upload results to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          env_vars: OS,PYTHON
-          fail_ci_if_error: true
-          flags: pyrenew_hew
-          files: pyrenew_hew-coverage.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-          verbose: true
-
   pipelines-test:
     name: Run pipelines tests and collect coverage
     runs-on: ubuntu-latest

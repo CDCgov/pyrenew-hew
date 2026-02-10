@@ -19,6 +19,7 @@ import numpy as np
 import polars as pl
 import polars.selectors as cs
 from jax._src.typing import Array
+from pyrenew_multisignal.hew import PyrenewHEWData
 from scipy.stats import expon, norm
 
 from pipelines.data.prep_data import (
@@ -27,7 +28,6 @@ from pipelines.data.prep_data import (
 )
 from pipelines.data.prep_ww_data import clean_nwss_data, preprocess_ww_data
 from pipelines.utils.common_utils import build_pyrenew_hew_model_from_dir
-from pyrenew_hew.pyrenew_hew_data import PyrenewHEWData
 
 FACILITY_LEVEL_NSSP_DATA_COLS = [
     "reference_date",

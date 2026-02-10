@@ -11,10 +11,9 @@ from pathlib import Path
 from typing import Any
 
 from forecasttools import ensure_listlike, location_table
+from pyrenew_multisignal.hew import PyrenewHEWParam, build_pyrenew_hew_model
 
 from pipelines.utils.cli_utils import run_command
-from pyrenew_hew.pyrenew_hew_param import PyrenewHEWParam
-from pyrenew_hew.utils import build_pyrenew_hew_model
 
 # Disease mapping and location abbreviations
 disease_map_lower_ = {
