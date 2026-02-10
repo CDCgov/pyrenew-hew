@@ -37,9 +37,7 @@ ENV UV_LINK_MODE=copy
 ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
 
 # Copy in the pyrenew-hew modeling, pipelining, and testing code
-COPY ./pyrenew_hew ./pyrenew_hew
 COPY ./pipelines ./pipelines
-COPY ./tests ./tests
 COPY README.md ./
 
 # -- VENV MANAGEMENT AND DEPENDENCY SYNCING -- #

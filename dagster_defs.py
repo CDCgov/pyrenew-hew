@@ -33,8 +33,8 @@ from pipelines.batch.common_batch_utils import (
 )
 
 # Model Code
-# from pipelines.forecast_pyrenew import main as forecast_pyrenew
-# from pipelines.forecast_timeseries import main as forecast_timeseries
+# from pipelines.pyrenew_hew.forecast_pyrenew import main as forecast_pyrenew
+# from pipelines.fable.forecast_timeseries import main as forecast_timeseries
 from pipelines.utils.postprocess_forecast_batches import main as postprocess
 
 # ---------------------- #
@@ -270,7 +270,7 @@ def run_stf_model(
     # =====================================
     if model_family == "pyrenew":
         # from forecast_pyrenew import forecast_pyrenew  # noqa: F401
-        run_script = "pyrenew_hew/forecast_pyrenew.py"
+        run_script = "pipelines/pyrenew_hew/forecast_pyrenew.py"
         additional_args = (
             f"--n-samples {config.n_samples} "
             f"--n-chains {config.n_chains} "
@@ -285,7 +285,7 @@ def run_stf_model(
                 f"--additional-forecast-letters {config.additional_forecast_letters} "
             )
     elif model_family == "timeseries":
-        run_script = "fable/forecast_timeseries.py"
+        run_script = "pipelines/fable/forecast_timeseries.py"
         additional_args = f"--n-samples {config.n_total_samples} "
     else:
         raise ValueError(
