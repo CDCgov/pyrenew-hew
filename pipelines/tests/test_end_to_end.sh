@@ -17,7 +17,16 @@ if [ -d "$BASE_DIR" ]; then
 		exit 1
 	fi
 fi
+Rscript -e "devtools::install_local('hewr', force = TRUE, quick = TRUE, upgrade_dependencies = FALSE)"
 
+if [ "$?" -ne 0 ]; then
+	echo "TEST-MODE FAIL: Installing hewr package failed"
+	exit 1
+else
+	echo "TEST-MODE: Finished installing hewr package"
+fi
+
+mkdir -p "$BASE_DIR"
 uv run python pipelines/data/generate_test_data.py "$BASE_DIR"
 
 if [ "$?" -ne 0 ]; then
