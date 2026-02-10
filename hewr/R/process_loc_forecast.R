@@ -657,6 +657,8 @@ process_loc_forecast <- function(
     )
   }
 
+  # Pyrenew model needs to assume timeseries model outputs exist, not reprocess them itself.
+
   if (is.na(pyrenew_model_name)) {
     model_samples_tidy <- ts_samples
   } else {

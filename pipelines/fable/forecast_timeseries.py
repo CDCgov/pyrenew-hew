@@ -128,11 +128,13 @@ def main(
         epiweekly=epiweekly,
     )
 
-    plot_and_save_loc_forecast(
-        model_run_dir,
-        n_days_past_last_training,
-        timeseries_model_name=ensemble_model_name,
-    )
+    # plot_and_save_loc_forecast(
+    #     model_run_dir,
+    #     n_days_past_last_training,
+    #     timeseries_model_name=ensemble_model_name,
+    # )
+    # Create CI
+    # Create and save figures
     create_hubverse_table(Path(model_run_dir, ensemble_model_name))
 
     logger.info("Postprocessing complete.")

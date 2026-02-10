@@ -297,12 +297,21 @@ def main(
 
     logger.info("Postprocessing forecast...")
     # Do this for both daily and epiweekly
-    plot_and_save_loc_forecast(
-        model_run_dir,
-        n_days_past_last_training,
-        pyrenew_model_name,
-        timeseries_model_name,
-    )
+    # plot_and_save_loc_forecast(
+    #     model_run_dir,
+    #     n_days_past_last_training,
+    #     pyrenew_model_name,
+    #     timeseries_model_name,
+    # )
+
+    # Create daily Model by itself samples
+    # Create daily Model by itself plots
+
+    # Create epiweekly (aggregated num, aggregated denom) samples
+    # Create epiweekly (aggregated num, aggregated denom) plots
+
+    # Create epiweekly (aggregated num, unaggregated denom) samples
+    # Create epiweekly (aggregated num, unaggregated denom) plots
 
     create_hubverse_table(Path(model_run_dir, pyrenew_model_name))
 
