@@ -105,10 +105,10 @@ dagster_push_prod:
 # ---------------- #
 
 acc: mount config
-	uv run pipelines/azure_command_center.py
+	uv run pipelines/batch/azure_command_center.py
 
 post_process: config
-	uv run python pipelines/postprocess_forecast_batches.py \
+	uv run python pipelines/utils/postprocess_forecast_batches.py \
     	--input "./blobfuse/mounts/pyrenew-hew-prod-output/${FORECAST_DATE}_forecasts" \
     	--output "./blobfuse/mounts/nssp-etl/gold/${FORECAST_DATE}_forecasts.parquet" \
 		${ARGS}
