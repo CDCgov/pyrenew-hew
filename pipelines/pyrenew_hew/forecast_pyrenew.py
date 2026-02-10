@@ -27,7 +27,6 @@ from pipelines.utils.common_utils import (
     create_hubverse_table,
     get_available_reports,
     load_credentials,
-    plot_and_save_loc_forecast,
     run_r_script,
 )
 
