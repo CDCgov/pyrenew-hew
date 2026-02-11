@@ -1,4 +1,4 @@
-# Migrate this to hewr when it's all done
+# Migrate this to hewr when it's all done?
 library(forecasttools)
 library(tidyverse)
 library(ggdist)
@@ -198,7 +198,6 @@ p <- arg_parser(
 
 argv <- parse_args(p)
 
-print(argv)
 make_forecast_figure_from_model_fit_dir(
   model_fit_dir = argv$model_fit_dir,
   save_figs = argv$save_figs,

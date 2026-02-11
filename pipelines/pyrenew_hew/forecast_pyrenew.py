@@ -80,6 +80,16 @@ def copy_and_record_priors(priors_path: Path, model_dir: Path):
         tomli_w.dump(metadata, file)
 
 
+def create_samples_from_pyrenew_fit_dir(model_fit_dir: Path) -> None:
+    """Create samples.parquet from a PyRenew model fit directory using R."""
+    run_r_script(
+        "pipelines/pyrenew_hew/create_samples_from_pyrenew_fit_dir.R",
+        [str(model_fit_dir)],
+        function_name="create_samples_from_pyrenew_fit_dir",
+    )
+    return None
+
+
 def generate_epiweekly_data(data_dir: Path, overwrite_daily: bool = False) -> None:
     """Generate epiweekly datasets from daily datasets using an R script."""
     args = [str(data_dir)]
@@ -306,7 +316,7 @@ def main(
     # )
 
     # Create daily Model by itself samples
-
+    create_samples_from_pyrenew_fit_dir(model_dir)
     # Create daily Model by itself plots
 
     # if fit_ed_visits:
