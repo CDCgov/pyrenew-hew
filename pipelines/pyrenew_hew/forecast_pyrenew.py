@@ -219,17 +219,21 @@ def main(
     data_dir = Path(model_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
 
-    timeseries_model_name = "ts_ensemble_e" if fit_ed_visits else None
-    # NEED TO UPDATE THIS
-    if fit_ed_visits and not os.path.exists(Path(model_run_dir, timeseries_model_name)):
-        raise ValueError(
-            f"{timeseries_model_name} model run not found. "
-            "Please ensure that the timeseries forecasts "
-            "for the ED visits (E) signal are generated "
-            "before fitting Pyrenew models with the E signal. "
-            "If running a batch job, set the flag --model-family "
-            "'timeseries' to fit timeseries model."
+    if fit_ed_visits:
+        all_timeseries_model_names = ["daily_ts_ensemble_e", "epiweekly_ts_ensemble_e"]
+        present_timeseries_model_names = [
+            name
+            for name in all_timeseries_model_names
+            if Path(model_run_dir, name).exists()
+        ]
+        missing_timeseries_model_names = set(all_timeseries_model_names) - set(
+            present_timeseries_model_names
         )
+        if missing_timeseries_model_names:
+            raise FileNotFoundError(
+                f"Missing timeseries model runs: {missing_timeseries_model_names}. "
+                "Please ensure that the timeseries forecasts for the E signal are generated before fitting Pyrenew models with the E signal."
+            )
 
     logger.info("Recording git info...")
     record_git_info(model_dir)
@@ -261,9 +265,6 @@ def main(
         save_dir=data_dir,
     )
 
-    logger.info("Generating epiweekly datasets from daily datasets...")
-    generate_epiweekly_data(data_dir)
-
     logger.info("Data preparation complete.")
 
     logger.info("Fitting model...")
@@ -292,6 +293,7 @@ def main(
         predict_wastewater=forecast_wastewater,
         rng_key=rng_key,
     )
+    # pipe this into something that creates samples.parquet
     logger.info("All forecasting complete.")
 
     logger.info("Postprocessing forecast...")
@@ -304,15 +306,17 @@ def main(
     # )
 
     # Create daily Model by itself samples
+
     # Create daily Model by itself plots
 
+    # if fit_ed_visits:
     # Create epiweekly (aggregated num, aggregated denom) samples
     # Create epiweekly (aggregated num, aggregated denom) plots
 
     # Create epiweekly (aggregated num, unaggregated denom) samples
     # Create epiweekly (aggregated num, unaggregated denom) plots
 
-    create_hubverse_table(Path(model_run_dir, pyrenew_model_name))
+    # create_hubverse_table(Path(model_run_dir, pyrenew_model_name))
 
     logger.info("Postprocessing complete.")
 
