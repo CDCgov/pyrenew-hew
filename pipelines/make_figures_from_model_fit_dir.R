@@ -6,7 +6,41 @@ library(fs)
 library(cowplot)
 library(hewr)
 library(argparser)
-# might have to adopt this for quantiles
+
+read_data <- function(dat_path) {
+  dat_raw <- read_tabular(dat_path)
+
+  non_ww_dat <- dat_raw |>
+    filter(.variable != "site_level_log_ww_conc") |>
+    tidyr::pivot_wider(
+      names_from = ".variable",
+      values_from = ".value",
+    ) |>
+    dplyr::mutate(
+      prop_disease_ed_visits = .data$observed_ed_visits /
+        (.data$observed_ed_visits + .data$other_ed_visits)
+    ) |>
+    tidyr::pivot_longer(
+      cols = -c(
+        "date",
+        "geo_value",
+        "disease",
+        "data_type",
+        "lab_site_index"
+      ),
+      names_to = ".variable",
+      values_to = ".value"
+    ) |>
+    tidyr::drop_na(".value")
+
+  ww_dat <- dat_raw |>
+    dplyr::filter(.data$.variable == "site_level_log_ww_conc")
+
+  combined_dat <- dplyr::bind_rows(ww_dat, non_ww_dat)
+  combined_dat
+}
+
+
 get_ci <- function(model_fit_dir, save = FALSE) {
   ci_path <- path(model_fit_dir, "ci", ext = "parquet")
 
@@ -61,7 +95,11 @@ make_forecast_figure <- function(
   title <- glue::glue("{title_prefix} {core_name} in {geo_value}")
 
   tmp_ci <- left_join(for_plotting_tbl, ci)
-
+  facet_componenet <- if (n_distinct(tmp_ci[["lab_site_index"]]) > 1) {
+    facet_wrap(~lab_site_index, scales = "free_y")
+  } else {
+    NULL
+  }
   # should bake in dat resolution to dat
   # should bake in disease name to dat
   tmp_dat <- left_join(for_plotting_tbl, dat)
@@ -69,6 +107,7 @@ make_forecast_figure <- function(
   # need to add the variable
   # maybe bake this into the data
   ggplot(mapping = aes(x = date, y = .value)) +
+    facet_componenet +
     ggdist::geom_lineribbon(
       data = tmp_ci,
       mapping = ggplot2::aes(ymin = .data$.lower, ymax = .data$.upper),
@@ -99,8 +138,6 @@ make_forecast_figure <- function(
       legend.direction = "vertical",
       legend.justification = "center"
     )
-  # to do
-  # facets
 }
 
 make_forecast_figure_from_model_fit_dir <- function(
@@ -109,36 +146,15 @@ make_forecast_figure_from_model_fit_dir <- function(
   save_figs = TRUE
 ) {
   model_name <- path_file(model_fit_dir)
-  dat_path <- path(model_fit_dir, "data", "combined_data", ext = "tsv")
-
   ci <- get_ci(model_fit_dir, save = save_ci)
 
-  dat <- read_tabular(dat_path) |>
-    tidyr::pivot_wider(
-      names_from = ".variable",
-      values_from = ".value"
-    ) |>
-    dplyr::mutate(
-      prop_disease_ed_visits = .data$observed_ed_visits /
-        (.data$observed_ed_visits + .data$other_ed_visits)
-    ) |>
-    tidyr::pivot_longer(
-      cols = -c(
-        "date",
-        "geo_value",
-        "disease",
-        "data_type",
-        "lab_site_index"
-      ),
-      names_to = ".variable",
-      values_to = ".value"
-    ) |>
-    tidyr::drop_na(".value")
-  # maybe this is already done in some data reading function
+  dat_path <- path(model_fit_dir, "data", "combined_data", ext = "tsv")
+  dat <- read_data(dat_path)
 
   fig_tbl <- ci |>
     distinct(geo_value, disease, resolution, .variable) |>
-    expand_grid(y_transform = c("identity", "log")) |>
+    expand_grid(y_transform = c("identity", "log10")) |>
+    filter(!(.variable == "site_level_log_ww_conc" & y_transform == "log10")) |>
     rowwise() |>
     mutate(
       fig = list(make_forecast_figure(

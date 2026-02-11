@@ -27,6 +27,7 @@ from pipelines.utils.common_utils import (
     create_hubverse_table,
     get_available_reports,
     load_credentials,
+    make_figures_from_model_fit_dir,
     run_r_script,
 )
 
@@ -317,7 +318,13 @@ def main(
 
     # Create daily Model by itself samples
     create_samples_from_pyrenew_fit_dir(model_dir)
+
     # Create daily Model by itself plots
+    make_figures_from_model_fit_dir(
+        model_dir,
+        save_figs=True,
+        save_ci=True,
+    )
 
     # if fit_ed_visits:
     # Create epiweekly (aggregated num, aggregated denom) samples
@@ -326,7 +333,7 @@ def main(
     # Create epiweekly (aggregated num, unaggregated denom) samples
     # Create epiweekly (aggregated num, unaggregated denom) plots
 
-    # create_hubverse_table(Path(model_run_dir, pyrenew_model_name))
+    create_hubverse_table(model_dir)
 
     logger.info("Postprocessing complete.")
 
