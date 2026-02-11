@@ -49,7 +49,6 @@ help:
 	@echo "  container_push	     : Push the container image"
 	@echo ""
 	@echo "Dagster Targets: "
-	@echo "  dagster             : Run dagster definitions locally"
 	@echo "  dagster_push_prod   : Push the dagster container image to the Azure Container Registry and code location for production"
 	@echo ""
 	@echo "Model Fit Targets: "
@@ -90,9 +89,6 @@ container_push: ghcr_login
 
 config:
 	bash -c "source ./azureconfig.sh"
-
-dagster:
-	uv run dagster_defs.py
 
 dagster_push_prod:
 	docker build . -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest -f Containerfile && \
