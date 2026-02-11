@@ -59,9 +59,7 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-# TODO: prod image when ready
-tag = "latest" if is_production else user
-# tag = "latest" if is_production else "dagster_latest"
+tag = "latest"
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 # add this to a job or the Definitions class to use it
