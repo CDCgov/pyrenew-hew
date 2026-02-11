@@ -58,7 +58,6 @@ class ForecastPipelineContext:
     use_percentage: bool
     ed_visit_type: str
     model_name: str
-    param_data_dir: Path | None
     nhsn_data_path: Path | None
     report_date: date
     first_training_date: date
@@ -165,7 +164,6 @@ def setup_forecast_pipeline(
     use_percentage: bool,
     ed_visit_type: str,
     model_name: str,
-    param_data_dir: Path | None,
     nhsn_data_path: Path | None,
     facility_level_nssp_data_dir: Path | str,
     output_dir: Path | str,
@@ -204,8 +202,6 @@ def setup_forecast_pipeline(
         Type of ED visits: "observed" or "other" (NSSP only)
     model_name : str
         Name of the model configuration
-    param_data_dir : Path | None
-        Directory containing parameter data
     nhsn_data_path : Path | None
         Path to NHSN hospital admission data
     facility_level_nssp_data_dir : Path | str
@@ -282,7 +278,6 @@ def setup_forecast_pipeline(
         use_percentage=use_percentage,
         ed_visit_type=ed_visit_type,
         model_name=model_name,
-        param_data_dir=param_data_dir,
         nhsn_data_path=nhsn_data_path,
         report_date=report_date_parsed,
         first_training_date=first_training_date,
