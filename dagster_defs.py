@@ -58,7 +58,11 @@ user = os.getenv("DAGSTER_USER")
 
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
-image = "ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest"
+
+# TODO: prod image when ready
+tag = "latest" if is_production else user
+# tag = "latest" if is_production else "dagster_latest"
+image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 # add this to a job or the Definitions class to use it
 docker_executor_configured = docker_executor.configured(
@@ -190,8 +194,7 @@ class CommonConfig(dg.Config):
     """
 
     forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
-    # _output_basedir: str = "output" if is_production else "test-output"
-    _output_basedir: str = "test-output"
+    _output_basedir: str = "output" if is_production else "test-output"
     _output_subdir: str = f"{forecast_date}_forecasts"
     output_dir: str = f"{_output_basedir}/{_output_subdir}"
 
@@ -209,13 +212,11 @@ class ModelConfig(CommonConfig):
     # manual_location_exclusions: list[str] = [] # experimental - not ready to incorporate in config yet
 
     # Parameters that can be toggled in the launchpad or in custom jobs
-    # test: bool = True if not is_production else False
-    test: bool = True
     n_training_days: int = 150
     exclude_last_n_days: int = 1
-    n_warmup: int = 200 if test else 1000
-    n_samples: int = 200 if test else 500
-    n_chains: int = 2 if test else 4
+    n_warmup: int = 200 if not is_production else 1000
+    n_samples: int = 200 if not is_production else 500
+    n_chains: int = 2 if not is_production else 4
     n_total_samples: int = n_samples * n_chains
     rng_key: int = 12345
     additional_forecast_letters: str = ""
