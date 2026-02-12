@@ -1,4 +1,5 @@
 Containerfile
 nssp_demo/private_data
 notebooks
-mounts/
+blobfuse/mounts
+.venv
