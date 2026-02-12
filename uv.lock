@@ -424,17 +424,17 @@ wheels = [
 ]
 
 [[package]]
-name = "azure-mgmt-resource"
-version = "25.0.0"
+name = "azure-mgmt-subscription"
+version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "azure-common" },
     { name = "azure-mgmt-core" },
-    { name = "isodate" },
-    { name = "typing-extensions" },
+    { name = "msrest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/7e/b3f9d544a94782be9c5ab8123d2fa7fb20cbdf3f5a16b883f308865e1406/azure_mgmt_resource-25.0.0.tar.gz", hash = "sha256:dc123a9f6509c37299d7716c9090cff0a9d73309b228cc094ea950ce3cca3603", size = 92837, upload-time = "2026-02-06T06:00:39.699Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/67/14b19a006e13d86f05ee59faf78c39dc443d4fd6967344e9c94f688949c1/azure-mgmt-subscription-3.1.1.zip", hash = "sha256:4e255b4ce9b924357bb8c5009b3c88a2014d3203b2495e2256fa027bf84e800e", size = 96018, upload-time = "2022-09-06T07:30:49.467Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/92/41/ce12546aa2a20c4f37d061bfa7df3bf8fa72ff01e7557ec330929c72ec7d/azure_mgmt_resource-25.0.0-py3-none-any.whl", hash = "sha256:f6f17b2305abe9bf6ec6c92a9410af21a2b0d805cc98e94d80c07220924a045b", size = 83670, upload-time = "2026-02-06T06:00:41.317Z" },
+    { url = "https://files.pythonhosted.org/packages/70/12/e6de2021c4689f857386670ba0b6d3c4025d4209e45df7dd7cdabe9a4ac1/azure_mgmt_subscription-3.1.1-py3-none-any.whl", hash = "sha256:38d4574a8d47fa17e3587d756e296cb63b82ad8fb21cd8543bcee443a502bf48", size = 79409, upload-time = "2022-09-06T07:30:47.247Z" },
 ]
 
 [[package]]
@@ -599,14 +599,14 @@ wheels = [
 [[package]]
 name = "cfa-dagster"
 version = "0.1.0"
-source = { git = "https://github.com/cdcgov/cfa-dagster.git#217b418648b85e35bf14a77f584b6403a870432e" }
+source = { git = "https://github.com/cdcgov/cfa-dagster.git#ff6f6a0fe1367f65ab5c9f77e0fe7ac0e85b2ed2" }
 dependencies = [
     { name = "aiofiles" },
     { name = "azure-batch" },
     { name = "azure-identity" },
     { name = "azure-keyvault-secrets" },
     { name = "azure-mgmt-appcontainers" },
-    { name = "azure-mgmt-resource" },
+    { name = "azure-mgmt-subscription" },
     { name = "dagster" },
     { name = "dagster-azure" },
     { name = "dagster-docker" },
