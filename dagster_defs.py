@@ -21,7 +21,6 @@ from cfa_dagster import (
     launch_asset_backfill,
     start_dev_env,
 )
-from cfa_dagster import azure_container_app_job_executor as azure_caj_executor
 from dagster_azure.blob import (
     AzureBlobStorageDefaultCredential,
     AzureBlobStorageResource,
@@ -65,102 +64,80 @@ local_workdir = Path(__file__).parent.resolve()
 tag = "dagster_latest"
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
-# add this to a job or the Definitions class to use it
-docker_executor_configured = docker_executor.configured(
-    {
-        "image": image,
-        "env_vars": [
-            f"DAGSTER_USER={user}",
-            "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
-        ],
-        "retries": {"enabled": {}},
-        "container_kwargs": {
-            "volumes": [
-                # bind the ~/.azure folder for optional cli login
-                f"/home/{user}/.azure:/root/.azure",
-                # bind current file so we don't have to rebuild
-                # the container image for workflow changes
-                f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
-                # blob container mounts for cfa-stf-routine-forecasting
-                f"/{local_workdir}/blobfuse/mounts/nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
-                f"/{local_workdir}/blobfuse/mounts/nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
-                f"/{local_workdir}/blobfuse/mounts/nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
-                f"/{local_workdir}/blobfuse/mounts/params:/cfa-stf-routine-forecasting/params",
-                f"/{local_workdir}/blobfuse/mounts/config:/cfa-stf-routine-forecasting/config",
-                f"/{local_workdir}/blobfuse/mounts/output:/cfa-stf-routine-forecasting/output",
-                f"/{local_workdir}/blobfuse/mounts/test-output:/cfa-stf-routine-forecasting/test-output",
-            ]
-        },
-    }
+default_config = ExecutionConfig(
+    launcher=SelectorConfig(class_name=dg.DefaultRunLauncher.__name__),
+    executor=SelectorConfig(class_name=dg.multiprocess_executor.__name__),
 )
 
-# configuring an executor to run workflow steps on Azure Container App Jobs
-# add this to a job or the Definitions class to use it
-# Container app jobs cant have mounted volumes, so we would need to refactor cfa-stf-routine-forecasting to use this
-azure_caj_executor_configured = azure_caj_executor.configured(
-    {
-        "image": image,
-        "env_vars": [
-            f"DAGSTER_USER={user}",
-            "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
-        ],
-    }
+azure_caj_config = ExecutionConfig(
+    launcher=SelectorConfig(class_name=AzureContainerAppJobRunLauncher.__name__),
+    executor=SelectorConfig(class_name=dg.in_process_executor.__name__),
 )
 
-# configuring an executor to run workflow steps on Azure Batch 4CPU 16GB RAM pool
-# add this to a job or the Definitions class to use it
-azure_batch_executor_configured = azure_batch_executor.configured(
-    {
-        "pool_name": "pyrenew-dagster-pool",
-        "image": image,
-        "env_vars": [
-            f"DAGSTER_USER={user}",
-            "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
-        ],
-        "container_kwargs": {
-            "volumes": [
-                # bind the ~/.azure folder for optional cli login
-                # f"/home/{user}/.azure:/root/.azure",
-                # bind current file so we don't have to rebuild
-                # the container image for workflow changes
-                # blob container mounts for cfa-stf-routine-forecasting
-                "nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
-                "nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
-                "nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
-                "prod-param-estimates:/cfa-stf-routine-forecasting/params",
-                "pyrenew-hew-config:/cfa-stf-routine-forecasting/config",
-                "pyrenew-hew-prod-output:/cfa-stf-routine-forecasting/output",
-                "pyrenew-test-output:/cfa-stf-routine-forecasting/test-output",
-            ],
-            "working_dir": "/cfa-stf-routine-forecasting",
-        },
-    }
-)
-
-# Azure Container App Job Launcher
-azure_caj_launcher = {
-    "cfa_dagster/launcher": {
-        "class": AzureContainerAppJobRunLauncher.__name__,
-        "config": {
+docker_config = ExecutionConfig(
+    launcher=SelectorConfig(class_name=dg.DefaultRunLauncher.__name__),
+    executor=SelectorConfig(
+        class_name=docker_executor.__name__,
+        config={
             "image": image,
+            "env_vars": [
+                f"DAGSTER_USER={user}",
+                "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
+            ],
+            "retries": {"enabled": {}},
+            "container_kwargs": {
+                "volumes": [
+                    # bind the ~/.azure folder for optional cli login
+                    f"/home/{user}/.azure:/root/.azure",
+                    # bind current file so we don't have to rebuild
+                    # the container image for workflow changes
+                    f"{__file__}:/{workdir}/{os.path.basename(__file__)}",
+                    # blob container mounts for cfa-stf-routine-forecasting
+                    f"{local_workdir}/blobfuse/mounts/nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
+                    f"{local_workdir}/blobfuse/mounts/nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
+                    f"{local_workdir}/blobfuse/mounts/nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
+                    f"{local_workdir}/blobfuse/mounts/params:/cfa-stf-routine-forecasting/params",
+                    f"{local_workdir}/blobfuse/mounts/config:/cfa-stf-routine-forecasting/config",
+                    f"{local_workdir}/blobfuse/mounts/output:/cfa-stf-routine-forecasting/output",
+                    f"{local_workdir}/blobfuse/mounts/test-output:/cfa-stf-routine-forecasting/test-output",
+                ]
+            },
         },
-    }
-}
+    ),
+)
 
-# Standard Docker - uses the default run launcher
-docker_metadata = {"executor": docker_executor_configured}
-
-# For use with Container App Jobs
-azure_caj_metadata = {
-    "executor": azure_caj_executor_configured,
-    "metadata": azure_caj_launcher,
-}
-
-# For user with Azure Batch Jobs
-azure_batch_metadata = {
-    "executor": azure_batch_executor_configured,
-    "metadata": azure_caj_launcher if not is_production else {},
-}
+azure_batch_config = ExecutionConfig(
+    launcher=SelectorConfig(
+        class_name=AzureContainerAppJobRunLauncher.__name__, config={"image": image}
+    ),
+    executor=SelectorConfig(
+        class_name=azure_batch_executor.__name__,
+        config={
+            "pool_name": "pyrenew-dagster-pool",
+            "image": image,
+            "env_vars": [
+                "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
+            ],
+            "container_kwargs": {
+                "volumes": [
+                    # bind the ~/.azure folder for optional cli login
+                    # f"/home/{user}/.azure:/root/.azure",
+                    # bind current file so we don't have to rebuild
+                    # the container image for workflow changes
+                    # blob container mounts for cfa-stf-routine-forecasting
+                    "nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
+                    "nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
+                    "nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
+                    "prod-param-estimates:/cfa-stf-routine-forecasting/params",
+                    "pyrenew-hew-config:/cfa-stf-routine-forecasting/config",
+                    "pyrenew-hew-prod-output:/cfa-stf-routine-forecasting/output",
+                    "pyrenew-test-output:/cfa-stf-routine-forecasting/test-output",
+                ],
+                "working_dir": "/cfa-stf-routine-forecasting",
+            },
+        },
+    ),
+)
 
 # --------------------------------------------------------------- #
 # Partitions: how are the data split and processed in Azure Batch?
@@ -535,7 +512,7 @@ def launch_pyrenew_pipeline(
     context: dg.OpExecutionContext, config: ModelConfig
 ) -> dg.Output[str]:
     # We are referencing the global pyrenew_multi_partition_def defined earlier
-    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[:4]
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys()
 
     # Determine which assets to backfill based on data availability
     nhsn_available = check_nhsn_data_availability()["exists"]  # H Data
@@ -560,13 +537,13 @@ def launch_pyrenew_pipeline(
         context.log.info(
             "Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill."
         )
-        asset_selection = (
+        asset_selection = [
             "timeseries_e",
             "pyrenew_e",
             "pyrenew_h",
             "pyrenew_he",
             "postprocess_forecasts",
-        )
+        ]
 
     # elif nhsn_available and nwss_available:
     #     context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
@@ -576,16 +553,16 @@ def launch_pyrenew_pipeline(
     elif nssp_available:
         context.log.info("Only NSSP gold data are available.")
         context.log.info("Launching a timeseries_e and pyrenew_e backfill.")
-        asset_selection = ("timeseries_e", "pyrenew_e", "postprocess_forecasts")
+        asset_selection = ["timeseries_e", "pyrenew_e", "postprocess_forecasts"]
 
     elif nhsn_available:
         context.log.info("Only NHSN data are available.")
         context.log.info("Launching a pyrenew_h backfill.")
-        asset_selection = ("pyrenew_h", "postprocess_forecasts")
+        asset_selection = ["pyrenew_h", "postprocess_forecasts"]
 
     else:
         context.log.info("No required data is available.")
-        asset_selection = ()
+        asset_selection = []
 
     # Launch the backfill
     # Returns: a backfill ID,
@@ -594,11 +571,8 @@ def launch_pyrenew_pipeline(
         asset_selection,
         partition_keys,
         run_config=dg.RunConfig(
-            {
-                "ops": {
-                    **{asset: config for asset in asset_selection},
-                },
-            }
+            ops={**{asset: config for asset in asset_selection}},
+            execution=azure_batch_config.to_run_config(),
         ),
         tags={
             "run": "pyrenew",
@@ -627,72 +601,11 @@ def launch_pyrenew_pipeline(
 
 ## -- Jobs -- ##
 
-default_config = ExecutionConfig(
-    launcher=SelectorConfig(class_name=dg.DefaultRunLauncher.__name__),
-    executor=SelectorConfig(class_name=dg.multiprocess_executor.__name__),
-)
-
-azure_batch_config = ExecutionConfig(
-    launcher=SelectorConfig(class_name=AzureContainerAppJobRunLauncher.__name__),
-    executor=SelectorConfig(
-        class_name=azure_batch_executor.__name__,
-        config={
-            "pool_name": "pyrenew-dagster-pool",
-            "image": image,
-            "env_vars": [
-                "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
-            ],
-            "container_kwargs": {
-                "volumes": [
-                    # bind the ~/.azure folder for optional cli login
-                    # f"/home/{user}/.azure:/root/.azure",
-                    # bind current file so we don't have to rebuild
-                    # the container image for workflow changes
-                    # blob container mounts for cfa-stf-routine-forecasting
-                    "nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
-                    "nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
-                    "nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
-                    "prod-param-estimates:/cfa-stf-routine-forecasting/params",
-                    "pyrenew-hew-config:/cfa-stf-routine-forecasting/config",
-                    "pyrenew-hew-prod-output:/cfa-stf-routine-forecasting/output",
-                    "pyrenew-test-output:/cfa-stf-routine-forecasting/test-output",
-                ],
-                "working_dir": "/cfa-stf-routine-forecasting",
-            },
-        },
-    ),
-)
-
-# Experimental asset job to materialize all pyrenew assets
-run_pyrenew_hew_on_local_docker = dg.define_asset_job(
-    name="RunPyrenewHewLocalDocker",
-    executor_def=docker_executor_configured,
-    selection=[
-        "timeseries_e",
-        "pyrenew_e",
-        "pyrenew_h",
-        "pyrenew_he",
-        "pyrenew_hw",
-        "pyrenew_hew",
-    ],
-    # tag the run with your user to allow for easy filtering in the Dagster UI
-    tags={"user": user},
-)
-
-run_postprocess_forecasts = dg.define_asset_job(
-    name="RunPostprocessForecasts",
-    executor_def=docker_executor_configured
-    if not is_production
-    else azure_batch_executor_configured,
-    selection=[postprocess_forecasts],
-    tags={"user": user},
-)
-
 
 # This wraps our launch_pipeline op in a job that can be scheduled or manually launched via the GUI
 @dg.job(
     executor_def=dynamic_executor(
-        default_config=azure_batch_config if is_production else default_config
+        default_config=azure_caj_config if is_production else default_config
     ),
     config=dg.RunConfig(ops={"launch_pyrenew_pipeline": ModelConfig()}),
 )
@@ -756,6 +669,6 @@ defs = dg.Definitions(
     },
     # New ** syntax combines executor and launcher metadata
     executor=dynamic_executor(
-        default_config=azure_batch_config if is_production else default_config
+        default_config=azure_batch_config if is_production else docker_config
     ),
 )
