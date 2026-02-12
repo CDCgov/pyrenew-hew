@@ -736,3 +736,78 @@ def build_pyrenew_hew_model_from_dir(
         fit_wastewater=fit_wastewater,
     )
     return my_model
+
+
+def create_prop_samples(
+    model_run_dir: Path | str,
+    num_model_name: str,
+    other_model_name: str,
+    num_var_name: str = "observed_ed_visits",
+    other_var_name: str = "other_ed_visits",
+    prop_var_name: str = "prop_disease_ed_visits",
+    augment_num_with_obs: bool = False,
+    augment_other_with_obs: bool = True,
+    aggregate_num: bool = False,
+    aggregate_other: bool = False,
+    save: bool = True,
+) -> None:
+    """Create proportion samples by calling the R script.
+
+    Parameters
+    ----------
+    model_run_dir : Path | str
+        Directory containing the model data and output.
+    num_model_name : str
+        Name of the model containing the numerator variable.
+    other_model_name : str
+        Name of the model containing the other variable.
+    num_var_name : str, optional
+        Name of the numerator variable, by default "observed_ed_visits".
+    other_var_name : str, optional
+        Name of the other variable, by default "other_ed_visits".
+    prop_var_name : str, optional
+        Name of the proportion variable, by default "prop_disease_ed_visits".
+    augment_num_with_obs : bool, optional
+        Whether to augment numerator samples with observations, by default False.
+    augment_other_with_obs : bool, optional
+        Whether to augment other samples with observations, by default True.
+    aggregate_num : bool, optional
+        Whether to aggregate numerator to epiweekly, by default False.
+    aggregate_other : bool, optional
+        Whether to aggregate other to epiweekly, by default False.
+    save : bool, optional
+        Whether to save the results, by default False.
+
+    Returns
+    -------
+    None
+    """
+    args = [
+        str(model_run_dir),
+        "--num-model-name",
+        num_model_name,
+        "--other-model-name",
+        other_model_name,
+        "--num-var-name",
+        num_var_name,
+        "--other-var-name",
+        other_var_name,
+        "--prop-var-name",
+        prop_var_name,
+    ]
+    if augment_num_with_obs:
+        args.append("--augment-num-with-obs")
+    if augment_other_with_obs:
+        args.append("--augment-other-with-obs")
+    if aggregate_num:
+        args.append("--aggregate-num")
+    if aggregate_other:
+        args.append("--aggregate-other")
+    if save:
+        args.append("--save")
+
+    run_r_script(
+        "pipelines/create_prop_samples.R",
+        args,
+        function_name="create_prop_samples",
+    )

@@ -25,6 +25,7 @@ from pipelines.utils.cli_utils import add_common_forecast_arguments
 from pipelines.utils.common_utils import (
     calculate_training_dates,
     create_hubverse_table,
+    create_prop_samples,
     get_available_reports,
     load_credentials,
     make_figures_from_model_fit_dir,
@@ -308,30 +309,51 @@ def main(
     logger.info("All forecasting complete.")
 
     logger.info("Postprocessing forecast...")
-    # Do this for both daily and epiweekly
-    # plot_and_save_loc_forecast(
-    #     model_run_dir,
-    #     n_days_past_last_training,
-    #     pyrenew_model_name,
-    #     timeseries_model_name,
-    # )
 
-    # Create daily Model by itself samples
+    # Create daily counts
+    logger.info("Creating daily counts...")
     create_samples_from_pyrenew_fit_dir(model_dir)
-
-    # Create daily Model by itself plots
     make_figures_from_model_fit_dir(
         model_dir,
         save_figs=True,
         save_ci=True,
     )
 
-    # if fit_ed_visits:
-    # Create epiweekly (aggregated num, aggregated denom) samples
-    # Create epiweekly (aggregated num, aggregated denom) plots
+    if fit_ed_visits:
+        # Create daily proportions
+        logger.info("Creating daily proportions...")
+        create_prop_samples(
+            model_run_dir=model_run_dir,
+            num_model_name=pyrenew_model_name,
+            other_model_name="daily_ts_ensemble_e",
+            aggregate_num=False,
+            aggregate_other=False,
+            save=True,
+        )
+        make_figures_from_model_fit_dir(
+            Path(model_run_dir, f"prop_{pyrenew_model_name}_daily_ts_ensemble_e"),
+            save_figs=True,
+            save_ci=True,
+        )
 
-    # Create epiweekly (aggregated num, unaggregated denom) samples
-    # Create epiweekly (aggregated num, unaggregated denom) plots
+        # Create epiweekly proportions by aggregating the numerator
+        logger.info("Creating epiweekly proportions...")
+        create_prop_samples(
+            model_run_dir=model_run_dir,
+            num_model_name=pyrenew_model_name,
+            other_model_name="epiweekly_ts_ensemble_e",
+            aggregate_num=True,
+            aggregate_other=False,
+            save=True,
+        )
+        make_figures_from_model_fit_dir(
+            Path(
+                model_run_dir,
+                f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_ts_ensemble_e",
+            ),
+            save_figs=True,
+            save_ci=True,
+        )
 
     create_hubverse_table(model_dir)
 

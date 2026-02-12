@@ -7,39 +7,6 @@ library(cowplot)
 library(hewr)
 library(argparser)
 
-read_data <- function(dat_path) {
-  dat_raw <- read_tabular(dat_path)
-
-  non_ww_dat <- dat_raw |>
-    filter(.variable != "site_level_log_ww_conc") |>
-    tidyr::pivot_wider(
-      names_from = ".variable",
-      values_from = ".value",
-    ) |>
-    dplyr::mutate(
-      prop_disease_ed_visits = .data$observed_ed_visits /
-        (.data$observed_ed_visits + .data$other_ed_visits)
-    ) |>
-    tidyr::pivot_longer(
-      cols = -c(
-        "date",
-        "geo_value",
-        "disease",
-        "data_type",
-        "lab_site_index"
-      ),
-      names_to = ".variable",
-      values_to = ".value"
-    ) |>
-    tidyr::drop_na(".value")
-
-  ww_dat <- dat_raw |>
-    dplyr::filter(.data$.variable == "site_level_log_ww_conc")
-
-  combined_dat <- dplyr::bind_rows(ww_dat, non_ww_dat)
-  combined_dat
-}
-
 
 get_ci <- function(model_fit_dir, save = FALSE) {
   ci_path <- path(model_fit_dir, "ci", ext = "parquet")
@@ -149,7 +116,7 @@ make_forecast_figure_from_model_fit_dir <- function(
   ci <- get_ci(model_fit_dir, save = save_ci)
 
   dat_path <- path(model_fit_dir, "data", "combined_data", ext = "tsv")
-  dat <- read_data(dat_path)
+  dat <- read_tabular(dat_path)
 
   fig_tbl <- ci |>
     distinct(geo_value, disease, resolution, .variable) |>
@@ -218,4 +185,7 @@ make_forecast_figure_from_model_fit_dir(
   model_fit_dir = argv$model_fit_dir,
   save_figs = argv$save_figs,
   save_ci = argv$save_ci
+)
+model_fit_dir <- path(
+  "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-09-22_t_2024-12-20/model_runs/MT/epiweekly_aggregated_pyrenew_e_daily_ts_ensemble_e"
 )
