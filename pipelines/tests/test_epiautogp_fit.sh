@@ -29,7 +29,7 @@ cmd_args=(
 	--loc "$location"
 	--facility-level-nssp-data-dir "$BASE_DIR/private_data/nssp_etl_gold"
 	--output-dir "$BASE_DIR/2024-12-21_forecasts"
-	--n-training-days 150
+	--n-training-days 90
 	--target "$target"
 	--frequency "$frequency"
 	--nhsn-data-path "$BASE_DIR/private_data/nhsn_test_data/${disease}_${location}.parquet"
