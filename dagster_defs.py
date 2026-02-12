@@ -12,9 +12,12 @@ from azure.storage.blob import BlobServiceClient
 from cfa_dagster import (
     ADLS2PickleIOManager,
     AzureContainerAppJobRunLauncher,
+    ExecutionConfig,
+    SelectorConfig,
     azure_batch_executor,
     collect_definitions,
     docker_executor,
+    dynamic_executor,
     launch_asset_backfill,
     start_dev_env,
 )
@@ -624,6 +627,42 @@ def launch_pyrenew_pipeline(
 
 ## -- Jobs -- ##
 
+default_config = ExecutionConfig(
+    launcher=SelectorConfig(class_name=dg.DefaultRunLauncher.__name__),
+    executor=SelectorConfig(class_name=dg.multiprocess_executor.__name__),
+)
+
+azure_batch_config = ExecutionConfig(
+    launcher=SelectorConfig(class_name=AzureContainerAppJobRunLauncher.__name__),
+    executor=SelectorConfig(
+        class_name=azure_batch_executor.__name__,
+        config={
+            "pool_name": "pyrenew-dagster-pool",
+            "image": image,
+            "env_vars": [
+                "VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv",
+            ],
+            "container_kwargs": {
+                "volumes": [
+                    # bind the ~/.azure folder for optional cli login
+                    # f"/home/{user}/.azure:/root/.azure",
+                    # bind current file so we don't have to rebuild
+                    # the container image for workflow changes
+                    # blob container mounts for cfa-stf-routine-forecasting
+                    "nssp-archival-vintages:/cfa-stf-routine-forecasting/nssp-archival-vintages",
+                    "nssp-etl:/cfa-stf-routine-forecasting/nssp-etl",
+                    "nwss-vintages:/cfa-stf-routine-forecasting/nwss-vintages",
+                    "prod-param-estimates:/cfa-stf-routine-forecasting/params",
+                    "pyrenew-hew-config:/cfa-stf-routine-forecasting/config",
+                    "pyrenew-hew-prod-output:/cfa-stf-routine-forecasting/output",
+                    "pyrenew-test-output:/cfa-stf-routine-forecasting/test-output",
+                ],
+                "working_dir": "/cfa-stf-routine-forecasting",
+            },
+        },
+    ),
+)
+
 # Experimental asset job to materialize all pyrenew assets
 run_pyrenew_hew_on_local_docker = dg.define_asset_job(
     name="RunPyrenewHewLocalDocker",
@@ -652,7 +691,9 @@ run_postprocess_forecasts = dg.define_asset_job(
 
 # This wraps our launch_pipeline op in a job that can be scheduled or manually launched via the GUI
 @dg.job(
-    executor_def=dg.multiprocess_executor,
+    executor_def=dynamic_executor(
+        default_config=azure_batch_config if is_production else default_config
+    ),
     config=dg.RunConfig(ops={"launch_pyrenew_pipeline": ModelConfig()}),
 )
 def weekly_pyrenew_via_backfill():
@@ -714,9 +755,7 @@ defs = dg.Definitions(
         ),
     },
     # New ** syntax combines executor and launcher metadata
-    **(
-        azure_batch_metadata  # comment when testing locally, take care not to submit too many jobs
-        # docker_metadata # use this when running locally - be careful not to use the backfill job locally
-        # azure_batch_metadata if is_production else docker_metadata
+    executor=dynamic_executor(
+        default_config=azure_batch_config if is_production else default_config
     ),
 )
