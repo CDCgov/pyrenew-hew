@@ -59,7 +59,7 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-tag = "latest"
+tag = "dagster_latest"
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 # add this to a job or the Definitions class to use it
@@ -532,7 +532,7 @@ def launch_pyrenew_pipeline(
     context: dg.OpExecutionContext, config: ModelConfig
 ) -> dg.Output[str]:
     # We are referencing the global pyrenew_multi_partition_def defined earlier
-    partition_keys = pyrenew_multi_partition_def.get_partition_keys()
+    partition_keys = pyrenew_multi_partition_def.get_partition_keys()[:4]
 
     # Determine which assets to backfill based on data availability
     nhsn_available = check_nhsn_data_availability()["exists"]  # H Data
@@ -715,8 +715,8 @@ defs = dg.Definitions(
     },
     # New ** syntax combines executor and launcher metadata
     **(
-        # azure_batch_metadata  # comment when testing locally, take care not to submit too many jobs
+        azure_batch_metadata  # comment when testing locally, take care not to submit too many jobs
         # docker_metadata # use this when running locally - be careful not to use the backfill job locally
-        azure_batch_metadata if is_production else docker_metadata
+        # azure_batch_metadata if is_production else docker_metadata
     ),
 )
