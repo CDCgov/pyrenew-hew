@@ -9,6 +9,7 @@ variable_resolution_key <-
     "site_level_log_ww_conc" = "daily"
   )
 
+# put this list in hewr
 required_columns_e <- c(
   ".chain",
   ".iteration",

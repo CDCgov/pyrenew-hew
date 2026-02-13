@@ -22,8 +22,18 @@ from pipelines.utils.common_utils import (
     get_available_reports,
     load_credentials,
     make_figures_from_model_fit_dir,
-    plot_and_save_loc_forecast,
+    run_r_script,
 )
+
+
+def create_samples_from_epiautogp_fit_dir(model_fit_dir: Path) -> None:
+    """Create samples.parquet from an EpiAutoGP model fit directory using R."""
+    run_r_script(
+        "pipelines/epiautogp/create_samples_from_epiautogp_fit_dir.R",
+        [str(model_fit_dir)],
+        function_name="create_samples_from_epiautogp_fit_dir",
+    )
+    return None
 
 
 @dataclass
@@ -144,13 +154,10 @@ class ForecastPipelineContext:
         # The model_name parameter triggers auto-detection and S3 dispatch to
         # process_model_samples.epiautogp() which handles Julia output format
         self.logger.info("Processing forecast and generating plots...")
-
-        plot_and_save_loc_forecast(
-            model_run_dir=self.model_run_dir,
-            n_forecast_days=self.n_forecast_days,
-            model_name=self.model_name,
-        )  # this just process the samples now. Needs to be renamed.
         model_fit_dir = Path(self.model_run_dir, self.model_name)
+
+        create_samples_from_epiautogp_fit_dir(model_fit_dir=model_fit_dir)
+
         make_figures_from_model_fit_dir(
             model_fit_dir=model_fit_dir,
             save_figs=True,
