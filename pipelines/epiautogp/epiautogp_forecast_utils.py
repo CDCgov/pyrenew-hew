@@ -137,14 +137,10 @@ class ForecastPipelineContext:
         Post-process forecast outputs: create hubverse table and generate plots.
 
         This function performs the final post-processing steps:
-        1. Generate forecast plots using hewr via plot_and_save_loc_forecast
+        1. Process model output samples
+        2. Generate plots
            (which also processes samples via hewr::process_loc_forecast)
-        2. Create hubverse table from processed outputs
-
-        The plot_and_save_loc_forecast function with model_name auto-detects
-        the model type and dispatches to process_model_samples.epiautogp(),
-        which reads Julia output samples, adds metadata, calculates credible
-        intervals, and saves formatted outputs.
+        3. Create hubverse table from processed outputs
 
         Returns
         -------

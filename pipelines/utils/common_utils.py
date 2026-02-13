@@ -425,68 +425,6 @@ def run_julia_code(
     )
 
 
-def plot_and_save_loc_forecast(
-    model_run_dir: Path,
-    n_forecast_days: int,
-    pyrenew_model_name: str = None,
-    timeseries_model_name: str = None,
-    model_name: str = None,
-) -> None:
-    """Plot and save location forecast using R script.
-
-    Parameters
-    ----------
-    model_run_dir : Path
-        Directory containing the model run.
-    n_forecast_days : int
-        Number of days to forecast.
-    pyrenew_model_name : str, optional
-        Name of the PyRenew model (legacy).
-    timeseries_model_name : str, optional
-        Name of the timeseries model (legacy).
-    model_name : str, optional
-        Generic model name. When provided, auto-detects model type
-        and dispatches to appropriate processing method.
-
-    Returns
-    -------
-    None
-    """
-    args = [
-        f"{model_run_dir}",
-        "--n-forecast-days",
-        f"{n_forecast_days}",
-    ]
-    if pyrenew_model_name is not None:
-        args.extend(
-            [
-                "--pyrenew-model-name",
-                f"{pyrenew_model_name}",
-            ]
-        )
-    if timeseries_model_name is not None:
-        args.extend(
-            [
-                "--timeseries-model-name",
-                f"{timeseries_model_name}",
-            ]
-        )
-    if model_name is not None:
-        args.extend(
-            [
-                "--model-name",
-                f"{model_name}",
-            ]
-        )
-
-    run_r_script(
-        "pipelines/utils/plot_and_save_loc_forecast.R",
-        args,
-        function_name="plot_and_save_loc_forecast",
-    )
-    return None
-
-
 def make_figures_from_model_fit_dir(
     model_fit_dir: Path,
     save_ci: bool = False,
@@ -650,29 +588,6 @@ def get_all_forecast_dirs(
         f.name
         for f in os.scandir(parent_dir)
         if f.is_dir() and f.name.startswith(valid_starts)
-    ]
-
-
-def get_all_model_run_dirs(parent_dir: Path) -> list[str]:
-    """
-    Get all the subdirectories within a parent directory
-    that are valid model run directories (by convention,
-    named with the two-letter code of a forecast location).
-
-    Parameters
-    ----------
-    parent_dir
-       Directory in which to look for model run subdirectories.
-
-    Returns
-    -------
-    list[str]
-        Names of matching directories, if any, otherwise an empty
-        list.
-    """
-
-    return [
-        f.name for f in os.scandir(parent_dir) if f.is_dir() and f.name in loc_abbrs_
     ]
 
 
