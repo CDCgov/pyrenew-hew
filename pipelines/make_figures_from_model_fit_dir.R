@@ -22,8 +22,6 @@ get_ci <- function(model_fit_dir, save = FALSE) {
     ci_widths <- c(0.5, 0.8, 0.95)
     cli::cli_alert("Creating CI from samples at: {samples_path}")
     read_tabular(samples_path) |>
-      dplyr::mutate(date = as.Date(.data$date)) |>
-      # julia cannot write dates to parquet as dates
       dplyr::select(-tidyselect::any_of(c(".chain", ".iteration", ".draw"))) |>
       dplyr::group_by(dplyr::across(-".value")) |>
       ggdist::median_qi(.width = ci_widths)
