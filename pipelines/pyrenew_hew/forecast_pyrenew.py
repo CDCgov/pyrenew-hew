@@ -92,20 +92,6 @@ def create_samples_from_pyrenew_fit_dir(model_fit_dir: Path) -> None:
     return None
 
 
-def generate_epiweekly_data(data_dir: Path, overwrite_daily: bool = False) -> None:
-    """Generate epiweekly datasets from daily datasets using an R script."""
-    args = [str(data_dir)]
-    if overwrite_daily:
-        args.append("--overwrite-daily")
-
-    run_r_script(
-        "pipelines/data/generate_epiweekly_data.R",
-        args,
-        function_name="generate_epiweekly_data",
-    )
-    return None
-
-
 def main(
     disease: str,
     loc: str,
