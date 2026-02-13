@@ -37,3 +37,9 @@ repos:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
         exclude: package.lock.json
+  #####
+  # Julia
+  - repo: https://github.com/fredrikekre/runic-pre-commit
+    rev: v2.0.1
+    hooks:
+      - id: runic
