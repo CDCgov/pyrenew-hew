@@ -150,9 +150,6 @@ class ForecastPipelineContext:
         -------
         None
         """
-        # Generate forecast plots and process samples using hewr
-        # The model_name parameter triggers auto-detection and S3 dispatch to
-        # process_model_samples.epiautogp() which handles Julia output format
         self.logger.info("Processing forecast and generating plots...")
         model_fit_dir = Path(self.model_run_dir, self.model_name)
 
@@ -168,7 +165,7 @@ class ForecastPipelineContext:
 
         # Create hubverse table from processed outputs
         self.logger.info("Creating hubverse table...")
-        create_hubverse_table(model_fit_dir)
+        create_hubverse_table(self.model_run_dir)
         self.logger.info("Postprocessing complete.")
 
 
