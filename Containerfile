@@ -60,7 +60,7 @@ COPY uv.lock .
 COPY README.md .
 
 # Set VIRTUAL_ENV variable at runtime
-ENV VIRTUAL_ENV=.venv
+ENV VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv
 
 RUN uv venv $(VIRTUAL_ENV)
 
