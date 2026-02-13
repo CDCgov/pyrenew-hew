@@ -21,6 +21,7 @@ from pipelines.utils.common_utils import (
     create_hubverse_table,
     get_available_reports,
     load_credentials,
+    make_figures_from_model_fit_dir,
     plot_and_save_loc_forecast,
 )
 
@@ -143,16 +144,24 @@ class ForecastPipelineContext:
         # The model_name parameter triggers auto-detection and S3 dispatch to
         # process_model_samples.epiautogp() which handles Julia output format
         self.logger.info("Processing forecast and generating plots...")
+
         plot_and_save_loc_forecast(
             model_run_dir=self.model_run_dir,
             n_forecast_days=self.n_forecast_days,
             model_name=self.model_name,
+        )  # this just process the samples now. Needs to be renamed.
+        model_fit_dir = Path(self.model_run_dir, self.model_name)
+        make_figures_from_model_fit_dir(
+            model_fit_dir=model_fit_dir,
+            save_figs=True,
+            save_ci=True,
         )
+
         self.logger.info("Processing and plotting complete.")
 
         # Create hubverse table from processed outputs
         self.logger.info("Creating hubverse table...")
-        create_hubverse_table(Path(self.model_run_dir, self.model_name))
+        create_hubverse_table(model_fit_dir)
         self.logger.info("Postprocessing complete.")
 
 

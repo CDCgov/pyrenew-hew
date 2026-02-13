@@ -231,22 +231,6 @@ def main(
     data_dir = Path(model_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
 
-    if fit_ed_visits:
-        all_timeseries_model_names = ["daily_ts_ensemble_e", "epiweekly_ts_ensemble_e"]
-        present_timeseries_model_names = [
-            name
-            for name in all_timeseries_model_names
-            if Path(model_run_dir, name).exists()
-        ]
-        missing_timeseries_model_names = set(all_timeseries_model_names) - set(
-            present_timeseries_model_names
-        )
-        if missing_timeseries_model_names:
-            raise FileNotFoundError(
-                f"Missing timeseries model runs: {missing_timeseries_model_names}. "
-                "Please ensure that the timeseries forecasts for the E signal are generated before fitting Pyrenew models with the E signal."
-            )
-
     logger.info("Recording git info...")
     record_git_info(model_dir)
 
@@ -320,40 +304,91 @@ def main(
     )
 
     if fit_ed_visits:
-        # Create daily proportions
-        logger.info("Creating daily proportions...")
-        create_prop_samples(
-            model_run_dir=model_run_dir,
-            num_model_name=pyrenew_model_name,
-            other_model_name="daily_ts_ensemble_e",
-            aggregate_num=False,
-            aggregate_other=False,
-            save=True,
-        )
-        make_figures_from_model_fit_dir(
-            Path(model_run_dir, f"prop_{pyrenew_model_name}_daily_ts_ensemble_e"),
-            save_figs=True,
-            save_ci=True,
-        )
+        if Path(model_run_dir, "daily_ts_ensemble_e").exists():
+            logger.info("Creating daily proportions from daily_ts_ensemble_e...")
+            create_prop_samples(
+                model_run_dir=model_run_dir,
+                num_model_name=pyrenew_model_name,
+                other_model_name="daily_ts_ensemble_e",
+                aggregate_num=False,
+                aggregate_other=False,
+                save=True,
+            )
+            make_figures_from_model_fit_dir(
+                Path(model_run_dir, f"prop_{pyrenew_model_name}_daily_ts_ensemble_e"),
+                save_figs=True,
+                save_ci=True,
+            )
+        else:
+            logger.warning(
+                "daily_ts_ensemble_e not found, skipping creation of daily proportions for comparison with pyrenew model."
+            )
+        if Path(model_run_dir, "epiweekly_ts_ensemble_e").exists():
+            logger.info(
+                "Creating epiweekly proportions from epiweekly_ts_ensemble_e..."
+            )
+            create_prop_samples(
+                model_run_dir=model_run_dir,
+                num_model_name=pyrenew_model_name,
+                other_model_name="epiweekly_ts_ensemble_e",
+                aggregate_num=True,
+                aggregate_other=False,
+                save=True,
+            )
+            make_figures_from_model_fit_dir(
+                Path(
+                    model_run_dir,
+                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_ts_ensemble_e",
+                ),
+                save_figs=True,
+                save_ci=True,
+            )
+        else:
+            logger.warning(
+                "epiweekly_ts_ensemble_e not found, skipping creation of epiweekly proportions for comparison with pyrenew model."
+            )
+        if Path(model_run_dir, "epiautogp_nssp_daily_other").exists():
+            logger.info("Creating daily proportions from epiautogp_nssp_daily_other...")
+            create_prop_samples(
+                model_run_dir=model_run_dir,
+                num_model_name=pyrenew_model_name,
+                other_model_name="epiautogp_nssp_daily_other",
+                aggregate_num=False,
+                aggregate_other=False,
+                save=True,
+            )
+            make_figures_from_model_fit_dir(
+                Path(
+                    model_run_dir,
+                    f"prop_{pyrenew_model_name}_epiautogp_nssp_daily_other",
+                ),
+                save_figs=True,
+                save_ci=True,
+            )
 
-        # Create epiweekly proportions by aggregating the numerator
-        logger.info("Creating epiweekly proportions...")
-        create_prop_samples(
-            model_run_dir=model_run_dir,
-            num_model_name=pyrenew_model_name,
-            other_model_name="epiweekly_ts_ensemble_e",
-            aggregate_num=True,
-            aggregate_other=False,
-            save=True,
-        )
-        make_figures_from_model_fit_dir(
-            Path(
-                model_run_dir,
-                f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_ts_ensemble_e",
-            ),
-            save_figs=True,
-            save_ci=True,
-        )
+            logger.info(
+                "Creating epiweekly proportions from epiautogp_nssp_daily_other..."
+            )
+            create_prop_samples(
+                model_run_dir=model_run_dir,
+                num_model_name=pyrenew_model_name,
+                other_model_name="epiautogp_nssp_daily_other",
+                aggregate_num=True,
+                aggregate_other=True,
+                save=True,
+            )
+            make_figures_from_model_fit_dir(
+                Path(
+                    model_run_dir,
+                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_aggregated_epiautogp_nssp_daily_other",
+                ),
+                save_figs=True,
+                save_ci=True,
+            )
+        else:
+            logger.warning(
+                "epiautogp_nssp_daily_other not found, skipping creation of proportions for comparison with epiautogp model."
+            )
 
     create_hubverse_table(model_dir)
 

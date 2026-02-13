@@ -809,26 +809,13 @@ process_forecast <- function(
     n_forecast_days = n_forecast_days
   )
 
-  # Calculate credible intervals
-  ci <- model_samples_tidy |>
-    dplyr::select(-tidyselect::any_of(c(".chain", ".iteration", ".draw"))) |>
-    dplyr::group_by(dplyr::across(-".value")) |>
-    ggdist::median_qi(.width = ci_widths)
-
-  result <- list(
-    "samples" = model_samples_tidy,
-    "ci" = ci
-  )
-
   if (save) {
     save_dir <- fs::path(model_run_dir, model_name)
-    purrr::iwalk(result, \(tab, name) {
-      forecasttools::write_tabular(
-        tab,
-        fs::path(save_dir, name, ext = "parquet")
-      )
-    })
+    forecasttools::write_tabular(
+      model_samples_tidy,
+      fs::path(save_dir, "samples", ext = "parquet")
+    )
   }
 
-  return(result)
+  invisible(model_samples_tidy)
 }
