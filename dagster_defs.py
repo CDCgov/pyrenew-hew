@@ -172,7 +172,8 @@ class CommonConfig(dg.Config):
     """
 
     forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
-    _output_basedir: str = "output" if is_production else "test-output"
+    # _output_basedir: str = "output" if is_production else "test-output"
+    _output_basedir: str = "test-output"
     _output_subdir: str = f"{forecast_date}_forecasts"
     output_dir: str = f"{_output_basedir}/{_output_subdir}"
 
