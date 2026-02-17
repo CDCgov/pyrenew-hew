@@ -305,6 +305,8 @@ def main(
                 save_figs=True,
                 save_ci=True,
             )
+            create_hubverse_table(model_dir)
+
         else:
             logger.warning(
                 "daily_ts_ensemble_e not found, skipping creation of daily proportions for comparison with pyrenew model."
@@ -329,6 +331,12 @@ def main(
                 save_figs=True,
                 save_ci=True,
             )
+            create_hubverse_table(
+                Path(
+                    model_run_dir,
+                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_ts_ensemble_e",
+                )
+            )
         else:
             logger.warning(
                 "epiweekly_ts_ensemble_e not found, skipping creation of epiweekly proportions for comparison with pyrenew model."
@@ -351,6 +359,12 @@ def main(
                 save_figs=True,
                 save_ci=True,
             )
+            create_hubverse_table(
+                Path(
+                    model_run_dir,
+                    f"prop_{pyrenew_model_name}_epiautogp_nssp_daily_other",
+                )
+            )
 
             logger.info(
                 "Creating epiweekly proportions from epiautogp_nssp_daily_other..."
@@ -371,12 +385,16 @@ def main(
                 save_figs=True,
                 save_ci=True,
             )
+            create_hubverse_table(
+                Path(
+                    model_run_dir,
+                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_aggregated_epiautogp_nssp_daily_other",
+                )
+            )
         else:
             logger.warning(
                 "epiautogp_nssp_daily_other not found, skipping creation of proportions for comparison with epiautogp model."
             )
-
-    create_hubverse_table(model_dir)
 
     logger.info("Postprocessing complete.")
 
