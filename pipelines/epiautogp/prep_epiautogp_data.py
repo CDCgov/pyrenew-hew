@@ -144,10 +144,7 @@ def convert_to_epiautogp_json(
     # Define input data JSON path
     input_json_path = paths.model_output_dir / f"{context.model_name}_input.json"
     # Determine which data path to use based on frequency
-    if context.frequency == "daily":
-        data_path = paths.daily_training_data
-    else:  # epiweekly
-        data_path = paths.epiweekly_training_data
+    data_path = paths.training_data
 
     # Read data from TSV
     logger.info(f"Reading {context.frequency} data from {data_path}")

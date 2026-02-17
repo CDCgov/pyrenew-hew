@@ -47,8 +47,7 @@ class ModelPaths:
 
     model_output_dir: Path
     data_dir: Path
-    daily_training_data: Path
-    epiweekly_training_data: Path
+    training_data: Path
 
 
 @dataclass
@@ -119,8 +118,10 @@ class ForecastPipelineContext:
         )
 
         # Generate epiweekly datasets
-        self.logger.info("Generating epiweekly datasets from daily datasets...")
-        generate_epiweekly_data(data_dir)
+        # only do this if we're fitting an epiweekly model
+        if self.frequency == "epiweekly":
+            self.logger.info("Generating epiweekly datasets from daily datasets...")
+            generate_epiweekly_data(data_dir, overwrite_daily=True)
 
         self.logger.info("Data preparation complete.")
 
@@ -128,8 +129,7 @@ class ForecastPipelineContext:
         return ModelPaths(
             model_output_dir=model_output_dir,
             data_dir=data_dir,
-            daily_training_data=Path(data_dir, "combined_data.tsv"),
-            epiweekly_training_data=Path(data_dir, "epiweekly_combined_data.tsv"),
+            training_data=Path(data_dir, "combined_data.tsv"),
         )
 
     def post_process_forecast(self) -> None:
