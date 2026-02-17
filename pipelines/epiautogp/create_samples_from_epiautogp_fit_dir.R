@@ -12,9 +12,7 @@ required_columns_e <- c(
   "disease",
   ".variable",
   ".value",
-  "resolution",
-  "aggregated_numerator",
-  "aggregated_denominator"
+  "resolution"
 )
 
 create_samples_from_epiautogp_fit_dir <- function(model_fit_dir) {

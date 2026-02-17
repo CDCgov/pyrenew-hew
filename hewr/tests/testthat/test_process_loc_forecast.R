@@ -11,8 +11,6 @@ full_required_columns <- c(
   ".variable",
   ".value",
   "resolution",
-  "aggregated_numerator",
-  "aggregated_denominator"
 )
 
 example_train_dat <- tibble::tibble(
@@ -159,9 +157,7 @@ test_that("process_model_samples.timeseries returns ts_samples", {
     disease = "COVID-19",
     .variable = "other_ed_visits",
     .value = 100,
-    resolution = "daily",
-    aggregated_numerator = FALSE,
-    aggregated_denominator = NA
+    resolution = "daily"
   )
 
   result <- process_model_samples.timeseries(

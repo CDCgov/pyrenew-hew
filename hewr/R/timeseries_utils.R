@@ -68,8 +68,6 @@ load_training_data <- function(
 #' `geo_value`,
 #' `disease`,
 #' `resolution`,
-#' `aggregated_numerator`,
-#' `aggregated_denominator`,
 #' `.variable`,
 #' `output_type_id`, and
 #' `.value`.
@@ -90,21 +88,13 @@ format_timeseries_output <- function(
     dplyr::mutate(
       geo_value = geo_value,
       disease = disease,
-      resolution = resolution,
-      aggregated_numerator = FALSE,
-      aggregated_denominator = dplyr::if_else(
-        stringr::str_starts(.data$.variable, "prop_"),
-        FALSE,
-        NA
-      )
+      resolution = resolution
     ) |>
     dplyr::select(
       "date",
       "geo_value",
       "disease",
       "resolution",
-      "aggregated_numerator",
-      "aggregated_denominator",
       ".variable",
       tidyselect::all_of(output_type_id),
       ".value"

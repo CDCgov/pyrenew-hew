@@ -19,9 +19,7 @@ required_columns_e <- c(
   "disease",
   ".variable",
   ".value",
-  "resolution",
-  "aggregated_numerator",
-  "aggregated_denominator"
+  "resolution"
 )
 
 create_samples_from_pyrenew_fit_dir <- function(model_fit_dir) {
@@ -55,9 +53,7 @@ create_samples_from_pyrenew_fit_dir <- function(model_fit_dir) {
     dplyr::mutate(
       geo_value = model_info$location,
       disease = model_info$disease,
-      resolution = variable_resolution_key[.data$.variable],
-      aggregated_numerator = FALSE,
-      aggregated_denominator = NA,
+      resolution = variable_resolution_key[.data$.variable]
     ) |>
     dplyr::mutate(dplyr::across(c(".chain", ".iteration"), \(x) x + 1)) |>
     tidybayes::combine_chains() |>

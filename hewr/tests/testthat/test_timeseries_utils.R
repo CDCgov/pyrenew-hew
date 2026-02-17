@@ -7,8 +7,6 @@ common_required_columns <- c(
   ".variable",
   ".value",
   "resolution",
-  "aggregated_numerator",
-  "aggregated_denominator"
 )
 
 base_date <- as.Date("2024-01-01")
@@ -38,8 +36,6 @@ test_that("format_timeseries_output formats forecast data correctly", {
       "geo_value",
       "disease",
       "resolution",
-      "aggregated_numerator",
-      "aggregated_denominator",
       ".variable",
       ".draw",
       ".value"
@@ -51,9 +47,6 @@ test_that("format_timeseries_output formats forecast data correctly", {
   expect_true(all(result$geo_value == "US"))
   expect_true(all(result$disease == "COVID-19"))
   expect_true(all(result$resolution == "daily"))
-
-  # Check aggregation flags
-  expect_true(!any(result$aggregated_numerator))
 
   # Check that data was pivoted (should have 2 variables x 3 dates = 6 rows)
   expect_equal(nrow(result), 6)
@@ -73,10 +66,6 @@ test_that("format_timeseries_output handles proportion variables", {
     resolution = "epiweekly",
     output_type_id = ".draw"
   )
-
-  # Proportion variables should have aggregated_denominator = FALSE
-  prop_row <- result[result$.variable == "prop_disease_ed_visits", ]
-  expect_equal(prop_row$aggregated_denominator, FALSE)
 })
 
 test_that("prop_from_timeseries calculates proportions correctly", {
@@ -95,8 +84,7 @@ test_that("prop_from_timeseries calculates proportions correctly", {
     date = base_date,
     geo_value = "US",
     disease = "COVID-19",
-    observed_ed_visits = c(10, 20, 30),
-    aggregated_numerator = FALSE
+    observed_ed_visits = c(10, 20, 30)
   )
 
   result <- prop_from_timeseries(
@@ -125,9 +113,7 @@ test_that("epiweekly_samples_from_daily aggregates correctly", {
     disease = "COVID-19",
     .variable = "observed_ed_visits",
     .value = rep(10, 7),
-    resolution = "daily",
-    aggregated_numerator = FALSE,
-    aggregated_denominator = NA
+    resolution = "daily"
   )
 
   result <- epiweekly_samples_from_daily(
@@ -140,7 +126,6 @@ test_that("epiweekly_samples_from_daily aggregates correctly", {
   expect_s3_class(result, "data.frame")
   expect_true(nrow(result) >= 1)
   expect_true(all(result$resolution == "epiweekly"))
-  expect_true(all(result$aggregated_numerator))
   expect_true(all(result$.variable == "observed_ed_visits"))
 })
 
