@@ -107,14 +107,9 @@ fit_and_forecast_ensemble <- function(
 main <- function(
   model_dir,
   n_forecast_days = 28,
-  n_samples = 2000,
-  epiweekly = FALSE
+  n_samples = 2000
 ) {
-  training_data <- hewr::load_training_data(
-    model_dir,
-    "combined_data",
-    epiweekly
-  )
+  training_data <- hewr::load_training_data(model_dir, "combined_data")
 
   target_and_other_data <- training_data$data
   geo_value <- training_data$geo_value
@@ -179,23 +174,16 @@ p <- arg_parser(
     "--n-samples",
     help = "Number of samples to generate.",
     default = 2000L
-  ) |>
-  add_argument(
-    "--epiweekly",
-    help = "Whether to use epiweekly data.",
-    flag = TRUE
   )
 
 argv <- parse_args(p)
 model_dir <- path(argv$model_dir)
 n_forecast_days <- argv$n_forecast_days
 n_samples <- argv$n_samples
-epiweekly <- argv$epiweekly
 
 
 main(
   model_dir,
   n_forecast_days = n_forecast_days,
-  n_samples = n_samples,
-  epiweekly = epiweekly
+  n_samples = n_samples
 )

@@ -22,10 +22,8 @@
 #' @export
 load_training_data <- function(
   model_dir,
-  data_name = "combined_data",
-  epiweekly = FALSE
+  data_name = "combined_data"
 ) {
-  resolution <- dplyr::if_else(epiweekly, "epiweekly", "daily")
   data_path <- fs::path(model_dir, "data", data_name, ext = "tsv")
 
   target_and_other_data <- readr::read_tsv(
@@ -36,7 +34,8 @@ load_training_data <- function(
       disease = readr::col_character(),
       data_type = readr::col_character(),
       .variable = readr::col_character(),
-      .value = readr::col_double()
+      .value = readr::col_double(),
+      resolution = readr::col_character()
     )
   ) |>
     dplyr::filter(.data$data_type == "train") |>
@@ -44,11 +43,15 @@ load_training_data <- function(
     dplyr::filter(stringr::str_ends(.data$.variable, "ed_visits")) |>
     tidyr::pivot_wider(names_from = ".variable", values_from = ".value")
 
+  model_metadata <- parse_model_run_dir_path(fs::path_dir(model_dir))
+
   list(
     data = target_and_other_data,
-    geo_value = target_and_other_data$geo_value[1],
-    disease = target_and_other_data$disease[1],
-    resolution = resolution
+    geo_value = model_metadata$location,
+    disease = model_metadata$disease,
+    resolution = model_dir |>
+      fs::path_file() |>
+      stringr::str_extract("daily|epiweekly")
   )
 }
 

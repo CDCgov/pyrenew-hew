@@ -57,19 +57,21 @@ convert_daily_to_epiweekly <- function(
       disease = col_character(),
       data_type = col_character(),
       .variable = col_character(),
-      .value = col_double()
+      .value = col_double(),
+      resolution = col_character()
     )
   )
 
   daily_ed_data <- daily_data |>
     filter(str_ends(.variable, "_ed_visits"))
 
-  epiweekly_hosp_data <- daily_data |>
-    filter(.variable == "observed_hospital_admissions")
+  other_data <- daily_data |>
+    filter(str_ends(.variable, "_ed_visits", negate = TRUE))
 
   grouping_cols <- c("geo_value", "disease", "data_type", ".variable")
 
   epiweekly_ed_data <- daily_ed_data |>
+    select(-"resolution") |>
     group_by(
       dplyr::across(dplyr::all_of(grouping_cols)),
       epiyear = epiyear(date),
@@ -84,9 +86,10 @@ convert_daily_to_epiweekly <- function(
       with_epiweek_end_date = TRUE,
       epiweek_end_date_name = "date"
     ) |>
-    select(date, geo_value, disease, data_type, .variable, .value)
+    mutate(resolution = "epiweekly") |>
+    select(date, geo_value, disease, data_type, resolution, .variable, .value)
 
-  epiweekly_data <- bind_rows(epiweekly_ed_data, epiweekly_hosp_data) |>
+  epiweekly_data <- bind_rows(epiweekly_ed_data, other_data) |>
     arrange(date, .variable)
 
   write_tsv(epiweekly_data, output_file)

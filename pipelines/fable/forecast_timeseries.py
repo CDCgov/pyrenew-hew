@@ -32,7 +32,7 @@ def generate_epiweekly_data(data_dir: Path, overwrite_daily: bool = False) -> No
 
 
 def timeseries_ensemble_forecasts(
-    model_dir: Path, n_forecast_days: int, n_samples: int, epiweekly: bool = False
+    model_dir: Path, n_forecast_days: int, n_samples: int
 ) -> None:
     script_args = [
         "--model-dir",
@@ -42,8 +42,6 @@ def timeseries_ensemble_forecasts(
         "--n-samples",
         f"{n_samples}",
     ]
-    if epiweekly:
-        script_args.append("--epiweekly")
     run_r_script(
         "pipelines/fable/fit_timeseries.R",
         script_args,
@@ -133,10 +131,7 @@ def main(
 
     logger.info("Performing timeseries ensemble forecasting")
     timeseries_ensemble_forecasts(
-        ensemble_model_output_dir,
-        n_days_past_last_training,
-        n_samples,
-        epiweekly=epiweekly,
+        ensemble_model_output_dir, n_days_past_last_training, n_samples
     )
 
     make_figures_from_model_fit_dir(
