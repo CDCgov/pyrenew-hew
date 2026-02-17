@@ -23,10 +23,7 @@ read_samples <- function(model_run_dir, model_name, var_name) {
     read_tabular() |>
     filter(.variable == !!var_name) |>
     pivot_wider(names_from = ".variable", values_from = ".value") |>
-    select(
-      -starts_with("aggregated"),
-      -any_of(c(".chain", ".iteration"))
-    ) |>
+    select(-any_of(c(".chain", ".iteration"))) |>
     select(where(~ !all(is.na(.x))))
 }
 
