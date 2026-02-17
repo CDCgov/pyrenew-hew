@@ -15,7 +15,7 @@ from typing import Any
 import polars as pl
 
 from pipelines.data.prep_data import process_and_save_loc_data
-from pipelines.pyrenew_hew.forecast_pyrenew import generate_epiweekly_data
+from pipelines.fable.forecast_timeseries import generate_epiweekly_data
 from pipelines.utils.common_utils import (
     calculate_training_dates,
     create_hubverse_table,
