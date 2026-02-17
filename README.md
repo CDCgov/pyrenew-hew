@@ -44,46 +44,33 @@ You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch
 - The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
 ### 2. Dagster Workflow Orchestration
+To run dagster locally with STF
 
-Development is ongoing - you can test an early version by following the steps below.
+#### Makefile Targets for Local Testing
+- `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
+- `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
 
 #### Local Development and Testing
-> Prerequisites: `uv`. `docker`, a VAP VM with a registered managed identity in Azure, and rights to the cfaprdbatchcr container registry. Contact cfatoolsteam@cdc.gov for assistance with the latter two.
+> Prerequisites: `uv`. `docker`, a VAP VM with a registered managed identity in Azure.
+> Contact cfatoolsteam@cdc.gov for assistance with the latter two.
 
 The following instructions will set up Dagster on your VAP. However, based on the current configuration, actual execution will still run in the cloud via Azure Batch. You can change the `executor` option in `dagster_defs.py` to test using the local Docker Executor - this will require you to have setup Blobfuse.
 
-1. Setup your `uv virtual environment`:
-    - `uv sync`
-    - `source .venv/bin/activate`
-2. Login to Azure and the Batch Container Registry:
-    - `az login --identity && az acr login -n cfaprdbatchcr`
-3. Build and push the `cfa-stf-routine-forecasting:dagster_latest` image:
-    - `docker build -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest -f Containerfile . --push`
-3. Start the Dagster UI by running `uv run dagster_defs.py` and clicking the link in your terminal (usually [http://127.0.0.1:3000/])
-4. You should now see the dagster UI for Pyrenew-HEW. This is a local server that will only show PyRenew-HEW asssets as defined in your local git repository.
-5. Try materializing an asset by navigating to "Lineage" on the left sidebar. By default, these assets will submit jobs to Azure Batch and write to the `pyrenew-test-output` blob.
-    - We recommend materializing a few partitions at a time for testing purposes.
-    ![alt text](.github/img/dagster_lineage.png)
-    - You will get a pop-up directing you to your asset runs, which provide progress logs.
-    ![alt text](.github/img/dagster_runs.png)
-6. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
+1. Run `uv run dagster_defs.py` and click the link in your terminal (usually [http://127.0.0.1:3000/]).
+2. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
+3. Navigate to the Lineage page, where you can find your assets for materialization.
+4. You need to select partitions when materializing model run assets. For this project, there are two dimensions: disease and location.
+5. Locally, don't run more than two or three partitions at a time, or you will quickly crash your VAP VM, unless you change the executor.
+
+For running the full pipeline with all partitions in Azure Batch, you can change the executor code at the very end of `dagster_defs.py` to always use the Azure Batch Executor. Alternatively, you can run directly on the production server. See the next section.
 
 #### Production Scheduling
 
-Pushes to main will automatically update the central Dagster Code Location for PyRenew-HEW via a Github Actions Workflow. From the central code server, you can run and schedule Pyrenew-HEW runs and see other projects' pipelines at CFA. You can also manually update the code server with a makefile recipe (see next section).
+Pushes to main will automatically update the central Dagster Code Location Github Actions Workflow. From the central code server, you can run and schedule model runs and see other projects' pipelines at CFA.
 
-To manually update the code location while we evaluate dagster, you can run `make dagster_push_prod`. This manual approach will be deprecated and discouraged once we move to using dagster in production.
 
 To login to the production server, head to https://dagster.apps.edav.ext.cdc.gov/.
 
-#### Makefile Targets for Dagster
-After you've familiarized yourself with the above instructions, feel free to use these convenient `make` targets:
-- `make dagster_build`: builds your dagster image.
-- `make dagster_push`: builds your dagster image, then pushes it.
-- `make dagster_push_prod`: runs dagster_push, then uploads the central dagster scheduling server's code for pyrenew-hew.
-- `make dagster`: runs the dagster UI locally.
-- `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
-- `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.

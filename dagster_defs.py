@@ -667,7 +667,7 @@ defs = dg.Definitions(
             credential=AzureBlobStorageDefaultCredential(),
         ),
     },
-    # New ** syntax combines executor and launcher metadata
+    # You can put a comment after azure_batch_config to solely execute with Azure batch
     executor=dynamic_executor(
         default_config=azure_batch_config if is_production else docker_config
     ),
