@@ -139,7 +139,6 @@ class ForecastPipelineContext:
         This function performs the final post-processing steps:
         1. Process model output samples
         2. Generate plots
-           (which also processes samples via hewr::process_loc_forecast)
         3. Create hubverse table from processed outputs
 
         Returns
