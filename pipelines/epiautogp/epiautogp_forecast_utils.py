@@ -17,6 +17,7 @@ import polars as pl
 from pipelines.data.prep_data import process_and_save_loc_data
 from pipelines.fable.forecast_timeseries import generate_epiweekly_data
 from pipelines.utils.common_utils import (
+    append_prop_data_to_combined_data,
     calculate_training_dates,
     create_hubverse_table,
     get_available_reports,
@@ -123,6 +124,7 @@ class ForecastPipelineContext:
             self.logger.info("Generating epiweekly datasets from daily datasets...")
             generate_epiweekly_data(data_dir, overwrite_daily=True)
 
+        append_prop_data_to_combined_data(Path(data_dir, "combined_data.tsv"))
         self.logger.info("Data preparation complete.")
 
         # Return structured paths object

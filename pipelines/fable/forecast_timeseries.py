@@ -8,6 +8,7 @@ import polars as pl
 from pipelines.data.prep_data import process_and_save_loc_data
 from pipelines.utils.cli_utils import add_common_forecast_arguments
 from pipelines.utils.common_utils import (
+    append_prop_data_to_combined_data,
     calculate_training_dates,
     create_hubverse_table,
     get_available_reports,
@@ -104,7 +105,7 @@ def main(
 
     os.makedirs(model_run_dir, exist_ok=True)
     os.makedirs(ensemble_model_output_dir, exist_ok=True)
-
+    data_dir = Path(ensemble_model_output_dir, "data")
     logger.info(f"Processing {loc}")
     process_and_save_loc_data(
         loc_abb=loc,
@@ -114,17 +115,16 @@ def main(
         report_date=report_date,
         first_training_date=first_training_date,
         last_training_date=last_training_date,
-        save_dir=Path(ensemble_model_output_dir, "data"),
+        save_dir=data_dir,
         logger=logger,
         credentials_dict=credentials_dict,
         nhsn_data_path=nhsn_data_path,
     )
     if epiweekly:
         logger.info("Generating epiweekly datasets from daily datasets...")
-        generate_epiweekly_data(
-            Path(ensemble_model_output_dir, "data"), overwrite_daily=True
-        )
+        generate_epiweekly_data(data_dir, overwrite_daily=True)
 
+    append_prop_data_to_combined_data(Path(data_dir, "combined_data.tsv"))
     logger.info("Data preparation complete.")
 
     n_days_past_last_training = n_forecast_days + exclude_last_n_days

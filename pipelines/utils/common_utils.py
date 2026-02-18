@@ -726,3 +726,13 @@ def create_prop_samples(
         args,
         function_name="create_prop_samples",
     )
+
+
+def append_prop_data_to_combined_data(data_path: Path | str) -> None:
+    args = [str(data_path)]
+
+    run_r_script(
+        "pipelines/append_prop_data.R",
+        args,
+        function_name="append_prop_data_to_combined_data",
+    )

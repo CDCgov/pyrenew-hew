@@ -23,6 +23,7 @@ from pipelines.pyrenew_hew.fit_pyrenew_model import fit_and_save_model
 from pipelines.pyrenew_hew.generate_predictive import generate_and_save_predictions
 from pipelines.utils.cli_utils import add_common_forecast_arguments
 from pipelines.utils.common_utils import (
+    append_prop_data_to_combined_data,
     calculate_training_dates,
     create_hubverse_table,
     create_prop_samples,
@@ -246,7 +247,7 @@ def main(
         fit_ed_visits=fit_ed_visits,
         save_dir=data_dir,
     )
-
+    append_prop_data_to_combined_data(Path(data_dir, "combined_data.tsv"))
     logger.info("Data preparation complete.")
 
     logger.info("Fitting model...")
