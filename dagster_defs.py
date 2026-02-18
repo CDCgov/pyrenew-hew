@@ -405,8 +405,8 @@ def postprocess_forecasts(
     pyrenew_e,
     pyrenew_h,
     pyrenew_he,
-    pyrenew_hw,
-    pyrenew_hew,
+    # pyrenew_hw,
+    # pyrenew_hew,
 ):
     """
     Postprocess forecast batches.
