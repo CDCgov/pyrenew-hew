@@ -3,7 +3,7 @@
 FROM rocker/tidyverse
 
 #
-# Gemeral Build Args and Environment Variables
+# General Build Args and Environment Variables
 #
 
 ARG GIT_COMMIT_SHA
