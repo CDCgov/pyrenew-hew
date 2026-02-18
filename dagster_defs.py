@@ -612,18 +612,21 @@ pyrenew_pipeline_local_launch_config = {
     "config": {}
 }  # We can let the default take over
 
+# Define run config for the backfil launcher and for the scheduler
+weekly_pyrenew_config = dg.RunConfig(
+    ops={"launch_pyrenew_pipeline": ModelConfig()},
+    execution=pyrenew_pipeline_caj_launch_config
+    if is_production
+    else pyrenew_pipeline_local_launch_config,
+)
+
 
 # This wraps our launch_pipeline op in a job that can be scheduled or manually launched via the GUI
 @dg.job(
     executor_def=dynamic_executor(
         default_config=azure_caj_config if is_production else default_config
     ),
-    config=dg.RunConfig(
-        ops={"launch_pyrenew_pipeline": ModelConfig()},
-        execution=pyrenew_pipeline_caj_launch_config
-        if is_production
-        else pyrenew_pipeline_local_launch_config,
-    ),
+    config=weekly_pyrenew_config,
 )
 def weekly_pyrenew_via_backfill():
     launch_pyrenew_pipeline()
@@ -648,7 +651,7 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
         else dg.DefaultScheduleStatus.STOPPED
     ),
     job=weekly_pyrenew_via_backfill,
-    run_config=dg.RunConfig(ops={"launch_pyrenew_pipeline": ModelConfig()}),
+    run_config=weekly_pyrenew_config,
     cron_schedule="0 15 * * WED",
     execution_timezone="America/New_York",
 )
