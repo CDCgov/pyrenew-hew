@@ -10,8 +10,6 @@
 #' @param model_dir Path to the
 #' directory containing model run data.
 #' @param data_name Base name of the data file to load.
-#' @param epiweekly Logical. Indicate epiweekly (TRUE) or daily (FALSE) data.
-#'   Default `FALSE`.
 #'
 #' @return A list with:
 #' `data` (processed training data tibble),

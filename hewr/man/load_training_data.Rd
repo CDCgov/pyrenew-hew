@@ -13,9 +13,6 @@ load_training_data(model_dir, data_name = "combined_data")
 directory containing model run data.}
 
 \item{data_name}{Base name of the data file to load.}
-
-\item{epiweekly}{Logical. Indicate epiweekly (TRUE) or daily (FALSE) data.
-Default \code{FALSE}.}
 }
 \value{
 A list with:
