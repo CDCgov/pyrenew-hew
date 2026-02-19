@@ -61,7 +61,7 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-tag = "dagster_latest"
+tag = "latest"
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 default_config = ExecutionConfig(
@@ -172,8 +172,8 @@ class CommonConfig(dg.Config):
     """
 
     forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
-    # _output_basedir: str = "output" if is_production else "test-output"
-    _output_basedir: str = "test-output"
+    _output_basedir: str = "output" if is_production else "test-output"
+    # _output_basedir: str = "test-output" # uncomment to force testing even on prod server
     _output_subdir: str = f"{forecast_date}_forecasts"
     output_dir: str = f"{_output_basedir}/{_output_subdir}"
 

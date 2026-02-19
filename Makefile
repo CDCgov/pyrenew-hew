@@ -48,8 +48,8 @@ help:
 	@echo "  container_tag	     : Tag the container image for pushing to the registry"
 	@echo "  container_push	     : Push the container image"
 	@echo ""
-	@echo "Dagster Targets: "
-	@echo "  dagster_push_prod   : Push the dagster container image to the Azure Container Registry and code location for production"
+# 	@echo "Dagster Targets: "
+# 	@echo "  dagster_push_prod   : Push the dagster container image to the Azure Container Registry and code location for production"
 	@echo ""
 	@echo "Model Fit Targets: "
 	@echo "  config              : Source the azureconfig.sh file to set environment variables for Azure access"
@@ -90,11 +90,11 @@ container_push: ghcr_login
 config:
 	bash -c "source ./azureconfig.sh"
 
-dagster_push_prod:
-	docker build . -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest -f Containerfile && \
-	docker push ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest && \
-	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
-    	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:dagster_latest
+# dagster_push_prod:
+# 	docker build . -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest -f Containerfile && \
+# 	docker push ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest && \
+# 	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
+#     	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest
 
 # ---------------- #
 # Model Fit Targets
