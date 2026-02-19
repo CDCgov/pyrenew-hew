@@ -29,18 +29,48 @@ Container images pushed to the Azure Container Registry are automatically tagged
 
 ## Running Model Pipelines
 > [!NOTE]
->
-> Please contact a project maintainer if you believe you need access to pipelines.
-> CDC internal users can check regularly scheduled jobs at [PyRenew-Cron](https://github.com/cdcent/pyrenew-cron).
+> Azure Batch Forecasting Pipelines can only be run by CDC internal users on the CFA Virtual Analyst Platform.
 
+There are two ways to run Azure Batch Modeling Code:
+1. [The Azure Command Center](#3-azure-command-center) - interactive/manual.
+2. [Dagster Workflow Orchestration](#2-dagster-workflow-orchestration) - automated, feature rich GUI.
+
+### 1. Azure Command Center
 > Specific environment setup steps required can be found in the [Routine Forecasting Standard Operating Procedure](https://cdcent.github.io/cfa-stf-handbook/routine_forecast_sop.html).
 
-> Additionally, pipelines as written can only be run within CFA's Virtual Analyst Platform.
+You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch the Azure Command Center.
+- The Azure Command Center will check for necessary data before offering to run pipelines.
+- You must have previously configured your Azure Credentials and Environment Variables. To do this, run `make config`, or follow the steps in the SOP.
+- The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
-Pipelines can be run interactively or non-interactively:
-- `pipelines/batch/azure_command_center.py` is now the preferred method of running model fit pipeline jobs interactively.
-- The `Makefile` also provides targets that will run pipelines non-interactively. Run `make help` for more information.
-- Pipelines are run through the command line python interface when scheduled using [Pyrenew-Cron](https://github.com/cdcent/pyrenew-cron).
+### 2. Dagster Workflow Orchestration
+To run dagster locally with STF
+
+#### Makefile Targets for Local Testing
+- `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
+- `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
+
+#### Local Development and Testing
+> Prerequisites: `uv`. `docker`, a VAP VM with a registered managed identity in Azure.
+> Contact cfatoolsteam@cdc.gov for assistance with the latter two.
+
+The following instructions will set up Dagster on your VAP. However, based on the current configuration, actual execution will still run in the cloud via Azure Batch. You can change the `executor` option in `dagster_defs.py` to test using the local Docker Executor - this will require you to have setup Blobfuse.
+
+1. Run `uv run dagster_defs.py` and click the link in your terminal (usually [http://127.0.0.1:3000/]).
+2. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
+3. Navigate to the Lineage page, where you can find your assets for materialization.
+4. You need to select partitions when materializing model run assets. For this project, there are two dimensions: disease and location.
+5. Locally, don't run more than two or three partitions at a time, or you will quickly crash your VAP VM, unless you change the executor.
+
+For running the full pipeline with all partitions in Azure Batch, you can change the executor code at the very end of `dagster_defs.py` to always use the Azure Batch Executor. Alternatively, you can run directly on the production server. See the next section.
+
+#### Production Scheduling
+
+Pushes to main will automatically update the central Dagster Code Location Github Actions Workflow. From the central code server, you can run and schedule model runs and see other projects' pipelines at CFA.
+
+
+To login to the production server, head to https://dagster.apps.edav.ext.cdc.gov/.
+
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
