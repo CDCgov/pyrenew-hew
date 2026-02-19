@@ -44,11 +44,16 @@ You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch
 - The Azure Command Center is meant to be a streamlined interface for interactively running in production.
 
 ### 2. Dagster Workflow Orchestration
-To run dagster locally with STF
+To execute dagster workflows fully locally with this project, you'll need to have blobs mounted. However, you can also launch jobs locally and have them submit to Azure Batch.
 
 #### Makefile Targets for Local Testing
+If you'd like to test one or two model partitions at a time, you can have dagster execute on your machine. Take care not to run all model partitions or you will quickly put your VM into a coma. 
+
+For convenience, you can use these makefile targets to get blobfuse setup on a fresh setup. Dagster assumes mounts at `./blobfuse/mounts/` in the working directory.
 - `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
 - `make unmount`: gracefully unmounts the pyrenew-relevant blobs.
+
+It is not necessary to mount blobs locally if submitting to Azure Batch.
 
 #### Local Development and Testing
 > Prerequisites: `uv`. `docker`, a VAP VM with a registered managed identity in Azure.
@@ -68,9 +73,7 @@ For running the full pipeline with all partitions in Azure Batch, you can change
 
 Pushes to main will automatically update the central Dagster Code Location Github Actions Workflow. From the central code server, you can run and schedule model runs and see other projects' pipelines at CFA.
 
-
 To login to the production server, head to https://dagster.apps.edav.ext.cdc.gov/.
-
 
 ## General Disclaimer
 This repository was created for use by CDC programs to collaborate on public health related projects in support of the [CDC mission](https://www.cdc.gov/about/organization/mission.htm).  GitHub is not hosted by the CDC, but is a third party website used by CDC and its partners to share information and collaborate on software. CDC use of GitHub does not imply an endorsement of any one particular service, product, or enterprise.
