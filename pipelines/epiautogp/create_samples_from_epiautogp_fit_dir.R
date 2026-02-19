@@ -1,8 +1,5 @@
 library(argparser)
-library(tidyverse)
-library(glue)
 
-# put this list in hewr
 required_columns_e <- c(
   ".chain",
   ".iteration",
