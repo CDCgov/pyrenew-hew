@@ -20,27 +20,6 @@ purrr::walk(script_packages, \(pkg) {
   )
 })
 
-to_prop_forecast <- function(
-  forecast_disease_count,
-  forecast_other_count,
-  disease_count_col = "observed_ed_visits",
-  other_count_col = "other_ed_visits",
-  output_col = "prop_disease_ed_visits"
-) {
-  result <- inner_join(
-    forecast_disease_count,
-    forecast_other_count,
-    by = join_by(date, .draw)
-  ) |>
-    mutate(
-      !!output_col := .data[[disease_count_col]] /
-        (.data[[disease_count_col]] +
-          .data[[other_count_col]])
-    )
-
-  return(result)
-}
-
 
 #' Fit and Forecast Time Series Data
 #'
@@ -134,11 +113,12 @@ main <- function(
     output_col = "observed_ed_visits"
   )
 
-  ts_ensemble_prop_e <- ts_ensemble_count_e |>
-    to_prop_forecast(ts_ensemble_other_e)
-
   ts_ensemble_forecast_e <-
-    ts_ensemble_prop_e |>
+    inner_join(
+      ts_ensemble_count_e,
+      ts_ensemble_other_e,
+      by = join_by(date, .draw)
+    ) |>
     hewr::format_timeseries_output(
       geo_value = geo_value,
       disease = disease,

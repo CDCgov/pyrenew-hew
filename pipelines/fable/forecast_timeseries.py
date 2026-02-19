@@ -46,7 +46,7 @@ def timeseries_ensemble_forecasts(
     run_r_script(
         "pipelines/fable/fit_timeseries.R",
         script_args,
-        function_name="timeseries_ensemble_forecasts",
+        function_name="fit_timeseries",
     )
     return None
 
