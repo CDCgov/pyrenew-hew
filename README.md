@@ -47,7 +47,7 @@ You can run `uv run pipelines/azure_command_center.py` (or `make acc`) to launch
 To execute dagster workflows fully locally with this project, you'll need to have blobs mounted. However, you can also launch jobs locally and have them submit to Azure Batch.
 
 #### Makefile Targets for Local Testing
-If you'd like to test one or two model partitions at a time, you can have dagster execute on your machine. Take care not to run all model partitions or you will quickly put your VM into a coma. 
+If you'd like to test one or two model partitions at a time, you can have dagster execute on your machine. Take care not to run all model partitions or you will quickly put your VM into a coma.
 
 For convenience, you can use these makefile targets to get blobfuse setup on a fresh setup. Dagster assumes mounts at `./blobfuse/mounts/` in the working directory.
 - `make mount`: mounts the pyrenew-relevant blobs using blobfuse. Use this before launching locally-executed dagster jobs.
