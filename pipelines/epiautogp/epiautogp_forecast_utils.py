@@ -66,7 +66,6 @@ class ForecastPipelineContext:
     loc: str
     target: str
     frequency: str
-    use_percentage: bool
     ed_visit_type: str
     model_name: str
     nhsn_data_path: Path | None
@@ -171,7 +170,6 @@ def setup_forecast_pipeline(
     loc: str,
     target: str,
     frequency: str,
-    use_percentage: bool,
     ed_visit_type: str,
     model_name: str,
     nhsn_data_path: Path | None,
@@ -206,8 +204,6 @@ def setup_forecast_pipeline(
         Target data type: "nssp" or "nhsn"
     frequency : str
         Data frequency: "daily" or "epiweekly"
-    use_percentage : bool
-        If True, use percentage values for ED visits (NSSP only)
     ed_visit_type : str
         Type of ED visits: "observed" or "other" (NSSP only)
     model_name : str
@@ -285,7 +281,6 @@ def setup_forecast_pipeline(
         loc=loc,
         target=target,
         frequency=frequency,
-        use_percentage=use_percentage,
         ed_visit_type=ed_visit_type,
         model_name=model_name,
         nhsn_data_path=nhsn_data_path,

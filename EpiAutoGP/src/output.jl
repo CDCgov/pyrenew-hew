@@ -208,17 +208,16 @@ function create_forecast_output(
     # Determine variable name based on target and whether using percentages
     variable_name = if input.target == "nhsn"
         "observed_hospital_admissions"
-    else  # nssp
-        if input.use_percentage
-            "prop_disease_ed_visits"
-        else
-            # Use ed_visit_type to determine which ED visits column
-            input.ed_visit_type == "other" ? "other_ed_visits" : "observed_ed_visits"
-        end
+    else
+        Dict(
+            "observed" => "observed_ed_visits",
+            "other" => "other_ed_visits",
+            "pct" => "prop_disease_ed_visits",
+        )[input.ed_visit_type]
     end
 
     # Input is in percentage format (0-100); convert to proportion (0-1) as R expects proportions for prop_ variables
-    if input.use_percentage && input.target == "nssp"
+    if input.ed_visit_type == "pct" && input.target == "nssp"
         forecast_df[!, Symbol(".value")] = forecast_df[!, Symbol(".value")] ./ 100.0
     end
 
