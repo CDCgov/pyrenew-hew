@@ -59,6 +59,9 @@ COPY pyproject.toml .
 COPY uv.lock .
 COPY README.md .
 
+# Dagster
+COPY dagster_defs.py .
+
 # Set VIRTUAL_ENV variable at runtime
 ENV VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv
 
