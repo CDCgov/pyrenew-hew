@@ -452,7 +452,7 @@ def make_figures_from_model_fit_dir(
         args.append("--save-figs")
 
     run_r_script(
-        "pipelines/make_figures_from_model_fit_dir.R",
+        "pipelines/utils/make_figures_from_model_fit_dir.R",
         args,
         function_name="make_figures_from_model_fit_dir",
     )
@@ -722,7 +722,7 @@ def create_prop_samples(
         args.append("--save")
 
     run_r_script(
-        "pipelines/create_prop_samples.R",
+        "pipelines/utils/create_prop_samples.R",
         args,
         function_name="create_prop_samples",
     )
@@ -732,7 +732,7 @@ def append_prop_data_to_combined_data(data_path: Path | str) -> None:
     args = [str(data_path)]
 
     run_r_script(
-        "pipelines/append_prop_data.R",
+        "pipelines/utils/append_prop_data.R",
         args,
         function_name="append_prop_data_to_combined_data",
     )
