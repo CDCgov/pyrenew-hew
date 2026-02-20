@@ -310,24 +310,43 @@ def run_stf_model(
 # Assets: these are the core of Dagster - functions that specify data  #
 # -------------------------------------------------------------------- #
 
-# -- Pyrenew Assets -- #
+
+# -- Fable Timeseries Assets -- #
 
 
-# Timeseries E
+# Daily Timeseries E
+# TODO: do any parameters differ?
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
 )
-def timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
+def daily_timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
+    """
+    Run Daily Timeseries-e model and produce outputs.
+    """
+    run_stf_model(context, config, model_letters="e", model_family="timeseries")
+    return "daily_timeseries_e"
+
+
+# Weekly Timeseries E
+@dg.asset(
+    partitions_def=pyrenew_multi_partition_def,
+)
+def weekly_timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Timeseries-e model and produce outputs.
     """
     run_stf_model(context, config, model_letters="e", model_family="timeseries")
-    return "timeseries_e"
+    return "weekly_timeseries_e"
+
+
+# -- Pyrenew Assets -- #
 
 
 # Pyrenew E
-@dg.asset(partitions_def=pyrenew_multi_partition_def, deps="timeseries_e")
-def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+@dg.asset(partitions_def=pyrenew_multi_partition_def, deps="weekly_timeseries_e")
+def pyrenew_e(
+    context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
+):
     """
     Run Pyrenew-e model and produce outputs.
     """
@@ -349,7 +368,9 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
 
 # Pyrenew HE
 @dg.asset(partitions_def=pyrenew_multi_partition_def)
-def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+def pyrenew_he(
+    context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
+):
     """
     Run Pyrenew-he model and produce outputs.
     """
@@ -371,7 +392,9 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
 
 # Pyrenew HEW
 @dg.asset(partitions_def=pyrenew_multi_partition_def)
-def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+def pyrenew_hew(
+    context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
+):
     """
     Run Pyrenew-hew model and produce outputs.
     """
@@ -410,7 +433,7 @@ def epiautogp(context: dg.AssetExecutionContext):
 def postprocess_forecasts(
     context: dg.AssetExecutionContext,
     config: PostProcessConfig,
-    timeseries_e,
+    weekly_timeseries_e,
     pyrenew_e,
     pyrenew_h,
     pyrenew_he,
@@ -537,7 +560,7 @@ def launch_pyrenew_pipeline(
     # if nhsn_available and nssp_available and nwss_available:
     #     context.log.info("NHSN, NSSP gold, and NWSS gold data are all available - launching full pipeline.")
     #     context.log.info("Launching full pyrenew_hew backfill.")
-    #     asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
+    #     asset_selection = ("weekly_timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
 
     if nhsn_available and nssp_available:
         # elif nhsn_available and nssp_available:
@@ -545,9 +568,14 @@ def launch_pyrenew_pipeline(
             "Both NHSN data and NSSP gold data are available, but NWSS gold data is not."
         )
         context.log.info(
-            "Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill."
+            "Launching a weekly_timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill."
         )
-        asset_selection = ["timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he"]
+        asset_selection = [
+            "weekly_timeseries_e",
+            "pyrenew_e",
+            "pyrenew_h",
+            "pyrenew_he",
+        ]
 
     # elif nhsn_available and nwss_available:
     #     context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
@@ -556,8 +584,8 @@ def launch_pyrenew_pipeline(
 
     elif nssp_available:
         context.log.info("Only NSSP gold data are available.")
-        context.log.info("Launching a timeseries_e and pyrenew_e backfill.")
-        asset_selection = ["timeseries_e", "pyrenew_e"]
+        context.log.info("Launching a weekly_timeseries_e and pyrenew_e backfill.")
+        asset_selection = ["weekly_timeseries_e", "pyrenew_e"]
 
     elif nhsn_available:
         context.log.info("Only NHSN data are available.")
