@@ -13,7 +13,7 @@ CONTAINER_IMAGE_NAME = cfa-stf-routine-forecasting
 endif
 
 ifndef CONTAINER_IMAGE_VERSION
-CONTAINER_IMAGE_VERSION = latest
+CONTAINER_IMAGE_VERSION = $(shell git rev-parse --abbrev-ref HEAD | sed 's/^main$$/latest/')
 endif
 
 ifndef CONTAINER_REMOTE_NAME
