@@ -28,6 +28,7 @@ from dagster_azure.blob import (
 
 # CFA Helper Libraries
 from forecasttools import location_table
+from pygit2.repository import Repository
 
 from pipelines.batch.common_batch_utils import (
     DEFAULT_EXCLUDED_LOCATIONS,
@@ -63,13 +64,9 @@ local_workdir = Path(__file__).parent.resolve()
 
 # If the tag is prod, use 'latest'.
 # Else iteratively test on our dev images
-tag = (
-    "latest"
-    if is_production
-    else subprocess.check_output(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
-    ).strip()
-)
+# (You can always manually specify an override in the GUI)
+repo = Repository(os.getcwd())
+tag = "latest" if is_production else repo.head.shorthand
 
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
@@ -225,7 +222,8 @@ class PostProcessConfig(CommonConfig):
 # Model Worker Function
 # ----------------------
 
-# This function is NOT an asset itself, but is called by assets to run the pyrenew model
+# This function is NOT an asset itself, but is called by assets to run models
+# TODO: unify this with the setup_job scripts. They are duplicative
 
 
 def run_stf_model(
@@ -310,6 +308,8 @@ def run_stf_model(
 # Assets: these are the core of Dagster - functions that specify data  #
 # -------------------------------------------------------------------- #
 
+# TODO: return materialized asset results to make dagster aware of our actual outputs
+# Currently, outputs are output as a side-effect; this is non-dagsteric
 
 # -- Fable Timeseries Assets -- #
 
