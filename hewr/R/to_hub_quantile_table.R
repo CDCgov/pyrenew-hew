@@ -1,18 +1,3 @@
-create_model_id <- function(
-  model,
-  resolution,
-  aggregated_numerator,
-  aggregated_denominator
-) {
-  glue::glue(
-    "{model}_{resolution}",
-    "{dplyr::if_else(vctrs::vec_equal(",
-    "aggregated_numerator,TRUE, na_equal = TRUE),'_agg_num', '')}",
-    "{dplyr::if_else(vctrs::vec_equal(",
-    "aggregated_denominator, TRUE, na_equal = TRUE), '_agg_denom', '')}"
-  )
-}
-
 var_to_target <- function(variable, disease) {
   disease_abbr <- dplyr::case_match(
     disease,
@@ -130,16 +115,7 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
       output_type = "quantile",
       output_type_id = round(.data$quantile_level, digits = 4)
     ) |>
-    dplyr::mutate(
-      model_id = create_model_id(
-        model = .data$model,
-        resolution = .data$resolution,
-        aggregated_numerator = .data$aggregated_numerator,
-        aggregated_denominator = .data$aggregated_denominator
-      )
-    ) |>
     dplyr::select(
-      "model_id",
       "model",
       "output_type",
       "output_type_id",
@@ -151,9 +127,7 @@ model_fit_dir_to_hub_q_tbl <- function(model_fit_dir) {
       "resolution",
       target_end_date = "date",
       location = "geo_value",
-      "disease",
-      "aggregated_numerator",
-      "aggregated_denominator"
+      "disease"
     )
 
   forecast_data
