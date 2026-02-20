@@ -61,7 +61,16 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-tag = "latest"
+# If the tag is prod, use 'latest'.
+# Else iteratively test on our dev images
+tag = (
+    "latest"
+    if is_production
+    else subprocess.check_output(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+    ).strip()
+)
+
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 default_config = ExecutionConfig(
