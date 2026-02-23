@@ -50,13 +50,13 @@ create_samples_from_pyrenew_fit_dir <- function(model_fit_dir) {
       \(x) glue::glue(".{x}"),
       c("chain", "iteration", "variable", "value")
     ) |>
+    dplyr::mutate(dplyr::across(c(".chain", ".iteration"), \(x) x + 1)) |>
+    tidybayes::combine_chains() |>
     dplyr::mutate(
       geo_value = model_info$location,
       disease = model_info$disease,
       resolution = variable_resolution_key[.data$.variable]
     ) |>
-    dplyr::mutate(dplyr::across(c(".chain", ".iteration"), \(x) x + 1)) |>
-    tidybayes::combine_chains() |>
     dplyr::select(tidyselect::all_of(required_columns))
 
   forecasttools::write_tabular(
