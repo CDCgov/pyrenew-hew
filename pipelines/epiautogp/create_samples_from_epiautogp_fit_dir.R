@@ -1,3 +1,5 @@
+# this is a workaround for julia not being able to save dates in parquet format
+# see https://github.com/CDCgov/cfa-stf-routine-forecasting/issues/898
 library(argparser)
 
 required_columns_e <- c(
