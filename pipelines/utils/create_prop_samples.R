@@ -8,8 +8,11 @@ library(stringr)
 augment_samples_with_obs <- function(samples, obs) {
   first_forecast_date <- min(samples$date)
   sample_resolution <- unique(samples$resolution)
-
+  obs_resolution <- unique(obs$resolution)
   checkmate::assert_scalar(sample_resolution)
+  checkmate::assert_scalar(obs_resolution)
+
+  checkmate::assert_set_equal(sample_resolution, obs_resolution)
   target_draws <- samples[[".draw"]] |> unique() |> sort()
   obs_as_samples <- obs |>
     dplyr::filter(.data[["date"]] < !!first_forecast_date) |>

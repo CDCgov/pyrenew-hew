@@ -736,3 +736,17 @@ def append_prop_data_to_combined_data(data_path: Path | str) -> None:
         args,
         function_name="append_prop_data_to_combined_data",
     )
+
+
+def generate_epiweekly_data(data_dir: Path, overwrite_daily: bool = False) -> None:
+    """Generate epiweekly datasets from daily datasets using an R script."""
+    args = [str(data_dir)]
+    if overwrite_daily:
+        args.append("--overwrite-daily")
+
+    run_r_script(
+        "pipelines/data/generate_epiweekly_data.R",
+        args,
+        function_name="generate_epiweekly_data",
+    )
+    return None

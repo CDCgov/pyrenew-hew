@@ -187,6 +187,3 @@ make_forecast_figure_from_model_fit_dir(
   save_figs = argv$save_figs,
   save_ci = argv$save_ci
 )
-model_fit_dir <- path(
-  "pipelines/tests/end_to_end_test_output/2024-12-21_forecasts/covid-19_r_2024-12-21_f_2024-09-22_t_2024-12-20/model_runs/MT/epiweekly_aggregated_pyrenew_e_daily_ts_ensemble_e"
-)

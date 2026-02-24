@@ -13,12 +13,11 @@ append_prop_data <- function(data_path) {
     ) |>
     dplyr::select(dplyr::where(~ !all(is.na(.x)))) |>
     mutate(
-      prop_disease_ed_visits = .data$observed_ed_visits /
+      .variable = "prop_disease_ed_visits",
+      .value = .data$observed_ed_visits /
         (.data$observed_ed_visits + .data$other_ed_visits)
     ) |>
-    select(-all_of(c("observed_ed_visits", "other_ed_visits"))) |>
-    mutate(.variable = "prop_disease_ed_visits") |>
-    rename(.value = "prop_disease_ed_visits")
+    select(-all_of(c("observed_ed_visits", "other_ed_visits")))
 
   combined_dat <- bind_rows(original_dat, prop_dat) |>
     arrange(date, .variable)

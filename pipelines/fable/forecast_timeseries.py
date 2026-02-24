@@ -11,25 +11,12 @@ from pipelines.utils.common_utils import (
     append_prop_data_to_combined_data,
     calculate_training_dates,
     create_hubverse_table,
+    generate_epiweekly_data,
     get_available_reports,
     load_credentials,
     make_figures_from_model_fit_dir,
     run_r_script,
 )
-
-
-def generate_epiweekly_data(data_dir: Path, overwrite_daily: bool = False) -> None:
-    """Generate epiweekly datasets from daily datasets using an R script."""
-    args = [str(data_dir)]
-    if overwrite_daily:
-        args.append("--overwrite-daily")
-
-    run_r_script(
-        "pipelines/data/generate_epiweekly_data.R",
-        args,
-        function_name="generate_epiweekly_data",
-    )
-    return None
 
 
 def timeseries_ensemble_forecasts(
