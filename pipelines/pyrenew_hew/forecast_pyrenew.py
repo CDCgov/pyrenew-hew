@@ -289,6 +289,7 @@ def main(
         save_figs=True,
         save_ci=True,
     )
+    create_hubverse_table(model_dir)
 
     if fit_ed_visits:
         if Path(model_run_dir, "daily_ts_ensemble_e").exists():
@@ -301,12 +302,14 @@ def main(
                 aggregate_other=False,
                 save=True,
             )
+            tmp_model_name = f"prop_{pyrenew_model_name}_daily_ts_ensemble_e"
+            tmp_model_fit_dir = Path(model_run_dir, tmp_model_name)
             make_figures_from_model_fit_dir(
-                Path(model_run_dir, f"prop_{pyrenew_model_name}_daily_ts_ensemble_e"),
+                tmp_model_fit_dir,
                 save_figs=True,
                 save_ci=True,
             )
-            create_hubverse_table(model_dir)
+            create_hubverse_table(tmp_model_fit_dir)
 
         else:
             logger.warning(
@@ -324,20 +327,16 @@ def main(
                 aggregate_other=False,
                 save=True,
             )
+            tmp_model_name = f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_ts_ensemble_e"
+            tmp_model_fit_dir = Path(model_run_dir, tmp_model_name)
+
             make_figures_from_model_fit_dir(
-                Path(
-                    model_run_dir,
-                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_ts_ensemble_e",
-                ),
+                tmp_model_fit_dir,
                 save_figs=True,
                 save_ci=True,
             )
-            create_hubverse_table(
-                Path(
-                    model_run_dir,
-                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_ts_ensemble_e",
-                )
-            )
+            create_hubverse_table(tmp_model_fit_dir)
+
         else:
             logger.warning(
                 "epiweekly_ts_ensemble_e not found, skipping creation of epiweekly proportions for comparison with pyrenew model."
@@ -352,20 +351,14 @@ def main(
                 aggregate_other=False,
                 save=True,
             )
+            tmp_model_name = f"prop_{pyrenew_model_name}_epiautogp_nssp_daily_other"
+            tmp_model_fit_dir = Path(model_run_dir, tmp_model_name)
             make_figures_from_model_fit_dir(
-                Path(
-                    model_run_dir,
-                    f"prop_{pyrenew_model_name}_epiautogp_nssp_daily_other",
-                ),
+                tmp_model_fit_dir,
                 save_figs=True,
                 save_ci=True,
             )
-            create_hubverse_table(
-                Path(
-                    model_run_dir,
-                    f"prop_{pyrenew_model_name}_epiautogp_nssp_daily_other",
-                )
-            )
+            create_hubverse_table(tmp_model_fit_dir)
 
             logger.info(
                 "Creating epiweekly proportions from epiautogp_nssp_daily_other..."
@@ -378,20 +371,14 @@ def main(
                 aggregate_other=True,
                 save=True,
             )
+            tmp_model_name = f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_aggregated_epiautogp_nssp_daily_other"
+            tmp_model_fit_dir = Path(model_run_dir, tmp_model_name)
             make_figures_from_model_fit_dir(
-                Path(
-                    model_run_dir,
-                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_aggregated_epiautogp_nssp_daily_other",
-                ),
+                tmp_model_fit_dir,
                 save_figs=True,
                 save_ci=True,
             )
-            create_hubverse_table(
-                Path(
-                    model_run_dir,
-                    f"prop_epiweekly_aggregated_{pyrenew_model_name}_epiweekly_aggregated_epiautogp_nssp_daily_other",
-                )
-            )
+            create_hubverse_table(tmp_model_fit_dir)
         else:
             logger.warning(
                 "epiautogp_nssp_daily_other not found, skipping creation of proportions for comparison with epiautogp model."
