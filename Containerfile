@@ -50,21 +50,18 @@ RUN --mount=type=cache,target=/root/.julia \
     julia --project=EpiAutoGP -e 'using Pkg; Pkg.instantiate()'
 
 #
-# Copy python project files explicitly, and set the virtual environment
+# Bring in python project dependency information and set the virtual env
 #
 
-# Project files
-COPY pipelines .
-COPY pyproject.toml .
-COPY uv.lock .
-COPY README.md .
-
-# Dagster
-COPY dagster_defs.py .
+# Dependency information
+COPY pyproject.toml ./pyproject.toml
+COPY uv.lock ./uv.lock
+COPY README.md ./README.md
 
 # Set VIRTUAL_ENV variable at runtime
 ENV VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv
 
+# Create the virtual environment
 RUN uv venv $(VIRTUAL_ENV)
 
 # Update PATH to use the selected venv at runtime
@@ -73,3 +70,13 @@ ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
 # Sync all python dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
+
+#
+# Copy in python pipeline and orchestration files that frequently change
+#
+
+# Project files
+COPY pipelines ./pipelines
+
+# Dagster
+COPY dagster_defs.py ./dagster_defs.py
