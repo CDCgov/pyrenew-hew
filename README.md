@@ -61,6 +61,7 @@ It is not necessary to mount blobs locally if submitting to Azure Batch.
 
 The following instructions will set up Dagster on your VAP. However, based on the current configuration, actual execution will still run in the cloud via Azure Batch. You can change the `executor` option in `dagster_defs.py` to test using the local Docker Executor - this will require you to have setup Blobfuse.
 
+0. Build the `cfa-stf-routine-forecasting` docker container locally. You can use `make container_build` for convenience. Make sure docker is running or podman is available, etc.
 1. Run `uv run dagster_defs.py` and click the link in your terminal (usually [http://127.0.0.1:3000/]).
 2. Using the run ID dagster provides, you can also find your jobs in Azure Batch Explorer.
 3. Navigate to the Lineage page, where you can find your assets for materialization.
