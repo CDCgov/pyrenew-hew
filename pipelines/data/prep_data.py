@@ -400,7 +400,7 @@ def get_pmfs(
 
     as_of : datetime.date, optional
         Date for which parameters must be valid
-        (start_date <= as_of <= end_date). Defaults
+        (start_date <= as_of < end_date). Defaults
         to the most recent estimates.
 
     right_truncation_required : bool, optional
@@ -438,8 +438,8 @@ def get_pmfs(
         )
         .filter(pl.col("disease") == disease)
         .filter(
-            pl.col("start_date") <= as_of,
-            pl.col("end_date") >= as_of,
+            as_of >= pl.col("start_date"),
+            as_of < pl.col("end_date"),
         )
     )
 
