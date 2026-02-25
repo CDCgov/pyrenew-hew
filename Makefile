@@ -8,16 +8,22 @@ ifndef CONTAINER_REGISTRY
 CONTAINER_REGISTRY = ghcr.io/cdcgov
 endif
 
-ifndef CONTAINER_IMAGE_NAME
-CONTAINER_IMAGE_NAME = cfa-stf-routine-forecasting
+ifndef CONTAINER_NAME
+CONTAINER_NAME = cfa-stf-routine-forecasting
 endif
 
-ifndef CONTAINER_IMAGE_VERSION
-CONTAINER_IMAGE_VERSION = latest
+# Determine container tag from git branch: "main" -> "latest", otherwise use branch name
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
+
+ifeq ($(GIT_BRANCH),main)
+CONTAINER_TAG ?= latest
+else
+CONTAINER_TAG ?= $(GIT_BRANCH)
 endif
+
 
 ifndef CONTAINER_REMOTE_NAME
-CONTAINER_REMOTE_NAME = $(CONTAINER_REGISTRY)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_VERSION)
+CONTAINER_REMOTE_NAME = $(CONTAINER_REGISTRY)/$(CONTAINER_NAME):$(CONTAINER_TAG)
 endif
 
 ifndef CONTAINERFILE
@@ -47,6 +53,7 @@ help:
 	@echo "  container_build     : Build the container image"
 	@echo "  container_tag	     : Tag the container image for pushing to the registry"
 	@echo "  container_push	     : Push the container image"
+	@echo "  container_explore   : Run the last locally-built container interactively in your shell"
 	@echo ""
 # 	@echo "Dagster Targets: "
 # 	@echo "  dagster_push_prod   : Push the dagster container image to the Azure Container Registry and code location for production"
@@ -86,6 +93,9 @@ container_tag:
 
 container_push: ghcr_login
 	$(ENGINE) push $(CONTAINER_REMOTE_NAME)
+
+container_explore:
+	$(ENGINE) run -it --rm $(CONTAINER_REMOTE_NAME) bash
 
 config:
 	bash -c "source ./azureconfig.sh"
