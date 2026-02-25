@@ -328,9 +328,7 @@ def daily_timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Weekly Timeseries E
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="WeeklyPyrenew")
 def weekly_timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Timeseries-e model and produce outputs.
@@ -343,7 +341,11 @@ def weekly_timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew E
-@dg.asset(partitions_def=pyrenew_multi_partition_def, deps="weekly_timeseries_e")
+@dg.asset(
+    partitions_def=pyrenew_multi_partition_def,
+    deps="weekly_timeseries_e",
+    group_name="WeeklyPyrenew",
+)
 def pyrenew_e(
     context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
 ):
@@ -355,9 +357,7 @@ def pyrenew_e(
 
 
 # Pyrenew H
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="WeeklyPyrenew")
 def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Pyrenew-h model and produce outputs.
@@ -367,7 +367,7 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew HE
-@dg.asset(partitions_def=pyrenew_multi_partition_def)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="WeeklyPyrenew")
 def pyrenew_he(
     context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
 ):
@@ -379,9 +379,7 @@ def pyrenew_he(
 
 
 # Pyrenew HW
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="deprecated")
 def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Pyrenew-hw model and produce outputs.
@@ -391,7 +389,7 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew HEW
-@dg.asset(partitions_def=pyrenew_multi_partition_def)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="deprecated")
 def pyrenew_hew(
     context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
 ):
@@ -405,7 +403,7 @@ def pyrenew_hew(
 # -- Epi AutoGP Asset -- #
 
 
-@dg.asset
+@dg.asset(group_name="experimental")
 def epiautogp(context: dg.AssetExecutionContext):
     """
     Placeholder asset for Epi AutoGP forecasts.
@@ -429,7 +427,7 @@ def epiautogp(context: dg.AssetExecutionContext):
 # TODO: integrate this asset into the DAG fully, and trigger it via sensors
 
 
-@dg.asset
+@dg.asset(group_name="WeeklyPyrenew")
 def postprocess_forecasts(
     context: dg.AssetExecutionContext,
     config: PostProcessConfig,
@@ -683,7 +681,7 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     ),
     job=weekly_pyrenew_via_backfill,
     run_config=weekly_pyrenew_config,
-    cron_schedule="0 15 * * WED",
+    cron_schedule="0 8,15 * * WED",
     execution_timezone="America/New_York",
 )
 
