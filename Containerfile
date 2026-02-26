@@ -62,7 +62,7 @@ COPY README.md ./README.md
 ENV VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv
 
 # Create the virtual environment
-RUN uv venv $(VIRTUAL_ENV)
+RUN uv venv "${VIRTUAL_ENV}"
 
 # Update PATH to use the selected venv at runtime
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
