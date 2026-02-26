@@ -28,6 +28,7 @@ from dagster_azure.blob import (
 
 # CFA Helper Libraries
 from forecasttools import location_table
+from pygit2.repository import Repository
 
 from pipelines.batch.common_batch_utils import (
     DEFAULT_EXCLUDED_LOCATIONS,
@@ -61,7 +62,14 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-tag = "latest"
+# If the tag is prod, use 'latest'.
+# Else iteratively test on our dev images
+# (You can always manually specify an override in the GUI)
+repo = Repository(os.getcwd())
+current_branch_name = repo.head.shorthand
+tag = (
+    "latest" if is_production or current_branch_name == "main" else current_branch_name
+)
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 default_config = ExecutionConfig(
