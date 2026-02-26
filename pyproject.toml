@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["cfa-stf-routine-forecasting"]
+packages = ["pipelines"]
 
 [build-system]
 requires = ["hatchling"]
