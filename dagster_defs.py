@@ -61,7 +61,7 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-tag = "latest"
+tag = "dmb_timeseries_dir_rework"
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 default_config = ExecutionConfig(
@@ -682,6 +682,6 @@ defs = dg.Definitions(
     },
     # You can put a comment after azure_batch_config to solely execute with Azure batch
     executor=dynamic_executor(
-        default_config=azure_batch_config if is_production else docker_config
+        default_config=azure_batch_config  # if is_production else docker_config
     ),
 )
