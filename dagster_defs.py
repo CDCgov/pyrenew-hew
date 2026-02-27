@@ -253,6 +253,7 @@ def run_stf_model(
         # from forecast_pyrenew import forecast_pyrenew  # noqa: F401
         run_script = "pyrenew_hew/forecast_pyrenew.py"
         additional_args = (
+            "--param-data-dir params "
             f"--n-samples {config.n_samples} "
             f"--n-chains {config.n_chains} "
             f"--n-warmup {config.n_warmup} "
@@ -286,7 +287,6 @@ def run_stf_model(
         f"--loc {location} "
         f"--n-training-days {config.n_training_days} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--param-data-dir params "
         f"--output-dir {config.output_dir} "
         "--credentials-path config/creds.toml "
         f"--exclude-last-n-days {config.exclude_last_n_days} "
