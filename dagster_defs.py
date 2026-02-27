@@ -72,16 +72,19 @@ tag = (
 )
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
+# Most basic execution - launches locally, runs locally
 default_config = ExecutionConfig(
     launcher=SelectorConfig(class_name=dg.DefaultRunLauncher.__name__),
     executor=SelectorConfig(class_name=dg.multiprocess_executor.__name__),
 )
 
+# Launches in a container app job, then executes in the same process
 azure_caj_config = ExecutionConfig(
     launcher=SelectorConfig(class_name=AzureContainerAppJobRunLauncher.__name__),
     executor=SelectorConfig(class_name=dg.in_process_executor.__name__),
 )
 
+# Launches locally, executes in a docker container as configured below
 docker_config = ExecutionConfig(
     launcher=SelectorConfig(class_name=dg.DefaultRunLauncher.__name__),
     executor=SelectorConfig(
@@ -114,6 +117,7 @@ docker_config = ExecutionConfig(
     ),
 )
 
+# Config for full backfills - launches with container app jobs, sends execution to Azure Batch
 azure_batch_config = ExecutionConfig(
     launcher=SelectorConfig(
         class_name=AzureContainerAppJobRunLauncher.__name__, config={"image": image}

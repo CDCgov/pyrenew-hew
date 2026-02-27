@@ -1,6 +1,6 @@
 #syntax=docker/dockerfile:1-labs
 
-FROM rocker/tidyverse
+FROM rocker/tidyverse:4.5.2
 
 #
 # General Build Args and Environment Variables
