@@ -61,7 +61,7 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-tag = "latest"
+tag = "dmb_timeseries_dir_rework"
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 default_config = ExecutionConfig(
@@ -253,6 +253,7 @@ def run_stf_model(
         # from forecast_pyrenew import forecast_pyrenew  # noqa: F401
         run_script = "pyrenew_hew/forecast_pyrenew.py"
         additional_args = (
+            "--param-data-dir params "
             f"--n-samples {config.n_samples} "
             f"--n-chains {config.n_chains} "
             f"--n-warmup {config.n_warmup} "
@@ -286,7 +287,6 @@ def run_stf_model(
         f"--loc {location} "
         f"--n-training-days {config.n_training_days} "
         "--facility-level-nssp-data-dir nssp-etl/gold "
-        "--param-data-dir params "
         f"--output-dir {config.output_dir} "
         "--credentials-path config/creds.toml "
         f"--exclude-last-n-days {config.exclude_last_n_days} "
@@ -682,6 +682,6 @@ defs = dg.Definitions(
     },
     # You can put a comment after azure_batch_config to solely execute with Azure batch
     executor=dynamic_executor(
-        default_config=azure_batch_config if is_production else docker_config
+        default_config=azure_batch_config  # if is_production else docker_config
     ),
 )
