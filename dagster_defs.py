@@ -646,7 +646,7 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     ),
     job=weekly_pyrenew_via_backfill,
     run_config=weekly_pyrenew_config,
-    cron_schedule="0 15 * * WED",
+    cron_schedule="0 8,15 * * WED",
     execution_timezone="America/New_York",
 )
 
