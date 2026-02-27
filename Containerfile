@@ -1,6 +1,6 @@
 #syntax=docker/dockerfile:1-labs
 
-FROM rocker/tidyverse
+FROM rocker/tidyverse:4.4.3@sha256:da14abcd1ffa4e63093aba87a23a5cffc364e7db8f770c194965519743339760
 
 #
 # General Build Args and Environment Variables
@@ -17,11 +17,11 @@ ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 #
 
 # Julia 1.11 from official image
-COPY --from=julia:1.11 /usr/local/julia /usr/local/julia
+COPY --from=julia:1.11.9@sha256:72f6e546aa752c833da71a20c57c70e73f3f41016a9ba2dfffeac84b9fbb44d7 /usr/local/julia /usr/local/julia
 ENV PATH="/usr/local/julia/bin:${PATH}"
 
 # Python from https://docs.astral.sh/uv/guides/integration/docker/
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.10.4@sha256:4cac394b6b72846f8a85a7a0e577c6d61d4e17fe2ccee65d9451a8b3c9efb4ac /uv /uvx /bin/
 
 # Some handy uv environment variables
 ENV UV_COMPILE_BYTECODE=1
