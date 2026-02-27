@@ -28,6 +28,7 @@ from dagster_azure.blob import (
 
 # CFA Helper Libraries
 from forecasttools import location_table
+from pygit2.repository import Repository
 
 from pipelines.batch.common_batch_utils import (
     DEFAULT_EXCLUDED_LOCATIONS,
@@ -61,7 +62,12 @@ user = os.getenv("DAGSTER_USER")
 workdir = "cfa-stf-routine-forecasting"
 local_workdir = Path(__file__).parent.resolve()
 
-tag = "latest"
+# If the tag is prod, use 'latest'.
+# Else iteratively test on our dev images
+# (You can always manually specify an override in the GUI)
+repo = Repository(os.getcwd())
+tag = "latest" if is_production else repo.head.shorthand
+
 image = f"ghcr.io/cdcgov/cfa-stf-routine-forecasting:{tag}"
 
 default_config = ExecutionConfig(
@@ -216,7 +222,8 @@ class PostProcessConfig(CommonConfig):
 # Model Worker Function
 # ----------------------
 
-# This function is NOT an asset itself, but is called by assets to run the pyrenew model
+# This function is NOT an asset itself, but is called by assets to run models
+# TODO: unify this with the setup_job scripts. They are duplicative
 
 
 def run_stf_model(
@@ -301,24 +308,47 @@ def run_stf_model(
 # Assets: these are the core of Dagster - functions that specify data  #
 # -------------------------------------------------------------------- #
 
-# -- Pyrenew Assets -- #
+# TODO: return materialized asset results to make dagster aware of our actual outputs
+# Currently, outputs are output as a side-effect; this is non-dagsteric
+
+# -- Fable Timeseries Assets -- #
 
 
-# Timeseries E
+# Daily Timeseries E
+# TODO: do any parameters differ?
 @dg.asset(
     partitions_def=pyrenew_multi_partition_def,
 )
-def timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
+def daily_timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
+    """
+    Run Daily Timeseries-e model and produce outputs.
+    """
+    run_stf_model(context, config, model_letters="e", model_family="timeseries")
+    return "daily_timeseries_e"
+
+
+# Weekly Timeseries E
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="WeeklyPyrenew")
+def weekly_timeseries_e(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Timeseries-e model and produce outputs.
     """
     run_stf_model(context, config, model_letters="e", model_family="timeseries")
-    return "timeseries_e"
+    return "weekly_timeseries_e"
+
+
+# -- Pyrenew Assets -- #
 
 
 # Pyrenew E
-@dg.asset(partitions_def=pyrenew_multi_partition_def, deps="timeseries_e")
-def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+@dg.asset(
+    partitions_def=pyrenew_multi_partition_def,
+    deps="weekly_timeseries_e",
+    group_name="WeeklyPyrenew",
+)
+def pyrenew_e(
+    context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
+):
     """
     Run Pyrenew-e model and produce outputs.
     """
@@ -327,9 +357,7 @@ def pyrenew_e(context: dg.AssetExecutionContext, config: ModelConfig, timeseries
 
 
 # Pyrenew H
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="WeeklyPyrenew")
 def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Pyrenew-h model and produce outputs.
@@ -339,8 +367,10 @@ def pyrenew_h(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew HE
-@dg.asset(partitions_def=pyrenew_multi_partition_def)
-def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="WeeklyPyrenew")
+def pyrenew_he(
+    context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
+):
     """
     Run Pyrenew-he model and produce outputs.
     """
@@ -349,9 +379,7 @@ def pyrenew_he(context: dg.AssetExecutionContext, config: ModelConfig, timeserie
 
 
 # Pyrenew HW
-@dg.asset(
-    partitions_def=pyrenew_multi_partition_def,
-)
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="deprecated")
 def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
     """
     Run Pyrenew-hw model and produce outputs.
@@ -361,8 +389,10 @@ def pyrenew_hw(context: dg.AssetExecutionContext, config: ModelConfig):
 
 
 # Pyrenew HEW
-@dg.asset(partitions_def=pyrenew_multi_partition_def)
-def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseries_e):
+@dg.asset(partitions_def=pyrenew_multi_partition_def, group_name="deprecated")
+def pyrenew_hew(
+    context: dg.AssetExecutionContext, config: ModelConfig, weekly_timeseries_e
+):
     """
     Run Pyrenew-hew model and produce outputs.
     """
@@ -373,7 +403,7 @@ def pyrenew_hew(context: dg.AssetExecutionContext, config: ModelConfig, timeseri
 # -- Epi AutoGP Asset -- #
 
 
-@dg.asset
+@dg.asset(group_name="experimental")
 def epiautogp(context: dg.AssetExecutionContext):
     """
     Placeholder asset for Epi AutoGP forecasts.
@@ -397,11 +427,11 @@ def epiautogp(context: dg.AssetExecutionContext):
 # TODO: integrate this asset into the DAG fully, and trigger it via sensors
 
 
-@dg.asset
+@dg.asset(group_name="WeeklyPyrenew")
 def postprocess_forecasts(
     context: dg.AssetExecutionContext,
     config: PostProcessConfig,
-    timeseries_e,
+    weekly_timeseries_e,
     pyrenew_e,
     pyrenew_h,
     pyrenew_he,
@@ -528,7 +558,7 @@ def launch_pyrenew_pipeline(
     # if nhsn_available and nssp_available and nwss_available:
     #     context.log.info("NHSN, NSSP gold, and NWSS gold data are all available - launching full pipeline.")
     #     context.log.info("Launching full pyrenew_hew backfill.")
-    #     asset_selection = ("timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
+    #     asset_selection = ("weekly_timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he", "pyrenew_hw", "pyrenew_hew")
 
     if nhsn_available and nssp_available:
         # elif nhsn_available and nssp_available:
@@ -536,9 +566,14 @@ def launch_pyrenew_pipeline(
             "Both NHSN data and NSSP gold data are available, but NWSS gold data is not."
         )
         context.log.info(
-            "Launching a timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill."
+            "Launching a weekly_timeseries_e, pyrenew_e, pyrenew_h, and pyrenew_he backfill."
         )
-        asset_selection = ["timeseries_e", "pyrenew_e", "pyrenew_h", "pyrenew_he"]
+        asset_selection = [
+            "weekly_timeseries_e",
+            "pyrenew_e",
+            "pyrenew_h",
+            "pyrenew_he",
+        ]
 
     # elif nhsn_available and nwss_available:
     #     context.log.info("NHSN data and NWSS data are available, but NSSP gold data is not.")
@@ -547,8 +582,8 @@ def launch_pyrenew_pipeline(
 
     elif nssp_available:
         context.log.info("Only NSSP gold data are available.")
-        context.log.info("Launching a timeseries_e and pyrenew_e backfill.")
-        asset_selection = ["timeseries_e", "pyrenew_e"]
+        context.log.info("Launching a weekly_timeseries_e and pyrenew_e backfill.")
+        asset_selection = ["weekly_timeseries_e", "pyrenew_e"]
 
     elif nhsn_available:
         context.log.info("Only NHSN data are available.")
@@ -646,7 +681,7 @@ weekly_pyrenew_via_backfill_schedule = dg.ScheduleDefinition(
     ),
     job=weekly_pyrenew_via_backfill,
     run_config=weekly_pyrenew_config,
-    cron_schedule="0 15 * * WED",
+    cron_schedule="0 8,15 * * WED",
     execution_timezone="America/New_York",
 )
 

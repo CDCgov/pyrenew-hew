@@ -13,7 +13,7 @@ CONTAINER_IMAGE_NAME = cfa-stf-routine-forecasting
 endif
 
 ifndef CONTAINER_IMAGE_VERSION
-CONTAINER_IMAGE_VERSION = latest
+CONTAINER_IMAGE_VERSION = $(shell git rev-parse --abbrev-ref HEAD | sed 's/^main$$/latest/')
 endif
 
 ifndef CONTAINER_REMOTE_NAME
@@ -90,11 +90,11 @@ container_push: ghcr_login
 config:
 	bash -c "source ./azureconfig.sh"
 
-# dagster_push_prod:
-# 	docker build . -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest -f Containerfile && \
-# 	docker push ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest && \
-# 	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
-#     	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest
+dagster_push_prod:
+	docker build . -t ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest -f Containerfile && \
+	docker push ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest && \
+	uv run https://raw.githubusercontent.com/CDCgov/cfa-dagster/refs/heads/main/scripts/update_code_location.py \
+    	--registry_image ghcr.io/cdcgov/cfa-stf-routine-forecasting:latest
 
 # ---------------- #
 # Model Fit Targets
