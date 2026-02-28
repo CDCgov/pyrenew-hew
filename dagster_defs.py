@@ -1,7 +1,7 @@
 # Basic Imports
 import os
 import subprocess
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 # Dagster and cloud Imports
@@ -26,10 +26,12 @@ from dagster_azure.blob import (
     AzureBlobStorageResource,
 )
 
-# CFA Helper Libraries
+# Helper Libraries
 from forecasttools import location_table
 from pygit2.repository import Repository
+from pytz import timezone
 
+# Local constant imports
 from pipelines.batch.common_batch_utils import (
     DEFAULT_EXCLUDED_LOCATIONS,
     SUPPORTED_DISEASES,
@@ -195,7 +197,7 @@ class CommonConfig(dg.Config):
     Both ModelConfig and PostProcessConfig inherit from this, then add their own parameters.
     """
 
-    forecast_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
+    forecast_date: str = datetime.now(timezone("US/Eastern")).strftime("%Y-%m-%d")
     _output_basedir: str = "output" if is_production else "test-output"
     # _output_basedir: str = "test-output" # uncomment to force testing even on prod server
     _output_subdir: str = f"{forecast_date}_forecasts"
@@ -452,7 +454,7 @@ def postprocess_forecasts(
 
 @dg.op
 def check_nhsn_data_availability():
-    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    current_date = datetime.now(timezone("US/Eastern")).strftime("%Y-%m-%d")
     nhsn_target_url = "https://data.cdc.gov/api/views/mpgq-jmmr.json"
     try:
         resp = requests.get(nhsn_target_url, timeout=10)
@@ -480,7 +482,7 @@ def check_nhsn_data_availability():
 def check_nssp_gold_data_availability(
     account_name="cfaazurebatchprd", container_name="nssp-etl"
 ):
-    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    current_date = datetime.now(timezone("US/Eastern")).strftime("%Y-%m-%d")
     blob_name = f"gold/{current_date}.parquet"
     credential = DefaultAzureCredential()
     blob_service_client = BlobServiceClient(
@@ -506,7 +508,7 @@ def check_nssp_gold_data_availability(
 def check_nwss_gold_data_availability(
     account_name="cfaazurebatchprd", container_name="nwss-vintages"
 ):
-    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    current_date = datetime.now(timezone("US/Eastern")).strftime("%Y-%m-%d")
     folder_prefix = f"NWSS-ETL-covid-{current_date}/"
     credential = DefaultAzureCredential()
     blob_service_client = BlobServiceClient(
