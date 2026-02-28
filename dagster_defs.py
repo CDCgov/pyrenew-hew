@@ -578,6 +578,8 @@ def launch_pyrenew_pipeline(
     else:
         context.log.info("No required data is available.")
         asset_selection = []
+        context.log.info("Execution will not be sent to Azure batch!")
+        return
 
     # Launch the backfill
     # Returns: a backfill ID,
