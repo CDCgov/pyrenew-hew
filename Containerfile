@@ -2,14 +2,6 @@
 
 FROM rocker/tidyverse:4.5.2
 
-#
-# General Build Args and Environment Variables
-#
-
-ARG GIT_COMMIT_SHA
-ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
-ARG GIT_BRANCH_NAME
-ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
 ENV XLA_FLAGS=--xla_force_host_platform_device_count=4
 
 #
@@ -84,3 +76,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Dagster
 COPY dagster_defs.py ./dagster_defs.py
+
+#
+# General Build Args and Environment Variables
+#
+
+ARG GIT_COMMIT_SHA
+ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
+ARG GIT_BRANCH_NAME
+ENV GIT_BRANCH_NAME=$GIT_BRANCH_NAME
