@@ -65,8 +65,16 @@ local_workdir = Path(__file__).parent.resolve()
 # If the tag is prod, use 'latest'.
 # Else iteratively test on our dev images
 # (You can always manually specify an override in the GUI)
-repo = Repository(os.getcwd())
-current_branch_name = repo.head.shorthand
+try:
+    repo = Repository(os.getcwd())
+    current_branch_name = repo.head.shorthand
+except Exception:
+    print(
+        "Could not find live .git folder - you are likely in a container, using environment variable to resolve branch name."
+    )
+    current_branch_name = os.getenv("GIT_BRANCH_NAME", "unknown_dev_branch")
+    print(f"Branch name is {current_branch_name}")
+
 tag = (
     "latest" if is_production or current_branch_name == "main" else current_branch_name
 )
