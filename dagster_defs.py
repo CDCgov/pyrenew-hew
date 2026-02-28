@@ -71,12 +71,15 @@ local_workdir = Path(__file__).parent.resolve()
 # (You can always manually specify an override in the GUI)
 try:
     print("You are running inside a .git repository; getting branchname from .git")
-    current_branch_name = Repository(os.getcwd()).head.shorthand
+    repo = Repository(os.getcwd())
+    current_branch_name = str(repo.head.shorthand)
+    git_commit_sha = str(repo.head.target)
 except Exception:
     print(
         "No .git folder detected; attempting to get branch name from build-arg $GIT_BRANCH_NAME"
     )
-    current_branch_name = os.getenv("GIT_BRANCH_NAME", "unknown_dev_branch")
+    current_branch_name = os.getenv("GIT_BRANCH_NAME", "unknown_branch")
+    git_commit_sha = os.getenv("GIT_COMMIT_SHA", "unknown_commit_hash")
 
 print(f"Current branch name is {current_branch_name}")
 
@@ -604,6 +607,7 @@ def launch_pyrenew_pipeline(
             "models_attempted": ", ".join(asset_selection),
             "forecast_date": config.forecast_date,
             "output_dir": config.output_dir,
+            "git_commit_sha": git_commit_sha,
         },
     )
     context.log.info(
