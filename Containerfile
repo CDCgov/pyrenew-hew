@@ -56,7 +56,6 @@ RUN --mount=type=cache,target=/root/.julia \
 # Dependency information
 COPY pyproject.toml ./pyproject.toml
 COPY uv.lock ./uv.lock
-COPY README.md ./README.md
 
 # Set VIRTUAL_ENV variable at runtime
 ENV VIRTUAL_ENV=/cfa-stf-routine-forecasting/.venv
@@ -77,6 +76,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Project files
 COPY pipelines ./pipelines
+COPY README.md ./README.md
 
 # Install the local project now that pipelines/ sources are present
 RUN --mount=type=cache,target=/root/.cache/uv \
