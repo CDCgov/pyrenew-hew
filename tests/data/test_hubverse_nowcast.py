@@ -1,6 +1,7 @@
 """Tests for converting Hubverse sample output to EpiAutoGP nowcasts."""
 
 import datetime as dt
+from dataclasses import replace
 
 import polars as pl
 import pytest
@@ -100,6 +101,25 @@ def _get_nowcast(source: HubverseNowcast) -> NowcastData:
         dates=[dt.date(2026, 6, 28), *NOWCAST_DATES],
         reports=[5.0, 6.0, 7.0],
     )
+
+
+def test_excluded_reports_are_not_reintroduced_by_nowcasts(tmp_path):
+    run = _run(tmp_path)
+    source_data = pl.DataFrame(
+        {"date": NOWCAST_DATES, "value": [6.0, None], "data_type": ["train"] * 2}
+    )
+    run = replace(
+        run,
+        surveillance=replace(
+            run.surveillance, nhsn=replace(run.nhsn, data=source_data)
+        ),
+    )
+    source = HubverseNowcast(
+        containing_dir=_write_artifact(tmp_path), forecast_run=run, config=_config()
+    )
+    result = source.get_nowcast_data(dates=NOWCAST_DATES[:1], reports=[6.0])
+    assert result.dates == NOWCAST_DATES[:1]
+    assert result.reports == [[10.0], [20.0]]
 
 
 def test_converts_shuffled_rows_to_complete_ordered_trajectories(tmp_path):

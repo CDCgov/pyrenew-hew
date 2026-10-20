@@ -4,6 +4,7 @@ using Dates, DataFrames, JSON3, StructTypes
 using DBInterface: close, connect, execute
 using DuckDB: DB, register_data_frame
 using NowcastAutoGP:
+    AutoGP,
     create_nowcast_data,
     create_transformed_data,
     forecast,
@@ -215,15 +216,15 @@ function prepare_for_modelling(
         "forecast_through must be after the final training date; got " *
             "$last_training_date and $(input.forecast_through)",
     )
-    n_ahead, extra_days = divrem(horizon_days, step_days)
+    _, extra_days = divrem(horizon_days, step_days)
     _require(
         iszero(extra_days),
         "The distance from the final $(input.frequency) training date to " *
             "forecast_through must be a whole number of model steps; got " *
             "$last_training_date and $(input.forecast_through)",
     )
-    forecast_dates = [last_training_date + i * time_step for i in 1:n_ahead]
-    prediction_dates = vcat(input.dates, forecast_dates)
+    # Predict across internal gaps on the original calendar cadence.
+    prediction_dates = collect(first(input.dates):time_step:input.forecast_through)
 
     n_forecasts_per_nowcast = isnothing(nowcast_data) ?
         n_forecasts :
@@ -313,6 +314,15 @@ function forecast_with_nowcastautogp(input::EpiAutoGPInput, args::Dict{String, A
         n_mcmc = args["n-mcmc"],
         n_hmc = args["n-hmc"],
     )
+    mkpath(args["output-dir"])
+    open(joinpath(args["output-dir"], "diagnostics.json"), "w") do io
+        JSON3.write(
+            io, Dict(
+                "particles" => args["n-particles"],
+                "effective_sample_size" => AutoGP.effective_sample_size(base_model),
+            )
+        )
+    end
     forecasts = _do_forecasts(
         model_info.nowcast_data,
         base_model,

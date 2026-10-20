@@ -13,6 +13,10 @@ dagster:
 test:
     uv run pytest -m "not pipeline_e2e and not model_integration"
 
+# Run the reproducible canonical-exclusion simulation (issue #1343).
+exclusion-poc profile="full":
+    uv run --frozen python experiments/canonical_exclusions/run.py --profile "{{profile}}" --output "test_output/canonical-exclusions/{{profile}}"
+
 # Run the reduced pipeline end-to-end test and retain its output in the repo.
 e2e data_mode="auto":
     #!/usr/bin/env bash

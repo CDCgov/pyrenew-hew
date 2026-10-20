@@ -176,7 +176,10 @@ class PyRenewPipeline(ForecastPipeline):
             rng_key=self.rng_key,
         )
         self.logger.info("Model fitting complete")
+        self.generate_predictions(run)
 
+    def generate_predictions(self, run: ForecastRun) -> None:
+        """Generate standardized predictions from a saved posterior fit."""
         self.logger.info("Performing posterior prediction / forecasting...")
         generate_and_save_predictions(
             run.model_run_dir,

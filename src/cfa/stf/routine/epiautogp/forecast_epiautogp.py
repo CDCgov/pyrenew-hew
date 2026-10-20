@@ -74,7 +74,10 @@ def _build_reporting_delay_nowcast(
             as_of=forecast_run.report_date,
             reference_date=forecast_run.report_date,
         )
-    return ReportingDelayNowcast(reporting_delay_pmf=reporting_delay_pmf)
+    return ReportingDelayNowcast(
+        reporting_delay_pmf=reporting_delay_pmf,
+        reference_date=forecast_run.report_date - dt.timedelta(days=1),
+    )
 
 
 def _resolve_nowcast_source(

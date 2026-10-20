@@ -8,12 +8,41 @@ import jax
 import numpy as np
 import polarbayes as pb
 import polars as pl
+import xarray as xr
 from pyrenew_multisignal.hew import (
     PyrenewHEWData,
     flags_from_pyrenew_model_name,
 )
 
+from cfa.stf.routine.pyrenew_hew.observation_data import PyRenewObservationData
 from cfa.stf.routine.pyrenew_hew.utils import build_pyrenew_hew_model_from_dir
+
+
+def _assign_observation_dates(idata: xr.DataTree, data: PyrenewHEWData) -> None:
+    """Label likelihood/observed rows by their actual, possibly irregular dates."""
+    sources = (
+        (data.nssp_training_data, "observed_ed_visits", "date", "observed_ed_visits"),
+        (
+            data.nhsn_training_data,
+            "observed_hospital_admissions",
+            "weekendingdate",
+            "hospital_admissions",
+        ),
+    )
+    for frame, variable, date_column, value_column in sources:
+        if frame is None:
+            continue
+        dates = (
+            frame.filter(pl.col(value_column).is_finite())
+            .get_column(date_column)
+            .to_numpy()
+            .astype("datetime64[ns]")
+        )
+        dimension = f"{variable}_time"
+        for group_name in ("observed_data", "log_likelihood"):
+            group = idata.get(group_name)
+            if group is not None and dimension in group.dims:
+                idata[group_name] = group.to_dataset().assign_coords({dimension: dates})
 
 
 def _build_forecast_data_through(
@@ -69,7 +98,7 @@ def generate_and_save_predictions(
     mcmc_output_dir = model_dir / "mcmc_output"
     mcmc_output_dir.mkdir(parents=True, exist_ok=True)
 
-    my_data = PyrenewHEWData.from_json(
+    my_data = PyRenewObservationData.from_json(
         json_file_path=Path(model_dir) / "data" / "data_for_model_fit.json",
         **flags_from_pyrenew_model_name(model_name),
     )
@@ -148,6 +177,8 @@ def generate_and_save_predictions(
 
     for row in date_details_df.iter_rows(named=True):
         ft.arviz.assign_coords_from_start_step(idata, **row, inplace=True)
+
+    _assign_observation_dates(idata, my_data)
 
     # Save one netcdf for reloading
     idata.to_netcdf(

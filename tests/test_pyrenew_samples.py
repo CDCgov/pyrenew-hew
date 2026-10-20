@@ -1,13 +1,61 @@
 import datetime as dt
 
+import numpy as np
 import polars as pl
+import xarray as xr
 from polars.testing import assert_frame_equal
 from pyrenew_multisignal.hew import PyrenewHEWData
 
 from cfa.stf.routine.pyrenew_hew.forecast_pyrenew import format_pyrenew_samples
 from cfa.stf.routine.pyrenew_hew.generate_predictive import (
+    _assign_observation_dates,
     _build_forecast_data_through,
 )
+
+
+def test_saved_likelihood_dates_do_not_compress_missing_days():
+    dates = [dt.date(2026, 1, 1) + dt.timedelta(days=i) for i in range(4)]
+    data = PyrenewHEWData(
+        nssp_training_data=pl.DataFrame(
+            {
+                "date": dates,
+                "observed_ed_visits": [None, 2.0, None, 4.0],
+            }
+        ),
+        nssp_step_size=1,
+    )
+    dimension = "observed_ed_visits_time"
+    idata = xr.DataTree.from_dict(
+        {
+            "posterior_predictive": xr.Dataset(
+                {
+                    "observed_ed_visits": (
+                        ("chain", "draw", dimension),
+                        np.zeros((1, 1, 4)),
+                    )
+                },
+                coords={dimension: np.arange(4)},
+            ),
+            "log_likelihood": xr.Dataset(
+                {
+                    "observed_ed_visits": (
+                        ("chain", "draw", dimension),
+                        np.zeros((1, 1, 2)),
+                    )
+                },
+                coords={dimension: np.arange(2)},
+            ),
+            "observed_data": xr.Dataset(
+                {"observed_ed_visits": (dimension, np.array([2.0, 4.0]))},
+                coords={dimension: np.arange(2)},
+            ),
+        }
+    )
+    _assign_observation_dates(idata, data)
+    expected = np.array(dates[1::2], dtype="datetime64[ns]")
+    np.testing.assert_array_equal(idata.observed_data[dimension], expected)
+    np.testing.assert_array_equal(idata.log_likelihood[dimension], expected)
+    np.testing.assert_array_equal(idata.posterior_predictive[dimension], np.arange(4))
 
 
 def test_build_forecast_data_reaches_final_epiweek():

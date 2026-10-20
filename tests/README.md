@@ -25,3 +25,41 @@ Replace `mock` with `real` to use CFA DataOps data.
 All arguments are optional; the defaults are `auto`, `CA`, and `covid`.
 
 The combined test remains available through `just e2e auto`, `just e2e real`, or `just e2e mock`.
+
+## Canonical-exclusion proof of concept (#1343)
+
+`just exclusion-poc` runs the synthetic-data experiment for Fable daily/weekly, PyRenew H/E/HE, and four EpiAutoGP configurations.
+The full profile uses four PyRenew chains with 500 warmup and 500 sampling iterations, and 12 GP particles with 25 structure and 10 HMC steps.
+`just exclusion-poc smoke` checks execution with small inference settings; it does not establish inference quality.
+
+The experiment fixes CA/covid, the report date (2026-07-05), 168 days of history, and the random seed.
+It tests beginning, middle, short-tail, long-tail, isolated, and combined exclusions.
+Each mask compares missing clean data with excluded 20× and 100× outliers.
+Complete clean data and unmasked 20× outliers are controls.
+For proportions, only the disease numerator is contaminated, so contamination does not cancel between numerator and denominator.
+
+Equivalent effective inputs share fitted results.
+The combined 20× excluded case is independently refitted to check seeded draw-level reproducibility.
+Reports explicitly distinguish reused fits.
+Exclusion invariance does not imply that removing observations leaves a complete-data fit unchanged, or that a fit has converged.
+PyRenew divergences, R-hat and ESS, and GP particle ESS are retained.
+
+Fable uses ARIMA alone when training observations are missing and records the component choice in `components.txt`.
+Its missing-data forecasts draw jointly from the fitted Kalman forecast distribution.
+Complete-data runs retain the ETS/ARIMA ensemble.
+No missing counts are imputed as observations.
+
+Outputs include `report.html`, `results.json`, `manifest.json`, plots, raw-data audits, effective inputs, logs, samples, and inference diagnostics beneath `test_output/canonical-exclusions/{full,smoke}`.
+Existing omission policies are held fixed; canonical data-service integration is a later step.
+
+For selected configurations, preparation checks, or resumption:
+
+```bash
+uv run --frozen python experiments/canonical_exclusions/run.py \
+  --models pyrenew_e gp_daily --scenarios tail_short tail_long combined \
+  --output test_output/canonical-exclusions/selected --resume
+uv run --frozen python experiments/canonical_exclusions/run.py --prepare-only
+```
+
+Resumption requires matching effective inputs and implementation hashes.
+The fast suite includes input-invariance checks across the full configuration matrix, a calendar-based oracle for PyRenew's reporting CDF, and R tests of joint forecast moments across missing observations.

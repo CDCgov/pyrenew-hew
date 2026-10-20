@@ -3,8 +3,8 @@ from pathlib import Path
 
 import jax
 import numpy as np
-from pyrenew_multisignal.hew import PyrenewHEWData
 
+from cfa.stf.routine.pyrenew_hew.observation_data import PyRenewObservationData
 from cfa.stf.routine.pyrenew_hew.utils import build_pyrenew_hew_model_from_dir
 
 
@@ -27,7 +27,7 @@ def fit_and_save_model(
             "rng_key must be an integer with which to seed `jax.random.key`"
         )
 
-    my_data = PyrenewHEWData.from_json(
+    my_data = PyRenewObservationData.from_json(
         json_file_path=Path(model_dir) / "data" / "data_for_model_fit.json",
         fit_ed_visits=fit_ed_visits,
         fit_hospital_admissions=fit_hospital_admissions,

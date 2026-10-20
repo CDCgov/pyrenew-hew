@@ -11,6 +11,14 @@ from cfa.stf.routine.utils.data_utils import (
 )
 
 
+def test_incomplete_week_is_not_a_partial_weekly_total():
+    dates = pl.date_range(dt.date(2025, 1, 5), dt.date(2025, 1, 18), eager=True)
+    data = pl.DataFrame({"date": dates, ".value": [None] + [10.0] * 13})
+    result = aggregate_long_to_epiweekly(data)
+    assert result["date"].to_list() == [dt.date(2025, 1, 18)]
+    assert result[".value"].to_list() == [70.0]
+
+
 def test_aggregate_long_to_epiweekly_accepts_date_and_value_columns():
     data = pl.DataFrame(
         {

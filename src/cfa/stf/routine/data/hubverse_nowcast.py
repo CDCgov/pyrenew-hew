@@ -171,6 +171,27 @@ class HubverseNowcast:
         if invalid_values:
             raise ValueError("Hubverse sample values must be finite and non-negative.")
 
+        # An excluded report must not be reintroduced via an external nowcast.
+        source = self.forecast_run.nhsn
+        excluded_dates = set()
+        if source is not None:
+            excluded_dates.update(
+                source.data.filter(
+                    pl.col("value").is_null() | ~pl.col("value").is_finite()
+                )
+                .get_column("date")
+                .to_list()
+            )
+        for start, end in self.config.exclude_date_ranges or []:
+            excluded_dates.update(
+                date
+                for date in samples.get_column("target_end_date").unique()
+                if start <= date <= end
+            )
+        samples = samples.filter(~pl.col("target_end_date").is_in(list(excluded_dates)))
+        if samples.is_empty():
+            return NowcastData()
+
         nowcast_dates = samples.get_column("target_end_date").unique().sort().to_list()
         missing_observation_dates = sorted(set(nowcast_dates) - set(dates))
         if missing_observation_dates:

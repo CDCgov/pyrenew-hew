@@ -21,6 +21,50 @@ purrr::walk(script_packages, \(pkg) {
   )
 })
 
+# Draw jointly from the Gaussian state-space forecast. Fable's ARIMA generate()
+# conditions on lagged observations/residuals directly, which propagates tail
+# NAs into every draw. The filtered state retains uncertainty across those gaps.
+generate_missing_arima <- function(
+  fit,
+  horizon,
+  n_samples,
+  target_col,
+  offset
+) {
+  predicted <- forecast(fit, h = horizon)
+  arima <- fit$comb_model[[1]]$fit$model
+  state <- arima$model
+  n <- nrow(predicted)
+  covariance <- matrix(0, n, n)
+  P <- state$P
+  for (i in seq_len(n)) {
+    P <- state$T %*% P %*% t(state$T) + state$V
+    covariance[i, i] <- drop(crossprod(state$Z, P %*% state$Z)) + state$h
+    cross <- P
+    if (i < n) {
+      for (j in seq.int(i + 1L, n)) {
+        cross <- cross %*% t(state$T)
+        covariance[i, j] <- covariance[j, i] <- drop(crossprod(
+          state$Z,
+          cross %*% state$Z
+        ))
+      }
+    }
+  }
+  covariance <- covariance * arima$sigma2
+  # The response distribution is exp(N(mu, sigma^2)) - offset, so its median
+  # recovers the Gaussian location without confusing it with the response mean.
+  location <- log(
+    unlist(stats::quantile(predicted[[target_col]], 0.5)) + offset
+  )
+  draws <- mvtnorm::rmvnorm(n_samples, mean = location, sigma = covariance)
+  tibble::tibble(
+    date = rep(predicted$date, each = n_samples),
+    .rep = rep(seq_len(n_samples), n),
+    .sim = as.vector(exp(draws) - offset)
+  )
+}
+
 
 #' Fit and Forecast Time Series Data
 #'
@@ -51,22 +95,43 @@ fit_and_forecast_ensemble <- function(
 
   offset <- 1
 
-  fit <- data |>
-    as_tsibble(index = date) |>
-    model(
-      comb_model = combination_ensemble(
-        ETS(
-          log(!!target_sym + !!offset) ~
-            trend(
-              method = c("N", "M", "A")
-            )
-        ),
-        ARIMA(log(!!target_sym + !!offset))
-      )
+  series <- data |> as_tsibble(index = date) |> tsibble::fill_gaps()
+  has_missing <- anyNA(series[[target_col]])
+  if (all(is.na(series[[target_col]]))) {
+    stop("At least one finite training observation is required")
+  }
+  # Seasonal ETS cannot estimate its initial state with internal missing values.
+  # ARIMA integrates missing observations through its state-space likelihood.
+  # Do not fill gaps with point estimates and treat them as observed counts.
+  fit <- if (has_missing) {
+    warning(
+      "Missing training observations: using ARIMA without the ETS component"
     )
+    series |>
+      model(
+        comb_model = ARIMA(log(!!target_sym + !!offset), approximation = FALSE)
+      )
+  } else {
+    series |>
+      model(
+        comb_model = combination_ensemble(
+          ETS(
+            log(!!target_sym + !!offset) ~
+              trend(
+                method = c("N", "M", "A")
+              )
+          ),
+          ARIMA(log(!!target_sym + !!offset))
+        )
+      )
+  }
 
-  forecast_samples <- fit |>
-    generate(h = forecast_horizon, times = n_samples) |>
+  generated <- if (has_missing) {
+    generate_missing_arima(fit, forecast_horizon, n_samples, target_col, offset)
+  } else {
+    generate(fit, h = forecast_horizon, times = n_samples)
+  }
+  forecast_samples <- generated |>
     as_tibble() |>
     mutate(
       !!output_col := pmax(.data$.sim, 0), # clip values
@@ -74,10 +139,19 @@ fit_and_forecast_ensemble <- function(
     ) |>
     select("date", ".draw", all_of(output_col))
 
-  if (any(forecast_samples[[output_col]] < 0)) {
-    stop(glue::glue("Negative count forecast for {output_col}"))
+  if (
+    !all(is.finite(forecast_samples[[output_col]])) ||
+      any(forecast_samples[[output_col]] < 0)
+  ) {
+    stop(glue::glue("Nonfinite or negative count forecast for {output_col}"))
   }
 
+  attr(forecast_samples, "fitted") <- augment(fit)
+  attr(forecast_samples, "components") <- if (has_missing) {
+    "ARIMA"
+  } else {
+    "ETS + ARIMA"
+  }
   forecast_samples
 }
 
@@ -106,6 +180,15 @@ main <- function(
     output_col = "other_ed_visits"
   )
 
+  readr::write_tsv(
+    attr(fable_e_other, "fitted"),
+    fs::path(model_dir, "fitted.tsv")
+  )
+  readr::write_lines(
+    attr(fable_e_other, "components"),
+    fs::path(model_dir, "components.txt")
+  )
+
   fable_e_other_forecast <-
     fable_e_other |>
     stfroutineforecasting::format_timeseries_output(
@@ -127,32 +210,37 @@ main <- function(
 }
 
 
-p <- arg_parser(
-  "Forecast other (non-target-disease) ED visits for a given location."
-) |>
-  add_argument(
-    "--model-dir",
-    help = "Directory containing the model data and output."
+run_cli <- function() {
+  p <- arg_parser(
+    "Forecast other (non-target-disease) ED visits for a given location."
   ) |>
-  add_argument(
-    "--n-forecast-days",
-    help = "Number of days to forecast.",
-    default = 28L
-  ) |>
-  add_argument(
-    "--n-samples",
-    help = "Number of samples to generate.",
-    default = 2000L
+    add_argument(
+      "--model-dir",
+      help = "Directory containing the model data and output."
+    ) |>
+    add_argument(
+      "--n-forecast-days",
+      help = "Number of days to forecast.",
+      default = 28L
+    ) |>
+    add_argument(
+      "--n-samples",
+      help = "Number of samples to generate.",
+      default = 2000L
+    )
+
+  argv <- parse_args(p)
+  model_dir <- path(argv$model_dir)
+  n_forecast_days <- argv$n_forecast_days
+  n_samples <- argv$n_samples
+
+  main(
+    model_dir,
+    n_forecast_days = n_forecast_days,
+    n_samples = n_samples
   )
+}
 
-argv <- parse_args(p)
-model_dir <- path(argv$model_dir)
-n_forecast_days <- argv$n_forecast_days
-n_samples <- argv$n_samples
-
-
-main(
-  model_dir,
-  n_forecast_days = n_forecast_days,
-  n_samples = n_samples
-)
+if (sys.nframe() == 0L) {
+  run_cli()
+}

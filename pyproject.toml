@@ -27,6 +27,7 @@ dependencies = [
     "pyrenew",
     "pyrenew-multisignal",
     "pypdf>=6.10.1",
+    "xarray>=2026.7.0",
 ]
 
 [project.scripts]
