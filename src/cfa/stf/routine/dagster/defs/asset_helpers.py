@@ -17,8 +17,9 @@ from cfa.stf.routine.dagster.defs.asset_config import (
 from cfa.stf.routine.data.data_access import DataResolution
 from cfa.stf.routine.epiautogp.forecast_epiautogp import main as forecast_epiautogp
 from cfa.stf.routine.fable.forecast_fable import main as forecast_fable
-from cfa.stf.routine.forecast_window import ForecastWindow
+from cfa.stf.routine.lookback import format_lookback_days
 from cfa.stf.routine.pyrenew_hew.forecast_pyrenew import main as forecast_pyrenew
+from cfa.stf.routine.utils.directory_utils import parse_model_batch_dir_name
 from cfa.stf.routine.utils.prop_utils import create_prop_fusion_model
 from cfa.stf.routine.utils.r_utils import (
     make_figures_from_model_fit_dir,
@@ -41,29 +42,43 @@ def _throw_if_backfill(
 def _get_model_loc_dir(
     context: dg.OpExecutionContext,
     model_base_config: ModelBaseConfig,
+    num_model_name: str,
+    other_model_name: str,
 ) -> Path:
+    """Find the unique batch with both completed fusion prerequisites."""
     disease = model_base_config.diseases.current_value
     location = model_base_config.locations.current_value
 
     loc_config = model_base_config.get_by_location(location)
     context.log.debug(f"loc_config: '{loc_config}'")
 
-    run_date = dt.datetime.strptime(context.partition_key, "%Y-%m-%d").date()
-    forecast_window = ForecastWindow(
-        report_date=run_date,
-        n_lookback_days=loc_config.fable_pyrenew_n_lookback_days,
-        exclude_last_n_days=loc_config.exclude_last_n_days,
-    )
-    model_batch_dir_name = forecast_window.model_batch_dir_name(disease)
-
-    model_loc_dir = Path(
+    daily_dir = Path(
         loc_config.output_basedir,
         f"{context.partition_key}_forecasts",
-        model_batch_dir_name,
-        "model_runs",
-        location,
     )
-    return model_loc_dir
+    lookback = format_lookback_days(loc_config.fable_pyrenew_n_lookback_days)
+    matches = []
+    for batch in sorted(daily_dir.glob(f"{disease}_lookback-{lookback}_omit-*")):
+        try:
+            parse_model_batch_dir_name(batch.name)
+        except ValueError:
+            continue
+        model_loc_dir = batch / "model_runs" / location
+        if all(
+            (model_loc_dir / model / filename).is_file()
+            for model in (num_model_name, other_model_name)
+            for filename in ("samples.parquet", "data/combined_data.tsv")
+        ):
+            matches.append(model_loc_dir)
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"Expected exactly one fusion batch for disease={disease}, "
+            f"location={location}, lookback={lookback}, "
+            f"report_date={context.partition_key} containing outputs for "
+            f"{num_model_name} and {other_model_name}; found {len(matches)} "
+            f"in {daily_dir}: {matches}"
+        )
+    return matches[0]
 
 
 # Model Runner functions
@@ -100,7 +115,6 @@ def _run_fable_e_other(
         output_dir=daily_forecast_output_dir,
         n_lookback_days=loc_config.fable_pyrenew_n_lookback_days,
         n_samples=fable_e_other_config.n_samples,
-        exclude_last_n_days=loc_config.exclude_last_n_days,
         ed_visit_input_resolution=ed_visit_input_resolution,
         run_date=run_date,
         fail_on_stale_data=loc_config.fail_on_stale_data,
@@ -147,7 +161,6 @@ def _run_pyrenew_model(
         n_chains=pyrenew_config.n_chains,
         n_warmup=pyrenew_config.n_warmup,
         n_samples=pyrenew_config.n_samples,
-        exclude_last_n_days=loc_config.exclude_last_n_days,
         rng_key=pyrenew_config.rng_key,
         run_date=run_date,
         fail_on_stale_data=loc_config.fail_on_stale_data,
@@ -186,7 +199,6 @@ def _run_epiautogp_e_pct_epiweekly(
         target="nssp",
         frequency="epiweekly",
         ed_visit_type="pct",
-        exclude_last_n_days=loc_config.exclude_last_n_days,
         n_particles=epiautogp_e_pct_epiweekly_config.n_particles,
         n_mcmc=epiautogp_e_pct_epiweekly_config.n_mcmc,
         n_hmc=epiautogp_e_pct_epiweekly_config.n_hmc,
@@ -213,7 +225,9 @@ def _run_fusion_model(
     Helper function to run fusion model.
     """
     _throw_if_backfill(context, daily_partitions_def)
-    model_loc_dir = _get_model_loc_dir(context, model_base_config)
+    model_loc_dir = _get_model_loc_dir(
+        context, model_base_config, num_model_name, other_model_name
+    )
     create_prop_fusion_model(
         model_run_dir=model_loc_dir,
         num_model_name=num_model_name,

@@ -24,6 +24,7 @@ def make_test_surveillance_inputs(
     first_training_date: dt.date | None = None,
     last_training_date: dt.date | None = None,
     loc_pop: int = 1,
+    canonical_exclude_last_n_days: int = 0,
     nhsn_prelim: bool = False,
     sources: Collection[ForecastSourceName] = ("nssp", "nhsn"),
 ) -> SurveillanceInputs:
@@ -67,6 +68,7 @@ def make_test_surveillance_inputs(
             data=nssp_data,
             freshness=freshness("nssp"),
             resolution="daily",
+            canonical_exclude_last_n_days=canonical_exclude_last_n_days,
         )
         if "nssp" in requested_sources
         else None
@@ -159,7 +161,7 @@ def make_test_forecast_run(
         model_name=model_name,
         output_dir=Path(output_dir),
         surveillance=surveillance,
-        requested_window=ForecastWindow(
+        canonical_window=ForecastWindow(
             report_date=report_date,
             n_lookback_days=n_lookback_days,
             exclude_last_n_days=exclude_last_n_days,

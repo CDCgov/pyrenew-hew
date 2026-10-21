@@ -68,7 +68,8 @@ class ForecastSourceData:
 
 @dataclass(frozen=True)
 class NSSPData(ForecastSourceData):
-    pass
+    # Calendar-day tail from canonical review decisions, before model minima.
+    canonical_exclude_last_n_days: int = 0
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,29 @@ def _resolved_version_date(
 def resolve_nssp_report_date() -> dt.date:
     version = resolve_nssp_version(dataset="comprehensive")
     return _resolved_version_date(version, dataset="comprehensive NSSP gold")
+
+
+def infer_nssp_exclusion_tail(source_data: pl.DataFrame, report_date: dt.date) -> int:
+    """Infer the terminal excluded interval on unique pre-report observation dates.
+
+    Beginning and interior exclusions do not create gaps in model training.
+    If the last observation is excluded, measure from the preceding retained
+    date to report_date - 1, including unobserved calendar days in that interval.
+    """
+    dates = (
+        source_data.filter(pl.col("date") < report_date)
+        .group_by("date")
+        .agg(pl.col("exclude").any())
+        .sort("date")
+    )
+    retained = dates.filter(~pl.col("exclude"))
+    if retained.is_empty():
+        raise ValueError(
+            "NSSP has no retained training observations before report date"
+        )
+    if not dates.item(-1, "exclude"):
+        return 0
+    return (report_date - dt.timedelta(days=1) - retained.item(-1, "date")).days
 
 
 def _normalize_nssp_data(
@@ -193,7 +217,13 @@ def _load_dataops_nssp(
         state_abb=loc_abb,
         dataset="comprehensive",
         start_date=min_allowed_training_date,
+        get_exclusions=True,
         lazy=False,
+    ).filter(pl.col("date") >= min_allowed_training_date)
+    canonical_exclusion = infer_nssp_exclusion_tail(source_data, run_date)
+    max_allowed_training_date = min(
+        max_allowed_training_date,
+        run_date - dt.timedelta(days=canonical_exclusion + 1),
     )
     freshness = nssp_freshness(
         selected_version_date=version_date,
@@ -203,7 +233,12 @@ def _load_dataops_nssp(
         source_data,
         max_allowed_training_date=max_allowed_training_date,
     )
-    return NSSPData(data=data, freshness=freshness, resolution="daily")
+    return NSSPData(
+        data=data,
+        freshness=freshness,
+        resolution="daily",
+        canonical_exclude_last_n_days=canonical_exclusion,
+    )
 
 
 def select_latest_nhsn_release() -> tuple[bool, dt.date]:
@@ -355,6 +390,11 @@ def load_surveillance_inputs(
     fail_on_stale_data: bool = False,
     logger: logging.Logger | None = None,
 ) -> SurveillanceInputs:
+    """Load inputs using a model cutoff, further restricted by NSSP review tails.
+
+    The supplied date bounds encode only the report-anchored lookback and model
+    minimum omission. Canonical NSSP exclusions never change the NHSN cutoff.
+    """
     logger = logger or logging.getLogger(__name__)
     requested_sources = frozenset(sources)
     if not requested_sources:
@@ -392,6 +432,11 @@ def load_surveillance_inputs(
             run_date=run_date,
         )
         freshness.append(nhsn.freshness)
+
+    for source in (nssp, nhsn):
+        if source is not None:
+            # Validate after aggregation too: a daily window may have no full week.
+            source._training_dates()
 
     apply_freshness_policy(
         tuple(freshness),

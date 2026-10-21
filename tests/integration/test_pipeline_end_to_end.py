@@ -10,7 +10,6 @@ from tests.integration.generate_test_data import (
     REPORT_DATE,
 )
 from tests.integration.model_test_utils import (
-    EXCLUDE_LAST_N_DAYS,
     FORECAST_DIR_NAME,
     N_LOOKBACK_DAYS,
     assert_model_outputs,
@@ -160,10 +159,8 @@ def test_reduced_pipeline_end_to_end(pipeline_workspace, monkeypatch, request):
             )
 
             copied_figures_dir = (
-                workspace
-                / FORECAST_DIR_NAME
-                / f"lookback-{N_LOOKBACK_DAYS}-omit-{EXCLUDE_LAST_N_DAYS}-figures"
-                / disease
+                workspace / FORECAST_DIR_NAME / f"lookback-{N_LOOKBACK_DAYS}-omit-"
+                f"{batch_info['exclude_last_n_days']}-figures" / disease
             )
             assert copied_figures_dir.is_dir(), (
                 f"Missing postprocessed figures directory: {copied_figures_dir}"

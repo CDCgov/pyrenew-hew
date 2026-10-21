@@ -81,6 +81,7 @@ def test_load_dataops_nssp_returns_normalized_source(monkeypatch):
                 "total",
                 "covid",
             ],
+            "exclude": [False] * 4,
             "target_type": ["inc ed visits"] * 4,
             "value": [12, 120, 100, 10],
         }
@@ -130,6 +131,7 @@ def test_load_dataops_nssp_returns_normalized_source(monkeypatch):
         "disease": ["covid", "total"],
         "state_abb": "CA",
         "dataset": "comprehensive",
+        "get_exclusions": True,
         "start_date": dt.date(2025, 12, 1),
         "lazy": False,
     }
@@ -159,6 +161,7 @@ def test_load_dataops_nssp_all_history_passes_minimum_start_date(monkeypatch):
             "date": [dt.date(2020, 1, 1)] * 2,
             "state_abb": ["CA"] * 2,
             "disease": ["covid", "total"],
+            "exclude": [False] * 2,
             "target_type": ["inc ed visits"] * 2,
             "value": [10, 100],
         }
@@ -471,11 +474,11 @@ def test_load_surveillance_inputs_uses_dataops_loaders(monkeypatch):
     nssp = data_access.NSSPData(
         data=pl.DataFrame(
             {
-                "date": [dt.date(2026, 1, 8)] * 2,
+                "date": [dt.date(2026, 1, 7)] * 2,
                 "state_abb": ["CA"] * 2,
                 ".variable": ["observed_ed_visits", "other_ed_visits"],
                 ".value": [10, 90],
-                "data_type": ["eval"] * 2,
+                "data_type": ["train"] * 2,
                 "resolution": ["daily"] * 2,
             }
         ),
@@ -526,7 +529,7 @@ def test_load_surveillance_inputs_uses_dataops_loaders(monkeypatch):
         {
             ".variable": ["observed_ed_visits", "other_ed_visits"],
             ".value": [10, 90],
-            "data_type": ["eval"] * 2,
+            "data_type": ["train"] * 2,
             "resolution": ["daily"] * 2,
         }
     )
@@ -579,11 +582,11 @@ def test_load_surveillance_inputs_stores_aggregated_nssp_data(monkeypatch):
     nssp = data_access.NSSPData(
         data=pl.DataFrame(
             {
-                "date": [dt.date(2026, 1, 8)] * 2,
+                "date": [dt.date(2026, 1, 7)] * 2,
                 "state_abb": ["CA"] * 2,
                 ".variable": ["observed_ed_visits", "other_ed_visits"],
                 ".value": [10, 90],
-                "data_type": ["eval"] * 2,
+                "data_type": ["train"] * 2,
                 "resolution": ["daily"] * 2,
             }
         ),
@@ -629,11 +632,11 @@ def test_load_surveillance_inputs_only_loads_requested_source(
     nssp = data_access.NSSPData(
         data=pl.DataFrame(
             {
-                "date": [dt.date(2026, 1, 8)] * 2,
+                "date": [dt.date(2026, 1, 7)] * 2,
                 "state_abb": ["CA"] * 2,
                 ".variable": ["observed_ed_visits", "other_ed_visits"],
                 ".value": [10, 90],
-                "data_type": ["eval"] * 2,
+                "data_type": ["train"] * 2,
                 "resolution": ["daily"] * 2,
             }
         ),
