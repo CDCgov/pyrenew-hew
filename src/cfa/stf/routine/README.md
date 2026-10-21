@@ -105,11 +105,19 @@ Set `n_lookback_days` to `None` to retain all available training history; a posi
 `ForecastRun` combines that configured window with the surveillance observations that were actually retained, the population, and the model output paths.
 In particular, use `run.model_dir`, `run.data_dir`, and `run.model_run_dir` rather than rebuilding paths in model code.
 NSSP is loaded once with canonical exclusion flags from the latest published review.
-Only the excluded tail affects training: if the last pre-report observation is excluded, the canonical omission is the number of calendar days from the preceding unexcluded date through the day before the report date. Beginning and interior exclusions do not create training gaps. A window with no retained training observations is rejected.
-Models can override `minimum_exclude_last_n_days` to require a minimum omitted tail. NSSP uses the maximum of this minimum and the canonical tail; NHSN uses only the model minimum. Cutoffs are selected before complete-week aggregation, and omitted observations remain evaluation data.
-The pipeline's `report_window` records the report date and lookback. The run's `canonical_window` determines the `_omit-N` batch suffix before model minima (zero for NHSN-only runs); `forecast_window` records the effective NSSP window, or the model window for NHSN-only runs, and `nhsn_window` records the NHSN window when present.
+Only the excluded tail affects training: if the last pre-report observation is excluded, the canonical omission is the number of calendar days from the preceding unexcluded date through the day before the report date.
+Beginning and interior exclusions do not create training gaps.
+A window with no retained training observations is rejected.
+Models can override `minimum_exclude_last_n_days` to require a minimum omitted tail.
+NSSP uses the maximum of this minimum and the canonical tail; NHSN uses only the model minimum.
+Cutoffs are selected before complete-week aggregation, and omitted observations remain evaluation data.
+The pipeline's `report_window` records the report date and lookback.
+The run's `canonical_window` determines the `_omit-N` batch suffix before model minima (zero for NHSN-only runs); `forecast_window` records the effective NSSP window, or the model window for NHSN-only runs, and `nhsn_window` records the NHSN window when present.
 Fusion discovers the unique batch containing both prerequisite model outputs for the configured report date, disease, location, and lookback; missing or ambiguous batches are errors.
-`exclude_last_n_days` is derived internal state and is no longer a forecast or Dagster configuration argument. Remove it from saved Dagster configurations before use. Existing output directory names and parsers remain compatible. EpiAutoGP's separate `exclude_date_ranges` option is unchanged.
+`exclude_last_n_days` is derived internal state and is no longer a forecast or Dagster configuration argument.
+Remove it from saved Dagster configurations before use.
+Existing output directory names and parsers remain compatible.
+EpiAutoGP's separate `exclude_date_ranges` option is unchanged.
 Missing review decisions use the data library's warning and false-flag behavior; schema and storage errors propagate.
 The resulting layout is:
 
