@@ -20,10 +20,11 @@ class ForecastRun:
     disease: str
     loc: str
     forecast_window: ForecastWindow
-    requested_window: ForecastWindow
+    canonical_window: ForecastWindow
     model_name: str
     output_dir: Path
     surveillance: SurveillanceInputs
+    nhsn_window: ForecastWindow | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "output_dir", Path(self.output_dir))
@@ -55,12 +56,12 @@ class ForecastRun:
 
     @property
     def exclude_last_n_days(self) -> int:
-        """Effective recent-data omission applied to this model run."""
+        """Effective NSSP omission, or the model minimum for NHSN-only runs."""
         return self.forecast_window.exclude_last_n_days
 
     @property
     def model_batch_dir(self) -> Path:
-        return self.output_dir / self.requested_window.model_batch_dir_name(
+        return self.output_dir / self.canonical_window.model_batch_dir_name(
             self.disease
         )
 
