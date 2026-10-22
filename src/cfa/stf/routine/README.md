@@ -103,7 +103,9 @@ Every subclass must implement:
 - `run_model(run)`: run the model and create a standardized `run.model_dir / "samples.parquet"`.
 
 `ForecastWindow` is the source of truth for the report-anchored training bounds, final forecast date, and model-batch directory name.
-Set `n_lookback_days` to `None` to retain all available training history; a positive integer limits training data to that many days before the report date.
+Set `n_lookback_days` to `None` to retain all supported training history, beginning
+March 1, 2022. A positive integer limits training data to that many days before
+the report date, subject to the same earliest supported date.
 `ForecastRun` combines that configured window with the surveillance observations that were actually retained, the population, and the model output paths.
 In particular, use `run.model_dir`, `run.data_dir`, and `run.model_run_dir` rather than rebuilding paths in model code.
 Models can override `minimum_exclude_last_n_days` when they require a longer omitted tail than the caller requested.
