@@ -14,7 +14,7 @@ Existing implementations are useful references:
 
 - [`fable/forecast_fable.py`](fable/forecast_fable.py) is the smallest example.
 - [`pyrenew_hew/forecast_pyrenew.py`](pyrenew_hew/forecast_pyrenew.py) shows model-specific inputs and every optional lifecycle hook.
-- [`epiautogp/forecast_epiautogp.py`](epiautogp/forecast_epiautogp.py) shows a model with its own configuration, input conversion, and external runtime.
+- [`nowcastautogp/forecast_nowcastautogp.py`](nowcastautogp/forecast_nowcastautogp.py) shows a model with its own configuration, input conversion, and external runtime.
 
 ## 1. Create the model package
 
@@ -141,7 +141,7 @@ Standard post-processing expects `samples.parquet` in long format with these col
 
 Additional identifiers such as `.chain` or `.iteration` are allowed when relevant.
 Draws should form coherent trajectories: the same `.draw` identifies values belonging to one sample across forecast dates.
-See [`fable/fit_fable.R`](fable/fit_fable.R) for an R writer and EpiAutoGP's [`forecast_epiautogp.py`](epiautogp/forecast_epiautogp.py) for a non-R writer.
+See [`fable/fit_fable.R`](fable/fit_fable.R) for an R writer and NowcastAutoGP's [`forecast_nowcastautogp.py`](nowcastautogp/forecast_nowcastautogp.py) for a non-R writer.
 
 ## 3. Declare input resolution and use hooks only where needed
 
@@ -167,7 +167,7 @@ When fitting stops before the report date because `exclude_last_n_days` is nonze
 For daily models, forecasting often means generating `run.n_forecast_days` days from that observed last training date through `run.forecast_through`.
 See the Fable and PyRenew implementations.
 Fable requires at least three omitted calendar days.
-EpiAutoGP also requires at least three when it runs without a nowcast source.
+NowcastAutoGP also requires at least three when it runs without a nowcast source.
 
 ## 4. Add orchestration explicitly
 

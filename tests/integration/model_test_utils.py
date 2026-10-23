@@ -16,9 +16,9 @@ from tests.integration.generate_test_data import (
 from cfa.stf.routine import forecast_pipeline as forecast_pipeline_module
 from cfa.stf.routine._paths import PRODUCTION_PRIORS
 from cfa.stf.routine.data.data_access import DataResolution
-from cfa.stf.routine.epiautogp import forecast_epiautogp as epiautogp_module
 from cfa.stf.routine.fable import forecast_fable as fable_module
 from cfa.stf.routine.forecast_window import ForecastWindow
+from cfa.stf.routine.nowcastautogp import forecast_nowcastautogp as nowcastautogp_module
 from cfa.stf.routine.pyrenew_hew import forecast_pyrenew as pyrenew_module
 from cfa.stf.routine.pyrenew_hew import model_inputs as pyrenew_inputs_module
 from cfa.stf.routine.utils.data_utils import aggregate_nssp_to_epiweekly
@@ -111,7 +111,7 @@ def patch_dataops_with_mock_data(monkeypatch) -> None:
         lambda **kwargs: RIGHT_TRUNCATION_PMF.copy(),
     )
     monkeypatch.setattr(
-        epiautogp_module,
+        nowcastautogp_module,
         "get_nnh_right_truncation_pmf",
         lambda **kwargs: RIGHT_TRUNCATION_PMF.copy(),
     )
@@ -205,7 +205,7 @@ def run_pyrenew(
     )
 
 
-def run_epiautogp(
+def run_nowcastautogp(
     workspace: Path,
     disease: str,
     location: str,
@@ -217,7 +217,7 @@ def run_epiautogp(
     hubverse_nowcast_dir: Path | None = None,
     n_forecast_draws: int = 40,
 ) -> None:
-    epiautogp_module.main(
+    nowcastautogp_module.main(
         disease=disease,
         run_date=REPORT_DATE,
         loc=location,

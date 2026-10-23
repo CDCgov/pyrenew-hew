@@ -81,9 +81,9 @@ postprocess_sensor = dg.AutomationConditionSensorDefinition(
     use_user_code_server=True,  # allows for custom automation conditions
 )
 
-epiautogp_sensor = dg.AutomationConditionSensorDefinition(
-    name="EpiAutoGP",
-    target=dg.AssetSelection.groups("EpiAutoGP"),
+nowcastautogp_sensor = dg.AutomationConditionSensorDefinition(
+    name="NowcastAutoGP",
+    target=dg.AssetSelection.groups("NowcastAutoGP"),
     run_tags=azure_batch_4cpu_execution_config.to_run_tags(),
     use_user_code_server=True,  # allows for custom automation conditions
 )
