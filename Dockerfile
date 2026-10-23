@@ -37,19 +37,19 @@ COPY ./stfroutineforecasting /cfa-stf-routine-forecasting/stfroutineforecasting
 # Copy only Julia environment metadata first so dependency installation is cached
 # independently of changes to pipeline source files. The full source tree is
 # copied later.
-COPY ./src/cfa/stf/routine/epiautogp/Project.toml \
-     ./src/cfa/stf/routine/epiautogp/Manifest.toml \
-     /cfa-stf-routine-forecasting/src/cfa/stf/routine/epiautogp/
+COPY ./src/cfa/stf/routine/nowcastautogp/Project.toml \
+     ./src/cfa/stf/routine/nowcastautogp/Manifest.toml \
+     /cfa-stf-routine-forecasting/src/cfa/stf/routine/nowcastautogp/
 
 # Set working directory
 WORKDIR /cfa-stf-routine-forecasting
 
 # Instantiate Julia dependencies into the image so the runtime container can run
-# the EpiAutoGP subprocess without downloading packages. This is a script
-# environment under the EpiAutoGP package, so we commit its Manifest.toml for a
-# reproducible EpiAutoGP dependency set.
+# the NowcastAutoGP subprocess without downloading packages. This is a script
+# environment under the NowcastAutoGP package, so we commit its Manifest.toml for a
+# reproducible NowcastAutoGP dependency set.
 RUN mkdir -p "${JULIA_DEPOT_DIR}" \
-    && julia --project=src/cfa/stf/routine/epiautogp -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' \
+    && julia --project=src/cfa/stf/routine/nowcastautogp -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' \
     && chmod -R a+rwX "${JULIA_DEPOT_DIR}"
 
 # Install stfroutineforecasting
